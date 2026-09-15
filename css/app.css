@@ -35,6 +35,8 @@ button, select {
 }
 button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
 button.tiny { padding: 4px 8px; font-size: 12px; }
+.toggle-btn { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.toggle-btn.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .err { color: var(--accent); font-size: 13px; min-height: 1.2em; }
 .kb { display: flex; gap: 0; align-items: flex-end; flex-wrap: nowrap; flex: 1; }
 .kb .oct { display: flex; gap: 0; position: relative; height: 122px; flex: 1; }
