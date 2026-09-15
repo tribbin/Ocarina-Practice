@@ -51,7 +51,7 @@ function render() {
       card.dataset.i = String(i);
       const compact = `<div class="compact">${ocarinaSVG(COVER[id] || [], ch)}</div>`;
       card.innerHTML = compact +
-        `<div class="meta"><span class="nm">${DISPLAY[id]}</span>
+        `<div class="meta"><span class="nm">${spelledLabel(t)}</span>
          <span class="badge ch${ch}">CH ${ch}</span>
          <span class="dur">${durLabel(t.dur, t.dotted)}</span></div>`;
       sheet.appendChild(card);
@@ -128,7 +128,7 @@ function drawTokens(tokens) {
       el.textContent = t.raw || t.id;
     } else {
       el.className = "tok ch" + CHAMBER[t.id];
-      el.innerHTML = `${DISPLAY[t.id]} <span class="td">${durLabel(t.dur, t.dotted)}</span>`;
+      el.innerHTML = `${spelledLabel(t)} <span class="td">${durLabel(t.dur, t.dotted)}</span>`;
       el.addEventListener("mouseenter", () => {
         if (isMelodyPlaying() || hoverQuietUntil > Date.now()) return;
         highlightToken(i, t.id);

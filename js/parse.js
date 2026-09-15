@@ -10,20 +10,24 @@ function parse(src) {
       const pd = parseDur(m[7]);
       tokens.push({type:"rest", dur: pd.dur, dotted: pd.dotted, beats: pd.beats}); continue;
     }
-    const letter = m[1];
+    const letter = m[1].toUpperCase();
     const acc = m[2] || "";
     let oct = m[3] ? parseInt(m[3],10) : lastOct;
     const pd = parseDur(m[4]);
     const dur = pd.dur;
+    const spellOct = oct;
     lastOct = oct;
-    let core = letter.toUpperCase();
+    let core = letter;
     if (acc === "#") core += "s";
     else if (acc === "b") {
       const flat = {C:["B",-1], D:["Cs",0], E:["Ds",0], F:["E",0], G:["Fs",0], A:["Gs",0], B:["As",0]};
-      const [n, d] = flat[letter.toUpperCase()];
+      const [n, d] = flat[letter];
       core = n; oct += d;
     }
-    tokens.push({type:"note", id: core + oct, dur, dotted: pd.dotted, beats: pd.beats, raw: m[0]});
+    tokens.push({
+      type:"note", id: core + oct, dur, dotted: pd.dotted, beats: pd.beats, raw: m[0],
+      spellLetter: letter, spellAcc: acc, spellOct
+    });
   }
   return tokens;
 }
@@ -51,6 +55,18 @@ function durLabel(d, dotted) {
 
 function pretty(id) {
   return id.replace(/^([A-G])s(\d)$/, "$1#$2");
+}
+
+function octSub(n) {
+  return String(n).replace(/[0-9]/g, d => String.fromCharCode(0x2080 + +d));
+}
+
+function spelledLabel(t) {
+  if (!t || t.type !== "note") return "";
+  const letter = t.spellLetter || (t.id && t.id[0]) || "";
+  const acc = t.spellAcc === "#" ? "\u266f" : t.spellAcc === "b" ? "\u266d" : "";
+  const oct = t.spellOct != null ? t.spellOct : ((String(t.id || "").match(/\d+$/) || [])[0] || "");
+  return letter + acc + octSub(oct);
 }
 
 function isTempoComment(line) {
