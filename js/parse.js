@@ -16,14 +16,17 @@ function parse(src) {
     }
     if (m[8]) {
       const pd = parseDur(m[9]);
-      const t = {type:"tie", dur: pd.dur, dotted: pd.dotted, beats: pd.beats, raw: m[0], id: ""};
       if (canTie && lastPitch) {
-        t.id = lastPitch.id;
+        // Continuation of previous note.
+        const t = {type:"tie", dur: pd.dur, dotted: pd.dotted, beats: pd.beats, raw: m[0], id: lastPitch.id};
         t.spellLetter = lastPitch.spellLetter;
         t.spellAcc = lastPitch.spellAcc;
         t.spellOct = lastPitch.spellOct;
+        tokens.push(t);
+      } else {
+        // Continuation of previous rest (or leading gap): extend as a rest.
+        tokens.push({type:"rest", dur: pd.dur, dotted: pd.dotted, beats: pd.beats, raw: m[0]});
       }
-      tokens.push(t);
       pendingSlide = false;
       continue;
     }
