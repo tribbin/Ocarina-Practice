@@ -311,10 +311,14 @@ h2#title { margin: 8px 0 10px; font-size: 18px; }
 }
 #tabPanel.focus .focus-tokens {
   display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 6px;
-  padding: 8px 6px; scroll-behavior: smooth;
+  padding: 20px 12px; align-items: center;
   scrollbar-width: thin;
 }
-#tabPanel.focus .focus-tokens .tok { flex: 0 0 auto; }
+#tabPanel.focus .focus-tokens .tok { flex: 0 0 auto; transition: transform .12s ease; }
+#tabPanel.focus .focus-tokens .tok.now {
+  transform: scale(1.5); z-index: 1;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--ink), 0 4px 14px rgba(28,20,15,.35);
+}
 
 /* Transport bar */
 #tabPanel.focus .focus-bar {
@@ -337,6 +341,11 @@ h2#title { margin: 8px 0 10px; font-size: 18px; }
   width: 46px; height: 46px; font-size: 20px;
   background: transparent; color: var(--ink); border: 1px solid var(--line);
 }
+.focus-btn.loop {
+  font-size: 30px; background: transparent; color: var(--ink);
+  border: 1px solid var(--line);
+}
+.focus-btn.loop.on { background: var(--good); color: var(--paper); border-color: var(--good); }
 .focus-tempo {
   display: flex; align-items: center; gap: 10px;
   font-weight: 700; font-size: 15px; color: var(--ink);

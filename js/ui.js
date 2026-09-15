@@ -1,6 +1,7 @@
 let APP_CSS = "";
 let lastTokens = [];
 let liveIdx = -1;
+let lastHoverNoteAt = 0;
 
 function fitInput() {
   const ta = document.getElementById("src");
@@ -263,7 +264,7 @@ function highlightToken(i, noteId) {
   liveIdx = i;
   document.querySelectorAll(".tok.now, .card.now, .rest.now, .key.now").forEach(el => el.classList.remove("now"));
   document.querySelectorAll('.tok[data-i="' + i + '"]').forEach(el => el.classList.add("now"));
-  scrollFocusStripTo(i);
+  if (isMelodyPlaying()) scrollFocusStripTo(i);
   if (isLiveTab()) {
     updateLiveTab(lastTokens.length ? lastTokens : parse(document.getElementById("src").value), i);
   } else {
@@ -319,6 +320,16 @@ function clearHighlight() {
   document.querySelectorAll(".tok.now, .card.now, .rest.now, .key.now").forEach(el => el.classList.remove("now"));
 }
 
+function hoverPreview(i, t) {
+  if (isMelodyPlaying() || hoverQuietUntil > Date.now()) return;
+  highlightToken(i, t.id);
+  if (!audioCtx || audioCtx.state !== "running") return;
+  const now = Date.now();
+  if (now - lastHoverNoteAt < 70) return;
+  lastHoverNoteAt = now;
+  playNote(t.id, Math.min(tokenSeconds(t), 0.5));
+}
+
 function buildTokenEl(t, i) {
   const el = document.createElement("span");
   el.dataset.i = String(i);
@@ -334,12 +345,7 @@ function buildTokenEl(t, i) {
     if (t.id && NOTES.includes(t.id)) {
       el.className = "tok tie ch" + CHAMBER[t.id];
       el.innerHTML = `– <span class="td">${durLabel(t.dur, t.dotted)}</span>`;
-      el.addEventListener("mouseenter", () => {
-        if (isMelodyPlaying() || hoverQuietUntil > Date.now()) return;
-        highlightToken(i, t.id);
-        if (!audioCtx || audioCtx.state !== "running") return;
-        playNote(t.id, tokenSeconds(t));
-      });
+      el.addEventListener("mouseenter", () => hoverPreview(i, t));
       el.addEventListener("mouseleave", () => {
         if (!isMelodyPlaying()) clearHighlight();
       });
@@ -353,12 +359,7 @@ function buildTokenEl(t, i) {
   } else {
     el.className = "tok ch" + CHAMBER[t.id];
     el.innerHTML = `${spelledLabel(t)} <span class="td">${durLabel(t.dur, t.dotted)}</span>`;
-    el.addEventListener("mouseenter", () => {
-      if (isMelodyPlaying() || hoverQuietUntil > Date.now()) return;
-      highlightToken(i, t.id);
-      if (!audioCtx || audioCtx.state !== "running") return;
-      playNote(t.id, tokenSeconds(t));
-    });
+    el.addEventListener("mouseenter", () => hoverPreview(i, t));
     el.addEventListener("mouseleave", () => {
       if (!isMelodyPlaying()) clearHighlight();
     });
@@ -536,11 +537,38 @@ function wireFocusControls() {
   const rw = document.getElementById("focusRewind");
   const pp = document.getElementById("focusPlay");
   const st = document.getElementById("focusStop");
+  const lp = document.getElementById("focusLoop");
   const ex = document.getElementById("focusExit");
   if (rw) rw.onclick = () => { unlockAudio(); rewindMelody(); };
   if (pp) pp.onclick = () => { unlockAudio(); togglePlayPause(); };
   if (st) st.onclick = () => stopMelody();
+  if (lp) lp.onclick = () => {
+    const cb = document.getElementById("loopMel");
+    if (cb) cb.checked = !cb.checked;
+    syncLoopUI();
+  };
+  const loopCb = document.getElementById("loopMel");
+  if (loopCb) loopCb.addEventListener("change", syncLoopUI);
   if (ex) ex.onclick = () => toggleFullscreen(document.getElementById("tabPanel"));
+  const strip = document.getElementById("focusTokens");
+  if (strip) {
+    strip.addEventListener("wheel", e => {
+      const d = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+      if (!d) return;
+      e.preventDefault();
+      strip.scrollLeft += d;
+    }, { passive: false });
+  }
+  syncLoopUI();
+}
+
+function syncLoopUI() {
+  const cb = document.getElementById("loopMel");
+  const lp = document.getElementById("focusLoop");
+  if (!lp) return;
+  const on = !!(cb && cb.checked);
+  lp.classList.toggle("on", on);
+  lp.setAttribute("aria-pressed", on ? "true" : "false");
 }
 
 function isFocusMode() {
@@ -556,6 +584,7 @@ function syncFocusMode() {
   panel.classList.toggle("focus", on);
   if (on) {
     applyTempo(currentTempo());
+    syncLoopUI();
     const toks = lastTokens.length ? lastTokens : parse(document.getElementById("src").value);
     scrollFocusStripTo(liveIdx >= 0 ? liveIdx : firstSoundIdx(toks));
   }
