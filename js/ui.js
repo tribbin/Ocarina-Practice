@@ -42,6 +42,15 @@ function resetLiveTab() {
   liveIdx = -1;
 }
 
+function cueFirstNote() {
+  const toks = lastTokens.length ? lastTokens : parse(document.getElementById("src").value);
+  if (!toks.length) return;
+  const i = firstSoundIdx(toks);
+  const t = toks[i];
+  highlightToken(i, t && t.id);
+  scrollFocusStripTo(i);
+}
+
 function firstSoundIdx(tokens) {
   const i = tokens.findIndex(t => t.type === "note" || t.type === "rest" || t.type === "tie");
   return i < 0 ? 0 : i;
@@ -341,6 +350,7 @@ function clearHighlight() {
 function hoverPreview(i, t) {
   if (isMelodyPlaying() || hoverQuietUntil > Date.now()) return;
   highlightToken(i, t.id);
+  unlockAudio();
   if (!audioCtx || audioCtx.state !== "running") return;
   const now = Date.now();
   if (now - lastHoverNoteAt < 70) return;
@@ -569,12 +579,10 @@ function revealZenUi() {
 }
 
 function wireFocusControls() {
-  const rw = document.getElementById("focusRewind");
   const pp = document.getElementById("focusPlay");
   const st = document.getElementById("focusStop");
   const lp = document.getElementById("focusLoop");
   const ex = document.getElementById("focusExit");
-  if (rw) rw.onclick = () => { unlockAudio(); rewindMelody(); };
   if (pp) pp.onclick = () => { unlockAudio(); togglePlayPause(); };
   if (st) st.onclick = () => stopMelody();
   if (lp) lp.onclick = () => {
@@ -693,6 +701,7 @@ function wireZen() {
     const fsBtn = document.getElementById("fullscreen");
     if (fsBtn) fsBtn.textContent = isFullscreen() ? "Exit full screen" : "Full screen";
     syncFocusMode();
+    if (isFullscreen() && isLiveTab() && !isMelodyPlaying()) stopMelody();
   };
   document.addEventListener("fullscreenchange", sync);
   document.addEventListener("webkitfullscreenchange", sync);

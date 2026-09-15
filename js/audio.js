@@ -62,7 +62,7 @@ function unlockAudio() {
   } catch (e) {}
 }
 
-["pointerdown","keydown","touchstart"].forEach(ev =>
+["pointerdown","pointerover","keydown","touchstart"].forEach(ev =>
   document.addEventListener(ev, unlockAudio, {passive:true})
 );
 
@@ -174,6 +174,7 @@ function stopMelody() {
   const btn = document.getElementById("playMel");
   if (btn) btn.textContent = "Play";
   clearHighlight();
+  if (typeof cueFirstNote === "function") cueFirstNote();
   syncTransport();
 }
 

@@ -392,9 +392,9 @@ h2#title { margin: 8px 0 10px; font-size: 18px; }
 .focus-btn.play.is-playing { background: var(--accent); }
 #tabPanel.focus .focus-btn.play.is-playing { background: var(--accent); }
 
-/* Loop toggle in settings row (smaller, secondary) */
+/* Loop toggle in the transport row */
 #tabPanel.focus .focus-btn.loop {
-  width: 48px; height: 48px; font-size: 24px;
+  font-size: 28px;
   background: transparent; color: var(--paper); border: 1px solid rgba(255,255,255,.28);
 }
 .focus-btn.loop.on { background: var(--good); color: var(--paper); border-color: var(--good); }
