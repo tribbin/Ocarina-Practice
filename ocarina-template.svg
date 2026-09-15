@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" width="150" height="150" viewBox="0 0 39.687499 39.6875" version="1.1" id="svg1" xml:space="preserve" inkscape:version="1.4 (e7c3feb100, 2024-10-09)" sodipodi:docname="ico_triple_bass_c.svg">
+  <defs id="defs1"/>
+  <g inkscape:label="Layer 1" inkscape:groupmode="layer" id="layer1">
+    <g id="g38" inkscape:label="ocarina drawing" transform="matrix(0.16340482,-0.1804452,0.1804452,0.16340482,-16.634124,18.840736)">
+      <g id="g37" inkscape:label="ocarina shape">
+        <path style="fill:#e2c8a8;fill-opacity:1;stroke:#111;stroke-width:2;stroke-linecap:round;stroke-linejoin:round" d="m 47.274564,164.02102 31.590218,34.60304 c 0,0 58.176598,-38.60278 101.097478,-70.93442 0,0 1.68394,-27.937743 1.55862,-32.511793 -0.12531,-4.574051 -1.12784,-9.21076 -8.83481,-10.338607 -7.70696,-1.12785 -37.21022,-5.890458 -57.83354,-7.205695 C 94.229204,76.318308 65.836818,74.628816 49.091111,77.446988 37.976365,79.317513 33.524869,87.774183 32.963707,91.270478 32.402545,94.766773 34.0143,104.0662 43.38584,117.76812 c 9.371539,13.70192 17.200738,22.84226 3.888724,46.2529 z" id="path1" sodipodi:nodetypes="cccsszszzc" inkscape:label="ocarina outline" class="outline"/>
+        <path style="fill:none;stroke:#6b4a32;stroke-width:1;stroke-linecap:round;opacity:0.55" d="m 57.597875,149.04558 c 8.595375,-20.11495 -8.7726,-36.5082 -17.811036,-46.43276" id="path2" sodipodi:nodetypes="cc" inkscape:label="relief 1" class="relief"/>
+        <path style="fill:none;stroke:#6b4a32;stroke-width:1;stroke-linecap:round;opacity:0.55" d="M 95.878307,171.1986 C 104.38507,152.41284 99.245572,128.13312 42.533816,94.106065" id="path3" sodipodi:nodetypes="cc" inkscape:label="relief 2" class="relief"/>
+        <path style="fill:none;stroke:#6b4a32;stroke-width:1;stroke-linecap:round;opacity:0.55" d="M 44.111391,90.353165 C 67.921519,104.88988 84.889844,115.676 113.46199,90.236753 l 0.008,0.0093 c 2.9242,6.86744 1.32018,15.442617 22.40997,-2.767173 -0.21772,10.517115 -0.57886,15.21665 23.45987,0.179969 -0.68425,6.033542 -3.94248,9.293075 19.1731,3.452501" id="path4" sodipodi:nodetypes="cccccc" inkscape:label="relief 3" class="relief"/>
+      </g>
+      <g id="g36" inkscape:label="note holes">
+        <g id="g35" inkscape:label="left fingers">
+          <ellipse style="fill:#ffffff;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round" id="L-index" ry="2.5919042" rx="3.544596" cy="95.550774" cx="41.947548" transform="rotate(-12.708267)" inkscape:label="index finger" class="hole" data-hole="L-index"/>
+          <ellipse style="fill:#ffffff;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round" id="L-middle-large" cx="77.092545" cy="89.586845" rx="3.8546269" ry="3.5887907" inkscape:label="middle finger large" class="hole" data-hole="L-middle-large"/>
+          <ellipse style="fill:#ffffff;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round" id="L-middle-small" cx="77.657448" cy="96.963806" rx="1.7565191" ry="1.5396355" inkscape:label="middle finger small" class="hole" data-hole="L-middle-small"/>
+          <ellipse style="fill:#ffffff;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round" id="L-ring" cx="92.51487" cy="88.755379" rx="3.7281647" ry="3.3835444" inkscape:label="ring finger" class="hole" data-hole="L-ring"/>
+          <ellipse style="fill:#ffffff;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round" id="L-pinky" cx="106.04905" cy="80.703796" rx="3.3963354" ry="2.0990505" inkscape:label="pink" class="hole" data-hole="L-pinky"/>
+        </g>
+        <g id="g34" style="opacity:1" inkscape:label="right fingers">
+          <g id="g31" inkscape:label="low chamber">
+            <circle style="fill:#ffffff;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round" id="R1-index" cx="117.23354" cy="126.25632" r="4.2294302" inkscape:label="index finger" class="hole" data-hole="R1-index"/>
+            <circle style="fill:#ffffff;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round" id="R1-middle-small" cx="124.65854" cy="108.77468" r="1.127848" inkscape:label="middle finger small" class="hole" data-hole="R1-middle-small"/>
+            <circle style="fill:#ffffff;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round" id="R1-middle-large" cx="127.79146" cy="114.41392" r="2.4123416" inkscape:label="middle finger large" class="hole" data-hole="R1-middle-large"/>
+            <circle style="fill:#ffffff;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round" id="R1-ring" cx="140.88702" cy="108.17943" r="3.038924" inkscape:label="ring finger" class="hole" data-hole="R1-ring"/>
+            <circle style="fill:#ffffff;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round" id="R1-pinky" cx="154.17056" cy="105.48512" r="2.8509493" inkscape:label="pink" class="hole" data-hole="R1-pinky"/>
+          </g>
+          <g id="g32" inkscape:label="middle chamber">
+            <circle style="fill:#ffffff;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round" id="R2-index-high" cx="125.25379" cy="138.66266" r="3.3208859" inkscape:label="index finger high" class="hole" data-hole="R2-index-high"/>
+            <circle style="fill:#ffffff;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round" id="R2-index-low" cx="129.95316" cy="144.80316" r="3.1329114" inkscape:label="index finger low" class="hole" data-hole="R2-index-low"/>
+            <circle style="fill:#ffffff;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round" id="R2-middle-small" cx="131.36298" cy="122.12089" r="1.378481" inkscape:label="middle finger small" class="hole" data-hole="R2-middle-small"/>
+            <circle style="fill:#ffffff;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round" id="R2-middle-large" cx="135.52974" cy="128.98196" r="3.3208859" inkscape:label="middle finger large" class="hole" data-hole="R2-middle-large"/>
+            <circle style="fill:#ffffff;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round" id="R2-ring" cx="147.96739" cy="122.5595" r="3.289557" inkscape:label="ring finger" class="hole" data-hole="R2-ring"/>
+            <circle style="fill:#ffffff;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round" id="R2-pinky" cx="158.02403" cy="117.95411" r="1.942405" inkscape:label="pink" class="hole" data-hole="R2-pinky"/>
+            <circle style="fill:#ffffff;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round" id="R2-tune" cx="167.57944" cy="112.62816" r="2.6003165" inkscape:label="tuning hole" class="hole tune" data-hole="R2-tune"/>
+          </g>
+          <g id="g33" inkscape:label="high chamber">
+            <circle style="fill:#ffffff;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round" id="R3-middle-high" cx="139.63385" cy="137.81676" r="1.2844937" inkscape:label="middle finger high" class="hole" data-hole="R3-middle-high"/>
+            <circle style="fill:#ffffff;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round" id="R3-index" cx="134.4019" cy="152.7921" r="2.3496835" inkscape:label="index finger" class="hole" data-hole="R3-index"/>
+            <circle style="fill:#ffffff;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round" id="R3-middle-low" cx="144.2079" cy="143.73798" r="1.5664557" inkscape:label="middle finger low" class="hole" data-hole="R3-middle-low"/>
+            <circle style="fill:#ffffff;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round" id="R3-ring" cx="155.14177" cy="136.40697" r="2.443671" inkscape:label="ring finger" class="hole" data-hole="R3-ring"/>
+            <circle style="fill:#ffffff;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round" id="R3-pinky" cx="164.66582" cy="130.36044" r="1.5977848" inkscape:label="pink" class="hole" data-hole="R3-pinky"/>
+            <circle style="fill:#ffffff;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round" id="R3-tune" cx="171.27628" cy="127.13354" r="2.0990505" inkscape:label="tuning hole" class="hole tune" data-hole="R3-tune"/>
+          </g>
+        </g>
+        <circle style="fill:#ffffff;stroke:#111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round" id="thumb" cx="61.279743" cy="63.911388" r="5.2632909" inkscape:label="thumb hole" class="hole" data-hole="thumb"/>
+      </g>
+      <g id="g30" transform="rotate(-42.366289,43.156635,175.92183)" inkscape:label="blow holes">
+        <rect style="fill:#ffffff;stroke:#111;stroke-width:0.8" id="blow-ch1" width="3.7217088" height="11.253739" x="46.609974" y="171.99612" inkscape:label="low chamber" class="blow" data-blow="blow-ch1"/>
+        <rect style="fill:#ffffff;stroke:#111;stroke-width:0.8" id="blow-ch2" width="3.7217088" height="11.253739" x="46.609974" y="187.87114" inkscape:label="middle chamber" class="blow" data-blow="blow-ch2"/>
+        <rect style="fill:#ffffff;stroke:#111;stroke-width:0.8" id="blow-ch3" width="3.7217088" height="11.253739" x="46.609974" y="203.74615" inkscape:label="high chamber" class="blow" data-blow="blow-ch3"/>
+      </g>
+    </g>
+  </g>
+</svg>

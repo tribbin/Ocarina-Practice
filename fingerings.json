@@ -1,0 +1,543 @@
+{
+  "instrument": "ICO Oak Leaf Bass C Triple",
+  "range": {
+    "low": "A3",
+    "high": "G6"
+  },
+  "system": "Asian linear",
+  "holes": {
+    "L-index": {
+      "hand": "left",
+      "finger": "index",
+      "chamber": 1
+    },
+    "L-middle-large": {
+      "hand": "left",
+      "finger": "middle",
+      "part": "large",
+      "chamber": 1
+    },
+    "L-middle-small": {
+      "hand": "left",
+      "finger": "middle",
+      "part": "small",
+      "chamber": 1
+    },
+    "L-ring": {
+      "hand": "left",
+      "finger": "ring",
+      "chamber": 1
+    },
+    "L-pinky": {
+      "hand": "left",
+      "finger": "pinky",
+      "chamber": 1
+    },
+    "R1-index": {
+      "hand": "right",
+      "finger": "index",
+      "chamber": 1
+    },
+    "R1-middle-small": {
+      "hand": "right",
+      "finger": "middle",
+      "part": "small",
+      "chamber": 1
+    },
+    "R1-middle-large": {
+      "hand": "right",
+      "finger": "middle",
+      "part": "large",
+      "chamber": 1
+    },
+    "R1-ring": {
+      "hand": "right",
+      "finger": "ring",
+      "chamber": 1
+    },
+    "R1-pinky": {
+      "hand": "right",
+      "finger": "pinky",
+      "chamber": 1
+    },
+    "thumb": {
+      "hand": "left",
+      "finger": "thumb",
+      "chamber": 1,
+      "active_on_chambers": [
+        1
+      ]
+    },
+    "R2-index-high": {
+      "hand": "right",
+      "finger": "index",
+      "part": "high",
+      "chamber": 2
+    },
+    "R2-index-low": {
+      "hand": "right",
+      "finger": "index",
+      "part": "low",
+      "chamber": 2
+    },
+    "R2-middle-small": {
+      "hand": "right",
+      "finger": "middle",
+      "part": "small",
+      "chamber": 2
+    },
+    "R2-middle-large": {
+      "hand": "right",
+      "finger": "middle",
+      "part": "large",
+      "chamber": 2
+    },
+    "R2-ring": {
+      "hand": "right",
+      "finger": "ring",
+      "chamber": 2
+    },
+    "R2-pinky": {
+      "hand": "right",
+      "finger": "pinky",
+      "chamber": 2
+    },
+    "R2-tune": {
+      "hand": "right",
+      "finger": null,
+      "chamber": 2,
+      "role": "tuning",
+      "ignored": true
+    },
+    "R3-middle-high": {
+      "hand": "right",
+      "finger": "middle",
+      "part": "high",
+      "chamber": 3
+    },
+    "R3-index": {
+      "hand": "right",
+      "finger": "index",
+      "chamber": 3
+    },
+    "R3-middle-low": {
+      "hand": "right",
+      "finger": "middle",
+      "part": "low",
+      "chamber": 3
+    },
+    "R3-ring": {
+      "hand": "right",
+      "finger": "ring",
+      "chamber": 3
+    },
+    "R3-pinky": {
+      "hand": "right",
+      "finger": "pinky",
+      "chamber": 3
+    },
+    "R3-tune": {
+      "hand": "right",
+      "finger": null,
+      "chamber": 3,
+      "role": "tuning",
+      "ignored": true
+    }
+  },
+  "notes": [
+    {
+      "id": "A3",
+      "display": "A\u2083",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-middle-large",
+        "L-ring",
+        "L-pinky",
+        "R1-index",
+        "R1-middle-large",
+        "R1-ring",
+        "R1-pinky",
+        "thumb",
+        "L-middle-small",
+        "R1-middle-small"
+      ]
+    },
+    {
+      "id": "As3",
+      "display": "A\u266f\u2083/B\u266d\u2083",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-middle-large",
+        "L-ring",
+        "L-pinky",
+        "R1-index",
+        "R1-middle-large",
+        "R1-ring",
+        "R1-pinky",
+        "thumb",
+        "L-middle-small"
+      ]
+    },
+    {
+      "id": "B3",
+      "display": "B\u2083",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-middle-large",
+        "L-ring",
+        "L-pinky",
+        "R1-index",
+        "R1-middle-large",
+        "R1-ring",
+        "R1-pinky",
+        "thumb",
+        "R1-middle-small"
+      ]
+    },
+    {
+      "id": "C4",
+      "display": "C\u2084",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-middle-large",
+        "L-ring",
+        "L-pinky",
+        "R1-index",
+        "R1-middle-large",
+        "R1-ring",
+        "R1-pinky",
+        "thumb"
+      ]
+    },
+    {
+      "id": "Cs4",
+      "display": "C\u266f\u2084/D\u266d\u2084",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-middle-large",
+        "L-ring",
+        "L-pinky",
+        "R1-index",
+        "R1-middle-large",
+        "R1-middle-small",
+        "R1-ring",
+        "thumb"
+      ]
+    },
+    {
+      "id": "D4",
+      "display": "D\u2084",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-middle-large",
+        "L-ring",
+        "L-pinky",
+        "R1-index",
+        "R1-middle-large",
+        "R1-ring",
+        "thumb"
+      ]
+    },
+    {
+      "id": "Ds4",
+      "display": "D\u266f\u2084/E\u266d\u2084",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-middle-large",
+        "L-ring",
+        "L-pinky",
+        "R1-index",
+        "R1-middle-large",
+        "R1-pinky",
+        "thumb"
+      ]
+    },
+    {
+      "id": "E4",
+      "display": "E\u2084",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-middle-large",
+        "L-ring",
+        "L-pinky",
+        "R1-index",
+        "R1-middle-large",
+        "thumb"
+      ]
+    },
+    {
+      "id": "F4",
+      "display": "F\u2084",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-middle-large",
+        "L-ring",
+        "L-pinky",
+        "R1-index",
+        "thumb"
+      ]
+    },
+    {
+      "id": "Fs4",
+      "display": "F\u266f\u2084/G\u266d\u2084",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-middle-large",
+        "L-ring",
+        "L-pinky",
+        "R1-ring",
+        "thumb"
+      ]
+    },
+    {
+      "id": "G4",
+      "display": "G\u2084",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-middle-large",
+        "L-ring",
+        "L-pinky",
+        "thumb"
+      ]
+    },
+    {
+      "id": "Gs4",
+      "display": "G\u266f\u2084/A\u266d\u2084",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-middle-large",
+        "L-pinky",
+        "R1-ring",
+        "thumb"
+      ]
+    },
+    {
+      "id": "A4",
+      "display": "A\u2084",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-middle-large",
+        "L-pinky",
+        "thumb"
+      ]
+    },
+    {
+      "id": "As4",
+      "display": "A\u266f\u2084/B\u266d\u2084",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-pinky",
+        "R1-ring",
+        "thumb"
+      ]
+    },
+    {
+      "id": "B4",
+      "display": "B\u2084",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-pinky",
+        "thumb"
+      ]
+    },
+    {
+      "id": "C5",
+      "display": "C\u2085",
+      "chamber": 1,
+      "covered": [
+        "L-pinky",
+        "thumb"
+      ]
+    },
+    {
+      "id": "Cs5",
+      "display": "C\u266f\u2085/D\u266d\u2085",
+      "chamber": 1,
+      "covered": [
+        "L-pinky",
+        "R1-middle-large",
+        "R1-ring"
+      ]
+    },
+    {
+      "id": "D5",
+      "display": "D\u2085",
+      "chamber": 1,
+      "covered": [
+        "L-pinky"
+      ]
+    },
+    {
+      "id": "Ds5",
+      "display": "D\u266f\u2085/E\u266d\u2085",
+      "chamber": 1,
+      "covered": []
+    },
+    {
+      "id": "E5",
+      "display": "E\u2085",
+      "chamber": 2,
+      "covered": [
+        "R2-pinky",
+        "R2-ring",
+        "R2-middle-large",
+        "R2-index-low",
+        "R2-index-high"
+      ]
+    },
+    {
+      "id": "F5",
+      "display": "F\u2085",
+      "chamber": 2,
+      "covered": [
+        "R2-ring",
+        "R2-middle-large",
+        "R2-index-low",
+        "R2-index-high"
+      ]
+    },
+    {
+      "id": "Fs5",
+      "display": "F\u266f\u2085/G\u266d\u2085",
+      "chamber": 2,
+      "covered": [
+        "R2-pinky",
+        "R2-middle-large",
+        "R2-index-low",
+        "R2-index-high"
+      ]
+    },
+    {
+      "id": "G5",
+      "display": "G\u2085",
+      "chamber": 2,
+      "covered": [
+        "R2-middle-large",
+        "R2-index-low",
+        "R2-index-high"
+      ]
+    },
+    {
+      "id": "Gs5",
+      "display": "G\u266f\u2085/A\u266d\u2085",
+      "chamber": 2,
+      "covered": [
+        "R2-pinky",
+        "R2-index-low",
+        "R2-index-high"
+      ]
+    },
+    {
+      "id": "A5",
+      "display": "A\u2085",
+      "chamber": 2,
+      "covered": [
+        "R2-index-low",
+        "R2-index-high"
+      ]
+    },
+    {
+      "id": "As5",
+      "display": "A\u266f\u2085/B\u266d\u2085",
+      "chamber": 2,
+      "covered": [
+        "R2-index-low",
+        "R2-ring"
+      ]
+    },
+    {
+      "id": "B5",
+      "display": "B\u2085",
+      "chamber": 2,
+      "covered": [
+        "R2-index-low"
+      ]
+    },
+    {
+      "id": "C6",
+      "display": "C\u2086",
+      "chamber": 2,
+      "covered": []
+    },
+    {
+      "id": "Cs6",
+      "display": "C\u266f\u2086/D\u266d\u2086",
+      "chamber": 3,
+      "covered": [
+        "R3-pinky",
+        "R3-ring",
+        "R3-middle-low",
+        "R3-middle-high",
+        "R3-index"
+      ]
+    },
+    {
+      "id": "D6",
+      "display": "D\u2086",
+      "chamber": 3,
+      "covered": [
+        "R3-ring",
+        "R3-middle-low",
+        "R3-middle-high",
+        "R3-index"
+      ]
+    },
+    {
+      "id": "Ds6",
+      "display": "D\u266f\u2086/E\u266d\u2086",
+      "chamber": 3,
+      "covered": [
+        "R3-ring",
+        "R3-index"
+      ]
+    },
+    {
+      "id": "E6",
+      "display": "E\u2086",
+      "chamber": 3,
+      "covered": [
+        "R3-middle-low",
+        "R3-middle-high",
+        "R3-index"
+      ]
+    },
+    {
+      "id": "F6",
+      "display": "F\u2086",
+      "chamber": 3,
+      "covered": [
+        "R3-index"
+      ]
+    },
+    {
+      "id": "Fs6",
+      "display": "F\u266f\u2086/G\u266d\u2086",
+      "chamber": 3,
+      "covered": [
+        "R3-middle-low",
+        "R3-middle-high"
+      ]
+    },
+    {
+      "id": "G6",
+      "display": "G\u2086",
+      "chamber": 3,
+      "covered": []
+    }
+  ]
+}
