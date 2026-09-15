@@ -57,6 +57,10 @@ button.tiny { padding: 4px 8px; font-size: 12px; }
 .card.head { width: 100%; background: transparent; border: 0; padding: 4px 2px 2px; }
 .card img { display: block; width: 100%; height: auto; background: #fff; }
 .card .meta { display: flex; justify-content: space-between; align-items: baseline; padding: 5px 8px 7px; font-size: 13px; }
+.card.live .meta { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+.card.live .meta .nm { justify-self: start; }
+.card.live .meta .badge { justify-self: center; }
+.card.live .meta .dur { justify-self: end; }
 .card .nm { font-weight: 800; font-size: 22px; letter-spacing: .01em; }
 .card .dur { color: var(--ink); font-size: 28px; line-height: 1; font-weight: 500; min-width: 1.3em; text-align: right; font-family: "Noto Music", "Noto Sans Symbols 2", "Segoe UI Symbol", serif; }
 .badge { font-size: 10px; font-weight: 700; letter-spacing: .06em; padding: 2px 6px; border-radius: 99px; color: #fff; }
@@ -188,6 +192,29 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
 .loop-lab input { margin: 0; }
 .tab-heading { margin: 0 0 8px; }
 .tab-tools { margin: 0 0 10px; justify-content: flex-start; }
+
+/* Display-mode segmented control */
+.mode-seg {
+  display: inline-flex; border: 1px solid var(--line); border-radius: 8px;
+  overflow: hidden; background: var(--paper);
+}
+.seg-btn {
+  background: transparent; color: var(--ink); border: 0; border-radius: 0;
+  padding: 7px 14px; font: 600 13px/1 inherit; cursor: pointer;
+  border-left: 1px solid var(--line);
+}
+.seg-btn:first-child { border-left: 0; }
+.seg-btn:hover { background: var(--paper-2); }
+.seg-btn.on { background: var(--ink); color: var(--paper); }
+
+/* Zen mode call-to-action */
+.zen-btn {
+  margin-left: auto; background: var(--accent); color: #fff; border: 0;
+  border-radius: 7px; padding: 8px 16px; font: 700 13px/1 inherit; cursor: pointer;
+  box-shadow: 0 1px 0 rgba(0,0,0,.15);
+}
+.zen-btn:hover { filter: brightness(1.08); }
+
 .check-lab {
   margin: 0; display: flex; align-items: center; gap: 6px;
   text-transform: none; letter-spacing: 0; font-size: 13px; font-weight: 600;
@@ -279,7 +306,7 @@ h2#title { margin: 8px 0 10px; font-size: 18px; }
 #tabPanel:fullscreen .sheet.live .card.live .meta { padding: 12px 20px 16px; }
 #tabPanel:fullscreen .sheet.live .card.live .nm { font-size: 44px; }
 #tabPanel:fullscreen .sheet.live .card.live .dur { font-size: 52px; }
-#tabPanel:fullscreen .sheet.live .card.live .badge { font-size: 16px; padding: 4px 12px; }
+#tabPanel:fullscreen .sheet.live .card.live .badge { font-size: 20px; padding: 6px 18px; }
 #tabPanel:fullscreen .sheet.live .card.live .rest-over { font-size: 88px; }
 .key.black.now { background: #6b4a32; box-shadow: inset 0 0 0 3px #e8c07a; }
 
@@ -288,6 +315,8 @@ h2#title { margin: 8px 0 10px; font-size: 18px; }
 
 #tabPanel.focus {
   padding: 2.5vh 3vw; align-items: center; gap: 0;
+  background: #2b1d12; color: var(--paper);
+  overflow: hidden;
 }
 #tabPanel.focus .tab-heading,
 #tabPanel.focus .tab-tools,
@@ -296,34 +325,52 @@ h2#title { margin: 8px 0 10px; font-size: 18px; }
 #tabPanel.focus h2#title {
   flex: 0 0 auto; margin: 0 0 1.5vh; text-align: center;
   font-size: clamp(22px, 4.2vh, 44px); font-weight: 700;
+  color: var(--paper);
 }
-#tabPanel.focus .sheet-wrap { flex: 1 1 auto; align-items: center; }
-#tabPanel.focus .sheet.live { height: 100%; }
+#tabPanel.focus .sheet-wrap { flex: 1 1 auto; align-items: center; min-height: 0; overflow: hidden; }
+#tabPanel.focus .sheet.live { height: 100%; overflow: hidden; }
 #tabPanel.focus .sheet.live .card.live {
-  width: min(72vmin, 60vh, 760px); max-width: min(72vmin, 60vh, 760px);
+  display: flex; flex-direction: column;
+  width: min(72vmin, 760px); max-width: 100%;
+  height: 100%; max-height: 100%;
+  box-shadow: 0 10px 40px rgba(0,0,0,.55);
 }
+#tabPanel.focus .sheet.live .card.live .compact {
+  flex: 1 1 auto; min-height: 0; aspect-ratio: auto;
+}
+#tabPanel.focus .sheet.live .card.live .live-oca { width: 100%; height: 100%; }
+#tabPanel.focus .sheet.live .card.live svg.ocarina { width: 100%; height: 100%; }
+#tabPanel.focus .sheet.live .card.live .meta { flex: 0 0 auto; }
+#tabPanel.focus .card.live { color: var(--ink); }
 
 /* Single-line scrub strip */
 #tabPanel.focus .focus-strip {
   display: block; flex: 0 0 auto; width: 100%;
   margin: 1.2vh 0 0; padding: 6px 0;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid rgba(255,255,255,.12);
 }
 #tabPanel.focus .focus-tokens {
-  display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 6px;
+  display: flex; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; gap: 6px;
   padding: 20px 12px; align-items: center;
-  scrollbar-width: thin;
+  scrollbar-width: none; -ms-overflow-style: none;
 }
+#tabPanel.focus .focus-tokens::-webkit-scrollbar { display: none; }
 #tabPanel.focus .focus-tokens .tok { flex: 0 0 auto; transition: transform .12s ease; }
 #tabPanel.focus .focus-tokens .tok.now {
   transform: scale(1.5); z-index: 1;
-  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--ink), 0 4px 14px rgba(28,20,15,.35);
+  box-shadow: 0 0 0 2px #2b1d12, 0 0 0 4px #fff, 0 4px 16px rgba(0,0,0,.5);
 }
 
 /* Transport bar */
 #tabPanel.focus .focus-bar {
-  display: flex; flex: 0 0 auto; align-items: center; justify-content: center;
-  gap: 18px; flex-wrap: wrap; padding: 1.5vh 0 0.5vh; width: 100%;
+  display: flex; flex: 0 0 auto; flex-direction: column; align-items: center;
+  gap: 1.4vh; padding: 1.5vh 0 0.5vh; width: 100%;
+}
+#tabPanel.focus .focus-transport {
+  display: flex; align-items: center; justify-content: center; gap: 22px;
+}
+#tabPanel.focus .focus-settings {
+  display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap;
 }
 .focus-btn {
   width: 64px; height: 64px; border-radius: 50%;
@@ -331,24 +378,41 @@ h2#title { margin: 8px 0 10px; font-size: 18px; }
   font-size: 26px; line-height: 1; padding: 0;
   display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
 }
+#tabPanel.focus .focus-btn { background: #4a331f; color: var(--paper); }
 .focus-btn:hover { filter: brightness(1.12); }
 .focus-btn.play {
   width: 92px; height: 92px; font-size: 40px; background: var(--good);
 }
+#tabPanel.focus .focus-btn.play { background: var(--good); }
 .focus-btn.play:not(.is-playing) { padding-left: 7px; padding-bottom: 4px; }
 .focus-btn.play.is-playing { background: var(--accent); }
-.focus-btn.exit {
-  width: 46px; height: 46px; font-size: 20px;
-  background: transparent; color: var(--ink); border: 1px solid var(--line);
-}
-.focus-btn.loop {
-  font-size: 30px; background: transparent; color: var(--ink);
-  border: 1px solid var(--line);
+#tabPanel.focus .focus-btn.play.is-playing { background: var(--accent); }
+
+/* Loop toggle in settings row (smaller, secondary) */
+#tabPanel.focus .focus-btn.loop {
+  width: 48px; height: 48px; font-size: 24px;
+  background: transparent; color: var(--paper); border: 1px solid rgba(255,255,255,.28);
 }
 .focus-btn.loop.on { background: var(--good); color: var(--paper); border-color: var(--good); }
+#tabPanel.focus .focus-btn.loop.on { background: var(--good); color: #fff; border-color: var(--good); }
+
+/* Exit button: fixed top-right, fades in on mouse move */
+.focus-exit { display: none; }
+#tabPanel.focus .focus-exit {
+  display: inline-flex; align-items: center; justify-content: center;
+  position: fixed; top: 18px; right: 22px; z-index: 50;
+  width: 48px; height: 48px; border-radius: 50%; font-size: 22px; cursor: pointer;
+  background: rgba(0,0,0,.35); color: var(--paper);
+  border: 1px solid rgba(255,255,255,.28);
+  opacity: 0; pointer-events: none; transition: opacity .35s ease;
+}
+#tabPanel.focus.ui-visible .focus-exit { opacity: 1; pointer-events: auto; }
+#tabPanel.focus .focus-exit:hover { background: rgba(0,0,0,.55); }
+
 .focus-tempo {
   display: flex; align-items: center; gap: 10px;
   font-weight: 700; font-size: 15px; color: var(--ink);
 }
+#tabPanel.focus .focus-tempo { color: var(--paper); }
 .focus-tempo input[type=range] { width: min(38vw, 340px); }
 #focusTempoVal { min-width: 3ch; text-align: right; font-variant-numeric: tabular-nums; }

@@ -2,6 +2,8 @@ let APP_CSS = "";
 let lastTokens = [];
 let liveIdx = -1;
 let lastHoverNoteAt = 0;
+let displayMode = "grid"; // "grid" | "scroll" | "single"
+let zenPrevMode = null;
 
 function fitInput() {
   const ta = document.getElementById("src");
@@ -11,8 +13,29 @@ function fitInput() {
 }
 
 function isLiveTab() {
-  const el = document.getElementById("oneOca");
-  return el && el.checked;
+  return displayMode === "single";
+}
+
+function isScrollMode() {
+  return displayMode === "scroll";
+}
+
+function updateModeButtons() {
+  document.querySelectorAll("#modeSeg .seg-btn").forEach(b => {
+    const on = b.dataset.mode === displayMode;
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-checked", on ? "true" : "false");
+  });
+}
+
+function setDisplayMode(m) {
+  if (m !== "grid" && m !== "scroll" && m !== "single") return;
+  if (displayMode === m) return;
+  displayMode = m;
+  if (m !== "single") resetLiveTab();
+  updateModeButtons();
+  render();
+  syncFocusMode();
 }
 
 function resetLiveTab() {
@@ -225,15 +248,10 @@ function render() {
     sheet.innerHTML = "";
     const { notes, switches, problems } = tallyTokens(tokens);
     if (isLiveTab()) {
-      const scroll = document.getElementById("scrollTabs");
-      if (scroll) { scroll.checked = false; scroll.disabled = true; }
+      sheet.classList.remove("scroll");
       fillLiveSheet(sheet, tokens, liveIdx);
     } else {
-      const scroll = document.getElementById("scrollTabs");
-      if (scroll) {
-        scroll.disabled = false;
-        sheet.classList.toggle("scroll", scroll.checked);
-      }
+      sheet.classList.toggle("scroll", isScrollMode());
       fillFullSheet(sheet, tokens);
     }
     err.textContent = problems.join(" · ");
@@ -521,16 +539,33 @@ function wireUi() {
     render();
   };
   document.getElementById("src").addEventListener("input", render);
-  document.getElementById("bigSmall").onchange = render;
-  document.getElementById("oneOca").onchange = () => { render(); syncFocusMode(); };
-  document.getElementById("scrollTabs").onchange = () => {
-    if (isLiveTab()) return;
-    document.getElementById("sheet").classList.toggle("scroll", document.getElementById("scrollTabs").checked);
+  const big = document.getElementById("bigSmall");
+  if (big) big.onclick = () => {
+    const on = big.getAttribute("aria-pressed") !== "true";
+    big.setAttribute("aria-pressed", on ? "true" : "false");
+    big.classList.toggle("on", on);
+    render();
   };
-  wireFullscreen();
+  document.querySelectorAll("#modeSeg .seg-btn").forEach(b => {
+    b.onclick = () => setDisplayMode(b.dataset.mode);
+  });
+  updateModeButtons();
+  const fsBtn = document.getElementById("fullscreen");
+  if (fsBtn) fsBtn.onclick = () => toggleFullscreen(document.getElementById("tabPanel"));
+  document.addEventListener("mousemove", revealZenUi);
+  wireZen();
   wireFocusControls();
   wireSpacebar();
   updateTransportUI();
+}
+
+let zenUiTimer = 0;
+function revealZenUi() {
+  const p = document.getElementById("tabPanel");
+  if (!p || !p.classList.contains("focus")) return;
+  p.classList.add("ui-visible");
+  if (zenUiTimer) clearTimeout(zenUiTimer);
+  zenUiTimer = setTimeout(() => p.classList.remove("ui-visible"), 2500);
 }
 
 function wireFocusControls() {
@@ -585,6 +620,7 @@ function syncFocusMode() {
   if (on) {
     applyTempo(currentTempo());
     syncLoopUI();
+    revealZenUi();
     const toks = lastTokens.length ? lastTokens : parse(document.getElementById("src").value);
     scrollFocusStripTo(liveIdx >= 0 ? liveIdx : firstSoundIdx(toks));
   }
@@ -634,14 +670,28 @@ function toggleFullscreen(el) {
   }
 }
 
-function wireFullscreen() {
-  const btn = document.getElementById("fullscreen");
+function isFullscreen() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+
+function enterZen() {
   const panel = document.getElementById("tabPanel");
-  if (!btn || !panel) return;
-  btn.onclick = () => toggleFullscreen(panel);
+  if (!panel) return;
+  if (!isLiveTab()) { zenPrevMode = displayMode; setDisplayMode("single"); }
+  (panel.requestFullscreen || panel.webkitRequestFullscreen).call(panel);
+}
+
+function wireZen() {
+  const btn = document.getElementById("zen");
+  const panel = document.getElementById("tabPanel");
+  if (!panel) return;
+  if (btn) btn.onclick = () => { if (isFullscreen()) toggleFullscreen(); else enterZen(); };
   const sync = () => {
-    const on = !!(document.fullscreenElement || document.webkitFullscreenElement);
-    btn.textContent = on ? "Exit full screen" : "Full screen";
+    if (!isFullscreen() && zenPrevMode) {
+      const m = zenPrevMode; zenPrevMode = null; setDisplayMode(m);
+    }
+    const fsBtn = document.getElementById("fullscreen");
+    if (fsBtn) fsBtn.textContent = isFullscreen() ? "Exit full screen" : "Full screen";
     syncFocusMode();
   };
   document.addEventListener("fullscreenchange", sync);

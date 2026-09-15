@@ -41,7 +41,8 @@ function ocarinaSVG(covered, chamber) {
       const n = el.getAttribute("data-blow");
       el.style.fill = (n === ("blow-ch" + chamber)) ? (blowFill[chamber] || "#8b3d2f") : "#ffffff";
     });
-    if (document.getElementById("bigSmall") && document.getElementById("bigSmall").checked) {
+    const bigBtn = document.getElementById("bigSmall");
+    if (bigBtn && bigBtn.getAttribute("aria-pressed") === "true") {
       enlargeSmallHoles(clone);
     }
     return clone.outerHTML;

@@ -168,7 +168,7 @@ function isMelodyPaused() { return melodyPaused; }
 function stopMelody() {
   melodyPlaying = false;
   melodyPaused = false;
-  melodyBag.forEach(n => { try { n.stop(); } catch (e) {} });
+  melodyBag.forEach(n => { try { (n.fade || n.stop)(); } catch (e) {} });
   melodyBag = [];
   if (melodyTimer) { clearTimeout(melodyTimer); melodyTimer = 0; }
   const btn = document.getElementById("playMel");
@@ -202,7 +202,7 @@ function pauseMelody() {
   if (!melodyPlaying) return;
   melodyPlaying = false;
   melodyPaused = true;
-  melodyBag.forEach(n => { try { n.stop(); } catch (e) {} });
+  melodyBag.forEach(n => { try { (n.fade || n.stop)(); } catch (e) {} });
   melodyBag = [];
   if (melodyTimer) { clearTimeout(melodyTimer); melodyTimer = 0; }
   const btn = document.getElementById("playMel");
