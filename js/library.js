@@ -203,6 +203,7 @@ function applySwing(n) {
 }
 
 function loadLibraryItem(id) {
+  if (typeof stopMelody === "function") stopMelody();
   let tempo = currentTempo();
   let swing = currentSwing();
   if (BUILTIN[id]) {
