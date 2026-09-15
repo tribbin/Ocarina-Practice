@@ -340,7 +340,9 @@ function scrollFocusStripTo(i) {
   const s = strip.getBoundingClientRect();
   const c = el.getBoundingClientRect();
   const delta = (c.left + c.width / 2) - (s.left + s.width / 2);
-  strip.scrollTo({ left: Math.max(0, strip.scrollLeft + delta), behavior: "smooth" });
+  // Big jumps (e.g. loop wrap back to the start) snap instantly; small steps glide.
+  const behavior = Math.abs(delta) > s.width ? "auto" : "smooth";
+  strip.scrollTo({ left: Math.max(0, strip.scrollLeft + delta), behavior });
 }
 
 function clearHighlight() {
