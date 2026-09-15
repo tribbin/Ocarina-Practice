@@ -288,28 +288,45 @@ h2#title { margin: 8px 0 10px; font-size: 18px; }
 
 /* Fullscreen tablature */
 #tabPanel:fullscreen,
-#tabPanel:-webkit-full-screen {
+#tabPanel:-webkit-full-screen,
+body.zen-fallback #tabPanel:not(.focus) {
   background: var(--paper); border-radius: 0; margin: 0;
   padding: 20px 28px; overflow: auto;
   display: flex; flex-direction: column;
 }
-#tabPanel:fullscreen .sheet-wrap { flex: 1 1 auto; display: flex; min-height: 0; }
-#tabPanel:fullscreen .sheet { align-content: flex-start; width: 100%; }
-#tabPanel:fullscreen .sheet.scroll { align-items: center; }
+/* CSS fallback for devices without the Fullscreen API (e.g. iPhone Safari) */
+body.zen-fallback { overflow: hidden; }
+body.zen-fallback #tabPanel {
+  position: fixed; inset: 0; z-index: 9999;
+  width: 100vw; height: 100vh; height: 100dvh;
+}
+#tabPanel:fullscreen .sheet-wrap,
+body.zen-fallback #tabPanel .sheet-wrap { flex: 1 1 auto; display: flex; min-height: 0; }
+#tabPanel:fullscreen .sheet,
+body.zen-fallback #tabPanel .sheet { align-content: flex-start; width: 100%; }
+#tabPanel:fullscreen .sheet.scroll,
+body.zen-fallback #tabPanel .sheet.scroll { align-items: center; }
 
 /* One-ocarina fills the screen */
-#tabPanel:fullscreen .sheet.live {
+#tabPanel:fullscreen .sheet.live,
+body.zen-fallback #tabPanel .sheet.live {
   flex: 1 1 auto; align-items: center; justify-content: center; width: 100%;
 }
-#tabPanel:fullscreen .sheet.live .card.live {
+#tabPanel:fullscreen .sheet.live .card.live,
+body.zen-fallback #tabPanel .sheet.live .card.live {
   flex: 0 0 auto;
   width: min(90vmin, 900px); min-width: 0; max-width: min(90vmin, 900px);
 }
-#tabPanel:fullscreen .sheet.live .card.live .meta { padding: 12px 20px 16px; }
-#tabPanel:fullscreen .sheet.live .card.live .nm { font-size: 44px; }
-#tabPanel:fullscreen .sheet.live .card.live .dur { font-size: 52px; }
-#tabPanel:fullscreen .sheet.live .card.live .badge { font-size: 20px; padding: 6px 18px; }
-#tabPanel:fullscreen .sheet.live .card.live .rest-over { font-size: 88px; }
+#tabPanel:fullscreen .sheet.live .card.live .meta,
+body.zen-fallback #tabPanel .sheet.live .card.live .meta { padding: 12px 20px 16px; }
+#tabPanel:fullscreen .sheet.live .card.live .nm,
+body.zen-fallback #tabPanel .sheet.live .card.live .nm { font-size: 44px; }
+#tabPanel:fullscreen .sheet.live .card.live .dur,
+body.zen-fallback #tabPanel .sheet.live .card.live .dur { font-size: 52px; }
+#tabPanel:fullscreen .sheet.live .card.live .badge,
+body.zen-fallback #tabPanel .sheet.live .card.live .badge { font-size: 20px; padding: 6px 18px; }
+#tabPanel:fullscreen .sheet.live .card.live .rest-over,
+body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px; }
 .key.black.now { background: #6b4a32; box-shadow: inset 0 0 0 3px #e8c07a; }
 
 /* Focus mode (fullscreen + one-ocarina): distraction-free practice */
@@ -319,6 +336,7 @@ h2#title { margin: 8px 0 10px; font-size: 18px; }
   padding: 2.5vh 3vw; align-items: center; gap: 0;
   background: #2b1d12; color: var(--paper);
   overflow: hidden;
+  display: flex; flex-direction: column; border-radius: 0; margin: 0;
 }
 #tabPanel.focus .tab-heading,
 #tabPanel.focus .tab-tools,
@@ -370,7 +388,8 @@ h2#title { margin: 8px 0 10px; font-size: 18px; }
 /* Transport bar */
 #tabPanel.focus .focus-bar {
   display: flex; flex: 0 0 auto; flex-direction: column; align-items: center;
-  gap: 1.4vh; padding: 1.5vh 0 0.5vh; width: 100%;
+  gap: 1.4vh; padding: 1.5vh 0 calc(0.5vh + env(safe-area-inset-bottom));
+  width: 100%; flex-shrink: 0;
 }
 #tabPanel.focus .focus-transport {
   display: flex; align-items: center; justify-content: center; gap: 22px;
@@ -397,7 +416,8 @@ h2#title { margin: 8px 0 10px; font-size: 18px; }
 /* Loop toggle in the transport row */
 #tabPanel.focus .focus-btn.loop {
   font-size: 28px;
-  background: transparent; color: var(--paper); border: 1px solid rgba(255,255,255,.28);
+  background: rgba(255,255,255,.14); color: var(--paper);
+  border: 1px solid rgba(255,255,255,.5);
 }
 .focus-btn.loop.on { background: var(--good); color: var(--paper); border-color: var(--good); }
 #tabPanel.focus .focus-btn.loop.on { background: var(--good); color: #fff; border-color: var(--good); }
@@ -419,6 +439,8 @@ h2#title { margin: 8px 0 10px; font-size: 18px; }
   display: flex; align-items: center; gap: 10px;
   font-weight: 700; font-size: 15px; color: var(--ink);
 }
-#tabPanel.focus .focus-tempo { color: var(--paper); }
+#tabPanel.focus .focus-tempo,
+#tabPanel.focus .focus-tempo span,
+#tabPanel.focus .focus-tempo label { color: var(--paper); }
 .focus-tempo input[type=range] { width: min(38vw, 340px); }
 #focusTempoVal { min-width: 3ch; text-align: right; font-variant-numeric: tabular-nums; }

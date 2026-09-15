@@ -563,7 +563,7 @@ function wireUi() {
   });
   updateModeButtons();
   const fsBtn = document.getElementById("fullscreen");
-  if (fsBtn) fsBtn.onclick = () => toggleFullscreen(document.getElementById("tabPanel"));
+  if (fsBtn) fsBtn.onclick = () => toggleZen();
   document.addEventListener("mousemove", revealZenUi);
   wireZen();
   wireFocusControls();
@@ -594,7 +594,7 @@ function wireFocusControls() {
   };
   const loopCb = document.getElementById("loopMel");
   if (loopCb) loopCb.addEventListener("change", syncLoopUI);
-  if (ex) ex.onclick = () => toggleFullscreen(document.getElementById("tabPanel"));
+  if (ex) ex.onclick = () => toggleZen();
   const strip = document.getElementById("focusTokens");
   if (strip) {
     strip.addEventListener("wheel", e => {
@@ -624,8 +624,7 @@ function isFocusMode() {
 function syncFocusMode() {
   const panel = document.getElementById("tabPanel");
   if (!panel) return;
-  const fs = !!(document.fullscreenElement || document.webkitFullscreenElement);
-  const on = fs && isLiveTab();
+  const on = isFullscreen() && isLiveTab();
   panel.classList.toggle("focus", on);
   if (on) {
     applyTempo(currentTempo());
@@ -671,31 +670,60 @@ function wireSpacebar() {
   });
 }
 
+function canFullscreen(el) {
+  // Test hook: ?nofs=1 forces the CSS fallback path (simulates iPhone Safari).
+  if (/[?&]nofs=1\b/.test(location.search)) return false;
+  return !!(el && (el.requestFullscreen || el.webkitRequestFullscreen));
+}
+
 function toggleFullscreen(el) {
   const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
   if (fsEl) {
-    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
-  } else if (el) {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+    if (exit) exit.call(document);
+  } else if (canFullscreen(el)) {
     (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
   }
 }
 
 function isFullscreen() {
-  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+  return !!(document.fullscreenElement || document.webkitFullscreenElement)
+    || document.body.classList.contains("zen-fallback");
 }
 
 function enterZen() {
   const panel = document.getElementById("tabPanel");
   if (!panel) return;
   if (!isLiveTab()) { zenPrevMode = displayMode; setDisplayMode("single"); }
-  (panel.requestFullscreen || panel.webkitRequestFullscreen).call(panel);
+  if (canFullscreen(panel)) {
+    (panel.requestFullscreen || panel.webkitRequestFullscreen).call(panel);
+  } else {
+    // Fullscreen API unavailable (e.g. Safari on iPhone): use CSS fallback.
+    document.body.classList.add("zen-fallback");
+    if (window.onZenChange) window.onZenChange();
+  }
+}
+
+function exitZen() {
+  const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+  if (fsEl) {
+    toggleFullscreen();
+  } else if (document.body.classList.contains("zen-fallback")) {
+    document.body.classList.remove("zen-fallback");
+    if (window.onZenChange) window.onZenChange();
+  }
+}
+
+function toggleZen() {
+  if (isFullscreen()) exitZen(); else enterZen();
 }
 
 function wireZen() {
   const btn = document.getElementById("zen");
   const panel = document.getElementById("tabPanel");
   if (!panel) return;
-  if (btn) btn.onclick = () => { if (isFullscreen()) toggleFullscreen(); else enterZen(); };
+  window.onZenChange = null;
+  if (btn) btn.onclick = () => toggleZen();
   const sync = () => {
     if (!isFullscreen() && zenPrevMode) {
       const m = zenPrevMode; zenPrevMode = null; setDisplayMode(m);
@@ -707,4 +735,5 @@ function wireZen() {
   };
   document.addEventListener("fullscreenchange", sync);
   document.addEventListener("webkitfullscreenchange", sync);
+  window.onZenChange = sync;
 }
