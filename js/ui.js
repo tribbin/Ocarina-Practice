@@ -35,6 +35,21 @@ function render() {
           <span class="dur">${durLabel(t.dur, t.dotted)}</span></div>`;
         sheet.appendChild(r); return;
       }
+      if (t.type === "tie") {
+        if (!t.id || !NOTES.includes(t.id)) {
+          problems.push((t.raw || "-") + " (nothing to continue)");
+          const r = document.createElement("div"); r.className = "rest";
+          r.style.borderColor = "var(--accent)"; r.style.color = "var(--accent)";
+          r.dataset.i = String(i);
+          r.textContent = (t.raw || "-") + " ✕"; sheet.appendChild(r); return;
+        }
+        const r = document.createElement("div"); r.className = "card rest tie";
+        r.dataset.i = String(i);
+        r.innerHTML = `<div class="compact">–</div>
+          <div class="meta"><span class="nm">–</span>
+          <span class="dur">${durLabel(t.dur, t.dotted)}</span></div>`;
+        sheet.appendChild(r); return;
+      }
       const id = t.id;
       if (!NOTES.includes(id)) {
         problems.push(t.raw + " → " + id + " (out of A3–G6)");
@@ -125,6 +140,23 @@ function drawTokens(tokens) {
     } else if (t.type === "rest") {
       el.className = "tok pause";
       el.innerHTML = `r <span class="td">${durLabel(t.dur, t.dotted)}</span>`;
+    } else if (t.type === "tie") {
+      if (t.id && NOTES.includes(t.id)) {
+        el.className = "tok tie ch" + CHAMBER[t.id];
+        el.innerHTML = `– <span class="td">${durLabel(t.dur, t.dotted)}</span>`;
+        el.addEventListener("mouseenter", () => {
+          if (isMelodyPlaying() || hoverQuietUntil > Date.now()) return;
+          highlightToken(i, t.id);
+          if (!audioCtx || audioCtx.state !== "running") return;
+          playNote(t.id, tokenSeconds(t));
+        });
+        el.addEventListener("mouseleave", () => {
+          if (!isMelodyPlaying()) clearHighlight();
+        });
+      } else {
+        el.className = "tok bad";
+        el.textContent = t.raw || "-";
+      }
     } else if (!NOTES.includes(t.id)) {
       el.className = "tok bad";
       el.textContent = t.raw || t.id;

@@ -80,6 +80,10 @@ button.tiny { padding: 4px 8px; font-size: 12px; }
   min-height: 0; display: flex; align-items: center; justify-content: center;
   background: #f3e6d6; color: #7a6552; font-size: 22px; font-weight: 800; line-height: 1;
 }
+.card.tie .compact {
+  font-size: 48px; font-weight: 500; color: var(--ink); letter-spacing: .04em; line-height: 1;
+}
+.tok.tie { opacity: .78; }
 .sheet.scroll .card.rest { flex: 0 0 260px; width: 260px; }
 .compact { display: block; line-height: 0; background: #f3e6d6; aspect-ratio: 1; }
 .official { display: none; }

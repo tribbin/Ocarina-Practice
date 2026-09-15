@@ -1,14 +1,28 @@
 function parse(src) {
   const tokens = [];
-  const re = /([A-Ga-g])([#b])?(\d)?(\/\d+\.?)?|(\|)|(r)(\/\d+\.?)?|(#[^\n]*)/g;
-  let m, lastOct = 4;
+  const re = /([A-Ga-g])([#b])?(\d)?(\/\d+\.?)?|(\|)|(r)(\/\d+\.?)?|(-)(\/\d+\.?)?|(#[^\n]*)/g;
+  let m, lastOct = 4, lastPitch = null, canTie = false;
   const text = src.replace(/[–—]/g, "|");
   while ((m = re.exec(text))) {
-    if (m[8]) continue;
+    if (m[10]) continue;
     if (m[5]) { tokens.push({type:"bar"}); continue; }
     if (m[6]) {
       const pd = parseDur(m[7]);
-      tokens.push({type:"rest", dur: pd.dur, dotted: pd.dotted, beats: pd.beats}); continue;
+      tokens.push({type:"rest", dur: pd.dur, dotted: pd.dotted, beats: pd.beats});
+      canTie = false;
+      continue;
+    }
+    if (m[8]) {
+      const pd = parseDur(m[9]);
+      const t = {type:"tie", dur: pd.dur, dotted: pd.dotted, beats: pd.beats, raw: m[0], id: ""};
+      if (canTie && lastPitch) {
+        t.id = lastPitch.id;
+        t.spellLetter = lastPitch.spellLetter;
+        t.spellAcc = lastPitch.spellAcc;
+        t.spellOct = lastPitch.spellOct;
+      }
+      tokens.push(t);
+      continue;
     }
     const letter = m[1].toUpperCase();
     const acc = m[2] || "";
@@ -24,10 +38,13 @@ function parse(src) {
       const [n, d] = flat[letter];
       core = n; oct += d;
     }
-    tokens.push({
+    const tok = {
       type:"note", id: core + oct, dur, dotted: pd.dotted, beats: pd.beats, raw: m[0],
       spellLetter: letter, spellAcc: acc, spellOct
-    });
+    };
+    tokens.push(tok);
+    lastPitch = tok;
+    canTie = true;
   }
   return tokens;
 }

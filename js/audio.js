@@ -8,10 +8,31 @@ let melodyTokens = [];
 let melodyIdx = 0;
 let melodyFrom = 0;
 let melodyPos = 0;
+let melodyHoldUntil = -1;
 
 function tokenGridBeats(tok) {
   if (!tok || tok.type === "bar") return 0;
   return tok.beats || ((4 / (tok.dur || 4)) * (tok.dotted ? 1.5 : 1));
+}
+
+function soundingGridBeats(tokens, idx) {
+  let p = tokenGridBeats(tokens[idx]);
+  for (let i = idx + 1; i < tokens.length; i++) {
+    if (tokens[i].type === "bar") continue;
+    if (tokens[i].type === "tie") p += tokenGridBeats(tokens[i]);
+    else break;
+  }
+  return p;
+}
+
+function lastHoldIndex(tokens, idx) {
+  let last = idx;
+  for (let i = idx + 1; i < tokens.length; i++) {
+    if (tokens[i].type === "bar") continue;
+    if (tokens[i].type === "tie") last = i;
+    else break;
+  }
+  return last;
 }
 
 function swungBeats(tok, pos) {
@@ -155,7 +176,8 @@ function playMelody(fromIdx) {
   cutLive();
   melodyTokens = parse(document.getElementById("src").value);
   melodyIdx = from;
-  melodyFrom = 0;
+  melodyFrom = from;
+  melodyHoldUntil = -1;
   melodyPos = gridBeatsBefore(melodyTokens, melodyIdx);
   if (!melodyTokens.length) return;
   audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
@@ -175,14 +197,18 @@ function scheduleMelody(when) {
       while (melodyIdx < melodyTokens.length && melodyTokens[melodyIdx].type === "bar") melodyIdx++;
       if (melodyIdx >= melodyTokens.length) { stopMelody(); return; }
       melodyPos = 0;
+      melodyHoldUntil = -1;
     } else { stopMelody(); return; }
   }
   const tok = melodyTokens[melodyIdx];
   highlightToken(melodyIdx, tok.id);
   const step = swungBeats(tok, melodyPos) * quarterSec();
   melodyPos += tokenGridBeats(tok);
-  if (tok.type === "note" && NOTES.includes(tok.id)) {
-    playNoteAt(tok.id, when, Math.max(0.12, step * 0.92), melodyBag);
+  const pitched = (tok.type === "note" || tok.type === "tie") && NOTES.includes(tok.id);
+  if (pitched && melodyIdx > melodyHoldUntil) {
+    const hold = soundingGridBeats(melodyTokens, melodyIdx) * quarterSec();
+    playNoteAt(tok.id, when, Math.max(0.12, hold * 0.92), melodyBag);
+    melodyHoldUntil = lastHoldIndex(melodyTokens, melodyIdx);
   }
   melodyIdx++;
   const nextWhen = when + step;
