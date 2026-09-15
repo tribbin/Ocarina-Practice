@@ -84,6 +84,17 @@ function freqOf(id) {
   return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
+let noiseBuf = null;
+function getNoiseBuffer(ctx) {
+  if (noiseBuf && noiseBuf.sampleRate === ctx.sampleRate) return noiseBuf;
+  const len = Math.floor(ctx.sampleRate * 2);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  noiseBuf = buf;
+  return buf;
+}
+
 function cutLive() {
   liveVoices.forEach(n => { try { (n.fade || n.stop)(); } catch (e) {} });
   liveVoices = [];
@@ -94,7 +105,7 @@ function playNote(id, durSec) {
   playNoteAt(id, null, durSec == null ? tokenSeconds(4) : durSec, liveVoices);
 }
 
-function playNoteAt(id, when, durSec, bag) {
+function playNoteAt(id, when, durSec, bag, slideFromId) {
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === "suspended") audioCtx.resume();
@@ -102,16 +113,21 @@ function playNoteAt(id, when, durSec, bag) {
     const t0 = when == null ? ctx.currentTime : when;
     const freq = freqOf(id);
     const dur = Math.max(0.12, durSec);
+    const slideFrom = slideFromId && slideFromId !== id ? freqOf(slideFromId) : 0;
+    const rel = Math.min(0.05, dur * 0.35);
+    const relStart = Math.max(0.02, dur - rel);
+    const tail = 0.03;
     const master = ctx.createGain();
     master.gain.setValueAtTime(0.0001, t0);
-    master.gain.linearRampToValueAtTime(0.26, t0 + 0.02);
-    master.gain.setValueAtTime(0.26, t0 + Math.max(0.03, dur - 0.04));
+    master.gain.linearRampToValueAtTime(0.26, t0 + 0.015);
+    master.gain.setValueAtTime(0.26, t0 + relStart);
     master.gain.linearRampToValueAtTime(0.0001, t0 + dur);
+    master.gain.setValueAtTime(0.0001, t0 + dur + tail);
     master.connect(ctx.destination);
 
     const lp = ctx.createBiquadFilter();
     lp.type = "lowpass";
-    lp.frequency.setValueAtTime(Math.min(2800, freq * 4.2), t0);
+    lp.frequency.setValueAtTime(Math.min(2800, Math.max(freq, slideFrom || freq) * 4.2), t0);
     lp.Q.value = 0.7;
     lp.connect(master);
 
@@ -121,18 +137,23 @@ function playNoteAt(id, when, durSec, bag) {
     );
     const osc = ctx.createOscillator();
     osc.setPeriodicWave(wave);
-    osc.frequency.setValueAtTime(freq * 0.992, t0);
-    osc.frequency.exponentialRampToValueAtTime(freq, t0 + 0.04);
+    if (slideFrom) {
+      const glide = Math.min(Math.max(0.03, dur * 0.22), 0.1);
+      osc.frequency.setValueAtTime(slideFrom, t0);
+      osc.frequency.linearRampToValueAtTime(freq, t0 + glide);
+    } else {
+      osc.frequency.setValueAtTime(freq * 0.992, t0);
+      osc.frequency.exponentialRampToValueAtTime(freq, t0 + 0.04);
+    }
     osc.connect(lp);
     osc.start(t0);
-    osc.stop(t0 + dur);
+    osc.stop(t0 + dur + tail);
 
-    const nLen = Math.max(1, Math.floor(ctx.sampleRate * dur));
-    const nBuf = ctx.createBuffer(1, nLen, ctx.sampleRate);
-    const data = nBuf.getChannelData(0);
-    for (let i = 0; i < nLen; i++) data[i] = Math.random() * 2 - 1;
     const noise = ctx.createBufferSource();
-    noise.buffer = nBuf;
+    noise.buffer = getNoiseBuffer(ctx);
+    noise.loop = true;
+    noise.loopStart = 0;
+    noise.loopEnd = noise.buffer.duration;
     const hp = ctx.createBiquadFilter();
     hp.type = "highpass";
     hp.frequency.value = 1200;
@@ -143,7 +164,7 @@ function playNoteAt(id, when, durSec, bag) {
     ng.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
     noise.connect(hp); hp.connect(ng); ng.connect(lp);
     noise.start(t0);
-    noise.stop(t0 + dur);
+    noise.stop(t0 + dur + tail);
     if (bag) {
       bag.push({
         stop() { try { osc.stop(); } catch (e) {} try { noise.stop(); } catch (e) {} },
@@ -253,18 +274,22 @@ function scheduleMelody(when) {
     } else { stopMelody(); return; }
   }
   const tok = melodyTokens[melodyIdx];
-  highlightToken(melodyIdx, tok.id);
   const step = swungBeats(tok, melodyPos) * quarterSec();
   melodyPos += tokenGridBeats(tok);
   const pitched = (tok.type === "note" || tok.type === "tie") && NOTES.includes(tok.id);
   if (pitched && melodyIdx > melodyHoldUntil) {
     const hold = soundingGridBeats(melodyTokens, melodyIdx) * quarterSec();
-    playNoteAt(tok.id, when, Math.max(0.12, hold * 0.92), melodyBag);
+    const slideFrom = (tok.slide && NOTES.includes(tok.slideFrom)) ? tok.slideFrom : null;
+    playNoteAt(tok.id, when, Math.max(0.12, hold * 0.92), melodyBag, slideFrom);
     melodyHoldUntil = lastHoldIndex(melodyTokens, melodyIdx);
   }
+  const hlIdx = melodyIdx, hlId = tok.id;
+  const hlDelay = Math.max(0, (when - audioCtx.currentTime) * 1000);
+  setTimeout(() => { if (melodyPlaying) highlightToken(hlIdx, hlId); }, hlDelay);
   melodyIdx++;
   const nextWhen = when + step;
+  const LOOKAHEAD = 0.08;
   melodyTimer = setTimeout(() => {
     scheduleMelody(Math.max(audioCtx.currentTime, nextWhen));
-  }, Math.max(0, (nextWhen - audioCtx.currentTime) * 1000));
+  }, Math.max(0, (nextWhen - audioCtx.currentTime - LOOKAHEAD) * 1000));
 }

@@ -135,9 +135,10 @@ function appendNoteCard(sheet, t, i) {
   }
   const ch = CHAMBER[id];
   const card = document.createElement("div");
-  card.className = "card";
+  card.className = "card" + (t.slide ? " slide" : "");
   card.dataset.i = String(i);
-  card.innerHTML = `<div class="compact">${ocarinaSVG(COVER[id] || [], ch)}</div>
+  const slideMark = t.slide ? `<span class="slide-badge" title="slide from ${pretty(t.slideFrom)}">\u21DD ${pretty(t.slideFrom)}</span>` : "";
+  card.innerHTML = `<div class="compact">${ocarinaSVG(COVER[id] || [], ch)}${slideMark}</div>
     <div class="meta"><span class="nm">${spelledLabel(t)}</span>
      <span class="badge ch${ch}">CH ${ch}</span>
      <span class="dur">${durLabel(t.dur, t.dotted)}</span></div>`;
@@ -192,7 +193,8 @@ function liveCardHtml(t, tokens, i) {
   const id = t.id;
   if ((t.type === "note" || t.type === "tie") && NOTES.includes(id)) {
     const ch = CHAMBER[id];
-    return `<div class="compact">${ocarinaSVG(COVER[id] || [], ch)}</div>
+    const slideMark = t.slide ? `<span class="slide-badge" title="slide from ${pretty(t.slideFrom)}">\u21DD ${pretty(t.slideFrom)}</span>` : "";
+    return `<div class="compact">${ocarinaSVG(COVER[id] || [], ch)}${slideMark}</div>
       <div class="meta"><span class="nm">${spelledLabel(t)}</span>
         <span class="badge ch${ch}">CH ${ch}</span>
         <span class="dur">${combinedDurLabel(tokens, i)}</span></div>`;
@@ -386,7 +388,9 @@ function buildTokenEl(t, i) {
     el.textContent = t.raw || t.id;
   } else {
     el.className = "tok ch" + CHAMBER[t.id];
-    el.innerHTML = `${spelledLabel(t)} <span class="td">${durLabel(t.dur, t.dotted)}</span>`;
+    const slide = t.slide ? `<span class="slide-mark" title="slide from ${pretty(t.slideFrom)}">\u21DD</span>` : "";
+    el.innerHTML = `${slide}${spelledLabel(t)} <span class="td">${durLabel(t.dur, t.dotted)}</span>`;
+    if (t.slide) el.classList.add("slide");
     el.addEventListener("mouseenter", () => hoverPreview(i, t));
     el.addEventListener("mouseleave", () => {
       if (!isMelodyPlaying()) clearHighlight();
