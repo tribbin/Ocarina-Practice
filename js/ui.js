@@ -101,9 +101,18 @@ function combinedDurLabel(tokens, idx) {
   return parts.join("+");
 }
 
+function rangeLabel() {
+  const r = (typeof FING !== "undefined" && FING) ? FING.range : null;
+  if (!r) return "";
+  const lo = (window.DISPLAY && DISPLAY[r.low]) || pretty(r.low);
+  const hi = (window.DISPLAY && DISPLAY[r.high]) || pretty(r.high);
+  return lo + "–" + hi;
+}
+
 function tallyTokens(tokens) {
   const problems = [];
   let notes = 0, outOf = 0, switches = 0, prevCh = null;
+  const rng = rangeLabel();
   tokens.forEach(t => {
     if (t.type === "bar" || t.type === "rest") return;
     if (t.type === "tie") {
@@ -111,7 +120,14 @@ function tallyTokens(tokens) {
       return;
     }
     if (!NOTES.includes(t.id)) {
-      problems.push(t.raw + " → " + t.id + " (out of A3–G6)");
+      const rc = rangeCheck(t.id);
+      if (rc === "below") {
+        problems.push(pretty(t.id) + " is below this ocarina (range " + rng + ")");
+      } else if (rc === "above") {
+        problems.push(pretty(t.id) + " is above this ocarina (range " + rng + ")");
+      } else {
+        problems.push((t.raw || t.id) + " is not a playable note");
+      }
       outOf++;
       return;
     }
@@ -126,10 +142,23 @@ function tallyTokens(tokens) {
 function appendNoteCard(sheet, t, i) {
   const id = t.id;
   if (!NOTES.includes(id)) {
-    const r = document.createElement("div"); r.className = "rest";
-    r.style.borderColor = "var(--accent)"; r.style.color = "var(--accent)";
+    const rc = rangeCheck(id);
+    const r = document.createElement("div");
     r.dataset.i = String(i);
-    r.textContent = (t.raw || id) + " ✕";
+    if (rc === "below" || rc === "above") {
+      const arrow = rc === "below" ? "\u2193" : "\u2191";
+      const dir = rc === "below" ? "below" : "above";
+      r.className = "card oor " + (rc === "below" ? "oor-low" : "oor-high");
+      r.title = pretty(id) + " is " + dir + " this ocarina's range (" + rangeLabel() + ")";
+      r.innerHTML = `<div class="compact oor-mark">${arrow}</div>
+        <div class="meta"><span class="nm">${pretty(id)}</span>
+        <span class="badge oor-badge">${dir} range</span>
+        <span class="dur">${durLabel(t.dur, t.dotted)}</span></div>`;
+    } else {
+      r.className = "rest";
+      r.style.borderColor = "var(--accent)"; r.style.color = "var(--accent)";
+      r.textContent = (t.raw || id) + " ✕";
+    }
     sheet.appendChild(r);
     return;
   }
@@ -160,6 +189,18 @@ function fillFullSheet(sheet, tokens) {
     }
     if (t.type === "tie") {
       if (!t.id || !NOTES.includes(t.id)) {
+        if (isOutOfRange(t.id)) {
+          const rc = rangeCheck(t.id);
+          const dir = rc === "below" ? "below" : "above";
+          const r = document.createElement("div");
+          r.className = "card rest tie oor " + (rc === "below" ? "oor-low" : "oor-high");
+          r.dataset.i = String(i);
+          r.title = "continues " + pretty(t.id) + " (" + dir + " this ocarina's range)";
+          r.innerHTML = `<div class="compact">–</div>
+            <div class="meta"><span class="nm">–</span>
+            <span class="dur">${durLabel(t.dur, t.dotted)}</span></div>`;
+          sheet.appendChild(r); return;
+        }
         const r = document.createElement("div"); r.className = "rest";
         r.style.borderColor = "var(--accent)"; r.style.color = "var(--accent)";
         r.dataset.i = String(i);
@@ -197,7 +238,20 @@ function liveCardHtml(t, tokens, i) {
         <span class="badge ch${ch}">CH ${ch}</span>
         <span class="dur">${combinedDurLabel(tokens, i)}</span></div>`;
   }
+  if ((t.type === "note" || t.type === "tie") && isOutOfRange(id)) {
+    return liveOorHtml(t);
+  }
   return `<div class="compact"></div><div class="meta"><span class="nm">${t.raw || ""} ✕</span></div>`;
+}
+
+function liveOorHtml(t) {
+  const rc = rangeCheck(t.id);
+  const arrow = rc === "below" ? "\u2193" : "\u2191";
+  const dir = rc === "below" ? "below" : "above";
+  return `<div class="compact oor-mark">${arrow}</div>
+    <div class="meta"><span class="nm">${pretty(t.id)}</span>
+      <span class="badge oor-badge">${dir} range</span>
+      <span class="dur">${durLabel(t.dur, t.dotted)}</span></div>`;
 }
 
 function fillLiveSheet(sheet, tokens, idx) {
@@ -208,7 +262,8 @@ function fillLiveSheet(sheet, tokens, idx) {
   if (!tokens.length || i < 0 || !tokens[i] || tokens[i].type === "bar") return;
   const card = document.createElement("div");
   const t = tokens[i];
-  card.className = "card live" + (t.type === "rest" ? " is-rest" : "");
+  card.className = "card live" + (t.type === "rest" ? " is-rest" : "") +
+    (isOutOfRange(t.id) ? " oor" : "");
   card.dataset.i = String(i);
   if (t.id) card.dataset.pitch = t.id;
   card.innerHTML = liveCardHtml(t, tokens, i);
@@ -240,6 +295,30 @@ function updateLiveTab(tokens, idx) {
   if (next) next.classList.add("now");
 }
 
+function updateRangeWarning(outOf) {
+  let bar = document.getElementById("rangeWarn");
+  const panel = document.getElementById("tabPanel");
+  if (!outOf) {
+    if (bar) bar.hidden = true;
+    return;
+  }
+  if (!bar && panel) {
+    bar = document.createElement("div");
+    bar.id = "rangeWarn";
+    bar.className = "range-warn";
+    bar.setAttribute("role", "alert");
+    panel.insertBefore(bar, panel.firstChild);
+  }
+  if (!bar) return;
+  const inst = window.CURRENT_INSTRUMENT;
+  const name = inst ? [inst.type, inst.version].filter(Boolean).join(" · ") : "this ocarina";
+  const n = outOf === 1 ? "1 note is" : outOf + " notes are";
+  bar.innerHTML = `<span class="rw-icon" aria-hidden="true">\u26A0</span>` +
+    `<span>${n} outside ${name} (range ${rangeLabel()}). ` +
+    `Out-of-range notes are marked below and can't be played.</span>`;
+  bar.hidden = false;
+}
+
 function render() {
   try {
     const src = document.getElementById("src").value;
@@ -255,7 +334,7 @@ function render() {
     const sheet = document.getElementById("sheet");
     const err = document.getElementById("err");
     sheet.innerHTML = "";
-    const { notes, switches, problems } = tallyTokens(tokens);
+    const { notes, outOf, switches, problems } = tallyTokens(tokens);
     if (isLiveTab()) {
       sheet.classList.remove("scroll");
       fillLiveSheet(sheet, tokens, liveIdx);
@@ -263,7 +342,9 @@ function render() {
       sheet.classList.toggle("scroll", isScrollMode());
       fillFullSheet(sheet, tokens);
     }
+    updateRangeWarning(outOf);
     err.textContent = problems.join(" · ");
+    err.classList.toggle("has-oor", outOf > 0);
     document.getElementById("stats").textContent =
       notes ? `${notes} notes · ${switches} chamber switch${switches===1?"":"es"}` : "Type or click a melody.";
     if (typeof syncFocusMode === "function") syncFocusMode();
@@ -379,13 +460,28 @@ function buildTokenEl(t, i) {
       el.addEventListener("mouseleave", () => {
         if (!isMelodyPlaying()) clearHighlight();
       });
+    } else if (isOutOfRange(t.id)) {
+      const rc = rangeCheck(t.id);
+      const dir = rc === "below" ? "below" : "above";
+      el.className = "tok tie oor " + (rc === "below" ? "oor-low" : "oor-high");
+      el.title = "continues " + pretty(t.id) + " (" + dir + " this ocarina's range)";
+      el.innerHTML = `– <span class="td">${durLabel(t.dur, t.dotted)}</span>`;
     } else {
       el.className = "tok bad";
       el.textContent = t.raw || "-";
     }
   } else if (!NOTES.includes(t.id)) {
-    el.className = "tok bad";
-    el.textContent = t.raw || t.id;
+    const rc = rangeCheck(t.id);
+    if (rc === "below" || rc === "above") {
+      el.className = "tok oor " + (rc === "below" ? "oor-low" : "oor-high");
+      const arrow = rc === "below" ? "\u2193" : "\u2191";
+      el.title = pretty(t.id) + " is " + (rc === "below" ? "below" : "above") + " this ocarina's range (" + rangeLabel() + ")";
+      el.innerHTML = `${arrow} ${pretty(t.id)}`;
+    } else {
+      el.className = "tok bad";
+      el.textContent = t.raw || t.id;
+      el.title = "not a playable note";
+    }
   } else {
     el.className = "tok ch" + CHAMBER[t.id];
     const slide = t.slide ? `<span class="slide-mark" title="slide from ${pretty(t.slideFrom)}">\u21DD</span>` : "";
@@ -422,6 +518,7 @@ function addNote(id) {
 
 function buildKB() {
   const kb = document.getElementById("kb");
+  kb.innerHTML = "";
   const whites = ["C","D","E","F","G","A","B"];
   const blackAfter = {C:"Cs", D:"Ds", F:"Fs", G:"Gs", A:"As"};
   for (const oct of [3,4,5,6]) {
@@ -476,7 +573,7 @@ function pageCss() {
 }
 
 function printableHtml() {
-  const title = document.getElementById("title").textContent || "Bass C Triple tabs";
+  const title = document.getElementById("title").textContent || "Ocarina tabs";
   const css = pageCss();
   const tmp = document.createElement("div");
   tmp.className = "sheet";

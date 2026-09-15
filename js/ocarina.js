@@ -20,22 +20,31 @@ function ocarinaSVG(covered, chamber) {
     clone.removeAttribute("height");
     clone.setAttribute("preserveAspectRatio", "xMidYMid meet");
     const set = new Set(covered || []);
+    const holes = (window.FING && FING.holes) || {};
     clone.querySelectorAll("[data-hole]").forEach(el => {
       const hid = el.getAttribute("data-hole") || "";
-      const ignore = hid.endsWith("tune") || hid === "R3-middle-high" || (hid === "thumb" && chamber !== 1);
-      if (ignore) {
+      const meta = holes[hid] || {};
+      // A hole is not drawn if it's flagged ignored (tuning holes, dead holes),
+      // or if it's only active on certain chambers and this isn't one of them.
+      const activeOn = meta.active_on_chambers;
+      const inactive = Array.isArray(activeOn) && !activeOn.includes(chamber);
+      if (meta.ignored || inactive) {
         el.style.fill = "none";
         el.style.strokeDasharray = "1.2 1";
         return;
       }
       el.style.fill = set.has(hid) ? "#1a120c" : "#ffffff";
-      const holeCh = hid.startsWith("R3") ? 3 : hid.startsWith("R2") ? 2 : 1;
+      // Chamber comes from the fingering data, not the id.
+      const holeCh = meta.chamber || 1;
       el.style.opacity = (holeCh === chamber) ? "1" : "0.25";
     });
-    const blowFill = {1:"#8b3d2f", 2:"#2f5f73", 3:"#6b4a8b"};
+    const chambers = (window.FING && FING.chambers) || {};
+    const cfg = chambers[String(chamber)] || {};
+    const blowName = cfg.blow || ("blow-ch" + chamber);
+    const blowColor = cfg.color || "#8b3d2f";
     clone.querySelectorAll("[data-blow]").forEach(el => {
       const n = el.getAttribute("data-blow");
-      el.style.fill = (n === ("blow-ch" + chamber)) ? (blowFill[chamber] || "#8b3d2f") : "#ffffff";
+      el.style.fill = (n === blowName) ? blowColor : "#ffffff";
     });
     const bigBtn = document.getElementById("bigSmall");
     if (bigBtn && bigBtn.getAttribute("aria-pressed") === "true") {
@@ -48,10 +57,8 @@ function ocarinaSVG(covered, chamber) {
 }
 
 function enlargeSmallHoles(svg) {
-  const SMALL = new Set([
-    "L-middle-small","R1-middle-small","R2-middle-small","R2-pinky",
-    "R3-middle-low","R3-middle-high","R3-pinky"
-  ]);
+  const holeMeta = (window.FING && FING.holes) || {};
+  const isSmall = hid => !!(holeMeta[hid] && holeMeta[hid].small);
   const geom = el => {
     const tag = el.tagName.toLowerCase();
     if (tag === "circle") {
@@ -66,7 +73,7 @@ function enlargeSmallHoles(svg) {
   }).map(el => ({ el, hid: el.getAttribute("data-hole"), ...geom(el) }));
   const GAP = 0.55;
   for (const h of holes) {
-    if (!SMALL.has(h.hid)) continue;
+    if (!isSmall(h.hid)) continue;
     let maxR = Math.max(h.r * 1.7, 2.2);
     for (const o of holes) {
       if (o.el === h.el) continue;

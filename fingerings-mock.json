@@ -1,14 +1,19 @@
 {
-  "instrument": "ICO Oak Leaf Bass C Triple",
+  "instrument": "Mock Double Bass — low + middle only",
   "range": {
     "low": "A3",
-    "high": "G6"
+    "high": "C6"
   },
   "system": "Asian linear",
   "chambers": {
-    "1": { "blow": "blow-ch1", "color": "#8b3d2f" },
-    "2": { "blow": "blow-ch2", "color": "#2f5f73" },
-    "3": { "blow": "blow-ch3", "color": "#6b4a8b" }
+    "1": {
+      "blow": "blow-ch1",
+      "color": "#8b3d2f"
+    },
+    "2": {
+      "blow": "blow-ch2",
+      "color": "#2f5f73"
+    }
   },
   "holes": {
     "L-index": {
@@ -117,50 +122,12 @@
       "chamber": 2,
       "role": "tuning",
       "ignored": true
-    },
-    "R3-middle-high": {
-      "hand": "right",
-      "finger": "middle",
-      "part": "high",
-      "chamber": 3,
-      "ignored": true,
-      "small": true
-    },
-    "R3-index": {
-      "hand": "right",
-      "finger": "index",
-      "chamber": 3
-    },
-    "R3-middle-low": {
-      "hand": "right",
-      "finger": "middle",
-      "part": "low",
-      "chamber": 3,
-      "small": true
-    },
-    "R3-ring": {
-      "hand": "right",
-      "finger": "ring",
-      "chamber": 3
-    },
-    "R3-pinky": {
-      "hand": "right",
-      "finger": "pinky",
-      "chamber": 3,
-      "small": true
-    },
-    "R3-tune": {
-      "hand": "right",
-      "finger": null,
-      "chamber": 3,
-      "role": "tuning",
-      "ignored": true
     }
   },
   "notes": [
     {
       "id": "A3",
-      "display": "A\u2083",
+      "display": "A₃",
       "chamber": 1,
       "covered": [
         "L-index",
@@ -178,7 +145,7 @@
     },
     {
       "id": "As3",
-      "display": "A\u266f\u2083/B\u266d\u2083",
+      "display": "A♯₃/B♭₃",
       "chamber": 1,
       "covered": [
         "L-index",
@@ -195,7 +162,7 @@
     },
     {
       "id": "B3",
-      "display": "B\u2083",
+      "display": "B₃",
       "chamber": 1,
       "covered": [
         "L-index",
@@ -212,7 +179,7 @@
     },
     {
       "id": "C4",
-      "display": "C\u2084",
+      "display": "C₄",
       "chamber": 1,
       "covered": [
         "L-index",
@@ -228,7 +195,7 @@
     },
     {
       "id": "Cs4",
-      "display": "C\u266f\u2084/D\u266d\u2084",
+      "display": "C♯₄/D♭₄",
       "chamber": 1,
       "covered": [
         "L-index",
@@ -244,7 +211,7 @@
     },
     {
       "id": "D4",
-      "display": "D\u2084",
+      "display": "D₄",
       "chamber": 1,
       "covered": [
         "L-index",
@@ -259,7 +226,7 @@
     },
     {
       "id": "Ds4",
-      "display": "D\u266f\u2084/E\u266d\u2084",
+      "display": "D♯₄/E♭₄",
       "chamber": 1,
       "covered": [
         "L-index",
@@ -274,7 +241,7 @@
     },
     {
       "id": "E4",
-      "display": "E\u2084",
+      "display": "E₄",
       "chamber": 1,
       "covered": [
         "L-index",
@@ -288,7 +255,7 @@
     },
     {
       "id": "F4",
-      "display": "F\u2084",
+      "display": "F₄",
       "chamber": 1,
       "covered": [
         "L-index",
@@ -301,7 +268,7 @@
     },
     {
       "id": "Fs4",
-      "display": "F\u266f\u2084/G\u266d\u2084",
+      "display": "F♯₄/G♭₄",
       "chamber": 1,
       "covered": [
         "L-index",
@@ -314,7 +281,7 @@
     },
     {
       "id": "G4",
-      "display": "G\u2084",
+      "display": "G₄",
       "chamber": 1,
       "covered": [
         "L-index",
@@ -326,7 +293,7 @@
     },
     {
       "id": "Gs4",
-      "display": "G\u266f\u2084/A\u266d\u2084",
+      "display": "G♯₄/A♭₄",
       "chamber": 1,
       "covered": [
         "L-index",
@@ -338,7 +305,7 @@
     },
     {
       "id": "A4",
-      "display": "A\u2084",
+      "display": "A₄",
       "chamber": 1,
       "covered": [
         "L-index",
@@ -349,7 +316,7 @@
     },
     {
       "id": "As4",
-      "display": "A\u266f\u2084/B\u266d\u2084",
+      "display": "A♯₄/B♭₄",
       "chamber": 1,
       "covered": [
         "L-index",
@@ -360,7 +327,7 @@
     },
     {
       "id": "B4",
-      "display": "B\u2084",
+      "display": "B₄",
       "chamber": 1,
       "covered": [
         "L-index",
@@ -370,7 +337,7 @@
     },
     {
       "id": "C5",
-      "display": "C\u2085",
+      "display": "C₅",
       "chamber": 1,
       "covered": [
         "L-pinky",
@@ -379,7 +346,7 @@
     },
     {
       "id": "Cs5",
-      "display": "C\u266f\u2085/D\u266d\u2085",
+      "display": "C♯₅/D♭₅",
       "chamber": 1,
       "covered": [
         "L-pinky",
@@ -389,7 +356,7 @@
     },
     {
       "id": "D5",
-      "display": "D\u2085",
+      "display": "D₅",
       "chamber": 1,
       "covered": [
         "L-pinky"
@@ -397,13 +364,13 @@
     },
     {
       "id": "Ds5",
-      "display": "D\u266f\u2085/E\u266d\u2085",
+      "display": "D♯₅/E♭₅",
       "chamber": 1,
       "covered": []
     },
     {
       "id": "E5",
-      "display": "E\u2085",
+      "display": "E₅",
       "chamber": 2,
       "covered": [
         "R2-pinky",
@@ -415,7 +382,7 @@
     },
     {
       "id": "F5",
-      "display": "F\u2085",
+      "display": "F₅",
       "chamber": 2,
       "covered": [
         "R2-ring",
@@ -426,7 +393,7 @@
     },
     {
       "id": "Fs5",
-      "display": "F\u266f\u2085/G\u266d\u2085",
+      "display": "F♯₅/G♭₅",
       "chamber": 2,
       "covered": [
         "R2-pinky",
@@ -437,7 +404,7 @@
     },
     {
       "id": "G5",
-      "display": "G\u2085",
+      "display": "G₅",
       "chamber": 2,
       "covered": [
         "R2-middle-large",
@@ -447,7 +414,7 @@
     },
     {
       "id": "Gs5",
-      "display": "G\u266f\u2085/A\u266d\u2085",
+      "display": "G♯₅/A♭₅",
       "chamber": 2,
       "covered": [
         "R2-pinky",
@@ -457,7 +424,7 @@
     },
     {
       "id": "A5",
-      "display": "A\u2085",
+      "display": "A₅",
       "chamber": 2,
       "covered": [
         "R2-index-low",
@@ -466,7 +433,7 @@
     },
     {
       "id": "As5",
-      "display": "A\u266f\u2085/B\u266d\u2085",
+      "display": "A♯₅/B♭₅",
       "chamber": 2,
       "covered": [
         "R2-index-low",
@@ -475,7 +442,7 @@
     },
     {
       "id": "B5",
-      "display": "B\u2085",
+      "display": "B₅",
       "chamber": 2,
       "covered": [
         "R2-index-low"
@@ -483,69 +450,8 @@
     },
     {
       "id": "C6",
-      "display": "C\u2086",
+      "display": "C₆",
       "chamber": 2,
-      "covered": []
-    },
-    {
-      "id": "Cs6",
-      "display": "C\u266f\u2086/D\u266d\u2086",
-      "chamber": 3,
-      "covered": [
-        "R3-pinky",
-        "R3-ring",
-        "R3-middle-low",
-        "R3-index"
-      ]
-    },
-    {
-      "id": "D6",
-      "display": "D\u2086",
-      "chamber": 3,
-      "covered": [
-        "R3-ring",
-        "R3-middle-low",
-        "R3-index"
-      ]
-    },
-    {
-      "id": "Ds6",
-      "display": "D\u266f\u2086/E\u266d\u2086",
-      "chamber": 3,
-      "covered": [
-        "R3-ring",
-        "R3-index"
-      ]
-    },
-    {
-      "id": "E6",
-      "display": "E\u2086",
-      "chamber": 3,
-      "covered": [
-        "R3-middle-low",
-        "R3-index"
-      ]
-    },
-    {
-      "id": "F6",
-      "display": "F\u2086",
-      "chamber": 3,
-      "covered": [
-        "R3-index"
-      ]
-    },
-    {
-      "id": "Fs6",
-      "display": "F\u266f\u2086/G\u266d\u2086",
-      "chamber": 3,
-      "covered": [
-        "R3-middle-low"
-      ]
-    },
-    {
-      "id": "G6",
-      "display": "G\u2086",
-      "chamber": 3,
       "covered": []
     }
   ]

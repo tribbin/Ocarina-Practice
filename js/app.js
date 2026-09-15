@@ -21,17 +21,66 @@ async function loadJson(path) {
   return JSON.parse(await loadText(path));
 }
 
+async function loadInstrument(inst) {
+  const [fing, svgText] = await Promise.all([
+    loadJson(inst.fingerings),
+    loadText(inst.svg)
+  ]);
+  installFingerings(fing);
+  installOcarinaTemplate(svgText);
+  window.CURRENT_INSTRUMENT = inst;
+}
+
+function instLabel(inst) {
+  const parts = [inst.type, inst.version].filter(Boolean);
+  let label = parts.join(" · ");
+  if (inst.range) label += " (" + inst.range + ")";
+  return label;
+}
+
+function fillInstrumentSelect(selectedId) {
+  const sel = document.getElementById("instSel");
+  if (!sel) return;
+  sel.innerHTML = "";
+  for (const inst of (window.INSTRUMENTS || [])) {
+    const o = document.createElement("option");
+    o.value = inst.id;
+    o.textContent = instLabel(inst);
+    if (inst.id === selectedId) o.selected = true;
+    sel.appendChild(o);
+  }
+}
+
+async function switchInstrument(inst) {
+  await loadInstrument(inst);
+  buildKB();
+  if (typeof syncLibraryMenu === "function") syncLibraryMenu();
+  if (typeof render === "function") render();
+}
+
+function wireInstrumentPicker() {
+  const sel = document.getElementById("instSel");
+  if (!sel) return;
+  sel.addEventListener("change", async () => {
+    const inst = (window.INSTRUMENTS || []).find(i => i.id === sel.value);
+    if (inst) await switchInstrument(inst);
+  });
+}
+
 async function boot() {
   try {
-    const [fing, songs, svgText, cssText] = await Promise.all([
-      loadJson("fingerings.json"),
+    const [manifest, songs, cssText] = await Promise.all([
+      loadJson("instruments.json"),
       loadJson("songs.json"),
-      loadText("ocarina-template.svg"),
       loadText("css/app.css")
     ]);
     APP_CSS = cssText;
-    installFingerings(fing);
-    installOcarinaTemplate(svgText);
+    window.INSTRUMENTS = manifest.instruments || [];
+    const chosen = INSTRUMENTS.find(i => i.id === manifest.default) || INSTRUMENTS[0];
+    if (!chosen) throw new Error("No instruments defined in instruments.json");
+    await loadInstrument(chosen);
+    fillInstrumentSelect(chosen.id);
+    wireInstrumentPicker();
     initBuiltin(songs);
     wireLibrary();
     wireUi();

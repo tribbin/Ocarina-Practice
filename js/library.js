@@ -21,6 +21,23 @@ function slugName(name) {
   return "u-" + String(name).trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || ("song-" + Date.now());
 }
 
+// Full melody text for a library id (built-in or user), or "" if unknown.
+function songBody(id) {
+  if (BUILTIN[id]) return String(BUILTIN[id].body || "");
+  const item = userLib()[id];
+  return item ? String(item.body || "") : "";
+}
+
+// How many notes in a song fall outside the current ocarina's range.
+function songOutOfRange(id) {
+  if (typeof parse !== "function" || typeof isOutOfRange !== "function") return 0;
+  let n = 0;
+  for (const t of parse(songBody(id))) {
+    if ((t.type === "note" || t.type === "tie") && t.id && isOutOfRange(t.id)) n++;
+  }
+  return n;
+}
+
 function fillLibrary(selectId) {
   const sel = document.getElementById("scale");
   const cur = selectId !== undefined ? selectId : sel.value;
@@ -127,7 +144,22 @@ function libraryOptionEl(opt, cur) {
   b.className = "lib-dd-opt";
   b.setAttribute("role", "option");
   b.dataset.value = opt.value;
-  b.textContent = opt.textContent;
+  const name = document.createElement("span");
+  name.className = "lib-dd-name";
+  name.textContent = opt.textContent;
+  b.appendChild(name);
+  const oor = songOutOfRange(opt.value);
+  if (oor > 0) {
+    b.classList.add("has-oor");
+    const badge = document.createElement("span");
+    badge.className = "lib-dd-oor";
+    badge.textContent = "\u26A0 " + oor;
+    badge.setAttribute("aria-hidden", "true");
+    b.appendChild(badge);
+    const noun = oor === 1 ? "note" : "notes";
+    b.title = oor + " " + noun + " out of range for this ocarina";
+    b.setAttribute("aria-label", opt.textContent + " — " + oor + " " + noun + " out of range");
+  }
   if (opt.value === cur) b.setAttribute("aria-selected", "true");
   b.addEventListener("click", e => {
     e.preventDefault();

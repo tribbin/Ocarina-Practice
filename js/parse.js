@@ -85,6 +85,32 @@ function pretty(id) {
   return id.replace(/^([A-G])s(\d)$/, "$1#$2");
 }
 
+function midiOf(id) {
+  const m = String(id || "").match(/^([A-G]s?)(-?\d)$/);
+  if (!m) return null;
+  const semi = {C:0,Cs:1,D:2,Ds:3,E:4,F:5,Fs:6,G:7,Gs:8,A:9,As:10,B:11};
+  if (!(m[1] in semi)) return null;
+  return semi[m[1]] + (+m[2] + 1) * 12;
+}
+
+// Returns "below", "above", or "in" for a note id against the current
+// instrument's range (from FING.range). Returns null if range unknown.
+function rangeCheck(id) {
+  const r = (typeof FING !== "undefined" && FING) ? FING.range : null;
+  if (!r) return null;
+  const n = midiOf(id), lo = midiOf(r.low), hi = midiOf(r.high);
+  if (n == null || lo == null || hi == null) return null;
+  if (n < lo) return "below";
+  if (n > hi) return "above";
+  return "in";
+}
+
+// True only for a properly-formed pitch that is simply outside the range.
+function isOutOfRange(id) {
+  const rc = rangeCheck(id);
+  return rc === "below" || rc === "above";
+}
+
 function octSub(n) {
   return String(n).replace(/[0-9]/g, d => String.fromCharCode(0x2080 + +d));
 }
