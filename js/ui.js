@@ -23,11 +23,49 @@ function firstSoundIdx(tokens) {
   return i < 0 ? 0 : i;
 }
 
-function pitchTokenBefore(tokens, idx) {
-  for (let i = idx - 1; i >= 0; i--) {
-    if ((tokens[i].type === "note" || tokens[i].type === "tie") && NOTES.includes(tokens[i].id)) return tokens[i];
+function isPitched(t) {
+  return t && (t.type === "note" || t.type === "tie") && NOTES.includes(t.id);
+}
+
+function loopOn() {
+  const el = document.getElementById("loopMel");
+  return !!(el && el.checked);
+}
+
+function nextPitchToken(tokens, idx) {
+  for (let i = idx + 1; i < tokens.length; i++) {
+    if (isPitched(tokens[i])) return tokens[i];
+  }
+  if (loopOn()) {
+    for (let i = 0; i < idx; i++) {
+      if (isPitched(tokens[i])) return tokens[i];
+    }
   }
   return null;
+}
+
+function beatsToDurLabel(beats) {
+  const map = [
+    [4, 1, false], [3, 2, true], [2, 2, false], [1.5, 4, true],
+    [1, 4, false], [0.75, 8, true], [0.5, 8, false], [0.375, 16, true], [0.25, 16, false]
+  ];
+  for (const [b, d, dot] of map) {
+    if (Math.abs(beats - b) < 1e-6) return durLabel(d, dot);
+  }
+  return null;
+}
+
+function combinedDurLabel(tokens, idx) {
+  const total = soundingGridBeats(tokens, idx);
+  const single = beatsToDurLabel(total);
+  if (single) return single;
+  const parts = [durLabel(tokens[idx].dur, tokens[idx].dotted)];
+  for (let i = idx + 1; i < tokens.length; i++) {
+    if (tokens[i].type === "bar") continue;
+    if (tokens[i].type === "tie") parts.push(durLabel(tokens[i].dur, tokens[i].dotted));
+    else break;
+  }
+  return parts.join("+");
 }
 
 function tallyTokens(tokens) {
@@ -107,8 +145,8 @@ function fillFullSheet(sheet, tokens) {
 
 function liveCardHtml(t, tokens, i) {
   if (t.type === "rest") {
-    const prev = pitchTokenBefore(tokens, i);
-    const id = prev && NOTES.includes(prev.id) ? prev.id : null;
+    const nxt = nextPitchToken(tokens, i);
+    const id = nxt ? nxt.id : null;
     const ch = id ? CHAMBER[id] : 1;
     const svg = ocarinaSVG(id ? (COVER[id] || []) : [], ch);
     return `<div class="compact">
@@ -124,7 +162,7 @@ function liveCardHtml(t, tokens, i) {
     return `<div class="compact">${ocarinaSVG(COVER[id] || [], ch)}</div>
       <div class="meta"><span class="nm">${spelledLabel(t)}</span>
         <span class="badge ch${ch}">CH ${ch}</span>
-        <span class="dur">${durLabel(t.dur, t.dotted)}</span></div>`;
+        <span class="dur">${combinedDurLabel(tokens, i)}</span></div>`;
   }
   return `<div class="compact"></div><div class="meta"><span class="nm">${t.raw || ""} ✕</span></div>`;
 }
@@ -157,8 +195,10 @@ function updateLiveTab(tokens, idx) {
   if (holdSame) {
     card.dataset.i = String(i);
     card.classList.add("now");
-    const dur = card.querySelector(".dur");
-    if (dur) dur.textContent = durLabel(t.dur, t.dotted);
+    if (t.type === "note") {
+      const dur = card.querySelector(".dur");
+      if (dur) dur.textContent = combinedDurLabel(tokens, i);
+    }
     return;
   }
   sheet.innerHTML = "";
