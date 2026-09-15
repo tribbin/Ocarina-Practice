@@ -351,10 +351,14 @@ h2#title { margin: 8px 0 10px; font-size: 18px; }
 }
 #tabPanel.focus .focus-tokens {
   display: flex; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; gap: 6px;
-  padding: 20px 12px; align-items: center;
+  padding: 20px 0; align-items: center;
   scrollbar-width: none; -ms-overflow-style: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%);
 }
 #tabPanel.focus .focus-tokens::-webkit-scrollbar { display: none; }
+#tabPanel.focus .focus-tokens::before,
+#tabPanel.focus .focus-tokens::after { content: ""; flex: 0 0 50%; }
 #tabPanel.focus .focus-tokens .tok { flex: 0 0 auto; transition: transform .12s ease; }
 #tabPanel.focus .focus-tokens .tok.now {
   transform: scale(1.5); z-index: 1;
