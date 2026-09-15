@@ -331,6 +331,7 @@ h2#title { margin: 8px 0 10px; font-size: 18px; }
 .focus-btn.play {
   width: 92px; height: 92px; font-size: 40px; background: var(--good);
 }
+.focus-btn.play:not(.is-playing) { padding-left: 7px; padding-bottom: 4px; }
 .focus-btn.play.is-playing { background: var(--accent); }
 .focus-btn.exit {
   width: 46px; height: 46px; font-size: 20px;
