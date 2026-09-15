@@ -152,7 +152,7 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
   margin-left: auto; display: flex; align-items: center; gap: 8px;
   font-size: 13px; font-weight: 600; color: var(--ink);
 }
-.tempo-lab input[type=range] { width: 120px; }
+.tempo-lab input[type=range] { width: 90px; }
 #inputBlock textarea#src {
   width: 100%; min-height: 74px; resize: vertical; border: 0;
   font: 15px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;

@@ -7,6 +7,27 @@ let melodyPlaying = false;
 let melodyTokens = [];
 let melodyIdx = 0;
 let melodyFrom = 0;
+let melodyPos = 0;
+
+function tokenGridBeats(tok) {
+  if (!tok || tok.type === "bar") return 0;
+  return tok.beats || ((4 / (tok.dur || 4)) * (tok.dotted ? 1.5 : 1));
+}
+
+function swungBeats(tok, pos) {
+  const beats = tokenGridBeats(tok);
+  const s = (typeof currentSwing === "function" ? currentSwing() : 0) / 100;
+  if (s <= 0 || Math.abs(beats - 0.5) > 1e-6) return beats;
+  const longF = 0.5 + s / 6;
+  const onBeat = Math.round(pos * 2) % 2 === 0;
+  return onBeat ? longF : 1 - longF;
+}
+
+function gridBeatsBefore(tokens, idx) {
+  let p = 0;
+  for (let i = 0; i < idx; i++) p += tokenGridBeats(tokens[i]);
+  return p;
+}
 
 function unlockAudio() {
   try {
@@ -135,6 +156,7 @@ function playMelody(fromIdx) {
   melodyTokens = parse(document.getElementById("src").value);
   melodyIdx = from;
   melodyFrom = from;
+  melodyPos = gridBeatsBefore(melodyTokens, melodyIdx);
   if (!melodyTokens.length) return;
   audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
   if (audioCtx.state === "suspended") audioCtx.resume();
@@ -152,11 +174,13 @@ function scheduleMelody(when) {
       melodyIdx = melodyFrom;
       while (melodyIdx < melodyTokens.length && melodyTokens[melodyIdx].type === "bar") melodyIdx++;
       if (melodyIdx >= melodyTokens.length) { stopMelody(); return; }
+      melodyPos = gridBeatsBefore(melodyTokens, melodyIdx);
     } else { stopMelody(); return; }
   }
   const tok = melodyTokens[melodyIdx];
   highlightToken(melodyIdx, tok.id);
-  const step = (tok.beats || (tok.dur ? 4 / tok.dur : 1)) * quarterSec();
+  const step = swungBeats(tok, melodyPos) * quarterSec();
+  melodyPos += tokenGridBeats(tok);
   if (tok.type === "note" && NOTES.includes(tok.id)) {
     playNoteAt(tok.id, when, Math.max(0.12, step * 0.92), melodyBag);
   }

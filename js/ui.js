@@ -14,6 +14,8 @@ function render() {
     document.getElementById("title").textContent = titleFromText(src);
     const typedTempo = tempoFromText(src);
     if (typedTempo) applyTempo(typedTempo);
+    const typedSwing = swingFromText(src);
+    if (typedSwing != null) applySwing(typedSwing);
     const tokens = parse(src);
     drawTokens(tokens);
     const sheet = document.getElementById("sheet");
@@ -225,16 +227,26 @@ header.app,.panel:first-of-type{display:none}
 
 function wireUi() {
   document.getElementById("playMel").onclick = playMelody;
+  function writePlayHeaders() {
+    const ta = document.getElementById("src");
+    if (!ta) return;
+    ta.value = withPlayHeaders(ta.value, null, currentTempo(), currentSwing());
+    fitInput();
+  }
   const tempoEl = document.getElementById("tempo");
   const tempoVal = document.getElementById("tempoVal");
   if (tempoEl && tempoVal) {
     tempoEl.addEventListener("input", () => {
       tempoVal.textContent = tempoEl.value;
-      const ta = document.getElementById("src");
-      if (ta) {
-        ta.value = withTempoLine(ta.value, currentTempo());
-        fitInput();
-      }
+      writePlayHeaders();
+    });
+  }
+  const swingEl = document.getElementById("swing");
+  const swingVal = document.getElementById("swingVal");
+  if (swingEl && swingVal) {
+    swingEl.addEventListener("input", () => {
+      swingVal.textContent = swingEl.value;
+      writePlayHeaders();
     });
   }
   document.getElementById("print").onclick = () => {

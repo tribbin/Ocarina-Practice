@@ -181,21 +181,39 @@ function applyTempo(bpm) {
   if (lab) lab.textContent = String(bpm);
 }
 
+function currentSwing() {
+  const el = document.getElementById("swing");
+  return Math.max(0, Math.min(100, +(el && el.value) || 0));
+}
+
+function applySwing(n) {
+  n = Math.max(0, Math.min(100, +n || 0));
+  const el = document.getElementById("swing");
+  const lab = document.getElementById("swingVal");
+  if (el) el.value = String(n);
+  if (lab) lab.textContent = String(n);
+}
+
 function loadLibraryItem(id) {
   let tempo = currentTempo();
+  let swing = currentSwing();
   if (BUILTIN[id]) {
     const item = BUILTIN[id];
     const body = String(item.body || "").replace(/^\s*#.*\n/, "");
     tempo = item.tempo || tempoFromText(item.body) || 96;
-    document.getElementById("src").value = "# " + item.name + "\n# tempo " + tempo + "\n" + body.trim() + "\n";
+    swing = item.swing != null ? item.swing : (swingFromText(item.body) || 0);
+    document.getElementById("src").value =
+      "# " + item.name + "\n# tempo " + tempo + "\n# swing " + swing + "\n" + body.trim() + "\n";
   } else {
     const item = userLib()[id];
     if (item) {
       document.getElementById("src").value = item.body || "";
       tempo = item.tempo || tempoFromText(item.body) || tempo;
+      swing = item.swing != null ? item.swing : (swingFromText(item.body) != null ? swingFromText(item.body) : swing);
     }
   }
   applyTempo(tempo);
+  applySwing(swing);
   render();
 }
 
@@ -212,9 +230,10 @@ function wireLibrary() {
     const lib = userLib();
     const id = slugName(named);
     const tempo = currentTempo();
-    const next = withTitleAndTempo(body, named, tempo);
+    const swing = currentSwing();
+    const next = withPlayHeaders(body, named, tempo, swing);
     ta.value = next;
-    lib[id] = { name: named, body: next, tempo };
+    lib[id] = { name: named, body: next, tempo, swing };
     setUserLib(lib);
     fillLibrary(id);
     render();
@@ -233,7 +252,7 @@ function wireLibrary() {
   document.getElementById("diskSave").onclick = () => {
     const body = document.getElementById("src").value;
     const name = (titleFromText(body) || "melody").replace(/[^\w\- ]+/g, "").trim() || "melody";
-    const blob = new Blob([withTempoLine(body, currentTempo())], {type: "text/plain"});
+    const blob = new Blob([withPlayHeaders(body, null, currentTempo(), currentSwing())], {type: "text/plain"});
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = name + ".txt";
@@ -248,16 +267,19 @@ function wireLibrary() {
     const reader = new FileReader();
     reader.onload = () => {
       let text = String(reader.result || "");
-      let tpo = null;
+      let tpo = null, sw = null;
       try {
         const j = JSON.parse(text);
         if (j && typeof j.body === "string") text = j.body;
         else if (j && typeof j.melody === "string") text = j.melody;
         if (j && j.tempo) tpo = j.tempo;
+        if (j && j.swing != null) sw = j.swing;
       } catch (err) {}
       document.getElementById("src").value = text;
       tpo = tpo || tempoFromText(text);
       if (tpo) applyTempo(tpo);
+      sw = sw != null ? sw : swingFromText(text);
+      if (sw != null) applySwing(sw);
       render();
     };
     reader.readAsText(f);

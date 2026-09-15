@@ -48,11 +48,14 @@
           <input type="checkbox" id="loopMel"> Loop
         </label>
         <span class="box-sub">(click a note to play from there)</span>
-        <label class="tempo-lab">
+        <div class="tempo-lab">
           Tempo
           <input type="range" id="tempo" min="40" max="180" value="100">
           <span id="tempoVal">100</span> BPM
-        </label>
+          Swing
+          <input type="range" id="swing" min="0" max="100" value="0">
+          <span id="swingVal">0</span>%
+        </div>
       </div>
       <div class="tokens" id="tokens"></div>
     </div>

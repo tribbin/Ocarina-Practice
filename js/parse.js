@@ -73,26 +73,46 @@ function isTempoComment(line) {
   return /^#\s*tempo\s+/i.test(line);
 }
 
+function isSwingComment(line) {
+  return /^#\s*swing\s+/i.test(line);
+}
+
 function tempoFromText(text) {
   const m = String(text).match(/^#\s*tempo\s+(\d+)/im) || String(text).match(/\n#\s*tempo\s+(\d+)/i);
   return m ? +m[1] : null;
 }
 
+function swingFromText(text) {
+  const m = String(text).match(/^#\s*swing\s+(\d+)/im) || String(text).match(/\n#\s*swing\s+(\d+)/i);
+  return m ? +m[1] : null;
+}
+
 function titleFromText(text) {
-  const line = String(text || "").split("\n").find(l => l.startsWith("#") && !isTempoComment(l));
+  const line = String(text || "").split("\n").find(l =>
+    l.startsWith("#") && !isTempoComment(l) && !isSwingComment(l)
+  );
   return line ? line.replace(/^#\s*/, "") : "";
 }
 
-function withTempoLine(body, bpm) {
-  const rest = String(body || "").split("\n").filter(l => !isTempoComment(l));
+function withPlayHeaders(body, name, bpm, swing) {
+  const rest = String(body || "").split("\n").filter(l => !isTempoComment(l) && !isSwingComment(l));
+  if (name) {
+    const title = "# " + String(name).trim();
+    if (rest[0] && rest[0].startsWith("#")) rest[0] = title;
+    else rest.unshift(title);
+  }
   const title = rest[0] && rest[0].startsWith("#") ? [rest.shift()] : [];
-  return [...title, "# tempo " + bpm, ...rest].join("\n").replace(/\n+$/, "\n");
+  const t = bpm != null ? bpm : 100;
+  const s = swing != null ? swing : 0;
+  return [...title, "# tempo " + t, "# swing " + s, ...rest].join("\n").replace(/\n+$/, "\n");
+}
+
+function withTempoLine(body, bpm) {
+  const swing = swingFromText(body);
+  return withPlayHeaders(body, null, bpm, swing != null ? swing : 0);
 }
 
 function withTitleAndTempo(body, name, bpm) {
-  const rest = String(body || "").split("\n").filter(l => !isTempoComment(l));
-  const title = "# " + String(name || "").trim();
-  if (rest[0] && rest[0].startsWith("#")) rest[0] = title;
-  else rest.unshift(title);
-  return withTempoLine(rest.join("\n"), bpm);
+  const swing = swingFromText(body);
+  return withPlayHeaders(body, name, bpm, swing != null ? swing : 0);
 }
