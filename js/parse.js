@@ -103,8 +103,10 @@ function withPlayHeaders(body, name, bpm, swing) {
   }
   const title = rest[0] && rest[0].startsWith("#") ? [rest.shift()] : [];
   const t = bpm != null ? bpm : 100;
-  const s = swing != null ? swing : 0;
-  return [...title, "# tempo " + t, "# swing " + s, ...rest].join("\n").replace(/\n+$/, "\n");
+  const s = Math.max(0, +(swing != null ? swing : 0) || 0);
+  const head = [...title, "# tempo " + t];
+  if (s > 0) head.push("# swing " + s);
+  return [...head, ...rest].join("\n").replace(/\n+$/, "\n");
 }
 
 function withTempoLine(body, bpm) {

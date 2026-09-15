@@ -202,8 +202,7 @@ function loadLibraryItem(id) {
     const body = String(item.body || "").replace(/^\s*#.*\n/, "");
     tempo = item.tempo || tempoFromText(item.body) || 96;
     swing = item.swing != null ? item.swing : (swingFromText(item.body) || 0);
-    document.getElementById("src").value =
-      "# " + item.name + "\n# tempo " + tempo + "\n# swing " + swing + "\n" + body.trim() + "\n";
+    document.getElementById("src").value = withPlayHeaders(body.trim(), item.name, tempo, swing);
   } else {
     const item = userLib()[id];
     if (item) {

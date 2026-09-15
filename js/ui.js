@@ -15,7 +15,7 @@ function render() {
     const typedTempo = tempoFromText(src);
     if (typedTempo) applyTempo(typedTempo);
     const typedSwing = swingFromText(src);
-    if (typedSwing != null) applySwing(typedSwing);
+    applySwing(typedSwing != null ? typedSwing : 0);
     const tokens = parse(src);
     drawTokens(tokens);
     const sheet = document.getElementById("sheet");

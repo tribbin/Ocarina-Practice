@@ -155,7 +155,7 @@ function playMelody(fromIdx) {
   cutLive();
   melodyTokens = parse(document.getElementById("src").value);
   melodyIdx = from;
-  melodyFrom = from;
+  melodyFrom = 0;
   melodyPos = gridBeatsBefore(melodyTokens, melodyIdx);
   if (!melodyTokens.length) return;
   audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
@@ -171,10 +171,10 @@ function scheduleMelody(when) {
   while (melodyIdx < melodyTokens.length && melodyTokens[melodyIdx].type === "bar") melodyIdx++;
   if (melodyIdx >= melodyTokens.length) {
     if (document.getElementById("loopMel") && document.getElementById("loopMel").checked) {
-      melodyIdx = melodyFrom;
+      melodyIdx = 0;
       while (melodyIdx < melodyTokens.length && melodyTokens[melodyIdx].type === "bar") melodyIdx++;
       if (melodyIdx >= melodyTokens.length) { stopMelody(); return; }
-      melodyPos = gridBeatsBefore(melodyTokens, melodyIdx);
+      melodyPos = 0;
     } else { stopMelody(); return; }
   }
   const tok = melodyTokens[melodyIdx];
