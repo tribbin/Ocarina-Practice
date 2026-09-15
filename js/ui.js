@@ -238,6 +238,7 @@ function render() {
     err.textContent = problems.join(" · ");
     document.getElementById("stats").textContent =
       notes ? `${notes} notes · ${switches} chamber switch${switches===1?"":"es"}` : "Type or click a melody.";
+    if (typeof syncFocusMode === "function") syncFocusMode();
   } catch (e) {
     const err = document.getElementById("err");
     if (err) err.textContent = "Render error: " + e;
@@ -261,8 +262,8 @@ function tokenSeconds(tokOrDur, dotted) {
 function highlightToken(i, noteId) {
   liveIdx = i;
   document.querySelectorAll(".tok.now, .card.now, .rest.now, .key.now").forEach(el => el.classList.remove("now"));
-  const tok = document.querySelector('.tok[data-i="' + i + '"]');
-  if (tok) tok.classList.add("now");
+  document.querySelectorAll('.tok[data-i="' + i + '"]').forEach(el => el.classList.add("now"));
+  scrollFocusStripTo(i);
   if (isLiveTab()) {
     updateLiveTab(lastTokens.length ? lastTokens : parse(document.getElementById("src").value), i);
   } else {
@@ -272,8 +273,9 @@ function highlightToken(i, noteId) {
       const sheet = document.getElementById("sheet");
       if (sheet && sheet.classList.contains("scroll")) {
         const wrap = sheet.parentElement;
+        const anchor = barAnchorCard(sheet, i) || card;
         if (wrap) {
-          const c = card.getBoundingClientRect();
+          const c = anchor.getBoundingClientRect();
           const w = wrap.getBoundingClientRect();
           const inset = 16;
           const delta = c.left - (w.left + inset);
@@ -287,49 +289,51 @@ function highlightToken(i, noteId) {
   }
 }
 
+function barStartIndex(tokens, i) {
+  let start = 0;
+  for (let k = Math.min(i, tokens.length - 1); k >= 0; k--) {
+    if (tokens[k] && tokens[k].type === "bar") { start = k + 1; break; }
+  }
+  while (start < tokens.length && tokens[start] && tokens[start].type === "bar") start++;
+  return start;
+}
+
+function barAnchorCard(sheet, i) {
+  const toks = lastTokens.length ? lastTokens : parse(document.getElementById("src").value);
+  const bi = barStartIndex(toks, i);
+  return sheet.querySelector('.card[data-i="' + bi + '"], .rest[data-i="' + bi + '"]');
+}
+
+function scrollFocusStripTo(i) {
+  const strip = document.getElementById("focusTokens");
+  if (!strip || !strip.offsetParent) return;
+  const el = strip.querySelector('.tok[data-i="' + i + '"]');
+  if (!el) return;
+  const s = strip.getBoundingClientRect();
+  const c = el.getBoundingClientRect();
+  const delta = (c.left + c.width / 2) - (s.left + s.width / 2);
+  strip.scrollTo({ left: Math.max(0, strip.scrollLeft + delta), behavior: "smooth" });
+}
+
 function clearHighlight() {
   document.querySelectorAll(".tok.now, .card.now, .rest.now, .key.now").forEach(el => el.classList.remove("now"));
 }
 
-function drawTokens(tokens) {
-  hoverQuietUntil = Date.now() + 400;
-  const box = document.getElementById("tokens");
-  if (!box) return;
-  box.innerHTML = "";
-  tokens.forEach((t, i) => {
-    const el = document.createElement("span");
-    el.dataset.i = String(i);
-    el.style.cursor = "pointer";
-    el.title = "click = play from here";
-    if (t.type === "bar") {
-      el.className = "tok bar";
-      el.textContent = "|";
-    } else if (t.type === "rest") {
-      el.className = "tok pause";
-      el.innerHTML = `r <span class="td">${durLabel(t.dur, t.dotted)}</span>`;
-    } else if (t.type === "tie") {
-      if (t.id && NOTES.includes(t.id)) {
-        el.className = "tok tie ch" + CHAMBER[t.id];
-        el.innerHTML = `– <span class="td">${durLabel(t.dur, t.dotted)}</span>`;
-        el.addEventListener("mouseenter", () => {
-          if (isMelodyPlaying() || hoverQuietUntil > Date.now()) return;
-          highlightToken(i, t.id);
-          if (!audioCtx || audioCtx.state !== "running") return;
-          playNote(t.id, tokenSeconds(t));
-        });
-        el.addEventListener("mouseleave", () => {
-          if (!isMelodyPlaying()) clearHighlight();
-        });
-      } else {
-        el.className = "tok bad";
-        el.textContent = t.raw || "-";
-      }
-    } else if (!NOTES.includes(t.id)) {
-      el.className = "tok bad";
-      el.textContent = t.raw || t.id;
-    } else {
-      el.className = "tok ch" + CHAMBER[t.id];
-      el.innerHTML = `${spelledLabel(t)} <span class="td">${durLabel(t.dur, t.dotted)}</span>`;
+function buildTokenEl(t, i) {
+  const el = document.createElement("span");
+  el.dataset.i = String(i);
+  el.style.cursor = "pointer";
+  el.title = "click = play from here";
+  if (t.type === "bar") {
+    el.className = "tok bar";
+    el.textContent = "|";
+  } else if (t.type === "rest") {
+    el.className = "tok pause";
+    el.innerHTML = `r <span class="td">${durLabel(t.dur, t.dotted)}</span>`;
+  } else if (t.type === "tie") {
+    if (t.id && NOTES.includes(t.id)) {
+      el.className = "tok tie ch" + CHAMBER[t.id];
+      el.innerHTML = `– <span class="td">${durLabel(t.dur, t.dotted)}</span>`;
       el.addEventListener("mouseenter", () => {
         if (isMelodyPlaying() || hoverQuietUntil > Date.now()) return;
         highlightToken(i, t.id);
@@ -339,10 +343,40 @@ function drawTokens(tokens) {
       el.addEventListener("mouseleave", () => {
         if (!isMelodyPlaying()) clearHighlight();
       });
+    } else {
+      el.className = "tok bad";
+      el.textContent = t.raw || "-";
     }
-    el.addEventListener("click", e => { e.preventDefault(); unlockAudio(); playMelody(i); });
-    box.appendChild(el);
-  });
+  } else if (!NOTES.includes(t.id)) {
+    el.className = "tok bad";
+    el.textContent = t.raw || t.id;
+  } else {
+    el.className = "tok ch" + CHAMBER[t.id];
+    el.innerHTML = `${spelledLabel(t)} <span class="td">${durLabel(t.dur, t.dotted)}</span>`;
+    el.addEventListener("mouseenter", () => {
+      if (isMelodyPlaying() || hoverQuietUntil > Date.now()) return;
+      highlightToken(i, t.id);
+      if (!audioCtx || audioCtx.state !== "running") return;
+      playNote(t.id, tokenSeconds(t));
+    });
+    el.addEventListener("mouseleave", () => {
+      if (!isMelodyPlaying()) clearHighlight();
+    });
+  }
+  el.addEventListener("click", e => { e.preventDefault(); unlockAudio(); playMelody(i); });
+  return el;
+}
+
+function drawTokenStrip(box, tokens) {
+  if (!box) return;
+  box.innerHTML = "";
+  tokens.forEach((t, i) => box.appendChild(buildTokenEl(t, i)));
+}
+
+function drawTokens(tokens) {
+  hoverQuietUntil = Date.now() + 400;
+  drawTokenStrip(document.getElementById("tokens"), tokens);
+  drawTokenStrip(document.getElementById("focusTokens"), tokens);
 }
 
 function addNote(id) {
@@ -428,20 +462,27 @@ header.app,.panel:first-of-type{display:none}
 </body></html>`;
 }
 
+function persistPlayHeaders() {
+  const ta = document.getElementById("src");
+  if (!ta) return;
+  ta.value = withPlayHeaders(ta.value, null, currentTempo(), currentSwing());
+  fitInput();
+}
+
 function wireUi() {
   document.getElementById("playMel").onclick = playMelody;
-  function writePlayHeaders() {
-    const ta = document.getElementById("src");
-    if (!ta) return;
-    ta.value = withPlayHeaders(ta.value, null, currentTempo(), currentSwing());
-    fitInput();
-  }
   const tempoEl = document.getElementById("tempo");
-  const tempoVal = document.getElementById("tempoVal");
-  if (tempoEl && tempoVal) {
+  if (tempoEl) {
     tempoEl.addEventListener("input", () => {
-      tempoVal.textContent = tempoEl.value;
-      writePlayHeaders();
+      applyTempo(+tempoEl.value);
+      persistPlayHeaders();
+    });
+  }
+  const focusTempoEl = document.getElementById("focusTempo");
+  if (focusTempoEl) {
+    focusTempoEl.addEventListener("input", () => {
+      applyTempo(+focusTempoEl.value);
+      persistPlayHeaders();
     });
   }
   const swingEl = document.getElementById("swing");
@@ -449,7 +490,7 @@ function wireUi() {
   if (swingEl && swingVal) {
     swingEl.addEventListener("input", () => {
       swingVal.textContent = swingEl.value;
-      writePlayHeaders();
+      persistPlayHeaders();
     });
   }
   document.getElementById("print").onclick = () => {
@@ -480,9 +521,100 @@ function wireUi() {
   };
   document.getElementById("src").addEventListener("input", render);
   document.getElementById("bigSmall").onchange = render;
-  document.getElementById("oneOca").onchange = render;
+  document.getElementById("oneOca").onchange = () => { render(); syncFocusMode(); };
   document.getElementById("scrollTabs").onchange = () => {
     if (isLiveTab()) return;
     document.getElementById("sheet").classList.toggle("scroll", document.getElementById("scrollTabs").checked);
   };
+  wireFullscreen();
+  wireFocusControls();
+  wireSpacebar();
+  updateTransportUI();
+}
+
+function wireFocusControls() {
+  const rw = document.getElementById("focusRewind");
+  const pp = document.getElementById("focusPlay");
+  const st = document.getElementById("focusStop");
+  const ex = document.getElementById("focusExit");
+  if (rw) rw.onclick = () => { unlockAudio(); rewindMelody(); };
+  if (pp) pp.onclick = () => { unlockAudio(); togglePlayPause(); };
+  if (st) st.onclick = () => stopMelody();
+  if (ex) ex.onclick = () => toggleFullscreen(document.getElementById("tabPanel"));
+}
+
+function isFocusMode() {
+  const p = document.getElementById("tabPanel");
+  return !!(p && p.classList.contains("focus"));
+}
+
+function syncFocusMode() {
+  const panel = document.getElementById("tabPanel");
+  if (!panel) return;
+  const fs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  const on = fs && isLiveTab();
+  panel.classList.toggle("focus", on);
+  if (on) {
+    applyTempo(currentTempo());
+    const toks = lastTokens.length ? lastTokens : parse(document.getElementById("src").value);
+    scrollFocusStripTo(liveIdx >= 0 ? liveIdx : firstSoundIdx(toks));
+  }
+}
+
+function updateTransportUI() {
+  const playing = typeof isMelodyPlaying === "function" && isMelodyPlaying();
+  const main = document.getElementById("playMel");
+  if (main) main.textContent = playing ? "Stop" : "Play";
+  const fp = document.getElementById("focusPlay");
+  if (fp) {
+    fp.textContent = playing ? "\u23F8" : "\u25B6";
+    fp.classList.toggle("is-playing", playing);
+  }
+}
+
+function isTextEntry(el) {
+  if (!el) return false;
+  if (el.isContentEditable) return true;
+  const tag = el.tagName;
+  if (tag === "TEXTAREA") return true;
+  if (tag === "INPUT") {
+    const t = (el.type || "text").toLowerCase();
+    return !["checkbox","radio","range","button","submit","reset","file","color"].includes(t);
+  }
+  return false;
+}
+
+function wireSpacebar() {
+  document.addEventListener("keydown", e => {
+    if (e.code !== "Space" && e.key !== " ") return;
+    if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (isTextEntry(document.activeElement)) return;
+    e.preventDefault();
+    unlockAudio();
+    if (isFocusMode()) togglePlayPause();
+    else playMelody();
+  });
+}
+
+function toggleFullscreen(el) {
+  const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+  if (fsEl) {
+    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  } else if (el) {
+    (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+  }
+}
+
+function wireFullscreen() {
+  const btn = document.getElementById("fullscreen");
+  const panel = document.getElementById("tabPanel");
+  if (!btn || !panel) return;
+  btn.onclick = () => toggleFullscreen(panel);
+  const sync = () => {
+    const on = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    btn.textContent = on ? "Exit full screen" : "Full screen";
+    syncFocusMode();
+  };
+  document.addEventListener("fullscreenchange", sync);
+  document.addEventListener("webkitfullscreenchange", sync);
 }

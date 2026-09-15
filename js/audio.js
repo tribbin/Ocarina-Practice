@@ -9,6 +9,11 @@ let melodyIdx = 0;
 let melodyFrom = 0;
 let melodyPos = 0;
 let melodyHoldUntil = -1;
+let melodyPaused = false;
+
+function syncTransport() {
+  if (typeof updateTransportUI === "function") updateTransportUI();
+}
 
 function tokenGridBeats(tok) {
   if (!tok || tok.type === "bar") return 0;
@@ -158,15 +163,18 @@ function playNoteAt(id, when, durSec, bag) {
 }
 
 function isMelodyPlaying() { return melodyPlaying; }
+function isMelodyPaused() { return melodyPaused; }
 
 function stopMelody() {
   melodyPlaying = false;
+  melodyPaused = false;
   melodyBag.forEach(n => { try { n.stop(); } catch (e) {} });
   melodyBag = [];
   if (melodyTimer) { clearTimeout(melodyTimer); melodyTimer = 0; }
   const btn = document.getElementById("playMel");
   if (btn) btn.textContent = "Play";
   clearHighlight();
+  syncTransport();
 }
 
 function playMelody(fromIdx) {
@@ -178,6 +186,7 @@ function playMelody(fromIdx) {
   melodyIdx = from;
   melodyFrom = from;
   melodyHoldUntil = -1;
+  melodyPaused = false;
   melodyPos = gridBeatsBefore(melodyTokens, melodyIdx);
   if (!melodyTokens.length) return;
   audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
@@ -185,7 +194,49 @@ function playMelody(fromIdx) {
   melodyPlaying = true;
   const btn = document.getElementById("playMel");
   if (btn) btn.textContent = "Stop";
+  syncTransport();
   scheduleMelody(audioCtx.currentTime + 0.05);
+}
+
+function pauseMelody() {
+  if (!melodyPlaying) return;
+  melodyPlaying = false;
+  melodyPaused = true;
+  melodyBag.forEach(n => { try { n.stop(); } catch (e) {} });
+  melodyBag = [];
+  if (melodyTimer) { clearTimeout(melodyTimer); melodyTimer = 0; }
+  const btn = document.getElementById("playMel");
+  if (btn) btn.textContent = "Play";
+  syncTransport();
+}
+
+function resumeMelody() {
+  if (melodyPlaying || !melodyPaused || !melodyTokens.length) { melodyPaused = false; return; }
+  melodyPaused = false;
+  audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === "suspended") audioCtx.resume();
+  melodyPlaying = true;
+  const btn = document.getElementById("playMel");
+  if (btn) btn.textContent = "Stop";
+  syncTransport();
+  scheduleMelody(audioCtx.currentTime + 0.05);
+}
+
+function togglePlayPause() {
+  if (melodyPlaying) pauseMelody();
+  else if (melodyPaused) resumeMelody();
+  else playMelody();
+}
+
+function rewindMelody() {
+  const wasActive = melodyPlaying || melodyPaused;
+  stopMelody();
+  if (wasActive) { playMelody(0); return; }
+  const toks = parse(document.getElementById("src").value);
+  if (!toks.length) return;
+  if (typeof firstSoundIdx === "function" && typeof highlightToken === "function") {
+    highlightToken(firstSoundIdx(toks), null);
+  }
 }
 
 function scheduleMelody(when) {

@@ -71,7 +71,7 @@
     <p class="err" id="err"></p>
   </section>
 
-  <section class="panel">
+  <section class="panel" id="tabPanel">
     <label class="k tab-heading">Tablature</label>
     <div class="row tab-tools">
       <label class="k check-lab">
@@ -83,12 +83,27 @@
       <label class="k check-lab">
         <input type="checkbox" id="oneOca"> One ocarina
       </label>
+      <button class="ghost" type="button" id="fullscreen">Full screen</button>
       <button class="ghost" type="button" id="print">Print</button>
       <button class="ghost" type="button" id="download">Download tabs</button>
     </div>
     <h2 id="title"></h2>
     <div class="sheet-wrap"><div class="sheet" id="sheet"></div></div>
     <p class="hint" id="stats"></p>
+    <div class="focus-strip noprint" id="focusStrip">
+      <div class="tokens focus-tokens" id="focusTokens"></div>
+    </div>
+    <div class="focus-bar noprint" id="focusBar">
+      <button type="button" class="focus-btn" id="focusRewind" title="Restart" aria-label="Restart">⏮</button>
+      <button type="button" class="focus-btn play" id="focusPlay" title="Play / Pause" aria-label="Play or pause">▶</button>
+      <button type="button" class="focus-btn" id="focusStop" title="Stop" aria-label="Stop">⏹</button>
+      <label class="focus-tempo">
+        <span>Tempo</span>
+        <input type="range" id="focusTempo" min="40" max="180" value="100">
+        <span id="focusTempoVal">100</span> BPM
+      </label>
+      <button type="button" class="focus-btn exit" id="focusExit" title="Exit full screen" aria-label="Exit full screen">✕</button>
+    </div>
   </section>
 </div>
 

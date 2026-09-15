@@ -187,6 +187,10 @@ function applyTempo(bpm) {
   const lab = document.getElementById("tempoVal");
   if (el) el.value = String(bpm);
   if (lab) lab.textContent = String(bpm);
+  const fEl = document.getElementById("focusTempo");
+  const fLab = document.getElementById("focusTempoVal");
+  if (fEl) fEl.value = String(bpm);
+  if (fLab) fLab.textContent = String(bpm);
 }
 
 function currentSwing() {
