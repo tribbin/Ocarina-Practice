@@ -183,8 +183,34 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
   } catch (e) {}
 }
 
-function isMelodyPlaying() { return melodyPlaying; }
-function isMelodyPaused() { return melodyPaused; }
+function tickEnabled() {
+  const cb = document.getElementById("tickMel");
+  return !!(cb && cb.checked);
+}
+
+function playTickAt(when, bag) {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    const ctx = audioCtx;
+    const t0 = when == null ? ctx.currentTime : when;
+    const dur = 0.04;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(0.09, t0 + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    g.connect(ctx.destination);
+    const osc = ctx.createOscillator();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(1600, t0);
+    osc.connect(g);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+    if (bag) bag.push({ stop() { try { osc.stop(); } catch (e) {} } });
+  } catch (e) {}
+}
+
+function isMelodyPlaying() { return melodyPlaying; }function isMelodyPaused() { return melodyPaused; }
 
 function stopMelody() {
   melodyPlaying = false;
@@ -263,7 +289,8 @@ function rewindMelody() {
 
 function scheduleMelody(when) {
   if (!melodyPlaying) return;
-  while (melodyIdx < melodyTokens.length && melodyTokens[melodyIdx].type === "bar") melodyIdx++;
+  let atBar = (melodyIdx === melodyFrom);
+  while (melodyIdx < melodyTokens.length && melodyTokens[melodyIdx].type === "bar") { melodyIdx++; atBar = true; }
   if (melodyIdx >= melodyTokens.length) {
     if (document.getElementById("loopMel") && document.getElementById("loopMel").checked) {
       melodyIdx = 0;
@@ -271,8 +298,10 @@ function scheduleMelody(when) {
       if (melodyIdx >= melodyTokens.length) { stopMelody(); return; }
       melodyPos = 0;
       melodyHoldUntil = -1;
+      atBar = true;
     } else { stopMelody(); return; }
   }
+  if (atBar && tickEnabled()) playTickAt(when, melodyBag);
   const tok = melodyTokens[melodyIdx];
   const step = swungBeats(tok, melodyPos) * quarterSec();
   melodyPos += tokenGridBeats(tok);
