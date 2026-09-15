@@ -184,6 +184,34 @@
     background: #fff; color: #1c140f;
   }
 
+  .lib-dd { position: relative; }
+  .lib-dd-wrap { position: relative; }
+  .lib-dd-btn {
+    background: #fff !important; color: #1c140f !important;
+    border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px;
+    font: 13px/1.3 inherit; display: inline-flex; align-items: center; gap: 10px;
+    min-width: 10.5em; justify-content: space-between;
+  }
+  .lib-dd-caret { font-size: 10px; opacity: .65; }
+  .lib-dd-menu {
+    position: absolute; top: calc(100% + 4px); right: 0; left: auto; z-index: 40;
+    min-width: max(100%, 13rem); max-width: min(18rem, calc(100vw - 24px));
+    max-height: 280px; overflow: auto;
+    background: #fff; color: #1c140f; border: 1px solid var(--line);
+    border-radius: 8px; padding: 4px; box-shadow: 0 10px 28px rgba(28,20,15,.18);
+  }
+  .lib-dd-group {
+    font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--clay-dark); padding: 8px 10px 3px;
+  }
+  .lib-dd-opt {
+    display: block; width: 100%; text-align: left; background: transparent;
+    color: var(--ink); border: 0; border-radius: 6px; padding: 7px 12px;
+    font: 13px/1.3 inherit;
+  }
+  .lib-dd-opt:hover, .lib-dd-opt:focus-visible { background: var(--paper-2); }
+  .lib-dd-opt[aria-selected="true"] { font-weight: 700; background: var(--paper); }
+
   .pkey .ch-line { height: 6px; margin-top: 3px; background: #ddd4c8; border-radius: 1px; }
   .pkey .ch-line.c1 { background: var(--ch1); }
   .pkey .ch-line.c2 { background: var(--ch2); }
@@ -218,10 +246,17 @@
       <div class="box-head">
         <span class="box-title">INPUT</span>
         <span class="box-sub">(type notes here)</span>
-        <label class="tempo-lab" style="gap:6px">
-          Library
-          <select id="scale"></select>
-        </label>
+        <div class="tempo-lab lib-dd" id="libDd" style="gap:6px">
+          <span>Library</span>
+          <div class="lib-dd-wrap">
+            <button type="button" class="lib-dd-btn" id="libDdBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="libDdMenu">
+              <span id="libDdText"></span>
+              <span class="lib-dd-caret" aria-hidden="true">▾</span>
+            </button>
+            <div class="lib-dd-menu" id="libDdMenu" role="listbox" aria-label="Library" hidden></div>
+          </div>
+          <select id="scale" hidden tabindex="-1" aria-hidden="true"></select>
+        </div>
         <button class="ghost" type="button" id="libSave">Save to library</button>
         <button class="ghost" type="button" id="libRemove">Remove</button>
         <button class="ghost" type="button" id="diskSave">Save file</button>
@@ -1485,7 +1520,116 @@ function fillLibrary(selectId) {
     sel.appendChild(g2);
   }
   if (cur && [...sel.options].some(o => o.value === cur)) sel.value = cur;
+  syncLibraryMenu();
 }
+function libraryMenuOpen() {
+  const menu = document.getElementById("libDdMenu");
+  return menu && !menu.hidden;
+}
+function closeLibraryMenu() {
+  const menu = document.getElementById("libDdMenu");
+  const btn = document.getElementById("libDdBtn");
+  if (!menu || menu.hidden) return;
+  menu.hidden = true;
+  if (btn) btn.setAttribute("aria-expanded", "false");
+}
+function openLibraryMenu() {
+  const menu = document.getElementById("libDdMenu");
+  const btn = document.getElementById("libDdBtn");
+  if (!menu) return;
+  syncLibraryMenu();
+  menu.hidden = false;
+  if (btn) btn.setAttribute("aria-expanded", "true");
+  const selected = menu.querySelector('.lib-dd-opt[aria-selected="true"]') || menu.querySelector(".lib-dd-opt");
+  if (selected) selected.focus();
+}
+function toggleLibraryMenu() {
+  if (libraryMenuOpen()) closeLibraryMenu();
+  else openLibraryMenu();
+}
+function pickLibrary(id) {
+  const sel = document.getElementById("scale");
+  const changed = sel && sel.value !== id;
+  closeLibraryMenu();
+  if (changed) {
+    sel.value = id;
+    sel.dispatchEvent(new Event("change"));
+  }
+  syncLibraryMenu();
+}
+function syncLibraryMenu() {
+  const sel = document.getElementById("scale");
+  const menu = document.getElementById("libDdMenu");
+  const text = document.getElementById("libDdText");
+  if (!sel || !menu || !text) return;
+  const cur = sel.value;
+  const chosen = sel.options[sel.selectedIndex];
+  text.textContent = chosen ? chosen.textContent : "";
+  menu.innerHTML = "";
+  for (const node of sel.children) {
+    if (node.tagName === "OPTGROUP") {
+      const g = document.createElement("div");
+      g.className = "lib-dd-group";
+      g.textContent = node.label;
+      menu.appendChild(g);
+      for (const opt of node.children) menu.appendChild(libraryOptionEl(opt, cur));
+    } else if (node.tagName === "OPTION") {
+      menu.appendChild(libraryOptionEl(node, cur));
+    }
+  }
+}
+function libraryOptionEl(opt, cur) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "lib-dd-opt";
+  b.setAttribute("role", "option");
+  b.dataset.value = opt.value;
+  b.textContent = opt.textContent;
+  if (opt.value === cur) b.setAttribute("aria-selected", "true");
+  b.addEventListener("click", e => {
+    e.preventDefault();
+    e.stopPropagation();
+    pickLibrary(opt.value);
+    const btn = document.getElementById("libDdBtn");
+    if (btn) btn.focus();
+  });
+  return b;
+}
+function libraryOptions() {
+  return [...document.querySelectorAll("#libDdMenu .lib-dd-opt")];
+}
+(function wireLibraryDropdown() {
+  const wrap = document.getElementById("libDd");
+  const btn = document.getElementById("libDdBtn");
+  if (!wrap || !btn) return;
+  btn.addEventListener("click", e => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleLibraryMenu();
+  });
+  document.addEventListener("pointerdown", e => {
+    if (!wrap.contains(e.target)) closeLibraryMenu();
+  });
+  document.addEventListener("keydown", e => {
+    if (!libraryMenuOpen()) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closeLibraryMenu();
+      btn.focus();
+      return;
+    }
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp" && e.key !== "Home" && e.key !== "End") return;
+    e.preventDefault();
+    const opts = libraryOptions();
+    if (!opts.length) return;
+    const i = opts.indexOf(document.activeElement);
+    let n = 0;
+    if (e.key === "ArrowDown") n = i < 0 ? 0 : (i + 1) % opts.length;
+    else if (e.key === "ArrowUp") n = i < 0 ? opts.length - 1 : (i - 1 + opts.length) % opts.length;
+    else if (e.key === "End") n = opts.length - 1;
+    opts[n].focus();
+  });
+})();
 function currentTempo() {
   const el = document.getElementById("tempo");
   return Math.max(40, Math.min(180, +(el && el.value) || 100));
