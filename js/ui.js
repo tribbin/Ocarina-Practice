@@ -135,10 +135,9 @@ function appendNoteCard(sheet, t, i) {
   }
   const ch = CHAMBER[id];
   const card = document.createElement("div");
-  card.className = "card" + (t.slide ? " slide" : "");
+  card.className = "card";
   card.dataset.i = String(i);
-  const slideMark = t.slide ? `<span class="slide-badge" title="slide from ${pretty(t.slideFrom)}">\u21DD ${pretty(t.slideFrom)}</span>` : "";
-  card.innerHTML = `<div class="compact">${ocarinaSVG(COVER[id] || [], ch)}${slideMark}</div>
+  card.innerHTML = `<div class="compact">${ocarinaSVG(COVER[id] || [], ch)}</div>
     <div class="meta"><span class="nm">${spelledLabel(t)}</span>
      <span class="badge ch${ch}">CH ${ch}</span>
      <span class="dur">${durLabel(t.dur, t.dotted)}</span></div>`;
@@ -193,8 +192,7 @@ function liveCardHtml(t, tokens, i) {
   const id = t.id;
   if ((t.type === "note" || t.type === "tie") && NOTES.includes(id)) {
     const ch = CHAMBER[id];
-    const slideMark = t.slide ? `<span class="slide-badge" title="slide from ${pretty(t.slideFrom)}">\u21DD ${pretty(t.slideFrom)}</span>` : "";
-    return `<div class="compact">${ocarinaSVG(COVER[id] || [], ch)}${slideMark}</div>
+    return `<div class="compact">${ocarinaSVG(COVER[id] || [], ch)}</div>
       <div class="meta"><span class="nm">${spelledLabel(t)}</span>
         <span class="badge ch${ch}">CH ${ch}</span>
         <span class="dur">${combinedDurLabel(tokens, i)}</span></div>`;
