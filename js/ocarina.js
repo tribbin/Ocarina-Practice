@@ -22,11 +22,7 @@ function ocarinaSVG(covered, chamber) {
     const set = new Set(covered || []);
     clone.querySelectorAll("[data-hole]").forEach(el => {
       const hid = el.getAttribute("data-hole") || "";
-      if (hid === "R3-middle-high") {
-        el.style.visibility = "hidden";
-        return;
-      }
-      const ignore = hid.endsWith("tune") || (hid === "thumb" && chamber !== 1);
+      const ignore = hid.endsWith("tune") || hid === "R3-middle-high" || (hid === "thumb" && chamber !== 1);
       if (ignore) {
         el.style.fill = "none";
         el.style.strokeDasharray = "1.2 1";
@@ -54,7 +50,7 @@ function ocarinaSVG(covered, chamber) {
 function enlargeSmallHoles(svg) {
   const SMALL = new Set([
     "L-middle-small","R1-middle-small","R2-middle-small","R2-pinky",
-    "R3-middle-low","R3-pinky"
+    "R3-middle-low","R3-middle-high","R3-pinky"
   ]);
   const geom = el => {
     const tag = el.tagName.toLowerCase();
@@ -66,7 +62,7 @@ function enlargeSmallHoles(svg) {
   };
   const holes = [...svg.querySelectorAll("[data-hole]")].filter(el => {
     const hid = el.getAttribute("data-hole") || "";
-    return hid && hid !== "R3-middle-high" && el.style.visibility !== "hidden";
+    return hid && el.style.visibility !== "hidden";
   }).map(el => ({ el, hid: el.getAttribute("data-hole"), ...geom(el) }));
   const GAP = 0.55;
   for (const h of holes) {

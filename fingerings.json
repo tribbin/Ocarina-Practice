@@ -482,7 +482,6 @@
         "R3-pinky",
         "R3-ring",
         "R3-middle-low",
-        "R3-middle-high",
         "R3-index"
       ]
     },
@@ -493,7 +492,6 @@
       "covered": [
         "R3-ring",
         "R3-middle-low",
-        "R3-middle-high",
         "R3-index"
       ]
     },
@@ -512,7 +510,6 @@
       "chamber": 3,
       "covered": [
         "R3-middle-low",
-        "R3-middle-high",
         "R3-index"
       ]
     },
@@ -529,8 +526,7 @@
       "display": "F\u266f\u2086/G\u266d\u2086",
       "chamber": 3,
       "covered": [
-        "R3-middle-low",
-        "R3-middle-high"
+        "R3-middle-low"
       ]
     },
     {
