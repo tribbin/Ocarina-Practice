@@ -1078,8 +1078,9 @@ function render() {
   try {
   const src = document.getElementById("src").value;
   fitInput();
-  const titleLine = src.split("\n").find(l => l.startsWith("#"));
-  document.getElementById("title").textContent = titleLine ? titleLine.replace(/^#\s*/, "") : "";
+  document.getElementById("title").textContent = titleFromText(src);
+  const typedTempo = tempoFromText(src);
+  if (typedTempo) applyTempo(typedTempo);
   const tokens = parse(src);
   drawTokens(tokens);
   const sheet = document.getElementById("sheet");
@@ -1426,7 +1427,14 @@ document.getElementById("playMel").onclick = playMelody;
 const tempoEl = document.getElementById("tempo");
 const tempoVal = document.getElementById("tempoVal");
 if (tempoEl && tempoVal) {
-  tempoEl.addEventListener("input", () => { tempoVal.textContent = tempoEl.value; });
+  tempoEl.addEventListener("input", () => {
+    tempoVal.textContent = tempoEl.value;
+    const ta = document.getElementById("src");
+    if (ta) {
+      ta.value = withTempoLine(ta.value, currentTempo());
+      fitInput();
+    }
+  });
 }
 function printableHtml() {
   const sheet = document.getElementById("sheet").innerHTML;
@@ -1641,15 +1649,28 @@ function applyTempo(bpm) {
   if (el) el.value = String(bpm);
   if (lab) lab.textContent = String(bpm);
 }
+function isTempoComment(line) {
+  return /^#\s*tempo\s+/i.test(line);
+}
 function tempoFromText(text) {
   const m = String(text).match(/^#\s*tempo\s+(\d+)/im) || String(text).match(/\n#\s*tempo\s+(\d+)/i);
   return m ? +m[1] : null;
 }
+function titleFromText(text) {
+  const line = String(text || "").split("\n").find(l => l.startsWith("#") && !isTempoComment(l));
+  return line ? line.replace(/^#\s*/, "") : "";
+}
 function withTempoLine(body, bpm) {
-  const lines = String(body || "").split("\n");
-  const rest = lines.filter(l => !/^#\s*tempo\s+/i.test(l));
+  const rest = String(body || "").split("\n").filter(l => !isTempoComment(l));
   const title = rest[0] && rest[0].startsWith("#") ? [rest.shift()] : [];
   return [...title, "# tempo " + bpm, ...rest].join("\n").replace(/\n+$/, "\n");
+}
+function withTitleAndTempo(body, name, bpm) {
+  const rest = String(body || "").split("\n").filter(l => !isTempoComment(l));
+  const title = "# " + String(name || "").trim();
+  if (rest[0] && rest[0].startsWith("#")) rest[0] = title;
+  else rest.unshift(title);
+  return withTempoLine(rest.join("\n"), bpm);
 }
 function loadLibraryItem(id) {
   let tempo = currentTempo();
@@ -1674,17 +1695,21 @@ document.getElementById("scrollTabs").onchange = () => {
 };
 document.getElementById("scale").onchange = e => loadLibraryItem(e.target.value);
 document.getElementById("libSave").onclick = () => {
-  const body = document.getElementById("src").value;
-  const first = body.split("\n").find(l => l.startsWith("#"));
-  const suggested = first ? first.replace(/^#\s*/, "") : "";
+  const ta = document.getElementById("src");
+  const body = ta.value;
+  const suggested = titleFromText(body);
   const name = prompt("Name in library:", suggested || "My song");
-  if (!name) return;
+  if (!name || !name.trim()) return;
+  const named = name.trim();
   const lib = userLib();
-  const id = slugName(name);
+  const id = slugName(named);
   const tempo = currentTempo();
-  lib[id] = { name: name.trim(), body: withTempoLine(body, tempo), tempo };
+  const next = withTitleAndTempo(body, named, tempo);
+  ta.value = next;
+  lib[id] = { name: named, body: next, tempo };
   setUserLib(lib);
   fillLibrary(id);
+  render();
 };
 document.getElementById("libRemove").onclick = () => {
   const id = document.getElementById("scale").value;
@@ -1699,8 +1724,7 @@ document.getElementById("libRemove").onclick = () => {
 };
 document.getElementById("diskSave").onclick = () => {
   const body = document.getElementById("src").value;
-  const first = body.split("\n").find(l => l.startsWith("#"));
-  const name = (first ? first.replace(/^#\s*/, "") : "melody").replace(/[^\w\- ]+/g, "").trim() || "melody";
+  const name = (titleFromText(body) || "melody").replace(/[^\w\- ]+/g, "").trim() || "melody";
   const blob = new Blob([withTempoLine(body, currentTempo())], {type: "text/plain"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
