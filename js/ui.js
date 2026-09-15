@@ -1,10 +1,170 @@
 let APP_CSS = "";
+let lastTokens = [];
+let liveIdx = -1;
 
 function fitInput() {
   const ta = document.getElementById("src");
   if (!ta) return;
   ta.style.height = "auto";
   ta.style.height = Math.max(74, ta.scrollHeight) + "px";
+}
+
+function isLiveTab() {
+  const el = document.getElementById("oneOca");
+  return el && el.checked;
+}
+
+function resetLiveTab() {
+  liveIdx = -1;
+}
+
+function firstSoundIdx(tokens) {
+  const i = tokens.findIndex(t => t.type === "note" || t.type === "rest" || t.type === "tie");
+  return i < 0 ? 0 : i;
+}
+
+function pitchTokenBefore(tokens, idx) {
+  for (let i = idx - 1; i >= 0; i--) {
+    if ((tokens[i].type === "note" || tokens[i].type === "tie") && NOTES.includes(tokens[i].id)) return tokens[i];
+  }
+  return null;
+}
+
+function tallyTokens(tokens) {
+  const problems = [];
+  let notes = 0, outOf = 0, switches = 0, prevCh = null;
+  tokens.forEach(t => {
+    if (t.type === "bar" || t.type === "rest") return;
+    if (t.type === "tie") {
+      if (!t.id || !NOTES.includes(t.id)) problems.push((t.raw || "-") + " (nothing to continue)");
+      return;
+    }
+    if (!NOTES.includes(t.id)) {
+      problems.push(t.raw + " → " + t.id + " (out of A3–G6)");
+      outOf++;
+      return;
+    }
+    notes++;
+    const ch = CHAMBER[t.id];
+    if (prevCh && ch !== prevCh) switches++;
+    prevCh = ch;
+  });
+  return { notes, outOf, switches, problems };
+}
+
+function appendNoteCard(sheet, t, i) {
+  const id = t.id;
+  if (!NOTES.includes(id)) {
+    const r = document.createElement("div"); r.className = "rest";
+    r.style.borderColor = "var(--accent)"; r.style.color = "var(--accent)";
+    r.dataset.i = String(i);
+    r.textContent = (t.raw || id) + " ✕";
+    sheet.appendChild(r);
+    return;
+  }
+  const ch = CHAMBER[id];
+  const card = document.createElement("div");
+  card.className = "card";
+  card.dataset.i = String(i);
+  card.innerHTML = `<div class="compact">${ocarinaSVG(COVER[id] || [], ch)}</div>
+    <div class="meta"><span class="nm">${spelledLabel(t)}</span>
+     <span class="badge ch${ch}">CH ${ch}</span>
+     <span class="dur">${durLabel(t.dur, t.dotted)}</span></div>`;
+  sheet.appendChild(card);
+}
+
+function fillFullSheet(sheet, tokens) {
+  sheet.classList.remove("live");
+  tokens.forEach((t, i) => {
+    if (t.type === "bar") {
+      const b = document.createElement("div"); b.className = "tab-bar"; sheet.appendChild(b); return;
+    }
+    if (t.type === "rest") {
+      const r = document.createElement("div"); r.className = "card rest";
+      r.dataset.i = String(i);
+      r.innerHTML = `<div class="compact">rest</div>
+        <div class="meta"><span></span>
+        <span class="dur">${durLabel(t.dur, t.dotted)}</span></div>`;
+      sheet.appendChild(r); return;
+    }
+    if (t.type === "tie") {
+      if (!t.id || !NOTES.includes(t.id)) {
+        const r = document.createElement("div"); r.className = "rest";
+        r.style.borderColor = "var(--accent)"; r.style.color = "var(--accent)";
+        r.dataset.i = String(i);
+        r.textContent = (t.raw || "-") + " ✕"; sheet.appendChild(r); return;
+      }
+      const r = document.createElement("div"); r.className = "card rest tie";
+      r.dataset.i = String(i);
+      r.innerHTML = `<div class="compact">–</div>
+        <div class="meta"><span class="nm">–</span>
+        <span class="dur">${durLabel(t.dur, t.dotted)}</span></div>`;
+      sheet.appendChild(r); return;
+    }
+    appendNoteCard(sheet, t, i);
+  });
+}
+
+function liveCardHtml(t, tokens, i) {
+  if (t.type === "rest") {
+    const prev = pitchTokenBefore(tokens, i);
+    const id = prev && NOTES.includes(prev.id) ? prev.id : null;
+    const ch = id ? CHAMBER[id] : 1;
+    const svg = ocarinaSVG(id ? (COVER[id] || []) : [], ch);
+    return `<div class="compact">
+        <div class="live-oca">${svg}</div>
+        <div class="rest-over">rest</div>
+      </div>
+      <div class="meta"><span class="nm">rest</span>
+        <span class="dur">${durLabel(t.dur, t.dotted)}</span></div>`;
+  }
+  const id = t.id;
+  if ((t.type === "note" || t.type === "tie") && NOTES.includes(id)) {
+    const ch = CHAMBER[id];
+    return `<div class="compact">${ocarinaSVG(COVER[id] || [], ch)}</div>
+      <div class="meta"><span class="nm">${spelledLabel(t)}</span>
+        <span class="badge ch${ch}">CH ${ch}</span>
+        <span class="dur">${durLabel(t.dur, t.dotted)}</span></div>`;
+  }
+  return `<div class="compact"></div><div class="meta"><span class="nm">${t.raw || ""} ✕</span></div>`;
+}
+
+function fillLiveSheet(sheet, tokens, idx) {
+  sheet.classList.remove("scroll");
+  sheet.classList.add("live");
+  let i = idx;
+  if (i == null || i < 0 || !tokens[i] || tokens[i].type === "bar") i = firstSoundIdx(tokens);
+  if (!tokens.length || i < 0 || !tokens[i] || tokens[i].type === "bar") return;
+  const card = document.createElement("div");
+  const t = tokens[i];
+  card.className = "card live" + (t.type === "rest" ? " is-rest" : "");
+  card.dataset.i = String(i);
+  if (t.id) card.dataset.pitch = t.id;
+  card.innerHTML = liveCardHtml(t, tokens, i);
+  sheet.appendChild(card);
+}
+
+function updateLiveTab(tokens, idx) {
+  const sheet = document.getElementById("sheet");
+  if (!sheet || !isLiveTab()) return;
+  let i = idx;
+  if (i == null || i < 0 || !tokens[i] || tokens[i].type === "bar") i = firstSoundIdx(tokens);
+  const t = tokens[i];
+  if (!t) return;
+  const card = sheet.querySelector(".card.live");
+  const holdSame = card && !card.classList.contains("is-rest") &&
+    (t.type === "note" || t.type === "tie") && t.id && card.dataset.pitch === t.id;
+  if (holdSame) {
+    card.dataset.i = String(i);
+    card.classList.add("now");
+    const dur = card.querySelector(".dur");
+    if (dur) dur.textContent = durLabel(t.dur, t.dotted);
+    return;
+  }
+  sheet.innerHTML = "";
+  fillLiveSheet(sheet, tokens, i);
+  const next = sheet.querySelector(".card.live");
+  if (next) next.classList.add("now");
 }
 
 function render() {
@@ -17,62 +177,24 @@ function render() {
     const typedSwing = swingFromText(src);
     applySwing(typedSwing != null ? typedSwing : 0);
     const tokens = parse(src);
+    lastTokens = tokens;
     drawTokens(tokens);
     const sheet = document.getElementById("sheet");
     const err = document.getElementById("err");
     sheet.innerHTML = "";
-    const problems = [];
-    let notes = 0, outOf = 0, switches = 0, prevCh = null;
-    tokens.forEach((t, i) => {
-      if (t.type === "bar") {
-        const b = document.createElement("div"); b.className = "tab-bar"; sheet.appendChild(b); return;
+    const { notes, switches, problems } = tallyTokens(tokens);
+    if (isLiveTab()) {
+      const scroll = document.getElementById("scrollTabs");
+      if (scroll) { scroll.checked = false; scroll.disabled = true; }
+      fillLiveSheet(sheet, tokens, liveIdx);
+    } else {
+      const scroll = document.getElementById("scrollTabs");
+      if (scroll) {
+        scroll.disabled = false;
+        sheet.classList.toggle("scroll", scroll.checked);
       }
-      if (t.type === "rest") {
-        const r = document.createElement("div"); r.className = "card rest";
-        r.dataset.i = String(i);
-        r.innerHTML = `<div class="compact">rest</div>
-          <div class="meta"><span></span>
-          <span class="dur">${durLabel(t.dur, t.dotted)}</span></div>`;
-        sheet.appendChild(r); return;
-      }
-      if (t.type === "tie") {
-        if (!t.id || !NOTES.includes(t.id)) {
-          problems.push((t.raw || "-") + " (nothing to continue)");
-          const r = document.createElement("div"); r.className = "rest";
-          r.style.borderColor = "var(--accent)"; r.style.color = "var(--accent)";
-          r.dataset.i = String(i);
-          r.textContent = (t.raw || "-") + " ✕"; sheet.appendChild(r); return;
-        }
-        const r = document.createElement("div"); r.className = "card rest tie";
-        r.dataset.i = String(i);
-        r.innerHTML = `<div class="compact">–</div>
-          <div class="meta"><span class="nm">–</span>
-          <span class="dur">${durLabel(t.dur, t.dotted)}</span></div>`;
-        sheet.appendChild(r); return;
-      }
-      const id = t.id;
-      if (!NOTES.includes(id)) {
-        problems.push(t.raw + " → " + id + " (out of A3–G6)");
-        outOf++;
-        const r = document.createElement("div"); r.className = "rest";
-        r.style.borderColor = "var(--accent)"; r.style.color = "var(--accent)";
-        r.dataset.i = String(i);
-        r.textContent = (t.raw || id) + " ✕"; sheet.appendChild(r); return;
-      }
-      notes++;
-      const ch = CHAMBER[id];
-      if (prevCh && ch !== prevCh) switches++;
-      prevCh = ch;
-      const card = document.createElement("div");
-      card.className = "card";
-      card.dataset.i = String(i);
-      const compact = `<div class="compact">${ocarinaSVG(COVER[id] || [], ch)}</div>`;
-      card.innerHTML = compact +
-        `<div class="meta"><span class="nm">${spelledLabel(t)}</span>
-         <span class="badge ch${ch}">CH ${ch}</span>
-         <span class="dur">${durLabel(t.dur, t.dotted)}</span></div>`;
-      sheet.appendChild(card);
-    });
+      fillFullSheet(sheet, tokens);
+    }
     err.textContent = problems.join(" · ");
     document.getElementById("stats").textContent =
       notes ? `${notes} notes · ${switches} chamber switch${switches===1?"":"es"}` : "Type or click a melody.";
@@ -97,21 +219,26 @@ function tokenSeconds(tokOrDur, dotted) {
 }
 
 function highlightToken(i, noteId) {
+  liveIdx = i;
   document.querySelectorAll(".tok.now, .card.now, .rest.now, .key.now").forEach(el => el.classList.remove("now"));
   const tok = document.querySelector('.tok[data-i="' + i + '"]');
   if (tok) tok.classList.add("now");
-  const card = document.querySelector('.card[data-i="' + i + '"], .rest[data-i="' + i + '"]');
-  if (card) {
-    card.classList.add("now");
-    const sheet = document.getElementById("sheet");
-    if (sheet && sheet.classList.contains("scroll")) {
-      const wrap = sheet.parentElement;
-      if (wrap) {
-        const c = card.getBoundingClientRect();
-        const w = wrap.getBoundingClientRect();
-        const inset = 16;
-        const delta = c.left - (w.left + inset);
-        wrap.scrollTo({ left: Math.max(0, wrap.scrollLeft + delta), behavior: "smooth" });
+  if (isLiveTab()) {
+    updateLiveTab(lastTokens.length ? lastTokens : parse(document.getElementById("src").value), i);
+  } else {
+    const card = document.querySelector('.card[data-i="' + i + '"], .rest[data-i="' + i + '"]');
+    if (card) {
+      card.classList.add("now");
+      const sheet = document.getElementById("sheet");
+      if (sheet && sheet.classList.contains("scroll")) {
+        const wrap = sheet.parentElement;
+        if (wrap) {
+          const c = card.getBoundingClientRect();
+          const w = wrap.getBoundingClientRect();
+          const inset = 16;
+          const delta = c.left - (w.left + inset);
+          wrap.scrollTo({ left: Math.max(0, wrap.scrollLeft + delta), behavior: "smooth" });
+        }
       }
     }
   }
@@ -242,9 +369,12 @@ function pageCss() {
 }
 
 function printableHtml() {
-  const sheet = document.getElementById("sheet").innerHTML;
   const title = document.getElementById("title").textContent || "Bass C Triple tabs";
   const css = pageCss();
+  const tmp = document.createElement("div");
+  tmp.className = "sheet";
+  fillFullSheet(tmp, lastTokens.length ? lastTokens : parse(document.getElementById("src").value));
+  const sheet = tmp.innerHTML;
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
 <style>${css}
 body{background:#fff}
@@ -305,11 +435,14 @@ function wireUi() {
   document.getElementById("clear").onclick = () => {
     document.getElementById("src").value = "";
     clearLibrarySelection();
+    resetLiveTab();
     render();
   };
   document.getElementById("src").addEventListener("input", render);
   document.getElementById("bigSmall").onchange = render;
+  document.getElementById("oneOca").onchange = render;
   document.getElementById("scrollTabs").onchange = () => {
+    if (isLiveTab()) return;
     document.getElementById("sheet").classList.toggle("scroll", document.getElementById("scrollTabs").checked);
   };
 }

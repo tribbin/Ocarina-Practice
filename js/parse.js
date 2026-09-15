@@ -79,7 +79,7 @@ function octSub(n) {
 }
 
 function spelledLabel(t) {
-  if (!t || t.type !== "note") return "";
+  if (!t || (t.type !== "note" && t.type !== "tie")) return "";
   const letter = t.spellLetter || (t.id && t.id[0]) || "";
   const acc = t.spellAcc === "#" ? "\u266f" : t.spellAcc === "b" ? "\u266d" : "";
   const oct = t.spellOct != null ? t.spellOct : ((String(t.id || "").match(/\d+$/) || [])[0] || "");

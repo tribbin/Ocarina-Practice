@@ -204,6 +204,7 @@ function applySwing(n) {
 
 function loadLibraryItem(id) {
   if (typeof stopMelody === "function") stopMelody();
+  if (typeof resetLiveTab === "function") resetLiveTab();
   let tempo = currentTempo();
   let swing = currentSwing();
   if (BUILTIN[id]) {
