@@ -23,7 +23,7 @@ function slugName(name) {
 
 function fillLibrary(selectId) {
   const sel = document.getElementById("scale");
-  const cur = selectId || sel.value;
+  const cur = selectId !== undefined ? selectId : sel.value;
   sel.innerHTML = "";
   const groups = {};
   Object.keys(BUILTIN).forEach(id => {
@@ -48,6 +48,14 @@ function fillLibrary(selectId) {
     sel.appendChild(g2);
   }
   if (cur && [...sel.options].some(o => o.value === cur)) sel.value = cur;
+  else if (!cur) sel.selectedIndex = -1;
+  syncLibraryMenu();
+}
+
+function clearLibrarySelection() {
+  const sel = document.getElementById("scale");
+  if (!sel || !sel.value) return;
+  sel.selectedIndex = -1;
   syncLibraryMenu();
 }
 
@@ -219,6 +227,7 @@ function loadLibraryItem(id) {
 function wireLibrary() {
   wireLibraryDropdown();
   document.getElementById("scale").onchange = e => loadLibraryItem(e.target.value);
+  document.getElementById("src").addEventListener("input", clearLibrarySelection);
   document.getElementById("libSave").onclick = () => {
     const ta = document.getElementById("src");
     const body = ta.value;
@@ -279,6 +288,7 @@ function wireLibrary() {
       if (tpo) applyTempo(tpo);
       sw = sw != null ? sw : swingFromText(text);
       if (sw != null) applySwing(sw);
+      clearLibrarySelection();
       render();
     };
     reader.readAsText(f);

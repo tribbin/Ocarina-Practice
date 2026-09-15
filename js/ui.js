@@ -150,6 +150,7 @@ function addNote(id) {
   const ta = document.getElementById("src");
   const needsSpace = ta.value.length && !/\s$/.test(ta.value);
   ta.value += (needsSpace ? " " : "") + pretty(id);
+  clearLibrarySelection();
   render();
 }
 
@@ -269,7 +270,11 @@ function wireUi() {
     a.click();
     URL.revokeObjectURL(a.href);
   };
-  document.getElementById("clear").onclick = () => { document.getElementById("src").value = ""; render(); };
+  document.getElementById("clear").onclick = () => {
+    document.getElementById("src").value = "";
+    clearLibrarySelection();
+    render();
+  };
   document.getElementById("src").addEventListener("input", render);
   document.getElementById("bigSmall").onchange = render;
   document.getElementById("scrollTabs").onchange = () => {
