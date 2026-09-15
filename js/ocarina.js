@@ -23,12 +23,13 @@ function ocarinaSVG(covered, chamber) {
     const holes = (window.FING && FING.holes) || {};
     clone.querySelectorAll("[data-hole]").forEach(el => {
       const hid = el.getAttribute("data-hole") || "";
-      const meta = holes[hid] || {};
-      // A hole is not drawn if it's flagged ignored (tuning holes, dead holes),
-      // or if it's only active on certain chambers and this isn't one of them.
-      const activeOn = meta.active_on_chambers;
+      const meta = holes[hid];
+      // A hole is not drawn if it's absent from this instrument's fingering data
+      // (e.g. a chamber this ocarina doesn't have), flagged ignored (tuning /
+      // dead holes), or only active on chambers other than the current one.
+      const activeOn = meta && meta.active_on_chambers;
       const inactive = Array.isArray(activeOn) && !activeOn.includes(chamber);
-      if (meta.ignored || inactive) {
+      if (!meta || meta.ignored || inactive) {
         el.style.fill = "none";
         el.style.strokeDasharray = "1.2 1";
         return;
