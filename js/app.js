@@ -37,7 +37,7 @@ async function boot() {
     wireUi();
     fillLibrary("major");
     buildKB();
-    render();
+    loadLibraryItem("major");
   } catch (err) {
     const e = document.getElementById("err");
     if (e) {
