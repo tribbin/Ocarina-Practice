@@ -1,4 +1,5 @@
 const LIB_KEY = "oco-bass-c-library";
+const SHOW_HIDDEN_KEY = "oco-bass-c-show-hidden";
 let BUILTIN = {};
 
 function initBuiltin(songs) {
@@ -38,13 +39,24 @@ function songOutOfRange(id) {
   return n;
 }
 
+// Songs flagged hidden that are currently revealed via the library menu toggle.
+function showHiddenSongs() {
+  return localStorage.getItem(SHOW_HIDDEN_KEY) === "1";
+}
+
+function setShowHidden(v) {
+  localStorage.setItem(SHOW_HIDDEN_KEY, v ? "1" : "0");
+}
+
 function fillLibrary(selectId) {
   const sel = document.getElementById("scale");
   const cur = selectId !== undefined ? selectId : sel.value;
   sel.innerHTML = "";
   const groups = {};
   Object.keys(BUILTIN).forEach(id => {
-    const gname = BUILTIN[id].group || "Built-in";
+    const item = BUILTIN[id];
+    if (item.hidden && !showHiddenSongs()) return;
+    const gname = item.group || "Built-in";
     if (!groups[gname]) {
       groups[gname] = document.createElement("optgroup");
       groups[gname].label = gname;
@@ -52,7 +64,7 @@ function fillLibrary(selectId) {
     }
     const o = document.createElement("option");
     o.value = id;
-    o.textContent = BUILTIN[id].name;
+    o.textContent = item.hidden ? (item.name || id) + " (hidden)" : (item.name || id);
     groups[gname].appendChild(o);
   });
   const user = userLib();
@@ -136,6 +148,25 @@ function syncLibraryMenu() {
       menu.appendChild(libraryOptionEl(node, cur));
     }
   }
+  const foot = document.createElement("div");
+  foot.className = "lib-dd-foot";
+  const cb = document.createElement("input");
+  cb.type = "checkbox";
+  cb.checked = showHiddenSongs();
+  cb.addEventListener("change", () => {
+    setShowHidden(cb.checked);
+    fillLibrary(sel.value);
+    const again = document.getElementById("libDdMenu");
+    if (again && !again.hidden) {
+      const f = again.querySelector(".lib-dd-foot input");
+      if (f) f.focus();
+    }
+  });
+  const lab = document.createElement("label");
+  lab.appendChild(cb);
+  lab.appendChild(document.createTextNode(" Show hidden songs"));
+  foot.appendChild(lab);
+  menu.appendChild(foot);
 }
 
 function libraryOptionEl(opt, cur) {

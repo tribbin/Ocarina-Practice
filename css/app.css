@@ -334,6 +334,12 @@ h2#title { margin: 8px 0 10px; font-size: 18px; }
 .lib-dd-opt.has-oor .lib-dd-name { color: var(--accent); }
 .lib-dd-opt:hover, .lib-dd-opt:focus-visible { background: var(--paper-2); }
 .lib-dd-opt[aria-selected="true"] { font-weight: 700; background: var(--paper); }
+.lib-dd-foot {
+  border-top: 1px solid var(--line); margin-top: 6px; padding: 8px 12px 4px;
+  font: 12px/1.3 inherit; color: var(--clay-dark);
+}
+.lib-dd-foot label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.lib-dd-foot input { margin: 0; accent-color: var(--accent); cursor: pointer; }
 
 .pkey .ch-line { height: 6px; margin-top: 3px; background: #ddd4c8; border-radius: 1px; }
 .pkey .ch-line.c1 { background: var(--ch1); }
