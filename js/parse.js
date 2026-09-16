@@ -1,21 +1,21 @@
 function parse(src) {
   const tokens = [];
-  const re = /([A-Ga-g])([#b])?(\d)?(\/\d+\.?)?|(\|)|(r)(\/\d+\.?)?|(-)(\/\d+\.?)?|(~)|(#[^\n]*)/g;
+  const re = /([A-Ga-g])([#b])?(\d)?(\/\d+\.?)?(!)?|(\|)|(r)(\/\d+\.?)?|(-)(\/\d+\.?)?|(~)|(#[^\n]*)/g;
   let m, lastOct = 4, lastPitch = null, canTie = false, pendingSlide = false;
   const text = src.replace(/[–—]/g, "|");
   while ((m = re.exec(text))) {
-    if (m[11]) continue;
-    if (m[10]) { if (lastPitch) pendingSlide = true; continue; }
-    if (m[5]) { tokens.push({type:"bar"}); continue; }
-    if (m[6]) {
-      const pd = parseDur(m[7]);
+    if (m[12]) continue;
+    if (m[11]) { if (lastPitch) pendingSlide = true; continue; }
+    if (m[6]) { tokens.push({type:"bar"}); continue; }
+    if (m[7]) {
+      const pd = parseDur(m[8]);
       tokens.push({type:"rest", dur: pd.dur, dotted: pd.dotted, beats: pd.beats});
       canTie = false;
       pendingSlide = false;
       continue;
     }
-    if (m[8]) {
-      const pd = parseDur(m[9]);
+    if (m[9]) {
+      const pd = parseDur(m[10]);
       if (canTie && lastPitch) {
         // Continuation of previous note.
         const t = {type:"tie", dur: pd.dur, dotted: pd.dotted, beats: pd.beats, raw: m[0], id: lastPitch.id};
@@ -48,6 +48,7 @@ function parse(src) {
       type:"note", id: core + oct, dur, dotted: pd.dotted, beats: pd.beats, raw: m[0],
       spellLetter: letter, spellAcc: acc, spellOct
     };
+    if (m[5]) tok.staccato = true;
     if (pendingSlide && lastPitch) {
       tok.slide = true;
       tok.slideFrom = lastPitch.id;

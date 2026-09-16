@@ -167,7 +167,7 @@ function appendNoteCard(sheet, t, i) {
   card.className = "card";
   card.dataset.i = String(i);
   card.innerHTML = `<div class="compact">${ocarinaSVG(COVER[id] || [], ch)}</div>
-    <div class="meta"><span class="nm">${spelledLabel(t)}</span>
+    <div class="meta"><span class="nm">${spelledLabel(t)}${t.staccato ? '<span class="stac-mark" title="staccato (short, with a pause)">\u2022</span>' : ''}</span>
      <span class="badge ch${ch}">CH ${ch}</span>
      <span class="dur">${durLabel(t.dur, t.dotted)}</span></div>`;
   sheet.appendChild(card);
@@ -234,7 +234,7 @@ function liveCardHtml(t, tokens, i) {
   if ((t.type === "note" || t.type === "tie") && NOTES.includes(id)) {
     const ch = CHAMBER[id];
     return `<div class="compact">${ocarinaSVG(COVER[id] || [], ch)}</div>
-      <div class="meta"><span class="nm">${spelledLabel(t)}</span>
+      <div class="meta"><span class="nm">${spelledLabel(t)}${t.staccato ? '<span class="stac-mark" title="staccato (short, with a pause)">\u2022</span>' : ''}</span>
         <span class="badge ch${ch}">CH ${ch}</span>
         <span class="dur">${combinedDurLabel(tokens, i)}</span></div>`;
   }
@@ -565,8 +565,10 @@ function buildTokenEl(t, i) {
   } else {
     el.className = "tok ch" + CHAMBER[t.id];
     const slide = t.slide ? `<span class="slide-mark" title="slide from ${pretty(t.slideFrom)}">\u21DD</span>` : "";
-    el.innerHTML = `${slide}${spelledLabel(t)} <span class="td">${durLabel(t.dur, t.dotted)}</span>`;
+    const stac = t.staccato ? `<span class="stac-mark" title="staccato (short, with a pause)">\u2022</span>` : "";
+    el.innerHTML = `${slide}${spelledLabel(t)}${stac} <span class="td">${durLabel(t.dur, t.dotted)}</span>`;
     if (t.slide) el.classList.add("slide");
+    if (t.staccato) el.classList.add("staccato");
     el.addEventListener("mouseenter", () => hoverPreview(i, t));
     el.addEventListener("mouseleave", () => {
       if (!isMelodyPlaying()) clearHighlight();

@@ -618,9 +618,14 @@ function scheduleMelody(when) {
   if (pitched && melodyIdx > melodyHoldUntil) {
     const hold = soundingGridBeats(melodyTokens, melodyIdx) * quarterSec();
     const slideFrom = (tok.slide && NOTES.includes(tok.slideFrom)) ? tok.slideFrom : null;
-    playNoteAt(tok.id, when, Math.max(0.12, hold * 0.92), melodyBag, slideFrom);
+    // Staccato: sound only a short portion of the slot, leaving an audible gap
+    // (an implied pause) before the next note. Never applies to slurred/tied notes.
+    const soundHold = tok.staccato
+      ? Math.min(hold * 0.4, 0.16)
+      : hold * 0.92;
+    playNoteAt(tok.id, when, Math.max(0.09, soundHold), melodyBag, slideFrom);
     melodyHoldUntil = lastHoldIndex(melodyTokens, melodyIdx);
-    lastHoldSec = Math.max(0.12, hold * 0.92);
+    lastHoldSec = Math.max(0.09, soundHold);
     didSound = true;
   }
   const hlIdx = melodyIdx, hlId = tok.id, hlDur = lastHoldSec, hlSound = didSound;

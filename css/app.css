@@ -131,6 +131,13 @@ button.tiny { padding: 4px 8px; font-size: 12px; }
 .tok.tie { opacity: .78; }
 .tok.slide { position: relative; }
 .tok .slide-mark { font-weight: 800; margin-right: 2px; opacity: .85; }
+.stac-mark { font-weight: 900; margin-left: 1px; opacity: .9; }
+.tok .stac-mark { vertical-align: super; font-size: .8em; }
+.tok.staccato { font-style: italic; }
+.meta .nm .stac-mark {
+  display: inline-block; width: 0; overflow: visible; line-height: 0;
+  position: relative; top: -0.5em; font-size: .7em;
+}
 .sheet.scroll .card.rest { flex: 0 0 260px; width: 260px; }
 .compact { display: block; line-height: 0; background: #f3e6d6; aspect-ratio: 1; }
 .official { display: none; }
