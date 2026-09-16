@@ -333,7 +333,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     const dur = Math.max(0.12, durSec);
     const tail = 0.03;
     const slideFrom = slideFromId && slideFromId !== id ? freqOf(slideFromId) : 0;
-    const glide = slideFrom ? Math.min(Math.max(0.05, dur * 0.35), 0.15) : 0;
+    const glide = slideFrom ? Math.min(Math.max(0.0125, dur * 0.0875), 0.0375) : 0; // fast bend (4x the old portamento)
     // A note flowing directly into a following ~ slide holds full level right
     // up to the junction, then crossfades briefly PAST it (the slide note
     // begins at the same pitch, so the seam is inaudible — no gap, no re-blow).
@@ -429,7 +429,15 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // ocarina. A hard absolute cap (e.g. 2800) collapses cutoff/f on high
     // notes, thinning the tone and — with the edge/air partials below — making
     // it read as a bowed string. A high ceiling only guards against aliasing.
-    lp.frequency.setValueAtTime(Math.min(9000, Math.max(freq, slideFrom || freq) * 4.2), t0);
+    if (slideFrom) {
+      // Timbre morphs WITH the glide so the landed note speaks with the same
+      // brightness a fresh onset of that pitch would have (down-slides no
+      // longer stay stubbornly bright, up-slides no longer start over-bright).
+      lp.frequency.setValueAtTime(Math.min(9000, slideFrom * 4.2), t0);
+      lp.frequency.linearRampToValueAtTime(Math.min(9000, freq * 4.2), t0 + glide);
+    } else {
+      lp.frequency.setValueAtTime(Math.min(9000, freq * 4.2), t0);
+    }
     lp.Q.value = 0.7;
     // Tremolo node: vibrato modulates breath pressure, which on a Helmholtz
     // resonator changes pitch AND loudness together (in phase). The tone runs
@@ -445,9 +453,14 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     osc.setPeriodicWave(wave);
     if (slideFrom) {
       // ~ Legato portamento: pick the pitch up exactly where the prior note
-      // left off and bend smoothly to the target.
+      // left off, bend fast to the target, then settle through the same tiny
+      // overshoot a freshly blown note has, so the landed pitch reads + sounds
+      // identically.
+      const over = 1.002 + 0.004 * effort;
+      const settle = Math.min(0.05, Math.max(0.02, dur * 0.2));
       osc.frequency.setValueAtTime(slideFrom, t0);
-      osc.frequency.linearRampToValueAtTime(freq, t0 + glide);
+      osc.frequency.linearRampToValueAtTime(freq * over, t0 + glide);
+      osc.frequency.exponentialRampToValueAtTime(freq, t0 + glide + settle);
     } else {
       // Airflow "catch up" onset: the pitch begins slightly flat and blooms
       // to target with a tiny overshoot — a brief breath chiff, NOT a long
@@ -485,7 +498,13 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     const hiF = Math.max(0, Math.min(1, (freq - 660) / (1568 - 660))); // 0 below E5 → 1 by G6
     const air = ctx.createOscillator();
     air.type = "sine";
-    air.frequency.setValueAtTime(freq * 2.01, t0);
+    if (slideFrom) {
+      // Keep the same harmonic ratio while the pitch morphs (no beating).
+      air.frequency.setValueAtTime(slideFrom * 2.01, t0);
+      air.frequency.linearRampToValueAtTime(freq * 2.01, t0 + glide);
+    } else {
+      air.frequency.setValueAtTime(freq * 2.01, t0);
+    }
     const airGain = ctx.createGain();
     const airLevel = 0.02 * (1 - 0.75 * hiF);
     airGain.gain.setValueAtTime(0.0001, t0);
@@ -542,7 +561,12 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     const edge = ctx.createOscillator();
     edge.type = "sine";
     const detune = 1.012 + Math.random() * 0.008 * (1 - hiF); // tighter to pitch up high
-    edge.frequency.setValueAtTime(freq * detune, t0);
+    if (slideFrom) {
+      edge.frequency.setValueAtTime(slideFrom * detune, t0);
+      edge.frequency.linearRampToValueAtTime(freq * detune, t0 + glide);
+    } else {
+      edge.frequency.setValueAtTime(freq * detune, t0);
+    }
     // Slow, subtle wander so it doesn't sound like a locked pure tone.
     const wander = ctx.createOscillator();
     wander.type = "sine";
@@ -559,7 +583,12 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // A little breathiness on the whistle itself via a gentle bandpass.
     const edgeBp = ctx.createBiquadFilter();
     edgeBp.type = "bandpass";
-    edgeBp.frequency.value = freq * detune;
+    if (slideFrom) {
+      edgeBp.frequency.setValueAtTime(slideFrom * detune, t0);
+      edgeBp.frequency.linearRampToValueAtTime(freq * detune, t0 + glide);
+    } else {
+      edgeBp.frequency.value = freq * detune;
+    }
     edgeBp.Q.value = 4;
     edge.connect(edgeBp); edgeBp.connect(edgeGain); edgeGain.connect(master);
     edge.start(t0); edge.stop(t0 + dur + tail);
@@ -569,13 +598,16 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // Helmholtz cavity catches the jet. Its color is set by chamber size: big
     // (bass) chambers give a dark, muffled, longer "phh"; small chambers a
     // bright, airy "tss". More open holes = leakier, brighter, breathier.
-    // A ~ slide note CONTINUES the previous note's breath, so it gets no chiff.
-    if (!slideFrom) {
-      const { sizeF: chSize, openF: chOpen } = art;
-      // Cap to the note's release start so the chiff always fades to zero before
-      // `master` cuts the note. On short notes (fast 16ths) an uncapped chiff is
-      // still at high level when master fades at t0+dur → truncation click.
-      const chiffLen = Math.min((0.11 + chSize * 0.24) * (0.85 + 0.15 * chOpen), relStart - 0.005);
+    // A ~ slide note CONTINUES the previous note's breath, so it gets no
+    // tongued burst — instead a softer chiff fires when the glide LANDS, so
+    // the arrived tone carries the same color as a freshly blown one.
+    const chOff = slideFrom ? glide : 0;
+    const { sizeF: chSize, openF: chOpen } = art;
+    // Cap to the note's release start so the chiff always fades to zero before
+    // `master` cuts the note. On short notes (fast 16ths) an uncapped chiff is
+    // still at high level when master fades at t0+dur → truncation click.
+    const chiffLen = Math.min((0.11 + chSize * 0.24) * (0.85 + 0.15 * chOpen), relStart - chOff - 0.005);
+    if (!slideFrom || chiffLen > 0.035) { // slides need room for a soft burst
       // Chamber character comes from WHERE the noise energy sits. A big (bass)
       // chamber is a dark, muffled "phh"; a small chamber a bright, airy "tss".
       // Use a resonant lowpass with a strongly chamber-dependent cutoff and a
@@ -592,22 +624,22 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       const chiffLp = ctx.createBiquadFilter();
       chiffLp.type = "lowpass";
       chiffLp.Q.value = 0.4; // non-resonant: avoids a chirp/ring on bright high-chamber sweeps
-      chiffLp.frequency.setValueAtTime(startHz, t0);
-      chiffLp.frequency.exponentialRampToValueAtTime(endHz, t0 + chiffLen * 0.6);
+      chiffLp.frequency.setValueAtTime(startHz, t0 + chOff);
+      chiffLp.frequency.exponentialRampToValueAtTime(endHz, t0 + chOff + chiffLen * 0.6);
       const chiffGain = ctx.createGain();
-      const chiffPeak = 0.018 - 0.0812 * chSize + 0.1412 * chSize * chSize; // low strong, mid softest, high modest
+      const chiffPeak = (0.018 - 0.0812 * chSize + 0.1412 * chSize * chSize) * (slideFrom ? 0.75 : 1);
       // Gentle attack, then a sustain-and-decay so the breathy onset lingers as
       // the tone establishes. The tail uses a linear ramp that actually reaches
       // zero (exponential ramps never do) with a small guard before the source
       // stops, avoiding a truncation click that reads as "clipping" on short
       // (high-chamber) bursts.
       const chAtk = Math.max(0.012, Math.min(0.025, chiffLen * 0.3)); // softer attack, min 12ms
-      chiffGain.gain.setValueAtTime(0.0001, t0);
-      chiffGain.gain.linearRampToValueAtTime(chiffPeak, t0 + chAtk);
-      chiffGain.gain.linearRampToValueAtTime(chiffPeak * 0.85, t0 + chiffLen * 0.5);
-      chiffGain.gain.linearRampToValueAtTime(0.0, t0 + chiffLen); // reach true zero
+      chiffGain.gain.setValueAtTime(0.0001, t0 + chOff);
+      chiffGain.gain.linearRampToValueAtTime(chiffPeak, t0 + chOff + chAtk);
+      chiffGain.gain.linearRampToValueAtTime(chiffPeak * 0.85, t0 + chOff + chiffLen * 0.5);
+      chiffGain.gain.linearRampToValueAtTime(0.0, t0 + chOff + chiffLen); // reach true zero
       chiffSrc.connect(chiffHp); chiffHp.connect(chiffLp); chiffLp.connect(chiffGain); chiffGain.connect(master);
-      chiffSrc.start(t0); chiffSrc.stop(t0 + chiffLen + 0.02);
+      chiffSrc.start(t0 + chOff); chiffSrc.stop(t0 + chOff + chiffLen + 0.02);
     }
 
     // Overblown-mode ONSET overtone ("blowing on a bottle"): when the jet first
@@ -617,16 +649,19 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // through a bandpass centered on the octave (airy character) plus a faint
     // sine for pitch definition. It speaks at the onset and decays as the
     // fundamental blooms in; bigger/breathier attacks (more effort) let it
-    // speak a touch longer and louder. Skipped on ~ slide notes (no re-blow).
+    // speak a touch longer and louder. A ~ slide note fires its bloom (softer)
+    // when the glide lands, so the arrived tone matches a fresh onset's color.
     const otF = freq * 2;
-    if (!slideFrom && otF < ctx.sampleRate * 0.45) { // guard against aliasing on the very top notes
-      const otDur = Math.max(0.04, Math.min(relStart - 0.005, 0.22 + 0.14 * effort)); // longer, breathy bloom
-      const otPeak = 0.12 + 0.08 * effort; // toned down from the audibility test
+    const otOff = slideFrom ? glide : 0;
+    const otRoom = relStart - otOff - 0.005;
+    if (otF < ctx.sampleRate * 0.45 && (!slideFrom || otRoom > 0.03)) { // guard against aliasing on the very top notes
+      const otDur = Math.max(slideFrom ? 0.03 : 0.04, Math.min(otRoom, 0.22 + 0.14 * effort)); // longer, breathy bloom
+      const otPeak = (0.12 + 0.08 * effort) * (slideFrom ? 0.85 : 1); // toned down from the audibility test
       // Shared onset envelope: fast in, exponential collapse (the mode "loses").
       const otGain = ctx.createGain();
-      otGain.gain.setValueAtTime(0.0001, t0);
-      otGain.gain.linearRampToValueAtTime(otPeak, t0 + Math.min(0.02, otDur * 0.25));
-      otGain.gain.exponentialRampToValueAtTime(0.0001, t0 + otDur);
+      otGain.gain.setValueAtTime(0.0001, t0 + otOff);
+      otGain.gain.linearRampToValueAtTime(otPeak, t0 + otOff + Math.min(0.02, otDur * 0.25));
+      otGain.gain.exponentialRampToValueAtTime(0.0001, t0 + otOff + otDur);
       // Connect PAST master's attack envelope (which is near-zero during the
       // onset and would swallow this transient) straight to the output bus.
       otGain.connect(getReverbBus(ctx));
@@ -638,25 +673,25 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       const otBp = ctx.createBiquadFilter();
       otBp.type = "bandpass";
       otBp.Q.value = 18; // strongly pitched: airy overtone, not white noise
-      otBp.frequency.setValueAtTime(otF * 1.02, t0);
-      otBp.frequency.exponentialRampToValueAtTime(otF, t0 + otDur * 0.7);
+      otBp.frequency.setValueAtTime(otF * 1.02, t0 + otOff);
+      otBp.frequency.exponentialRampToValueAtTime(otF, t0 + otOff + otDur * 0.7);
       const otNoise = ctx.createBufferSource();
       otNoise.buffer = getChiffBuffer(ctx);
       const otNoiseGain = ctx.createGain();
       otNoiseGain.gain.value = 0.35; // quiet: just a breathy edge on the overtone
       otNoise.connect(otBp); otBp.connect(otNoiseGain); otNoiseGain.connect(otGain);
-      otNoise.start(t0); otNoise.stop(t0 + otDur + 0.02);
+      otNoise.start(t0 + otOff); otNoise.stop(t0 + otOff + otDur + 0.02);
 
       // Sine overtone at the octave — the MAIN pitched voice of the transient,
       // a hair sharp sagging onto the true octave.
       const ot = ctx.createOscillator();
       ot.type = "sine";
-      ot.frequency.setValueAtTime(otF * 1.004, t0);
-      ot.frequency.linearRampToValueAtTime(otF, t0 + otDur);
+      ot.frequency.setValueAtTime(otF * 1.004, t0 + otOff);
+      ot.frequency.linearRampToValueAtTime(otF, t0 + otOff + otDur);
       const otSine = ctx.createGain();
       otSine.gain.value = 1.0; // dominant layer
       ot.connect(otSine); otSine.connect(otGain);
-      ot.start(t0); ot.stop(t0 + otDur + 0.02);
+      ot.start(t0 + otOff); ot.stop(t0 + otOff + otDur + 0.02);
 
       if (bag) bag.push({
         stop() { try { ot.stop(); } catch (e) {} try { otNoise.stop(); } catch (e) {} },
