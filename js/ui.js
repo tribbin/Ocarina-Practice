@@ -813,11 +813,12 @@ function wireUi() {
   const fsBtn = document.getElementById("fullscreen");
   if (fsBtn) fsBtn.onclick = () => {
     // Full screen keeps whatever display is active (grid/scroll/single all
-    // fullscreen fine). Only Zen forces the single-ocarina view — and devices
-    // without the Fullscreen API (e.g. iPhone Safari) get the zen fallback,
-    // since it's the only way they can go chrome-less.
+    // fullscreen fine); only Zen forces the single-ocarina view. Without the
+    // Fullscreen API (e.g. iPhone Safari / ?nofs=1) the button still gets a
+    // chrome-less view via the CSS fallback — without the zen behaviour.
+    if (document.body.classList.contains("zen-fallback")) { exitFullscreenFallback(); return; }
     const panel = document.getElementById("tabPanel");
-    if (canFullscreen(panel)) toggleFullscreen(panel); else toggleZen();
+    if (canFullscreen(panel)) toggleFullscreen(panel); else enterFullscreenFallback();
   };
   document.addEventListener("mousemove", revealZenUi);
   wireZen();
@@ -957,9 +958,21 @@ function enterZen() {
     (panel.requestFullscreen || panel.webkitRequestFullscreen).call(panel);
   } else {
     // Fullscreen API unavailable (e.g. Safari on iPhone): use CSS fallback.
-    document.body.classList.add("zen-fallback");
-    if (window.onZenChange) window.onZenChange();
+    enterFullscreenFallback();
   }
+}
+
+// Plain full screen on devices without the Fullscreen API: the same CSS
+// fallback as zen, but display-agnostic (no forced single view, no zen UI).
+function enterFullscreenFallback() {
+  document.body.classList.add("zen-fallback");
+  if (window.onZenChange) window.onZenChange();
+}
+
+function exitFullscreenFallback() {
+  if (!document.body.classList.contains("zen-fallback")) return;
+  document.body.classList.remove("zen-fallback");
+  if (window.onZenChange) window.onZenChange();
 }
 
 function exitZen() {
