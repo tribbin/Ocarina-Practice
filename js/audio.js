@@ -42,6 +42,17 @@ function lastHoldIndex(tokens, idx) {
   return last;
 }
 
+// Does the bar starting at `idx` contain at least one struck note? Used to
+// suppress the metronome tick on bars that are only rests/ties (e.g. a
+// trailing pause), where a lone downbeat click sounds odd.
+function barHasNote(tokens, idx) {
+  for (let i = idx; i < tokens.length; i++) {
+    if (tokens[i].type === "bar") return false;
+    if (tokens[i].type === "note") return true;
+  }
+  return false;
+}
+
 function swungBeats(tok, pos) {
   const beats = tokenGridBeats(tok);
   const s = (typeof currentSwing === "function" ? currentSwing() : 0) / 100;
@@ -794,7 +805,7 @@ function scheduleMelody(when) {
       }
     }
     const noteWhen = melodyNextTime;
-    if (atBar && tickEnabled()) playTickAt(noteWhen, melodyBag);
+    if (atBar && tickEnabled() && barHasNote(melodyTokens, melodyIdx)) playTickAt(noteWhen, melodyBag);
     const tok = melodyTokens[melodyIdx];
     const step = Math.max(0.001, swungBeats(tok, melodyPos) * quarterSec()); // floor guards against a 0-beat token spinning the loop
     melodyPos += tokenGridBeats(tok);

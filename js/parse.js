@@ -1,6 +1,6 @@
 function parse(src) {
   const tokens = [];
-  const re = /([A-Ga-g])([#b])?(\d)?(\/\d+\.?)?(!)?|(\|)|(r)(\/\d+\.?)?|(-)(\/\d+\.?)?|(~)|(#[^\n]*)/g;
+  const re = /([A-Ga-g])([#b])?(\d)?(\/\d+\.?t?)?(!)?|(\|)|(r)(\/\d+\.?t?)?|(-)(\/\d+\.?t?)?|(~)|(#[^\n]*)/g;
   let m, lastOct = 4, lastPitch = null, canTie = false, pendingSlide = false;
   const text = src.replace(/[–—]/g, "|");
   while ((m = re.exec(text))) {
@@ -9,7 +9,7 @@ function parse(src) {
     if (m[6]) { tokens.push({type:"bar"}); continue; }
     if (m[7]) {
       const pd = parseDur(m[8]);
-      tokens.push({type:"rest", dur: pd.dur, dotted: pd.dotted, beats: pd.beats});
+      tokens.push({type:"rest", dur: pd.dur, dotted: pd.dotted, triplet: pd.triplet, beats: pd.beats});
       canTie = false;
       pendingSlide = false;
       continue;
@@ -18,14 +18,14 @@ function parse(src) {
       const pd = parseDur(m[10]);
       if (canTie && lastPitch) {
         // Continuation of previous note.
-        const t = {type:"tie", dur: pd.dur, dotted: pd.dotted, beats: pd.beats, raw: m[0], id: lastPitch.id};
+        const t = {type:"tie", dur: pd.dur, dotted: pd.dotted, triplet: pd.triplet, beats: pd.beats, raw: m[0], id: lastPitch.id};
         t.spellLetter = lastPitch.spellLetter;
         t.spellAcc = lastPitch.spellAcc;
         t.spellOct = lastPitch.spellOct;
         tokens.push(t);
       } else {
         // Continuation of previous rest (or leading gap): extend as a rest.
-        tokens.push({type:"rest", dur: pd.dur, dotted: pd.dotted, beats: pd.beats, raw: m[0]});
+        tokens.push({type:"rest", dur: pd.dur, dotted: pd.dotted, triplet: pd.triplet, beats: pd.beats, raw: m[0]});
       }
       pendingSlide = false;
       continue;
@@ -45,7 +45,7 @@ function parse(src) {
       core = n; oct += d;
     }
     const tok = {
-      type:"note", id: core + oct, dur, dotted: pd.dotted, beats: pd.beats, raw: m[0],
+      type:"note", id: core + oct, dur, dotted: pd.dotted, triplet: pd.triplet, beats: pd.beats, raw: m[0],
       spellLetter: letter, spellAcc: acc, spellOct
     };
     if (m[5]) tok.staccato = true;
@@ -62,15 +62,17 @@ function parse(src) {
 }
 
 function parseDur(spec) {
-  if (!spec) return { dur: 4, dotted: false, beats: 1 };
+  if (!spec) return { dur: 4, dotted: false, triplet: false, beats: 1 };
   const s = String(spec).replace(/^\//, "");
-  const dotted = /\.$/.test(s);
+  const triplet = /t$/.test(s);
+  const dotted = /\.t?$/.test(s);
   const dur = parseInt(s, 10) || 4;
-  const beats = (4 / dur) * (dotted ? 1.5 : 1);
-  return { dur, dotted, beats };
+  // Triplet = three in the space of two, so each note is 2/3 of its value.
+  const beats = (4 / dur) * (dotted ? 1.5 : 1) * (triplet ? 2 / 3 : 1);
+  return { dur, dotted, triplet, beats };
 }
 
-function durLabel(d, dotted) {
+function durLabel(d, dotted, triplet) {
   d = +d;
   let s = "";
   if (d === 1) s = "\uD834\uDD5D";
@@ -79,7 +81,9 @@ function durLabel(d, dotted) {
   else if (d === 8) s = "\uD834\uDD60";
   else if (d === 16) s = "\uD834\uDD61";
   else s = "1/"+d;
-  return dotted ? s + "." : s;
+  if (dotted) s += ".";
+  if (triplet) s += "\u00B3"; // superscript 3 = triplet
+  return s;
 }
 
 function pretty(id) {

@@ -92,10 +92,10 @@ function combinedDurLabel(tokens, idx) {
   const total = soundingGridBeats(tokens, idx);
   const single = beatsToDurLabel(total);
   if (single) return single;
-  const parts = [durLabel(tokens[idx].dur, tokens[idx].dotted)];
+  const parts = [durLabel(tokens[idx].dur, tokens[idx].dotted, tokens[idx].triplet)];
   for (let i = idx + 1; i < tokens.length; i++) {
     if (tokens[i].type === "bar") continue;
-    if (tokens[i].type === "tie") parts.push(durLabel(tokens[i].dur, tokens[i].dotted));
+    if (tokens[i].type === "tie") parts.push(durLabel(tokens[i].dur, tokens[i].dotted, tokens[i].triplet));
     else break;
   }
   return parts.join("+");
@@ -153,7 +153,7 @@ function appendNoteCard(sheet, t, i) {
       r.innerHTML = `<div class="compact oor-mark">${arrow}</div>
         <div class="meta"><span class="nm">${pretty(id)}</span>
         <span class="badge oor-badge">${dir} range</span>
-        <span class="dur">${durLabel(t.dur, t.dotted)}</span></div>`;
+        <span class="dur">${durLabel(t.dur, t.dotted, t.triplet)}</span></div>`;
     } else {
       r.className = "rest";
       r.style.borderColor = "var(--accent)"; r.style.color = "var(--accent)";
@@ -169,7 +169,7 @@ function appendNoteCard(sheet, t, i) {
   card.innerHTML = `<div class="compact">${ocarinaSVG(COVER[id] || [], ch)}</div>
     <div class="meta"><span class="nm">${spelledLabel(t)}${t.staccato ? '<span class="stac-mark" title="staccato (short, with a pause)">\u2022</span>' : ''}</span>
      <span class="badge ch${ch}">CH ${ch}</span>
-     <span class="dur">${durLabel(t.dur, t.dotted)}</span></div>`;
+     <span class="dur">${durLabel(t.dur, t.dotted, t.triplet)}</span></div>`;
   sheet.appendChild(card);
 }
 
@@ -184,7 +184,7 @@ function fillFullSheet(sheet, tokens) {
       r.dataset.i = String(i);
       r.innerHTML = `<div class="compact">rest</div>
         <div class="meta"><span></span>
-        <span class="dur">${durLabel(t.dur, t.dotted)}</span></div>`;
+        <span class="dur">${durLabel(t.dur, t.dotted, t.triplet)}</span></div>`;
       sheet.appendChild(r); return;
     }
     if (t.type === "tie") {
@@ -198,7 +198,7 @@ function fillFullSheet(sheet, tokens) {
           r.title = "continues " + pretty(t.id) + " (" + dir + " this ocarina's range)";
           r.innerHTML = `<div class="compact">–</div>
             <div class="meta"><span class="nm">–</span>
-            <span class="dur">${durLabel(t.dur, t.dotted)}</span></div>`;
+            <span class="dur">${durLabel(t.dur, t.dotted, t.triplet)}</span></div>`;
           sheet.appendChild(r); return;
         }
         const r = document.createElement("div"); r.className = "rest";
@@ -210,7 +210,7 @@ function fillFullSheet(sheet, tokens) {
       r.dataset.i = String(i);
       r.innerHTML = `<div class="compact">–</div>
         <div class="meta"><span class="nm">–</span>
-        <span class="dur">${durLabel(t.dur, t.dotted)}</span></div>`;
+        <span class="dur">${durLabel(t.dur, t.dotted, t.triplet)}</span></div>`;
       sheet.appendChild(r); return;
     }
     appendNoteCard(sheet, t, i);
@@ -228,7 +228,7 @@ function liveCardHtml(t, tokens, i) {
         <div class="rest-over">rest</div>
       </div>
       <div class="meta"><span class="nm">rest</span>
-        <span class="dur">${durLabel(t.dur, t.dotted)}</span></div>`;
+        <span class="dur">${durLabel(t.dur, t.dotted, t.triplet)}</span></div>`;
   }
   const id = t.id;
   if ((t.type === "note" || t.type === "tie") && NOTES.includes(id)) {
@@ -251,7 +251,7 @@ function liveOorHtml(t) {
   return `<div class="compact oor-mark">${arrow}</div>
     <div class="meta"><span class="nm">${pretty(t.id)}</span>
       <span class="badge oor-badge">${dir} range</span>
-      <span class="dur">${durLabel(t.dur, t.dotted)}</span></div>`;
+      <span class="dur">${durLabel(t.dur, t.dotted, t.triplet)}</span></div>`;
 }
 
 function fillLiveSheet(sheet, tokens, idx) {
@@ -532,11 +532,11 @@ function buildTokenEl(t, i) {
     el.textContent = "|";
   } else if (t.type === "rest") {
     el.className = "tok pause";
-    el.innerHTML = `r <span class="td">${durLabel(t.dur, t.dotted)}</span>`;
+    el.innerHTML = `r <span class="td">${durLabel(t.dur, t.dotted, t.triplet)}</span>`;
   } else if (t.type === "tie") {
     if (t.id && NOTES.includes(t.id)) {
       el.className = "tok tie ch" + CHAMBER[t.id];
-      el.innerHTML = `– <span class="td">${durLabel(t.dur, t.dotted)}</span>`;
+      el.innerHTML = `– <span class="td">${durLabel(t.dur, t.dotted, t.triplet)}</span>`;
       el.addEventListener("mouseenter", () => hoverPreview(i, t));
       el.addEventListener("mouseleave", () => {
         if (!isMelodyPlaying()) clearHighlight();
@@ -546,7 +546,7 @@ function buildTokenEl(t, i) {
       const dir = rc === "below" ? "below" : "above";
       el.className = "tok tie oor " + (rc === "below" ? "oor-low" : "oor-high");
       el.title = "continues " + pretty(t.id) + " (" + dir + " this ocarina's range)";
-      el.innerHTML = `– <span class="td">${durLabel(t.dur, t.dotted)}</span>`;
+      el.innerHTML = `– <span class="td">${durLabel(t.dur, t.dotted, t.triplet)}</span>`;
     } else {
       el.className = "tok bad";
       el.textContent = t.raw || "-";
@@ -567,7 +567,7 @@ function buildTokenEl(t, i) {
     el.className = "tok ch" + CHAMBER[t.id];
     const slide = t.slide ? `<span class="slide-mark" title="slide from ${pretty(t.slideFrom)}">\u21DD</span>` : "";
     const stac = t.staccato ? `<span class="stac-mark" title="staccato (short, with a pause)">\u2022</span>` : "";
-    el.innerHTML = `${slide}${spelledLabel(t)}${stac} <span class="td">${durLabel(t.dur, t.dotted)}</span>`;
+    el.innerHTML = `${slide}${spelledLabel(t)}${stac} <span class="td">${durLabel(t.dur, t.dotted, t.triplet)}</span>`;
     if (t.slide) el.classList.add("slide");
     if (t.staccato) el.classList.add("staccato");
     el.addEventListener("mouseenter", () => hoverPreview(i, t));
