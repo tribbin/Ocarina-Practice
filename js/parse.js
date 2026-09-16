@@ -1,29 +1,35 @@
 function parse(src) {
   const tokens = [];
-  const re = /([A-Ga-g])([#b])?(\d)?(\/\d+\.?t?)?(!)?|(\|)|(r)(\/\d+\.?t?)?|(-)(\/\d+\.?t?)?|(~)|(#[^\n]*)/g;
+  const re = /([A-Ga-g])([#b])?(\d)?(\/\d+\.?t?)?(!)?|(\|)(\[[^\]]*\])?|(r)(\/\d+\.?t?)?|(-)(\/\d+\.?t?)?|(~)|(#[^\n]*)/g;
   let m, lastOct = 4, lastPitch = null, canTie = false, pendingSlide = false;
   const text = src.replace(/[–—]/g, "|");
   while ((m = re.exec(text))) {
-    if (m[12]) {
+    if (m[13]) {
       // Inline "# tempo N" AFTER music has started emits a tempo-change token so
       // playback shifts tempo from this point on. Leading "# tempo" lines are
       // the header/default (handled globally) and are not tokenized. Other
       // comments are ignored.
-      const tc = m[12].match(/^#\s*tempo\s+(\d+)/i);
+      const tc = m[13].match(/^#\s*tempo\s+(\d+)/i);
       if (tc && tokens.length) tokens.push({ type: "tempo", bpm: +tc[1] });
       continue;
     }
-    if (m[11]) { if (lastPitch) pendingSlide = true; continue; }
-    if (m[6]) { tokens.push({type:"bar"}); continue; }
-    if (m[7]) {
-      const pd = parseDur(m[8]);
+    if (m[12]) { if (lastPitch) pendingSlide = true; continue; }
+    if (m[6]) {
+      // Bar line, with an optional [description] shown on hover, e.g. |["35th bar from midi"].
+      const bar = { type: "bar" };
+      if (m[7]) bar.desc = m[7].slice(1, -1).replace(/^["']|["']$/g, "");
+      tokens.push(bar);
+      continue;
+    }
+    if (m[8]) {
+      const pd = parseDur(m[9]);
       tokens.push({type:"rest", dur: pd.dur, dotted: pd.dotted, triplet: pd.triplet, beats: pd.beats});
       canTie = false;
       pendingSlide = false;
       continue;
     }
-    if (m[9]) {
-      const pd = parseDur(m[10]);
+    if (m[10]) {
+      const pd = parseDur(m[11]);
       if (canTie && lastPitch) {
         // Continuation of previous note.
         const t = {type:"tie", dur: pd.dur, dotted: pd.dotted, triplet: pd.triplet, beats: pd.beats, raw: m[0], id: lastPitch.id};

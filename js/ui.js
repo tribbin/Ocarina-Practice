@@ -177,7 +177,9 @@ function fillFullSheet(sheet, tokens) {
   sheet.classList.remove("live");
   tokens.forEach((t, i) => {
     if (t.type === "bar") {
-      const b = document.createElement("div"); b.className = "tab-bar"; sheet.appendChild(b); return;
+      const b = document.createElement("div"); b.className = "tab-bar";
+      if (t.desc) { b.classList.add("has-note"); b.title = t.desc; }
+      sheet.appendChild(b); return;
     }
     if (t.type === "tempo") {
       const tp = document.createElement("div"); tp.className = "tab-tempo";
@@ -536,6 +538,10 @@ function buildTokenEl(t, i) {
   if (t.type === "bar") {
     el.className = "tok bar";
     el.textContent = "|";
+    if (t.desc) {
+      el.classList.add("has-note");
+      el.title = t.desc;
+    }
   } else if (t.type === "tempo") {
     el.className = "tok tempo";
     el.textContent = "♩=" + t.bpm;

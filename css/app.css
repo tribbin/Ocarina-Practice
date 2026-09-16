@@ -118,6 +118,15 @@ button.tiny { padding: 4px 8px; font-size: 12px; }
   left: -15.5px; background: var(--ink); border-radius: 2px;
 }
 .tab-bar + .tab-bar::before { left: -11px; width: 2px; }
+/* A bar line carrying a hover description gets an accent tint + a dotted cue. */
+.tab-bar.has-note::before { background: var(--accent, #b5651d); }
+.tab-bar.has-note::after {
+  content: ""; position: absolute; top: 2px; left: -16px; width: 5px; height: 5px;
+  border-radius: 50%; background: var(--accent, #b5651d); cursor: help;
+}
+.tok.bar.has-note {
+  border-bottom: 2px dotted var(--accent, #b5651d); cursor: help;
+}
 .tab-tempo {
   flex: none; align-self: center; margin: 0 6px; padding: 3px 8px;
   background: #d9c4a8; color: var(--ink); border-radius: 6px;
