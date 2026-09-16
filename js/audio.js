@@ -74,6 +74,9 @@ function makeReverbImpulse(ctx, seconds, decay) {
 
 // Lazily build (and return) the reverb bus. All melodic voices connect here
 // instead of straight to ctx.destination, so the wet level can be toggled.
+// A limiter on the bus output protects headroom: individual voices sum to
+// well over 1.0 under polyphony (overlapping/tied notes) and with reverb,
+// which would clip hard at ctx.destination without it.
 function getReverbBus(ctx) {
   if (reverbBus && reverbBus.context === ctx) return reverbBus;
   const input = ctx.createGain();
@@ -83,8 +86,17 @@ function getReverbBus(ctx) {
   convolver.buffer = makeReverbImpulse(ctx, 2.6, 3.2);
   const wet = ctx.createGain();
   wet.gain.value = reverbEnabled ? 0.5 : 0;
-  input.connect(dry); dry.connect(ctx.destination);
-  input.connect(convolver); convolver.connect(wet); wet.connect(ctx.destination);
+  // Brickwall-ish limiter: fast, high ratio, threshold just below 0 dBFS.
+  const limiter = ctx.createDynamicsCompressor();
+  limiter.threshold.value = -3;
+  limiter.knee.value = 0;
+  limiter.ratio.value = 20;
+  limiter.attack.value = 0.003;
+  limiter.release.value = 0.15;
+  dry.connect(limiter);
+  input.connect(dry);
+  input.connect(convolver); convolver.connect(wet); wet.connect(limiter);
+  limiter.connect(ctx.destination);
   reverbWetGain = wet;
   reverbBus = input;
   return reverbBus;
@@ -258,10 +270,17 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
     const effort = attackEffort(id, freq);
     const speak = Math.min(0.05, Math.max(0.006, dur * 0.08)) * (0.5 + effort);
     const equilib = Math.min(dur * 0.4, art.sizeF * art.sizeF * 0.16); // big chamber = slow to settle
+    const t1 = t0 + speak * 0.5;
+    const t2 = t0 + speak + 0.015;
+    // Ensure the final "equilibrium" ramp has a real duration. When equilib≈0
+    // (the smallest/high chamber) t3 would equal t2, making a zero-length ramp
+    // that jumps instantly 0.16→0.26 — an audible click on every high-chamber
+    // note. Floor the ramp at 15ms so it always glides.
+    const t3 = Math.max(t2 + 0.015, t2 + equilib);
     master.gain.setValueAtTime(0.0001, t0);
-    master.gain.linearRampToValueAtTime(0.05, t0 + speak * 0.5); // breathy pre-tone
-    master.gain.linearRampToValueAtTime(0.16, t0 + speak + 0.015); // tone begins to speak
-    master.gain.linearRampToValueAtTime(0.26, t0 + speak + 0.015 + equilib); // reaches full equilibrium
+    master.gain.linearRampToValueAtTime(0.05, t1); // breathy pre-tone
+    master.gain.linearRampToValueAtTime(0.16, t2); // tone begins to speak
+    master.gain.linearRampToValueAtTime(0.26, t3); // reaches full equilibrium
     master.gain.setValueAtTime(0.26, t0 + relStart);
     master.gain.linearRampToValueAtTime(0.0001, t0 + dur);
     master.gain.setValueAtTime(0.0001, t0 + dur + tail);
@@ -297,8 +316,8 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
       // even on high-effort notes; effort mainly shapes the softer AMPLITUDE
       // attack (see `speak` above), not a long glide.
       const rise = Math.min(0.03, Math.max(0.01, dur * 0.12)) * (0.7 + 0.3 * effort);
-      const flat = 0.993 - 0.007 * effort;  // start pitch: 0.7%–1.4% flat
-      const over = 1.002 + 0.004 * effort;  // overshoot: 0.2%–0.6% sharp
+      const flat = window.BLOOM_OFF ? 1 : 0.993 - 0.007 * effort;  // start pitch: 0.7%–1.4% flat
+      const over = window.BLOOM_OFF ? 1 : 1.002 + 0.004 * effort;  // overshoot: 0.2%–0.6% sharp
       const overshootAt = t0 + rise;
       const settleAt = overshootAt + rise * 0.9;
       osc.frequency.setValueAtTime(freq * flat, t0);            // starts flat (air slow)
@@ -375,7 +394,8 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
     wanderGain.gain.value = freq * 0.006;
     wander.connect(wanderGain); wanderGain.connect(edge.frequency);
     const edgeGain = ctx.createGain();
-    const edgeLevel = 0.04 + reg * reg * 0.05; // ~0.04 low → ~0.09 high
+    let edgeLevel = 0.04 + reg * reg * 0.05; // ~0.04 low → ~0.09 high
+    if (window.EDGE_OFF) edgeLevel = 0.0001; // DIAGNOSTIC
     edgeGain.gain.setValueAtTime(0.0001, t0);
     edgeGain.gain.linearRampToValueAtTime(edgeLevel, t0 + 0.03);
     edgeGain.gain.setValueAtTime(edgeLevel, t0 + relStart);
@@ -394,7 +414,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
     // (bass) chambers give a dark, muffled, longer "phh"; small chambers a
     // bright, airy "tss". More open holes = leakier, brighter, breathier.
     const { sizeF: chSize, openF: chOpen } = art;
-    const chiffLen = (0.06 + chSize * 0.16) * (0.8 + 0.2 * chOpen); // ~60–260 ms
+    const chiffLen = (0.11 + chSize * 0.15) * (0.85 + 0.15 * chOpen); // ~110–300 ms
     // Chamber character comes from WHERE the noise energy sits. A big (bass)
     // chamber is a dark, muffled "phh"; a small chamber a bright, airy "tss".
     // Use a resonant lowpass with a strongly chamber-dependent cutoff and a
@@ -414,13 +434,18 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
     chiffLp.frequency.setValueAtTime(startHz, t0);
     chiffLp.frequency.exponentialRampToValueAtTime(endHz, t0 + chiffLen * 0.6);
     const chiffGain = ctx.createGain();
-    const chiffPeak = 0.03 + chSize * chSize * 0.07; // big chamber much stronger/more demanding
-    // Gentle attack, then a long sustain-and-decay so the breathy onset lingers
-    // as the tone establishes, especially in the big bass chamber.
+    let chiffPeak = 0.02 + Math.pow(chSize, 3) * 0.1; // big chamber demanding; mid/small much quieter
+    if (window.CHIFF_OFF) chiffPeak = 0.0001; // DIAGNOSTIC: silence chiff to isolate the tick
+    // Gentle attack, then a sustain-and-decay so the breathy onset lingers as
+    // the tone establishes. The tail uses a linear ramp that actually reaches
+    // zero (exponential ramps never do) with a small guard before the source
+    // stops, avoiding a truncation click that reads as "clipping" on short
+    // (high-chamber) bursts.
+    const chAtk = Math.max(0.012, Math.min(0.025, chiffLen * 0.3)); // softer attack, min 12ms
     chiffGain.gain.setValueAtTime(0.0001, t0);
-    chiffGain.gain.linearRampToValueAtTime(chiffPeak, t0 + Math.min(0.03, chiffLen * 0.25));
-    chiffGain.gain.setValueAtTime(chiffPeak * 0.85, t0 + chiffLen * 0.5);
-    chiffGain.gain.exponentialRampToValueAtTime(0.0001, t0 + chiffLen); // settles into tone
+    chiffGain.gain.linearRampToValueAtTime(chiffPeak, t0 + chAtk);
+    chiffGain.gain.linearRampToValueAtTime(chiffPeak * 0.85, t0 + chiffLen * 0.5);
+    chiffGain.gain.linearRampToValueAtTime(0.0, t0 + chiffLen); // reach true zero
     chiffSrc.connect(chiffHp); chiffHp.connect(chiffLp); chiffLp.connect(chiffGain); chiffGain.connect(master);
     chiffSrc.start(t0); chiffSrc.stop(t0 + chiffLen + 0.02);
     if (bag) {
