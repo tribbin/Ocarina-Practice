@@ -255,6 +255,20 @@ function getChiffBuffer(ctx) {
   return buf;
 }
 
+// Cached ocarina periodic wave — reused across notes instead of rebuilding it
+// on every note (per-note allocation adds needless main-thread work).
+let ocarinaWave = null;
+function getOcarinaWave(ctx) {
+  if (ocarinaWave && ocarinaWave._ctx === ctx) return ocarinaWave;
+  const w = ctx.createPeriodicWave(
+    new Float32Array([0, 1, 0.06, 0.03, 0.012, 0.006]),
+    new Float32Array([0, 0, 0, 0, 0, 0])
+  );
+  w._ctx = ctx;
+  ocarinaWave = w;
+  return w;
+}
+
 function cutLive() {
   liveVoices.forEach(n => { try { (n.fade || n.stop)(); } catch (e) {} });
   liveVoices = [];
@@ -277,6 +291,48 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
     const rel = Math.min(0.18, Math.max(0.05, dur * 0.35)); // ~50–180ms taper
     const relStart = Math.max(0.02, dur - rel);
     const tail = 0.03;
+
+    // LITE VOICE: a minimal 3-node voice (osc → lowpass → gain) for slow
+    // devices. Skips the air/edge/wander/chiff/vibrato/overtone layers so the
+    // audio thread isn't overloaded (the main crackle cause). Same pitch and
+    // rough envelope so it still reads as the ocarina, just plainer.
+    if (liteMode()) {
+      const g = ctx.createGain();
+      const relT = t0 + relStart;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.linearRampToValueAtTime(0.26, t0 + Math.min(0.03, dur * 0.2));
+      g.gain.setValueAtTime(0.26, relT);
+      g.gain.linearRampToValueAtTime(0.0001, t0 + dur);
+      const lp2 = ctx.createBiquadFilter();
+      lp2.type = "lowpass";
+      lp2.frequency.value = Math.min(9000, freq * 4.2);
+      lp2.Q.value = 0.7;
+      const osc2 = ctx.createOscillator();
+      osc2.setPeriodicWave(getOcarinaWave(ctx));
+      if (slideFrom) {
+        const glide = Math.min(Math.max(0.03, dur * 0.22), 0.1);
+        osc2.frequency.setValueAtTime(slideFrom, t0);
+        osc2.frequency.linearRampToValueAtTime(freq, t0 + glide);
+      } else {
+        osc2.frequency.setValueAtTime(freq, t0);
+      }
+      osc2.connect(lp2); lp2.connect(g); g.connect(getReverbBus(ctx));
+      osc2.start(t0); osc2.stop(t0 + dur + tail);
+      if (bag) bag.push({
+        stop() { try { osc2.stop(); } catch (e) {} },
+        fade() {
+          const now = ctx.currentTime;
+          try {
+            g.gain.cancelScheduledValues(now);
+            g.gain.setValueAtTime(Math.max(0.0001, g.gain.value || 0.26), now);
+            g.gain.linearRampToValueAtTime(0.0001, now + 0.03);
+            osc2.stop(now + 0.05);
+          } catch (e) {}
+        }
+      });
+      return;
+    }
+
     const master = ctx.createGain();
     // Tone speaks slightly after onset (breathy pre-tone → full), pairing with
     // the pitch "catch up" bloom below for a soft ocarina attack. Larger
@@ -329,10 +385,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
     lp.connect(trem);
     trem.connect(master);
 
-    const wave = ctx.createPeriodicWave(
-      new Float32Array([0, 1, 0.06, 0.03, 0.012, 0.006]),
-      new Float32Array([0, 0, 0, 0, 0, 0])
-    );
+    const wave = getOcarinaWave(ctx);
     const osc = ctx.createOscillator();
     osc.setPeriodicWave(wave);
     if (slideFrom) {
@@ -575,6 +628,13 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
 
 function tickEnabled() {
   const cb = document.getElementById("tickMel");
+  return !!(cb && cb.checked);
+}
+
+// Lite mode: a lightweight voice + reduced per-note visuals, to avoid audio
+// crackling caused by CPU overload on slower devices (phones).
+function liteMode() {
+  const cb = document.getElementById("liteMel");
   return !!(cb && cb.checked);
 }
 

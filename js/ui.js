@@ -370,9 +370,10 @@ function tokenSeconds(tokOrDur, dotted) {
 
 function highlightToken(i, noteId, durSec, sounding) {
   liveIdx = i;
+  const lite = typeof liteMode === "function" && liteMode();
   document.querySelectorAll(".tok.now, .card.now, .rest.now, .key.now").forEach(el => el.classList.remove("now"));
   document.querySelectorAll('.tok[data-i="' + i + '"]').forEach(el => el.classList.add("now"));
-  if (isMelodyPlaying()) scrollFocusStripTo(i);
+  if (isMelodyPlaying() && !lite) scrollFocusStripTo(i);
   if (isLiveTab()) {
     updateLiveTab(lastTokens.length ? lastTokens : parse(document.getElementById("src").value), i);
   } else {
@@ -380,7 +381,7 @@ function highlightToken(i, noteId, durSec, sounding) {
     if (card) {
       card.classList.add("now");
       const sheet = document.getElementById("sheet");
-      if (sheet && sheet.classList.contains("scroll")) {
+      if (sheet && sheet.classList.contains("scroll") && !lite) {
         const wrap = sheet.parentElement;
         const anchor = barAnchorCard(sheet, i) || card;
         if (wrap) {
@@ -395,7 +396,7 @@ function highlightToken(i, noteId, durSec, sounding) {
   }
   if (noteId) {
     document.querySelectorAll('.key[data-note="' + noteId + '"]').forEach(el => el.classList.add("now"));
-    if (sounding) pulseZenGlow(noteId, durSec);
+    if (sounding && !lite) pulseZenGlow(noteId, durSec);
   }
 }
 
@@ -683,6 +684,13 @@ function persistPlayHeaders() {
 
 function wireUi() {
   document.getElementById("playMel").onclick = playMelody;
+  const liteCb = document.getElementById("liteMel");
+  if (liteCb) {
+    try { if (localStorage.getItem("oco-lite") === "1") liteCb.checked = true; } catch (e) {}
+    liteCb.addEventListener("change", () => {
+      try { localStorage.setItem("oco-lite", liteCb.checked ? "1" : "0"); } catch (e) {}
+    });
+  }
   const tempoEl = document.getElementById("tempo");
   if (tempoEl) {
     tempoEl.addEventListener("input", () => {
