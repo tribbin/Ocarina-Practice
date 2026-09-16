@@ -271,7 +271,14 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
     lp.type = "lowpass";
     lp.frequency.setValueAtTime(Math.min(2800, Math.max(freq, slideFrom || freq) * 4.2), t0);
     lp.Q.value = 0.7;
-    lp.connect(master);
+    // Tremolo node: vibrato modulates breath pressure, which on a Helmholtz
+    // resonator changes pitch AND loudness together (in phase). The tone runs
+    // through `trem` so the same LFO can add a small amplitude wobble; its
+    // depth is driven below, in phase with the pitch vibrato.
+    const trem = ctx.createGain();
+    trem.gain.value = 1;
+    lp.connect(trem);
+    trem.connect(master);
 
     const wave = ctx.createPeriodicWave(
       new Float32Array([0, 1, 0.06, 0.03, 0.012, 0.006]),
@@ -316,24 +323,34 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
     air.start(t0);
     air.stop(t0 + dur + tail);
 
-    // Gentle pitch vibrato (~5.5 Hz), only on SUSTAINED notes: it begins
-    // after a fixed settle delay, so short/fast notes end before it starts.
+    // Gentle vibrato (~5.5 Hz), only on SUSTAINED notes: it begins after a
+    // fixed settle delay, so short/fast notes end before it starts. Breath
+    // vibrato couples PITCH and LOUDNESS in phase (harder blow = sharper AND
+    // louder), so the same LFO drives both osc.frequency and the tremolo gain.
     const VIB_DELAY = 0.35;
     const lfo = ctx.createOscillator();
     lfo.type = "sine";
     lfo.frequency.value = 5.5;
-    const lfoGain = ctx.createGain();
+    const lfoGain = ctx.createGain();     // pitch depth
+    const tremGain = ctx.createGain();    // amplitude depth (in phase)
     // Only wire up vibrato if the note is long enough to reach the sustain.
     if (dur > VIB_DELAY + 0.1) {
       const vibDepth = freq * 0.0035; // ~6 cents peak (subtler)
+      const tremDepth = 0.05;         // ~5% loudness wobble, in phase with pitch
       lfoGain.gain.setValueAtTime(0.0001, t0);
       lfoGain.gain.setValueAtTime(0.0001, t0 + VIB_DELAY);
       lfoGain.gain.linearRampToValueAtTime(vibDepth, t0 + VIB_DELAY + 0.2);
+      tremGain.gain.setValueAtTime(0.0001, t0);
+      tremGain.gain.setValueAtTime(0.0001, t0 + VIB_DELAY);
+      tremGain.gain.linearRampToValueAtTime(tremDepth, t0 + VIB_DELAY + 0.2);
     } else {
       lfoGain.gain.setValueAtTime(0.0001, t0);
+      tremGain.gain.setValueAtTime(0.0001, t0);
     }
     lfo.connect(lfoGain);
     lfoGain.connect(osc.frequency);
+    lfo.connect(tremGain);
+    tremGain.connect(trem.gain);
     lfo.start(t0);
     lfo.stop(t0 + dur + tail);
 
