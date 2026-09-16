@@ -313,7 +313,12 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
 
     const lp = ctx.createBiquadFilter();
     lp.type = "lowpass";
-    lp.frequency.setValueAtTime(Math.min(2800, Math.max(freq, slideFrom || freq) * 4.2), t0);
+    // Keep the cutoff a roughly FIXED MULTIPLE of the fundamental across the
+    // whole range so the timbre stays consistently pure/hollow like a real
+    // ocarina. A hard absolute cap (e.g. 2800) collapses cutoff/f on high
+    // notes, thinning the tone and — with the edge/air partials below — making
+    // it read as a bowed string. A high ceiling only guards against aliasing.
+    lp.frequency.setValueAtTime(Math.min(9000, Math.max(freq, slideFrom || freq) * 4.2), t0);
     lp.Q.value = 0.7;
     // Tremolo node: vibrato modulates breath pressure, which on a Helmholtz
     // resonator changes pitch AND loudness together (in phase). The tone runs
@@ -363,14 +368,19 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
     osc.stop(t0 + dur + tail);
 
     // Faint inharmonic "air" partial: a quiet, slightly detuned sine just
-    // above the 2nd harmonic adds breathy shimmer without muddying pitch.
+    // above the 2nd harmonic adds breathy shimmer without muddying pitch. Its
+    // level tapers off toward the top of the range: on high notes this beating
+    // partial is a strong bowed-string cue, and a real ocarina is nearly a
+    // pure sine up high, so it should recede there.
+    const hiF = Math.max(0, Math.min(1, (freq - 660) / (1568 - 660))); // 0 below E5 → 1 by G6
     const air = ctx.createOscillator();
     air.type = "sine";
     air.frequency.setValueAtTime(freq * 2.01, t0);
     const airGain = ctx.createGain();
+    const airLevel = 0.02 * (1 - 0.75 * hiF);
     airGain.gain.setValueAtTime(0.0001, t0);
-    airGain.gain.linearRampToValueAtTime(0.02, t0 + 0.03);
-    airGain.gain.setValueAtTime(0.02, t0 + relStart);
+    airGain.gain.linearRampToValueAtTime(airLevel, t0 + 0.03);
+    airGain.gain.setValueAtTime(airLevel, t0 + relStart);
     airGain.gain.linearRampToValueAtTime(0.0001, t0 + dur);
     air.connect(airGain); airGain.connect(lp);
     air.start(t0);
@@ -388,7 +398,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
     const tremGain = ctx.createGain();    // amplitude depth (in phase)
     // Only wire up vibrato if the note is long enough to reach the sustain.
     if (dur > VIB_DELAY + 0.1) {
-      const vibDepth = freq * 0.0035; // ~6 cents peak (subtler)
+      const vibDepth = freq * 0.0035 * (1 - 0.4 * hiF); // ~6 cents, a touch less up high
       const tremDepth = 0.05;         // ~5% loudness wobble, in phase with pitch
       lfoGain.gain.setValueAtTime(0.0001, t0);
       lfoGain.gain.setValueAtTime(0.0001, t0 + VIB_DELAY);
@@ -415,20 +425,23 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
     // Edge / windway whistle: the jet crossing the labium sings a faint,
     // breathy tone slightly SHARP of the fundamental, with a little pitch
     // instability. This is the characteristic hollow "whispered pitch" of a
-    // fipple/vessel flute. It grows with blowing effort (reg).
+    // fipple/vessel flute. It grows with blowing effort (reg). On high notes
+    // this detuned, FM-wandering partial beats close to the fundamental and is
+    // the main reason the top of the range reads as a bowed string, so its
+    // level, detune spread and wander all recede toward the top (hiF → 1).
     const edge = ctx.createOscillator();
     edge.type = "sine";
-    const detune = 1.012 + Math.random() * 0.008; // ~20–34 cents sharp: breathy, not sour
+    const detune = 1.012 + Math.random() * 0.008 * (1 - hiF); // tighter to pitch up high
     edge.frequency.setValueAtTime(freq * detune, t0);
     // Slow, subtle wander so it doesn't sound like a locked pure tone.
     const wander = ctx.createOscillator();
     wander.type = "sine";
     wander.frequency.value = 7 + Math.random() * 4;
     const wanderGain = ctx.createGain();
-    wanderGain.gain.value = freq * 0.006;
+    wanderGain.gain.value = freq * 0.006 * (1 - 0.8 * hiF);
     wander.connect(wanderGain); wanderGain.connect(edge.frequency);
     const edgeGain = ctx.createGain();
-    const edgeLevel = 0.035 + reg * reg * 0.022; // ~0.035 low → ~0.057 high (gentler climb)
+    const edgeLevel = (0.035 + reg * reg * 0.022) * (1 - 0.7 * hiF); // recede up high
     edgeGain.gain.setValueAtTime(0.0001, t0);
     edgeGain.gain.linearRampToValueAtTime(edgeLevel, t0 + 0.03);
     edgeGain.gain.setValueAtTime(edgeLevel, t0 + relStart);
@@ -483,6 +496,61 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
     chiffGain.gain.linearRampToValueAtTime(0.0, t0 + chiffLen); // reach true zero
     chiffSrc.connect(chiffHp); chiffHp.connect(chiffLp); chiffLp.connect(chiffGain); chiffGain.connect(master);
     chiffSrc.start(t0); chiffSrc.stop(t0 + chiffLen + 0.02);
+
+    // Overblown-mode ONSET overtone ("blowing on a bottle"): when the jet first
+    // hits the labium it is momentarily too fast and briefly excites the first
+    // overblown mode — around the octave above — before the airflow settles and
+    // the fundamental takes over. Rendered as a BREATHY, pitched whistle: noise
+    // through a bandpass centered on the octave (airy character) plus a faint
+    // sine for pitch definition. It speaks at the onset and decays as the
+    // fundamental blooms in; bigger/breathier attacks (more effort) let it
+    // speak a touch longer and louder.
+    const otF = freq * 2;
+    if (otF < ctx.sampleRate * 0.45) { // guard against aliasing on the very top notes
+      const otDur = Math.max(0.04, Math.min(relStart - 0.005, 0.22 + 0.14 * effort)); // longer, breathy bloom
+      const otPeak = 0.12 + 0.08 * effort; // toned down from the audibility test
+      // Shared onset envelope: fast in, exponential collapse (the mode "loses").
+      const otGain = ctx.createGain();
+      otGain.gain.setValueAtTime(0.0001, t0);
+      otGain.gain.linearRampToValueAtTime(otPeak, t0 + Math.min(0.02, otDur * 0.25));
+      otGain.gain.exponentialRampToValueAtTime(0.0001, t0 + otDur);
+      // Connect PAST master's attack envelope (which is near-zero during the
+      // onset and would swallow this transient) straight to the output bus.
+      otGain.connect(getReverbBus(ctx));
+
+      // Noisy, airy component: bandpass-filtered noise around the octave, with a
+      // little downward sweep as the tone "focuses" onto the fundamental. High Q
+      // keeps it pitched/whistly (a breath of air on the overtone) rather than
+      // broadband white noise; it's the supporting texture, not the main voice.
+      const otBp = ctx.createBiquadFilter();
+      otBp.type = "bandpass";
+      otBp.Q.value = 18; // strongly pitched: airy overtone, not white noise
+      otBp.frequency.setValueAtTime(otF * 1.02, t0);
+      otBp.frequency.exponentialRampToValueAtTime(otF, t0 + otDur * 0.7);
+      const otNoise = ctx.createBufferSource();
+      otNoise.buffer = getChiffBuffer(ctx);
+      const otNoiseGain = ctx.createGain();
+      otNoiseGain.gain.value = 0.35; // quiet: just a breathy edge on the overtone
+      otNoise.connect(otBp); otBp.connect(otNoiseGain); otNoiseGain.connect(otGain);
+      otNoise.start(t0); otNoise.stop(t0 + otDur + 0.02);
+
+      // Sine overtone at the octave — the MAIN pitched voice of the transient,
+      // a hair sharp sagging onto the true octave.
+      const ot = ctx.createOscillator();
+      ot.type = "sine";
+      ot.frequency.setValueAtTime(otF * 1.004, t0);
+      ot.frequency.linearRampToValueAtTime(otF, t0 + otDur);
+      const otSine = ctx.createGain();
+      otSine.gain.value = 1.0; // dominant layer
+      ot.connect(otSine); otSine.connect(otGain);
+      ot.start(t0); ot.stop(t0 + otDur + 0.02);
+
+      if (bag) bag.push({
+        stop() { try { ot.stop(); } catch (e) {} try { otNoise.stop(); } catch (e) {} },
+        fade() { const n = ctx.currentTime + 0.05; try { ot.stop(n); } catch (e) {} try { otNoise.stop(n); } catch (e) {} }
+      });
+    }
+
     if (bag) {
       bag.push({
         stop() { try { osc.stop(); } catch (e) {} try { lfo.stop(); } catch (e) {} try { air.stop(); } catch (e) {} try { edge.stop(); } catch (e) {} try { wander.stop(); } catch (e) {} try { chiffSrc.stop(); } catch (e) {} },
