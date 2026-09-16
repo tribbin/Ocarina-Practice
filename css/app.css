@@ -461,7 +461,14 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 }
 #tabPanel.focus > * { position: relative; z-index: 1; }
 @media (prefers-reduced-motion: reduce) {
-  #tabPanel.focus::before { display: none; }
+  /* Motion is off at the OS level: skip the animated scale swell (the only
+     real movement) but keep the full opacity bloom — the halo still rises and
+     fades with each note, just without growing/drifting across the screen. */
+  #tabPanel.focus::before {
+    display: block;
+    transform: none;
+    transition: opacity var(--glow-fade, 1.6s) ease-out;
+  }
 }
 
 #tabPanel.focus .tab-heading,
