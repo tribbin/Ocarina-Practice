@@ -10,6 +10,7 @@ let melodyFrom = 0;
 let melodyPos = 0;
 let melodyHoldUntil = -1;
 let melodyPaused = false;
+let lastHoldSec = 0.5; // sounding duration of the last scheduled note (for zen glow)
 
 function syncTransport() {
   if (typeof updateTransportUI === "function") updateTransportUI();
@@ -616,10 +617,11 @@ function scheduleMelody(when) {
     const slideFrom = (tok.slide && NOTES.includes(tok.slideFrom)) ? tok.slideFrom : null;
     playNoteAt(tok.id, when, Math.max(0.12, hold * 0.92), melodyBag, slideFrom);
     melodyHoldUntil = lastHoldIndex(melodyTokens, melodyIdx);
+    lastHoldSec = Math.max(0.12, hold * 0.92);
   }
-  const hlIdx = melodyIdx, hlId = tok.id;
+  const hlIdx = melodyIdx, hlId = tok.id, hlDur = lastHoldSec;
   const hlDelay = Math.max(0, (when - audioCtx.currentTime) * 1000);
-  setTimeout(() => { if (melodyPlaying) highlightToken(hlIdx, hlId); }, hlDelay);
+  setTimeout(() => { if (melodyPlaying) highlightToken(hlIdx, hlId, hlDur); }, hlDelay);
   melodyIdx++;
   const nextWhen = when + step;
   const LOOKAHEAD = 0.08;

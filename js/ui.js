@@ -368,7 +368,7 @@ function tokenSeconds(tokOrDur, dotted) {
   return Math.max(0.12, beats * quarterSec());
 }
 
-function highlightToken(i, noteId) {
+function highlightToken(i, noteId, durSec) {
   liveIdx = i;
   document.querySelectorAll(".tok.now, .card.now, .rest.now, .key.now").forEach(el => el.classList.remove("now"));
   document.querySelectorAll('.tok[data-i="' + i + '"]').forEach(el => el.classList.add("now"));
@@ -395,7 +395,53 @@ function highlightToken(i, noteId) {
   }
   if (noteId) {
     document.querySelectorAll('.key[data-note="' + noteId + '"]').forEach(el => el.classList.add("now"));
+    pulseZenGlow(noteId, durSec);
   }
+}
+
+// Mellow ambient glow in Zen/focus mode: map the note's pitch to a hue
+// (low = warm amber, high = cool teal/violet), swell the glow up, HOLD it for
+// the body of the note, then fade out to the note's end so sustained notes
+// keep their light and short notes pulse briefly.
+function noteMidi(id) {
+  const m = String(id).match(/^([A-G]s?)(\d)$/);
+  if (!m) return 69;
+  const semi = {C:0,Cs:1,D:2,Ds:3,E:4,F:5,Fs:6,G:7,Gs:8,A:9,As:10,B:11};
+  return semi[m[1]] + (+m[2] + 1) * 12;
+}
+let zenGlowFadeTimer = 0;
+function pulseZenGlow(noteId, durSec) {
+  const panel = document.getElementById("tabPanel");
+  if (!panel || !panel.classList.contains("focus")) return;
+  const lo = 57, hi = 91; // A3 .. G6
+  const t = Math.max(0, Math.min(1, (noteMidi(noteId) - lo) / (hi - lo)));
+  const hue = Math.round(30 + t * 230); // warm amber → cool teal/violet
+  const dur = (durSec && durSec > 0 ? durSec : 0.4) * 1000; // ms
+  // The glow swells across almost the whole note, peaking near the end, then a
+  // short fade. Short notes still rise quickly enough to register.
+  const fade = Math.min(500, Math.max(220, dur * 0.25)); // short tail
+  const rise = Math.max(160, dur - fade);                // build over the note body
+  // Glow reach: short notes stay small/contained; long notes swell outward.
+  const startScale = 0.45;
+  const fullScale = Math.min(1.15, startScale + dur / 2500); // grows with duration
+
+  clearTimeout(zenGlowFadeTimer);
+  panel.style.setProperty("--glow-hue", hue);
+  // Commit the small/dim START state instantly (no transition), then flip to
+  // the END state so opacity+scale interpolate over `rise` and the peak lands
+  // near the note's end.
+  panel.style.setProperty("--glow-fade", "0ms");
+  panel.style.setProperty("--glow-alpha", "0");
+  panel.style.setProperty("--glow-scale", startScale);
+  void panel.offsetWidth; // force reflow so the start state is committed
+  panel.style.setProperty("--glow-fade", rise + "ms");
+  panel.style.setProperty("--glow-alpha", "0.28");
+  panel.style.setProperty("--glow-scale", fullScale);
+  // Fade out over the final short tail.
+  zenGlowFadeTimer = setTimeout(() => {
+    panel.style.setProperty("--glow-fade", fade + "ms");
+    panel.style.setProperty("--glow-alpha", "0");
+  }, rise);
 }
 
 function barStartIndex(tokens, i) {
