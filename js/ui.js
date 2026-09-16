@@ -824,6 +824,7 @@ function wireZen() {
   window.onZenChange = null;
   if (btn) btn.onclick = () => toggleZen();
   const sync = () => {
+    if (typeof setReverbEnabled === "function") setReverbEnabled(isFullscreen());
     if (!isFullscreen() && zenPrevMode) {
       const m = zenPrevMode; zenPrevMode = null; setDisplayMode(m);
     }

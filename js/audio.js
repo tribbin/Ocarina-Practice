@@ -55,6 +55,52 @@ function gridBeatsBefore(tokens, idx) {
   return p;
 }
 
+let reverbBus = null;   // input node that notes connect to (dry + wet split)
+let reverbWetGain = null;
+let reverbEnabled = false;
+
+function makeReverbImpulse(ctx, seconds, decay) {
+  const rate = ctx.sampleRate;
+  const len = Math.floor(rate * seconds);
+  const buf = ctx.createBuffer(2, len, rate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch);
+    for (let i = 0; i < len; i++) {
+      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+    }
+  }
+  return buf;
+}
+
+// Lazily build (and return) the reverb bus. All melodic voices connect here
+// instead of straight to ctx.destination, so the wet level can be toggled.
+function getReverbBus(ctx) {
+  if (reverbBus && reverbBus.context === ctx) return reverbBus;
+  const input = ctx.createGain();
+  const dry = ctx.createGain();
+  dry.gain.value = 1;
+  const convolver = ctx.createConvolver();
+  convolver.buffer = makeReverbImpulse(ctx, 2.6, 3.2);
+  const wet = ctx.createGain();
+  wet.gain.value = reverbEnabled ? 0.32 : 0;
+  input.connect(dry); dry.connect(ctx.destination);
+  input.connect(convolver); convolver.connect(wet); wet.connect(ctx.destination);
+  reverbWetGain = wet;
+  reverbBus = input;
+  return reverbBus;
+}
+
+// Called by the UI when Zen mode is entered/exited.
+function setReverbEnabled(on) {
+  reverbEnabled = !!on;
+  if (reverbWetGain && audioCtx) {
+    const now = audioCtx.currentTime;
+    reverbWetGain.gain.cancelScheduledValues(now);
+    reverbWetGain.gain.setValueAtTime(reverbWetGain.gain.value, now);
+    reverbWetGain.gain.linearRampToValueAtTime(reverbEnabled ? 0.32 : 0, now + 0.25);
+  }
+}
+
 function unlockAudio() {
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
@@ -123,7 +169,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
     master.gain.setValueAtTime(0.26, t0 + relStart);
     master.gain.linearRampToValueAtTime(0.0001, t0 + dur);
     master.gain.setValueAtTime(0.0001, t0 + dur + tail);
-    master.connect(ctx.destination);
+    master.connect(getReverbBus(ctx));
 
     const lp = ctx.createBiquadFilter();
     lp.type = "lowpass";
