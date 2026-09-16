@@ -82,7 +82,7 @@ function getReverbBus(ctx) {
   const convolver = ctx.createConvolver();
   convolver.buffer = makeReverbImpulse(ctx, 2.6, 3.2);
   const wet = ctx.createGain();
-  wet.gain.value = reverbEnabled ? 0.32 : 0;
+  wet.gain.value = reverbEnabled ? 0.5 : 0;
   input.connect(dry); dry.connect(ctx.destination);
   input.connect(convolver); convolver.connect(wet); wet.connect(ctx.destination);
   reverbWetGain = wet;
@@ -130,15 +130,82 @@ function freqOf(id) {
   return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
-let noiseBuf = null;
-function getNoiseBuffer(ctx) {
-  if (noiseBuf && noiseBuf.sampleRate === ctx.sampleRate) return noiseBuf;
-  const len = Math.floor(ctx.sampleRate * 2);
-  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-  const d = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-  noiseBuf = buf;
-  return buf;
+// Per-chamber frequency ranges, cached from window.CHAMBER / window.NOTES.
+let chamberRanges = null;
+function getChamberRanges() {
+  const notes = window.NOTES, chamberOf = window.CHAMBER;
+  if (!notes || !chamberOf) return {};
+  // Rebuild if the note set changed (e.g. instrument swapped).
+  if (chamberRanges && chamberRanges._key === notes.length + ":" + notes[0]) {
+    return chamberRanges;
+  }
+  const r = { _key: notes.length + ":" + notes[0] };
+  notes.forEach(id => {
+    const ch = chamberOf[id];
+    if (ch == null) return;
+    const f = freqOf(id);
+    const cur = r[ch] || (r[ch] = { min: f, max: f });
+    if (f < cur.min) cur.min = f;
+    if (f > cur.max) cur.max = f;
+  });
+  chamberRanges = r;
+  return r;
+}
+
+// Breathiness position (0..1) of a note WITHIN its own chamber: rises toward
+// the top of each chamber and resets when a new chamber begins. Falls back to
+// absolute pitch if chamber data is unavailable.
+function chamberReg(id, freq) {
+  const chamberOf = window.CHAMBER;
+  const ch = chamberOf && chamberOf[id];
+  const ranges = getChamberRanges();
+  const range = ch != null ? ranges[ch] : null;
+  if (range && range.max > range.min) {
+    return Math.max(0, Math.min(1,
+      Math.log2(freq / range.min) / Math.log2(range.max / range.min)));
+  }
+  return Math.max(0, Math.min(1, Math.log2(freq / 262) / 2));
+}
+
+// Per-chamber maximum covered-hole count (the chamber's fully-closed note),
+// cached, used to derive how many holes are open for a given note.
+let chamberMaxCover = null;
+function getChamberMaxCover() {
+  const notes = window.NOTES, chamberOf = window.CHAMBER, cover = window.COVER;
+  if (!notes || !chamberOf || !cover) return {};
+  const key = notes.length + ":" + notes[0];
+  if (chamberMaxCover && chamberMaxCover._key === key) return chamberMaxCover;
+  const m = { _key: key };
+  notes.forEach(id => {
+    const ch = chamberOf[id];
+    const n = (cover[id] || []).length;
+    if (ch == null) return;
+    if (m[ch] == null || n > m[ch]) m[ch] = n;
+  });
+  chamberMaxCover = m;
+  return m;
+}
+
+// "Attack effort" (0..1) shaping the onset softness / pitch overshoot.
+// Larger (lower-numbered) chambers build air pressure more slowly → bigger
+// overshoot and longer attack; within a chamber, MORE OPEN HOLES increase it
+// further. Returns ~0 for the smallest chamber fully closed, ~1 for the
+// largest chamber wide open.
+function attackEffort(id, freq) {
+  const chamberOf = window.CHAMBER;
+  const ch = chamberOf && chamberOf[id];
+  if (ch == null) return 0.4; // neutral fallback
+  const chambers = Object.keys((window.FING && FING.chambers) || { 1: 1 }).map(Number);
+  const maxCh = Math.max(...chambers, ch);
+  // Chamber size: chamber 1 = largest (1.0), higher numbers smaller.
+  const sizeF = maxCh > 1 ? (maxCh - ch) / (maxCh - 1) : 1;
+  // Open-hole fraction within the chamber (0 = fully closed, 1 = all open).
+  const maxCover = getChamberMaxCover()[ch] || 0;
+  const openF = maxCover > 0
+    ? Math.max(0, Math.min(1, 1 - (window.COVER[id] || []).length / maxCover))
+    : 0;
+  // Weighted blend: chamber size dominates, open holes modulate within it.
+  return Math.max(0, Math.min(1, 0.6 * sizeF + 0.4 * openF));
 }
 
 function cutLive() {
@@ -164,8 +231,15 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
     const relStart = Math.max(0.02, dur - rel);
     const tail = 0.03;
     const master = ctx.createGain();
+    // Tone speaks slightly after onset (breathy pre-tone → full), pairing with
+    // the pitch "catch up" bloom below for a soft ocarina attack. Larger
+    // chambers + more open holes build pressure slower → a longer, softer
+    // attack (see attackEffort).
+    const effort = attackEffort(id, freq);
+    const speak = Math.min(0.05, Math.max(0.006, dur * 0.08)) * (0.5 + effort);
     master.gain.setValueAtTime(0.0001, t0);
-    master.gain.linearRampToValueAtTime(0.26, t0 + 0.015);
+    master.gain.linearRampToValueAtTime(0.05, t0 + speak * 0.5); // breathy pre-tone
+    master.gain.linearRampToValueAtTime(0.26, t0 + speak + 0.015); // tone speaks
     master.gain.setValueAtTime(0.26, t0 + relStart);
     master.gain.linearRampToValueAtTime(0.0001, t0 + dur);
     master.gain.setValueAtTime(0.0001, t0 + dur + tail);
@@ -178,7 +252,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
     lp.connect(master);
 
     const wave = ctx.createPeriodicWave(
-      new Float32Array([0, 1, 0.07, 0.03, 0.012, 0.006]),
+      new Float32Array([0, 1, 0.06, 0.03, 0.012, 0.006]),
       new Float32Array([0, 0, 0, 0, 0, 0])
     );
     const osc = ctx.createOscillator();
@@ -188,32 +262,96 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
       osc.frequency.setValueAtTime(slideFrom, t0);
       osc.frequency.linearRampToValueAtTime(freq, t0 + glide);
     } else {
-      osc.frequency.setValueAtTime(freq * 0.992, t0);
-      osc.frequency.exponentialRampToValueAtTime(freq, t0 + 0.04);
+      // Airflow "catch up" onset: the pitch begins slightly flat and blooms
+      // to target with a tiny overshoot — a brief breath chiff, NOT a long
+      // pitch slide (that reads as brass). The pitch locks in fast (~15–30ms)
+      // even on high-effort notes; effort mainly shapes the softer AMPLITUDE
+      // attack (see `speak` above), not a long glide.
+      const rise = Math.min(0.03, Math.max(0.01, dur * 0.12)) * (0.7 + 0.3 * effort);
+      const flat = 0.993 - 0.007 * effort;  // start pitch: 0.7%–1.4% flat
+      const over = 1.002 + 0.004 * effort;  // overshoot: 0.2%–0.6% sharp
+      const overshootAt = t0 + rise;
+      const settleAt = overshootAt + rise * 0.9;
+      osc.frequency.setValueAtTime(freq * flat, t0);            // starts flat (air slow)
+      osc.frequency.linearRampToValueAtTime(freq * over, overshootAt); // overshoot sharp
+      osc.frequency.exponentialRampToValueAtTime(freq, settleAt);      // settle to pitch
     }
     osc.connect(lp);
     osc.start(t0);
     osc.stop(t0 + dur + tail);
 
-    const noise = ctx.createBufferSource();
-    noise.buffer = getNoiseBuffer(ctx);
-    noise.loop = true;
-    noise.loopStart = 0;
-    noise.loopEnd = noise.buffer.duration;
-    const hp = ctx.createBiquadFilter();
-    hp.type = "highpass";
-    hp.frequency.value = 1200;
-    const ng = ctx.createGain();
-    ng.gain.setValueAtTime(0.0001, t0);
-    ng.gain.exponentialRampToValueAtTime(0.045, t0 + 0.02);
-    ng.gain.exponentialRampToValueAtTime(0.012, t0 + Math.min(0.12, dur * 0.2));
-    ng.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    noise.connect(hp); hp.connect(ng); ng.connect(lp);
-    noise.start(t0);
-    noise.stop(t0 + dur + tail);
+    // Faint inharmonic "air" partial: a quiet, slightly detuned sine just
+    // above the 2nd harmonic adds breathy shimmer without muddying pitch.
+    const air = ctx.createOscillator();
+    air.type = "sine";
+    air.frequency.setValueAtTime(freq * 2.01, t0);
+    const airGain = ctx.createGain();
+    airGain.gain.setValueAtTime(0.0001, t0);
+    airGain.gain.linearRampToValueAtTime(0.02, t0 + 0.03);
+    airGain.gain.setValueAtTime(0.02, t0 + relStart);
+    airGain.gain.linearRampToValueAtTime(0.0001, t0 + dur);
+    air.connect(airGain); airGain.connect(lp);
+    air.start(t0);
+    air.stop(t0 + dur + tail);
+
+    // Gentle pitch vibrato (~5.5 Hz), only on SUSTAINED notes: it begins
+    // after a fixed settle delay, so short/fast notes end before it starts.
+    const VIB_DELAY = 0.35;
+    const lfo = ctx.createOscillator();
+    lfo.type = "sine";
+    lfo.frequency.value = 5.5;
+    const lfoGain = ctx.createGain();
+    // Only wire up vibrato if the note is long enough to reach the sustain.
+    if (dur > VIB_DELAY + 0.1) {
+      const vibDepth = freq * 0.0035; // ~6 cents peak (subtler)
+      lfoGain.gain.setValueAtTime(0.0001, t0);
+      lfoGain.gain.setValueAtTime(0.0001, t0 + VIB_DELAY);
+      lfoGain.gain.linearRampToValueAtTime(vibDepth, t0 + VIB_DELAY + 0.2);
+    } else {
+      lfoGain.gain.setValueAtTime(0.0001, t0);
+    }
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+    lfo.start(t0);
+    lfo.stop(t0 + dur + tail);
+
+    // Chamber-relative "blowing effort": rises toward the top of each chamber
+    // and resets at the next, so a higher note within a chamber is breathier.
+    // Drives the edge-whistle level below.
+    const reg = chamberReg(id, freq);
+
+    // Edge / windway whistle: the jet crossing the labium sings a faint,
+    // breathy tone slightly SHARP of the fundamental, with a little pitch
+    // instability. This is the characteristic hollow "whispered pitch" of a
+    // fipple/vessel flute. It grows with blowing effort (reg).
+    const edge = ctx.createOscillator();
+    edge.type = "sine";
+    const detune = 1.012 + Math.random() * 0.008; // ~20–34 cents sharp: breathy, not sour
+    edge.frequency.setValueAtTime(freq * detune, t0);
+    // Slow, subtle wander so it doesn't sound like a locked pure tone.
+    const wander = ctx.createOscillator();
+    wander.type = "sine";
+    wander.frequency.value = 7 + Math.random() * 4;
+    const wanderGain = ctx.createGain();
+    wanderGain.gain.value = freq * 0.006;
+    wander.connect(wanderGain); wanderGain.connect(edge.frequency);
+    const edgeGain = ctx.createGain();
+    const edgeLevel = 0.04 + reg * reg * 0.05; // ~0.04 low → ~0.09 high
+    edgeGain.gain.setValueAtTime(0.0001, t0);
+    edgeGain.gain.linearRampToValueAtTime(edgeLevel, t0 + 0.03);
+    edgeGain.gain.setValueAtTime(edgeLevel, t0 + relStart);
+    edgeGain.gain.linearRampToValueAtTime(0.0001, t0 + dur);
+    // A little breathiness on the whistle itself via a gentle bandpass.
+    const edgeBp = ctx.createBiquadFilter();
+    edgeBp.type = "bandpass";
+    edgeBp.frequency.value = freq * detune;
+    edgeBp.Q.value = 4;
+    edge.connect(edgeBp); edgeBp.connect(edgeGain); edgeGain.connect(master);
+    edge.start(t0); edge.stop(t0 + dur + tail);
+    wander.start(t0); wander.stop(t0 + dur + tail);
     if (bag) {
       bag.push({
-        stop() { try { osc.stop(); } catch (e) {} try { noise.stop(); } catch (e) {} },
+        stop() { try { osc.stop(); } catch (e) {} try { lfo.stop(); } catch (e) {} try { air.stop(); } catch (e) {} try { edge.stop(); } catch (e) {} try { wander.stop(); } catch (e) {} },
         fade() {
           const now = ctx.currentTime;
           try {
@@ -221,7 +359,10 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
             master.gain.setValueAtTime(Math.max(0.0001, master.gain.value || 0.26), now);
             master.gain.linearRampToValueAtTime(0.0001, now + 0.03);
             osc.stop(now + 0.05);
-            noise.stop(now + 0.05);
+            lfo.stop(now + 0.05);
+            air.stop(now + 0.05);
+            edge.stop(now + 0.05);
+            wander.stop(now + 0.05);
           } catch (e) {}
         }
       });
