@@ -11,21 +11,28 @@ let melodyPos = 0;
 let melodyHoldUntil = -1;
 let melodyPaused = false;
 let melodyNextTime = 0; // absolute ctx time of the next note to schedule
+let melodyQuarter = null; // seconds per quarter for the CURRENT tempo (inline # tempo changes update this)
 let lastHoldSec = 0.5; // sounding duration of the last scheduled note (for zen glow)
 
 function syncTransport() {
   if (typeof updateTransportUI === "function") updateTransportUI();
 }
 
+// Seconds per quarter note for a given bpm, clamped to the same 40–180 range
+// the tempo slider uses. Used for inline "# tempo N" changes during playback.
+function quarterSecFor(bpm) {
+  return 60 / Math.max(40, Math.min(180, (+bpm) || 100));
+}
+
 function tokenGridBeats(tok) {
-  if (!tok || tok.type === "bar") return 0;
+  if (!tok || tok.type === "bar" || tok.type === "tempo") return 0;
   return tok.beats || ((4 / (tok.dur || 4)) * (tok.dotted ? 1.5 : 1));
 }
 
 function soundingGridBeats(tokens, idx) {
   let p = tokenGridBeats(tokens[idx]);
   for (let i = idx + 1; i < tokens.length; i++) {
-    if (tokens[i].type === "bar") continue;
+    if (tokens[i].type === "bar" || tokens[i].type === "tempo") continue;
     if (tokens[i].type === "tie") p += tokenGridBeats(tokens[i]);
     else break;
   }
@@ -35,7 +42,7 @@ function soundingGridBeats(tokens, idx) {
 function lastHoldIndex(tokens, idx) {
   let last = idx;
   for (let i = idx + 1; i < tokens.length; i++) {
-    if (tokens[i].type === "bar") continue;
+    if (tokens[i].type === "bar" || tokens[i].type === "tempo") continue;
     if (tokens[i].type === "tie") last = i;
     else break;
   }
@@ -720,6 +727,12 @@ function playMelody(fromIdx) {
   melodyHoldUntil = -1;
   melodyPaused = false;
   melodyPos = gridBeatsBefore(melodyTokens, melodyIdx);
+  // Seed the current tempo: header tempo, then any inline "# tempo" tokens that
+  // occur before the start index (so playing from mid-song uses the right one).
+  melodyQuarter = quarterSec();
+  for (let i = 0; i < melodyIdx && i < melodyTokens.length; i++) {
+    if (melodyTokens[i].type === "tempo") melodyQuarter = quarterSecFor(melodyTokens[i].bpm);
+  }
   if (!melodyTokens.length) return;
   audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
   if (audioCtx.state === "suspended") audioCtx.resume();
@@ -787,11 +800,23 @@ function scheduleMelody(when) {
 
   while (melodyNextTime < audioCtx.currentTime + SCHED_AHEAD) {
     let atBar = (melodyIdx === melodyFrom);
-    while (melodyIdx < melodyTokens.length && melodyTokens[melodyIdx].type === "bar") { melodyIdx++; atBar = true; }
+    // Consume bar lines (zero time) and inline tempo changes. A "tempo" token
+    // switches the sec-per-quarter used from this point forward.
+    while (melodyIdx < melodyTokens.length &&
+           (melodyTokens[melodyIdx].type === "bar" || melodyTokens[melodyIdx].type === "tempo")) {
+      if (melodyTokens[melodyIdx].type === "tempo") melodyQuarter = quarterSecFor(melodyTokens[melodyIdx].bpm);
+      else atBar = true;
+      melodyIdx++;
+    }
     if (melodyIdx >= melodyTokens.length) {
       if (document.getElementById("loopMel") && document.getElementById("loopMel").checked) {
         melodyIdx = 0;
-        while (melodyIdx < melodyTokens.length && melodyTokens[melodyIdx].type === "bar") melodyIdx++;
+        melodyQuarter = quarterSec(); // reset to the header tempo at loop start
+        while (melodyIdx < melodyTokens.length &&
+               (melodyTokens[melodyIdx].type === "bar" || melodyTokens[melodyIdx].type === "tempo")) {
+          if (melodyTokens[melodyIdx].type === "tempo") melodyQuarter = quarterSecFor(melodyTokens[melodyIdx].bpm);
+          melodyIdx++;
+        }
         if (melodyIdx >= melodyTokens.length) { stopMelody(); return; }
         melodyPos = 0;
         melodyHoldUntil = -1;
@@ -807,12 +832,12 @@ function scheduleMelody(when) {
     const noteWhen = melodyNextTime;
     if (atBar && tickEnabled() && barHasNote(melodyTokens, melodyIdx)) playTickAt(noteWhen, melodyBag);
     const tok = melodyTokens[melodyIdx];
-    const step = Math.max(0.001, swungBeats(tok, melodyPos) * quarterSec()); // floor guards against a 0-beat token spinning the loop
+    const step = Math.max(0.001, swungBeats(tok, melodyPos) * melodyQuarter); // floor guards against a 0-beat token spinning the loop
     melodyPos += tokenGridBeats(tok);
     const pitched = (tok.type === "note" || tok.type === "tie") && NOTES.includes(tok.id);
     let didSound = false;
     if (pitched && melodyIdx > melodyHoldUntil) {
-      const hold = soundingGridBeats(melodyTokens, melodyIdx) * quarterSec();
+      const hold = soundingGridBeats(melodyTokens, melodyIdx) * melodyQuarter;
       const slideFrom = (tok.slide && NOTES.includes(tok.slideFrom)) ? tok.slideFrom : null;
       // Staccato: sound only a short portion of the slot, leaving an audible gap
       // (an implied pause) before the next note. Never applies to slurred/tied notes.

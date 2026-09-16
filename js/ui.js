@@ -114,7 +114,7 @@ function tallyTokens(tokens) {
   let notes = 0, outOf = 0, switches = 0, prevCh = null;
   const rng = rangeLabel();
   tokens.forEach(t => {
-    if (t.type === "bar" || t.type === "rest") return;
+    if (t.type === "bar" || t.type === "rest" || t.type === "tempo") return;
     if (t.type === "tie") {
       if (!t.id || !NOTES.includes(t.id)) problems.push((t.raw || "-") + " (nothing to continue)");
       return;
@@ -178,6 +178,12 @@ function fillFullSheet(sheet, tokens) {
   tokens.forEach((t, i) => {
     if (t.type === "bar") {
       const b = document.createElement("div"); b.className = "tab-bar"; sheet.appendChild(b); return;
+    }
+    if (t.type === "tempo") {
+      const tp = document.createElement("div"); tp.className = "tab-tempo";
+      tp.dataset.i = String(i);
+      tp.textContent = "♩=" + t.bpm;
+      sheet.appendChild(tp); return;
     }
     if (t.type === "rest") {
       const r = document.createElement("div"); r.className = "card rest";
@@ -530,6 +536,10 @@ function buildTokenEl(t, i) {
   if (t.type === "bar") {
     el.className = "tok bar";
     el.textContent = "|";
+  } else if (t.type === "tempo") {
+    el.className = "tok tempo";
+    el.textContent = "♩=" + t.bpm;
+    el.title = "tempo changes to " + t.bpm + " BPM from here";
   } else if (t.type === "rest") {
     el.className = "tok pause";
     el.innerHTML = `r <span class="td">${durLabel(t.dur, t.dotted, t.triplet)}</span>`;

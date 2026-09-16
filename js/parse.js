@@ -4,7 +4,15 @@ function parse(src) {
   let m, lastOct = 4, lastPitch = null, canTie = false, pendingSlide = false;
   const text = src.replace(/[–—]/g, "|");
   while ((m = re.exec(text))) {
-    if (m[12]) continue;
+    if (m[12]) {
+      // Inline "# tempo N" AFTER music has started emits a tempo-change token so
+      // playback shifts tempo from this point on. Leading "# tempo" lines are
+      // the header/default (handled globally) and are not tokenized. Other
+      // comments are ignored.
+      const tc = m[12].match(/^#\s*tempo\s+(\d+)/i);
+      if (tc && tokens.length) tokens.push({ type: "tempo", bpm: +tc[1] });
+      continue;
+    }
     if (m[11]) { if (lastPitch) pendingSlide = true; continue; }
     if (m[6]) { tokens.push({type:"bar"}); continue; }
     if (m[7]) {
@@ -154,13 +162,22 @@ function titleFromText(text) {
 }
 
 function withPlayHeaders(body, name, bpm, swing) {
-  const rest = String(body || "").split("\n").filter(l => !isTempoComment(l) && !isSwingComment(l));
+  // Split off the LEADING header block (title/tempo/swing comment lines at the
+  // very top) from the musical body. Tempo/swing lines that appear later in the
+  // body are inline changes and must be preserved.
+  const lines = String(body || "").split("\n");
+  let h = 0;
+  while (h < lines.length && lines[h].trim().startsWith("#")) h++;
+  const headerLines = lines.slice(0, h);
+  const rest = lines.slice(h);
+  // Keep any non-tempo/non-swing header comment (e.g. the title) from the top.
+  const title = [];
   if (name) {
-    const title = "# " + String(name).trim();
-    if (rest[0] && rest[0].startsWith("#")) rest[0] = title;
-    else rest.unshift(title);
+    title.push("# " + String(name).trim());
+  } else {
+    const t0 = headerLines.find(l => !isTempoComment(l) && !isSwingComment(l));
+    if (t0) title.push(t0);
   }
-  const title = rest[0] && rest[0].startsWith("#") ? [rest.shift()] : [];
   const t = bpm != null ? bpm : 100;
   const s = Math.max(0, +(swing != null ? swing : 0) || 0);
   const head = [...title, "# tempo " + t];
