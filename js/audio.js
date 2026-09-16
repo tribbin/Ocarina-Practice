@@ -186,26 +186,44 @@ function getChamberMaxCover() {
   return m;
 }
 
+// Chamber size (0..1, larger/lower-numbered = 1) and open-hole fraction
+// (0 = fully closed, 1 = all open) for a note. Drives both the attack
+// softness and the chiff character.
+function noteArticulation(id) {
+  const chamberOf = window.CHAMBER;
+  const ch = chamberOf && chamberOf[id];
+  if (ch == null) return { sizeF: 0.5, openF: 0.5 };
+  const chambers = Object.keys((window.FING && FING.chambers) || { 1: 1 }).map(Number);
+  const maxCh = Math.max(...chambers, ch);
+  const sizeF = maxCh > 1 ? (maxCh - ch) / (maxCh - 1) : 1;
+  const maxCover = getChamberMaxCover()[ch] || 0;
+  const openF = maxCover > 0
+    ? Math.max(0, Math.min(1, 1 - (window.COVER[id] || []).length / maxCover))
+    : 0;
+  return { sizeF, openF };
+}
+
 // "Attack effort" (0..1) shaping the onset softness / pitch overshoot.
 // Larger (lower-numbered) chambers build air pressure more slowly → bigger
 // overshoot and longer attack; within a chamber, MORE OPEN HOLES increase it
 // further. Returns ~0 for the smallest chamber fully closed, ~1 for the
 // largest chamber wide open.
 function attackEffort(id, freq) {
-  const chamberOf = window.CHAMBER;
-  const ch = chamberOf && chamberOf[id];
-  if (ch == null) return 0.4; // neutral fallback
-  const chambers = Object.keys((window.FING && FING.chambers) || { 1: 1 }).map(Number);
-  const maxCh = Math.max(...chambers, ch);
-  // Chamber size: chamber 1 = largest (1.0), higher numbers smaller.
-  const sizeF = maxCh > 1 ? (maxCh - ch) / (maxCh - 1) : 1;
-  // Open-hole fraction within the chamber (0 = fully closed, 1 = all open).
-  const maxCover = getChamberMaxCover()[ch] || 0;
-  const openF = maxCover > 0
-    ? Math.max(0, Math.min(1, 1 - (window.COVER[id] || []).length / maxCover))
-    : 0;
+  const { sizeF, openF } = noteArticulation(id);
   // Weighted blend: chamber size dominates, open holes modulate within it.
   return Math.max(0, Math.min(1, 0.6 * sizeF + 0.4 * openF));
+}
+
+// Short white-noise buffer reused for chiff bursts.
+let chiffBuf = null;
+function getChiffBuffer(ctx) {
+  if (chiffBuf && chiffBuf.sampleRate === ctx.sampleRate) return chiffBuf;
+  const len = Math.floor(ctx.sampleRate * 0.5);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  chiffBuf = buf;
+  return buf;
 }
 
 function cutLive() {
@@ -234,12 +252,16 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
     // Tone speaks slightly after onset (breathy pre-tone → full), pairing with
     // the pitch "catch up" bloom below for a soft ocarina attack. Larger
     // chambers + more open holes build pressure slower → a longer, softer
-    // attack (see attackEffort).
+    // attack (see attackEffort). The big bass chamber is especially demanding:
+    // the pure tone takes noticeably longer to reach full equilibrium.
+    const art = noteArticulation(id);
     const effort = attackEffort(id, freq);
     const speak = Math.min(0.05, Math.max(0.006, dur * 0.08)) * (0.5 + effort);
+    const equilib = Math.min(dur * 0.4, art.sizeF * art.sizeF * 0.16); // big chamber = slow to settle
     master.gain.setValueAtTime(0.0001, t0);
     master.gain.linearRampToValueAtTime(0.05, t0 + speak * 0.5); // breathy pre-tone
-    master.gain.linearRampToValueAtTime(0.26, t0 + speak + 0.015); // tone speaks
+    master.gain.linearRampToValueAtTime(0.16, t0 + speak + 0.015); // tone begins to speak
+    master.gain.linearRampToValueAtTime(0.26, t0 + speak + 0.015 + equilib); // reaches full equilibrium
     master.gain.setValueAtTime(0.26, t0 + relStart);
     master.gain.linearRampToValueAtTime(0.0001, t0 + dur);
     master.gain.setValueAtTime(0.0001, t0 + dur + tail);
@@ -349,9 +371,44 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
     edge.connect(edgeBp); edgeBp.connect(edgeGain); edgeGain.connect(master);
     edge.start(t0); edge.stop(t0 + dur + tail);
     wander.start(t0); wander.stop(t0 + dur + tail);
+
+    // Dry-clay CHIFF: the tongued onset is a noise burst that "focuses" as the
+    // Helmholtz cavity catches the jet. Its color is set by chamber size: big
+    // (bass) chambers give a dark, muffled, longer "phh"; small chambers a
+    // bright, airy "tss". More open holes = leakier, brighter, breathier.
+    const { sizeF: chSize, openF: chOpen } = art;
+    const chiffLen = (0.06 + chSize * 0.16) * (0.8 + 0.2 * chOpen); // ~60–260 ms
+    // Chamber character comes from WHERE the noise energy sits. A big (bass)
+    // chamber is a dark, muffled "phh"; a small chamber a bright, airy "tss".
+    // Use a resonant lowpass with a strongly chamber-dependent cutoff and a
+    // wide spread so the timbres are clearly distinct, sweeping down as the
+    // cavity focuses. `bright` spans ~4 octaves between largest & smallest.
+    const bright = Math.pow(2, (1 - chSize) * 3.5 + chOpen * 1.2); // ~1x (big) → ~16x (small)
+    const startHz = Math.min(11000, 900 * bright);   // broad/high at onset
+    const endHz = Math.min(9000, 500 * bright);      // settles, still chamber-colored
+    const chiffSrc = ctx.createBufferSource();
+    chiffSrc.buffer = getChiffBuffer(ctx);
+    const chiffHp = ctx.createBiquadFilter();
+    chiffHp.type = "highpass";
+    chiffHp.frequency.value = Math.max(120, 300 * bright * 0.4); // trim low rumble, scaled
+    const chiffLp = ctx.createBiquadFilter();
+    chiffLp.type = "lowpass";
+    chiffLp.Q.value = 1.2;
+    chiffLp.frequency.setValueAtTime(startHz, t0);
+    chiffLp.frequency.exponentialRampToValueAtTime(endHz, t0 + chiffLen * 0.6);
+    const chiffGain = ctx.createGain();
+    const chiffPeak = 0.03 + chSize * chSize * 0.07; // big chamber much stronger/more demanding
+    // Gentle attack, then a long sustain-and-decay so the breathy onset lingers
+    // as the tone establishes, especially in the big bass chamber.
+    chiffGain.gain.setValueAtTime(0.0001, t0);
+    chiffGain.gain.linearRampToValueAtTime(chiffPeak, t0 + Math.min(0.03, chiffLen * 0.25));
+    chiffGain.gain.setValueAtTime(chiffPeak * 0.85, t0 + chiffLen * 0.5);
+    chiffGain.gain.exponentialRampToValueAtTime(0.0001, t0 + chiffLen); // settles into tone
+    chiffSrc.connect(chiffHp); chiffHp.connect(chiffLp); chiffLp.connect(chiffGain); chiffGain.connect(master);
+    chiffSrc.start(t0); chiffSrc.stop(t0 + chiffLen + 0.02);
     if (bag) {
       bag.push({
-        stop() { try { osc.stop(); } catch (e) {} try { lfo.stop(); } catch (e) {} try { air.stop(); } catch (e) {} try { edge.stop(); } catch (e) {} try { wander.stop(); } catch (e) {} },
+        stop() { try { osc.stop(); } catch (e) {} try { lfo.stop(); } catch (e) {} try { air.stop(); } catch (e) {} try { edge.stop(); } catch (e) {} try { wander.stop(); } catch (e) {} try { chiffSrc.stop(); } catch (e) {} },
         fade() {
           const now = ctx.currentTime;
           try {
@@ -363,6 +420,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
             air.stop(now + 0.05);
             edge.stop(now + 0.05);
             wander.stop(now + 0.05);
+            try { chiffSrc.stop(now + 0.05); } catch (e) {}
           } catch (e) {}
         }
       });
