@@ -768,7 +768,14 @@ function wireUi() {
   });
   updateModeButtons();
   const fsBtn = document.getElementById("fullscreen");
-  if (fsBtn) fsBtn.onclick = () => toggleZen();
+  if (fsBtn) fsBtn.onclick = () => {
+    // Full screen keeps whatever display is active (grid/scroll/single all
+    // fullscreen fine). Only Zen forces the single-ocarina view — and devices
+    // without the Fullscreen API (e.g. iPhone Safari) get the zen fallback,
+    // since it's the only way they can go chrome-less.
+    const panel = document.getElementById("tabPanel");
+    if (canFullscreen(panel)) toggleFullscreen(panel); else toggleZen();
+  };
   document.addEventListener("mousemove", revealZenUi);
   wireZen();
   wireFocusControls();
@@ -936,13 +943,15 @@ function wireZen() {
   window.onZenChange = null;
   if (btn) btn.onclick = () => toggleZen();
   const sync = () => {
-    if (typeof setReverbEnabled === "function") setReverbEnabled(isFullscreen());
     if (!isFullscreen() && zenPrevMode) {
       const m = zenPrevMode; zenPrevMode = null; setDisplayMode(m);
     }
     const fsBtn = document.getElementById("fullscreen");
     if (fsBtn) fsBtn.textContent = isFullscreen() ? "Exit full screen" : "Full screen";
     syncFocusMode();
+    // Reverb belongs to zen/focus mode, not to any fullscreen: plain full
+    // screen with grid/scroll stays dry.
+    if (typeof setReverbEnabled === "function") setReverbEnabled(isFocusMode());
     if (isFullscreen() && isLiveTab() && !isMelodyPlaying()) stopMelody();
   };
   document.addEventListener("fullscreenchange", sync);
