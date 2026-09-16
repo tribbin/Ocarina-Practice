@@ -272,16 +272,24 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
     const equilib = Math.min(dur * 0.4, art.sizeF * art.sizeF * 0.16); // big chamber = slow to settle
     const t1 = t0 + speak * 0.5;
     const t2 = t0 + speak + 0.015;
-    // Ensure the final "equilibrium" ramp has a real duration. When equilib≈0
-    // (the smallest/high chamber) t3 would equal t2, making a zero-length ramp
-    // that jumps instantly 0.16→0.26 — an audible click on every high-chamber
-    // note. Floor the ramp at 15ms so it always glides.
-    const t3 = Math.max(t2 + 0.015, t2 + equilib);
+    // Ensure the final "equilibrium" ramp has a real duration but also finishes
+    // BEFORE the release begins. When equilib≈0 (high chamber) t3 would equal t2
+    // (instant jump → click); when the note is short & high-effort (e.g. D5/16)
+    // an unclamped t3 would land after relStart, creating out-of-order gain
+    // automation (another click). Clamp into (t2, relStart).
+    const relStartT = t0 + relStart;
+    const t3 = Math.min(relStartT - 0.005, Math.max(t2 + 0.015, t2 + equilib));
     master.gain.setValueAtTime(0.0001, t0);
     master.gain.linearRampToValueAtTime(0.05, t1); // breathy pre-tone
-    master.gain.linearRampToValueAtTime(0.16, t2); // tone begins to speak
-    master.gain.linearRampToValueAtTime(0.26, t3); // reaches full equilibrium
-    master.gain.setValueAtTime(0.26, t0 + relStart);
+    if (t3 > t2 + 0.001) {
+      master.gain.linearRampToValueAtTime(0.16, t2); // tone begins to speak
+      master.gain.linearRampToValueAtTime(0.26, t3); // reaches full equilibrium
+    } else {
+      // Very short note: no room for the two-stage climb; go straight to full
+      // by t2 so the automation stays monotonic and click-free.
+      master.gain.linearRampToValueAtTime(0.26, Math.min(t2, relStartT - 0.003));
+    }
+    master.gain.setValueAtTime(0.26, relStartT);
     master.gain.linearRampToValueAtTime(0.0001, t0 + dur);
     master.gain.setValueAtTime(0.0001, t0 + dur + tail);
     master.connect(getReverbBus(ctx));
@@ -316,8 +324,8 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
       // even on high-effort notes; effort mainly shapes the softer AMPLITUDE
       // attack (see `speak` above), not a long glide.
       const rise = Math.min(0.03, Math.max(0.01, dur * 0.12)) * (0.7 + 0.3 * effort);
-      const flat = window.BLOOM_OFF ? 1 : 0.993 - 0.007 * effort;  // start pitch: 0.7%–1.4% flat
-      const over = window.BLOOM_OFF ? 1 : 1.002 + 0.004 * effort;  // overshoot: 0.2%–0.6% sharp
+      const flat = 0.993 - 0.007 * effort;  // start pitch: 0.7%–1.4% flat
+      const over = 1.002 + 0.004 * effort;  // overshoot: 0.2%–0.6% sharp
       const overshootAt = t0 + rise;
       const settleAt = overshootAt + rise * 0.9;
       osc.frequency.setValueAtTime(freq * flat, t0);            // starts flat (air slow)
@@ -327,7 +335,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
       // pitch bends flat — a subtle downward "sigh". Scaled by effort/chamber
       // so bigger chambers sag a touch more. Only if the note is long enough to
       // have settled first.
-      if (!window.BLOOM_OFF && relStart > settleAt + 0.02) {
+      if (relStart > settleAt + 0.02) {
         const sag = 0.01 + 0.008 * effort; // ~17–31 cents flat over the release
         osc.frequency.setValueAtTime(freq, relStart);
         osc.frequency.linearRampToValueAtTime(freq * (1 - sag), t0 + dur);
@@ -403,8 +411,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
     wanderGain.gain.value = freq * 0.006;
     wander.connect(wanderGain); wanderGain.connect(edge.frequency);
     const edgeGain = ctx.createGain();
-    let edgeLevel = 0.035 + reg * reg * 0.022; // ~0.035 low → ~0.057 high (gentler climb)
-    if (window.EDGE_OFF) edgeLevel = 0.0001; // DIAGNOSTIC
+    const edgeLevel = 0.035 + reg * reg * 0.022; // ~0.035 low → ~0.057 high (gentler climb)
     edgeGain.gain.setValueAtTime(0.0001, t0);
     edgeGain.gain.linearRampToValueAtTime(edgeLevel, t0 + 0.03);
     edgeGain.gain.setValueAtTime(edgeLevel, t0 + relStart);
@@ -423,13 +430,16 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
     // (bass) chambers give a dark, muffled, longer "phh"; small chambers a
     // bright, airy "tss". More open holes = leakier, brighter, breathier.
     const { sizeF: chSize, openF: chOpen } = art;
-    const chiffLen = (0.11 + chSize * 0.24) * (0.85 + 0.15 * chOpen); // low chamber longer
+    // Cap to the note's release start so the chiff always fades to zero before
+    // `master` cuts the note. On short notes (fast 16ths) an uncapped chiff is
+    // still at high level when master fades at t0+dur → truncation click.
+    const chiffLen = Math.min((0.11 + chSize * 0.24) * (0.85 + 0.15 * chOpen), relStart - 0.005);
     // Chamber character comes from WHERE the noise energy sits. A big (bass)
     // chamber is a dark, muffled "phh"; a small chamber a bright, airy "tss".
     // Use a resonant lowpass with a strongly chamber-dependent cutoff and a
     // wide spread so the timbres are clearly distinct, sweeping down as the
     // cavity focuses. `bright` spans ~4 octaves between largest & smallest.
-    const bright = Math.pow(2, (1 - chSize) * 3.5 + chOpen * 1.2); // ~1x (big) → ~16x (small)
+    const bright = Math.min(9, Math.pow(2, (1 - chSize) * 3.5 + chOpen * 1.2)); // ~1x (big) → capped ~9x
     const startHz = Math.min(11000, 900 * bright);   // broad/high at onset
     const endHz = Math.min(9000, 500 * bright);      // settles, still chamber-colored
     const chiffSrc = ctx.createBufferSource();
@@ -439,12 +449,11 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
     chiffHp.frequency.value = Math.max(300, 300 * bright * 0.4); // trim low rumble; floor keeps it airy not rumbly
     const chiffLp = ctx.createBiquadFilter();
     chiffLp.type = "lowpass";
-    chiffLp.Q.value = 1.2;
+    chiffLp.Q.value = 0.4; // non-resonant: avoids a chirp/ring on bright high-chamber sweeps
     chiffLp.frequency.setValueAtTime(startHz, t0);
     chiffLp.frequency.exponentialRampToValueAtTime(endHz, t0 + chiffLen * 0.6);
     const chiffGain = ctx.createGain();
-    let chiffPeak = 0.018 - 0.0812 * chSize + 0.1412 * chSize * chSize; // low strong, mid softest, high modest
-    if (window.CHIFF_OFF) chiffPeak = 0.0001; // DIAGNOSTIC: silence chiff to isolate the tick
+    const chiffPeak = 0.018 - 0.0812 * chSize + 0.1412 * chSize * chSize; // low strong, mid softest, high modest
     // Gentle attack, then a sustain-and-decay so the breathy onset lingers as
     // the tone establishes. The tail uses a linear ramp that actually reaches
     // zero (exponential ramps never do) with a small guard before the source
