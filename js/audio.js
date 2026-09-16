@@ -598,16 +598,14 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // Helmholtz cavity catches the jet. Its color is set by chamber size: big
     // (bass) chambers give a dark, muffled, longer "phh"; small chambers a
     // bright, airy "tss". More open holes = leakier, brighter, breathier.
-    // A ~ slide note CONTINUES the previous note's breath, so it gets no
-    // tongued burst — instead a softer chiff fires when the glide LANDS, so
-    // the arrived tone carries the same color as a freshly blown one.
-    const chOff = slideFrom ? glide : 0;
-    const { sizeF: chSize, openF: chOpen } = art;
-    // Cap to the note's release start so the chiff always fades to zero before
-    // `master` cuts the note. On short notes (fast 16ths) an uncapped chiff is
-    // still at high level when master fades at t0+dur → truncation click.
-    const chiffLen = Math.min((0.11 + chSize * 0.24) * (0.85 + 0.15 * chOpen), relStart - chOff - 0.005);
-    if (!slideFrom || chiffLen > 0.035) { // slides need room for a soft burst
+    // A ~ slide note CONTINUES the previous note's breath, so it gets no chiff
+    // at all — no tongued burst at onset, no extra burst when the glide lands.
+    if (!slideFrom) {
+      const { sizeF: chSize, openF: chOpen } = art;
+      // Cap to the note's release start so the chiff always fades to zero before
+      // `master` cuts the note. On short notes (fast 16ths) an uncapped chiff is
+      // still at high level when master fades at t0+dur → truncation click.
+      const chiffLen = Math.min((0.11 + chSize * 0.24) * (0.85 + 0.15 * chOpen), relStart - 0.005);
       // Chamber character comes from WHERE the noise energy sits. A big (bass)
       // chamber is a dark, muffled "phh"; a small chamber a bright, airy "tss".
       // Use a resonant lowpass with a strongly chamber-dependent cutoff and a
@@ -624,22 +622,22 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       const chiffLp = ctx.createBiquadFilter();
       chiffLp.type = "lowpass";
       chiffLp.Q.value = 0.4; // non-resonant: avoids a chirp/ring on bright high-chamber sweeps
-      chiffLp.frequency.setValueAtTime(startHz, t0 + chOff);
-      chiffLp.frequency.exponentialRampToValueAtTime(endHz, t0 + chOff + chiffLen * 0.6);
+      chiffLp.frequency.setValueAtTime(startHz, t0);
+      chiffLp.frequency.exponentialRampToValueAtTime(endHz, t0 + chiffLen * 0.6);
       const chiffGain = ctx.createGain();
-      const chiffPeak = (0.018 - 0.0812 * chSize + 0.1412 * chSize * chSize) * (slideFrom ? 0.75 : 1);
+      const chiffPeak = 0.018 - 0.0812 * chSize + 0.1412 * chSize * chSize; // low strong, mid softest, high modest
       // Gentle attack, then a sustain-and-decay so the breathy onset lingers as
       // the tone establishes. The tail uses a linear ramp that actually reaches
       // zero (exponential ramps never do) with a small guard before the source
       // stops, avoiding a truncation click that reads as "clipping" on short
       // (high-chamber) bursts.
       const chAtk = Math.max(0.012, Math.min(0.025, chiffLen * 0.3)); // softer attack, min 12ms
-      chiffGain.gain.setValueAtTime(0.0001, t0 + chOff);
-      chiffGain.gain.linearRampToValueAtTime(chiffPeak, t0 + chOff + chAtk);
-      chiffGain.gain.linearRampToValueAtTime(chiffPeak * 0.85, t0 + chOff + chiffLen * 0.5);
-      chiffGain.gain.linearRampToValueAtTime(0.0, t0 + chOff + chiffLen); // reach true zero
+      chiffGain.gain.setValueAtTime(0.0001, t0);
+      chiffGain.gain.linearRampToValueAtTime(chiffPeak, t0 + chAtk);
+      chiffGain.gain.linearRampToValueAtTime(chiffPeak * 0.85, t0 + chiffLen * 0.5);
+      chiffGain.gain.linearRampToValueAtTime(0.0, t0 + chiffLen); // reach true zero
       chiffSrc.connect(chiffHp); chiffHp.connect(chiffLp); chiffLp.connect(chiffGain); chiffGain.connect(master);
-      chiffSrc.start(t0 + chOff); chiffSrc.stop(t0 + chOff + chiffLen + 0.02);
+      chiffSrc.start(t0); chiffSrc.stop(t0 + chiffLen + 0.02);
     }
 
     // Overblown-mode ONSET overtone ("blowing on a bottle"): when the jet first
