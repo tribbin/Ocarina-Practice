@@ -59,6 +59,7 @@ function gridBeatsBefore(tokens, idx) {
 let reverbBus = null;   // input node that notes connect to (dry + wet split)
 let reverbWetGain = null;
 let reverbEnabled = false;
+const REVERB_WET = 0.32; // canonical "on" wet level (lazy bus init + toggle ramp)
 
 function makeReverbImpulse(ctx, seconds, decay) {
   const rate = ctx.sampleRate;
@@ -86,31 +87,46 @@ function getReverbBus(ctx) {
   const convolver = ctx.createConvolver();
   convolver.buffer = makeReverbImpulse(ctx, 2.6, 3.2);
   const wet = ctx.createGain();
-  wet.gain.value = reverbEnabled ? 0.5 : 0;
-  // Brickwall-ish limiter: fast, high ratio, threshold just below 0 dBFS.
+  wet.gain.value = reverbEnabled ? REVERB_WET : 0;
+  // Safety limiter to catch peaks. Lower threshold + a soft knee and slower
+  // attack keep it from clamping the vibrato/tremolo peaks of a sustained note
+  // hard enough to add buzzy harmonic distortion; the outGain below provides
+  // the actual headroom so the limiter should rarely engage.
   const limiter = ctx.createDynamicsCompressor();
-  limiter.threshold.value = -3;
-  limiter.knee.value = 0;
-  limiter.ratio.value = 20;
-  limiter.attack.value = 0.003;
-  limiter.release.value = 0.15;
+  limiter.threshold.value = -6;
+  limiter.knee.value = 6;
+  limiter.ratio.value = 12;
+  limiter.attack.value = 0.006;
+  limiter.release.value = 0.2;
   dry.connect(limiter);
   input.connect(dry);
   input.connect(convolver); convolver.connect(wet); wet.connect(limiter);
-  limiter.connect(ctx.destination);
+  // Output headroom: the per-voice partial stack (osc + air + edge + reverb)
+  // can push the limiter into its knee on sustained low notes, and any
+  // remaining peaks would clip when the OS mixes our output with other audio
+  // (e.g. a call). Attenuate after the limiter so the signal sits well below
+  // 0 dBFS with margin for inter-sample overshoot.
+  const outGain = ctx.createGain();
+  outGain.gain.value = 0.6;
+  limiter.connect(outGain);
+  outGain.connect(ctx.destination);
   reverbWetGain = wet;
   reverbBus = input;
   return reverbBus;
 }
 
-// Called by the UI when Zen mode is entered/exited.
+// Called by the UI when Zen mode is entered/exited. Idempotent: safe to call
+// with the same state repeatedly. `reverbEnabled` is the single source of
+// truth — a lazily-created reverb bus reads it at build time, and any existing
+// wet gain is ramped here, so the flag and the live node can never disagree.
 function setReverbEnabled(on) {
   reverbEnabled = !!on;
   if (reverbWetGain && audioCtx) {
     const now = audioCtx.currentTime;
+    const target = reverbEnabled ? REVERB_WET : 0;
     reverbWetGain.gain.cancelScheduledValues(now);
     reverbWetGain.gain.setValueAtTime(reverbWetGain.gain.value, now);
-    reverbWetGain.gain.linearRampToValueAtTime(reverbEnabled ? 0.32 : 0, now + 0.25);
+    reverbWetGain.gain.linearRampToValueAtTime(target, now + 0.25);
   }
 }
 

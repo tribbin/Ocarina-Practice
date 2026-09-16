@@ -877,6 +877,9 @@ function enterZen() {
   if (!panel) return;
   if (!isLiveTab()) { zenPrevMode = displayMode; setDisplayMode("single"); }
   if (canFullscreen(panel)) {
+    // Let the authoritative fullscreenchange -> sync enable reverb only once
+    // fullscreen actually succeeds; enabling here would strand reverb "on" if
+    // the request is rejected (no gesture/permission) and no event fires.
     (panel.requestFullscreen || panel.webkitRequestFullscreen).call(panel);
   } else {
     // Fullscreen API unavailable (e.g. Safari on iPhone): use CSS fallback.
@@ -886,6 +889,9 @@ function enterZen() {
 }
 
 function exitZen() {
+  // Turn reverb off up front so it can't be stranded if the async
+  // fullscreenchange/onZenChange sync is missed or fires out of order.
+  if (typeof setReverbEnabled === "function") setReverbEnabled(false);
   const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
   if (fsEl) {
     toggleFullscreen();
