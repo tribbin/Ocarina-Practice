@@ -10,6 +10,7 @@ let melodyFrom = 0;
 let melodyPos = 0;
 let melodyHoldUntil = -1;
 let melodyPaused = false;
+let melodyNextTime = 0; // absolute ctx time of the next note to schedule
 let lastHoldSec = 0.5; // sounding duration of the last scheduled note (for zen glow)
 
 function syncTransport() {
@@ -113,6 +114,27 @@ function getReverbBus(ctx) {
   reverbWetGain = wet;
   reverbBus = input;
   return reverbBus;
+}
+
+// Lightweight output bus for Lite mode: a limiter + output gain, but NO
+// convolver. The reverb convolver (a 2.6s stereo impulse) convolves every
+// sample continuously and is one of the heaviest nodes on mobile — it runs
+// even when the wet level is 0. Lite voices route here to skip it entirely.
+let liteBus = null;
+function getLiteBus(ctx) {
+  if (liteBus && liteBus.context === ctx) return liteBus;
+  const input = ctx.createGain();
+  const limiter = ctx.createDynamicsCompressor();
+  limiter.threshold.value = -6;
+  limiter.knee.value = 6;
+  limiter.ratio.value = 12;
+  limiter.attack.value = 0.006;
+  limiter.release.value = 0.2;
+  const outGain = ctx.createGain();
+  outGain.gain.value = 0.6;
+  input.connect(limiter); limiter.connect(outGain); outGain.connect(ctx.destination);
+  liteBus = input;
+  return liteBus;
 }
 
 // Called by the UI when Zen mode is entered/exited. Idempotent: safe to call
@@ -316,7 +338,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
       } else {
         osc2.frequency.setValueAtTime(freq, t0);
       }
-      osc2.connect(lp2); lp2.connect(g); g.connect(getReverbBus(ctx));
+      osc2.connect(lp2); lp2.connect(g); g.connect(getLiteBus(ctx));
       osc2.start(t0); osc2.stop(t0 + dur + tail);
       if (bag) bag.push({
         stop() { try { osc2.stop(); } catch (e) {} },
@@ -739,46 +761,64 @@ function rewindMelody() {
   }
 }
 
+// Windowed lookahead scheduler. Instead of arming one timer per note ~80ms
+// ahead (where a single late/janky timer would schedule a note with no lead
+// time → audio-thread underrun → crackle), this pushes every note due within
+// SCHED_AHEAD out to the audio clock, then re-checks on a fixed short interval.
+// Audio timing is therefore decoupled from main-thread jitter.
+const SCHED_AHEAD = 0.3;  // schedule this far ahead of the audio clock (s)
+const SCHED_TICK = 0.05;  // how often the scheduler wakes up (s)
+
 function scheduleMelody(when) {
   if (!melodyPlaying) return;
-  let atBar = (melodyIdx === melodyFrom);
-  while (melodyIdx < melodyTokens.length && melodyTokens[melodyIdx].type === "bar") { melodyIdx++; atBar = true; }
-  if (melodyIdx >= melodyTokens.length) {
-    if (document.getElementById("loopMel") && document.getElementById("loopMel").checked) {
-      melodyIdx = 0;
-      while (melodyIdx < melodyTokens.length && melodyTokens[melodyIdx].type === "bar") melodyIdx++;
-      if (melodyIdx >= melodyTokens.length) { stopMelody(); return; }
-      melodyPos = 0;
-      melodyHoldUntil = -1;
-      atBar = true;
-    } else { stopMelody(); return; }
+  // First call after (re)start seeds the clock from the passed absolute time.
+  if (when != null) melodyNextTime = when;
+
+  while (melodyNextTime < audioCtx.currentTime + SCHED_AHEAD) {
+    let atBar = (melodyIdx === melodyFrom);
+    while (melodyIdx < melodyTokens.length && melodyTokens[melodyIdx].type === "bar") { melodyIdx++; atBar = true; }
+    if (melodyIdx >= melodyTokens.length) {
+      if (document.getElementById("loopMel") && document.getElementById("loopMel").checked) {
+        melodyIdx = 0;
+        while (melodyIdx < melodyTokens.length && melodyTokens[melodyIdx].type === "bar") melodyIdx++;
+        if (melodyIdx >= melodyTokens.length) { stopMelody(); return; }
+        melodyPos = 0;
+        melodyHoldUntil = -1;
+        atBar = true;
+      } else {
+        // No loop: stop once the last scheduled note's time has passed;
+        // otherwise keep the scheduler ticking so it can finish it.
+        if (melodyNextTime <= audioCtx.currentTime) { stopMelody(); return; }
+        melodyTimer = setTimeout(() => scheduleMelody(null), SCHED_TICK * 1000);
+        return;
+      }
+    }
+    const noteWhen = melodyNextTime;
+    if (atBar && tickEnabled()) playTickAt(noteWhen, melodyBag);
+    const tok = melodyTokens[melodyIdx];
+    const step = Math.max(0.001, swungBeats(tok, melodyPos) * quarterSec()); // floor guards against a 0-beat token spinning the loop
+    melodyPos += tokenGridBeats(tok);
+    const pitched = (tok.type === "note" || tok.type === "tie") && NOTES.includes(tok.id);
+    let didSound = false;
+    if (pitched && melodyIdx > melodyHoldUntil) {
+      const hold = soundingGridBeats(melodyTokens, melodyIdx) * quarterSec();
+      const slideFrom = (tok.slide && NOTES.includes(tok.slideFrom)) ? tok.slideFrom : null;
+      // Staccato: sound only a short portion of the slot, leaving an audible gap
+      // (an implied pause) before the next note. Never applies to slurred/tied notes.
+      const soundHold = tok.staccato
+        ? Math.min(hold * 0.4, 0.16)
+        : hold * 0.92;
+      playNoteAt(tok.id, noteWhen, Math.max(0.09, soundHold), melodyBag, slideFrom);
+      melodyHoldUntil = lastHoldIndex(melodyTokens, melodyIdx);
+      lastHoldSec = Math.max(0.09, soundHold);
+      didSound = true;
+    }
+    const hlIdx = melodyIdx, hlId = tok.id, hlDur = lastHoldSec, hlSound = didSound;
+    const hlDelay = Math.max(0, (noteWhen - audioCtx.currentTime) * 1000);
+    setTimeout(() => { if (melodyPlaying) highlightToken(hlIdx, hlId, hlDur, hlSound); }, hlDelay);
+    melodyIdx++;
+    melodyNextTime += step;
   }
-  if (atBar && tickEnabled()) playTickAt(when, melodyBag);
-  const tok = melodyTokens[melodyIdx];
-  const step = swungBeats(tok, melodyPos) * quarterSec();
-  melodyPos += tokenGridBeats(tok);
-  const pitched = (tok.type === "note" || tok.type === "tie") && NOTES.includes(tok.id);
-  let didSound = false;
-  if (pitched && melodyIdx > melodyHoldUntil) {
-    const hold = soundingGridBeats(melodyTokens, melodyIdx) * quarterSec();
-    const slideFrom = (tok.slide && NOTES.includes(tok.slideFrom)) ? tok.slideFrom : null;
-    // Staccato: sound only a short portion of the slot, leaving an audible gap
-    // (an implied pause) before the next note. Never applies to slurred/tied notes.
-    const soundHold = tok.staccato
-      ? Math.min(hold * 0.4, 0.16)
-      : hold * 0.92;
-    playNoteAt(tok.id, when, Math.max(0.09, soundHold), melodyBag, slideFrom);
-    melodyHoldUntil = lastHoldIndex(melodyTokens, melodyIdx);
-    lastHoldSec = Math.max(0.09, soundHold);
-    didSound = true;
-  }
-  const hlIdx = melodyIdx, hlId = tok.id, hlDur = lastHoldSec, hlSound = didSound;
-  const hlDelay = Math.max(0, (when - audioCtx.currentTime) * 1000);
-  setTimeout(() => { if (melodyPlaying) highlightToken(hlIdx, hlId, hlDur, hlSound); }, hlDelay);
-  melodyIdx++;
-  const nextWhen = when + step;
-  const LOOKAHEAD = 0.08;
-  melodyTimer = setTimeout(() => {
-    scheduleMelody(Math.max(audioCtx.currentTime, nextWhen));
-  }, Math.max(0, (nextWhen - audioCtx.currentTime - LOOKAHEAD) * 1000));
+
+  melodyTimer = setTimeout(() => scheduleMelody(null), SCHED_TICK * 1000);
 }
