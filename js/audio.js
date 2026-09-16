@@ -49,13 +49,17 @@ function lastHoldIndex(tokens, idx) {
   return last;
 }
 
-// Does the bar starting at `idx` contain at least one struck note? Used to
-// suppress the metronome tick on bars that are only rests/ties (e.g. a
-// trailing pause), where a lone downbeat click sounds odd.
+// Does the bar starting at `idx` have a sounding token at its start? Used to
+// gate the metronome tick. Genuinely empty bars — a trailing pause of whole
+// rests — stay quiet, since a lone downbeat click there sounds odd. But a tie
+// token means the previous note is being HELD across the downbeat
+// ("G4/1 | -/1 | A4/1"): one connected sound spans the bar line, time keeps
+// passing, so the click must keep counting those bars too.
 function barHasNote(tokens, idx) {
   for (let i = idx; i < tokens.length; i++) {
     if (tokens[i].type === "bar") return false;
     if (tokens[i].type === "note") return true;
+    if (tokens[i].type === "tie" && NOTES.includes(tokens[i].id)) return true;
   }
   return false;
 }
