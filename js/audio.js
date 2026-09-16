@@ -257,7 +257,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
     const freq = freqOf(id);
     const dur = Math.max(0.12, durSec);
     const slideFrom = slideFromId && slideFromId !== id ? freqOf(slideFromId) : 0;
-    const rel = Math.min(0.05, dur * 0.35);
+    const rel = Math.min(0.18, Math.max(0.05, dur * 0.35)); // ~50–180ms taper
     const relStart = Math.max(0.02, dur - rel);
     const tail = 0.03;
     const master = ctx.createGain();
@@ -323,6 +323,15 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
       osc.frequency.setValueAtTime(freq * flat, t0);            // starts flat (air slow)
       osc.frequency.linearRampToValueAtTime(freq * over, overshootAt); // overshoot sharp
       osc.frequency.exponentialRampToValueAtTime(freq, settleAt);      // settle to pitch
+      // Release pitch sag: as breath pressure falls at the end of the note the
+      // pitch bends flat — a subtle downward "sigh". Scaled by effort/chamber
+      // so bigger chambers sag a touch more. Only if the note is long enough to
+      // have settled first.
+      if (!window.BLOOM_OFF && relStart > settleAt + 0.02) {
+        const sag = 0.01 + 0.008 * effort; // ~17–31 cents flat over the release
+        osc.frequency.setValueAtTime(freq, relStart);
+        osc.frequency.linearRampToValueAtTime(freq * (1 - sag), t0 + dur);
+      }
     }
     osc.connect(lp);
     osc.start(t0);
@@ -394,7 +403,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
     wanderGain.gain.value = freq * 0.006;
     wander.connect(wanderGain); wanderGain.connect(edge.frequency);
     const edgeGain = ctx.createGain();
-    let edgeLevel = 0.04 + reg * reg * 0.05; // ~0.04 low → ~0.09 high
+    let edgeLevel = 0.035 + reg * reg * 0.022; // ~0.035 low → ~0.057 high (gentler climb)
     if (window.EDGE_OFF) edgeLevel = 0.0001; // DIAGNOSTIC
     edgeGain.gain.setValueAtTime(0.0001, t0);
     edgeGain.gain.linearRampToValueAtTime(edgeLevel, t0 + 0.03);
@@ -414,7 +423,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
     // (bass) chambers give a dark, muffled, longer "phh"; small chambers a
     // bright, airy "tss". More open holes = leakier, brighter, breathier.
     const { sizeF: chSize, openF: chOpen } = art;
-    const chiffLen = (0.11 + chSize * 0.15) * (0.85 + 0.15 * chOpen); // ~110–300 ms
+    const chiffLen = (0.11 + chSize * 0.24) * (0.85 + 0.15 * chOpen); // low chamber longer
     // Chamber character comes from WHERE the noise energy sits. A big (bass)
     // chamber is a dark, muffled "phh"; a small chamber a bright, airy "tss".
     // Use a resonant lowpass with a strongly chamber-dependent cutoff and a
@@ -427,14 +436,14 @@ function playNoteAt(id, when, durSec, bag, slideFromId) {
     chiffSrc.buffer = getChiffBuffer(ctx);
     const chiffHp = ctx.createBiquadFilter();
     chiffHp.type = "highpass";
-    chiffHp.frequency.value = Math.max(120, 300 * bright * 0.4); // trim low rumble, scaled
+    chiffHp.frequency.value = Math.max(300, 300 * bright * 0.4); // trim low rumble; floor keeps it airy not rumbly
     const chiffLp = ctx.createBiquadFilter();
     chiffLp.type = "lowpass";
     chiffLp.Q.value = 1.2;
     chiffLp.frequency.setValueAtTime(startHz, t0);
     chiffLp.frequency.exponentialRampToValueAtTime(endHz, t0 + chiffLen * 0.6);
     const chiffGain = ctx.createGain();
-    let chiffPeak = 0.02 + Math.pow(chSize, 3) * 0.1; // big chamber demanding; mid/small much quieter
+    let chiffPeak = 0.018 - 0.0812 * chSize + 0.1412 * chSize * chSize; // low strong, mid softest, high modest
     if (window.CHIFF_OFF) chiffPeak = 0.0001; // DIAGNOSTIC: silence chiff to isolate the tick
     // Gentle attack, then a sustain-and-decay so the breathy onset lingers as
     // the tone establishes. The tail uses a linear ramp that actually reaches
