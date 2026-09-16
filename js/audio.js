@@ -524,6 +524,7 @@ function stopMelody() {
   melodyBag.forEach(n => { try { (n.fade || n.stop)(); } catch (e) {} });
   melodyBag = [];
   if (melodyTimer) { clearTimeout(melodyTimer); melodyTimer = 0; }
+  if (typeof freezeZenGlow === "function") freezeZenGlow();
   const btn = document.getElementById("playMel");
   if (btn) btn.textContent = "Play";
   clearHighlight();
@@ -559,6 +560,7 @@ function pauseMelody() {
   melodyBag.forEach(n => { try { (n.fade || n.stop)(); } catch (e) {} });
   melodyBag = [];
   if (melodyTimer) { clearTimeout(melodyTimer); melodyTimer = 0; }
+  if (typeof freezeZenGlow === "function") freezeZenGlow();
   const btn = document.getElementById("playMel");
   if (btn) btn.textContent = "Play";
   syncTransport();
@@ -612,16 +614,18 @@ function scheduleMelody(when) {
   const step = swungBeats(tok, melodyPos) * quarterSec();
   melodyPos += tokenGridBeats(tok);
   const pitched = (tok.type === "note" || tok.type === "tie") && NOTES.includes(tok.id);
+  let didSound = false;
   if (pitched && melodyIdx > melodyHoldUntil) {
     const hold = soundingGridBeats(melodyTokens, melodyIdx) * quarterSec();
     const slideFrom = (tok.slide && NOTES.includes(tok.slideFrom)) ? tok.slideFrom : null;
     playNoteAt(tok.id, when, Math.max(0.12, hold * 0.92), melodyBag, slideFrom);
     melodyHoldUntil = lastHoldIndex(melodyTokens, melodyIdx);
     lastHoldSec = Math.max(0.12, hold * 0.92);
+    didSound = true;
   }
-  const hlIdx = melodyIdx, hlId = tok.id, hlDur = lastHoldSec;
+  const hlIdx = melodyIdx, hlId = tok.id, hlDur = lastHoldSec, hlSound = didSound;
   const hlDelay = Math.max(0, (when - audioCtx.currentTime) * 1000);
-  setTimeout(() => { if (melodyPlaying) highlightToken(hlIdx, hlId, hlDur); }, hlDelay);
+  setTimeout(() => { if (melodyPlaying) highlightToken(hlIdx, hlId, hlDur, hlSound); }, hlDelay);
   melodyIdx++;
   const nextWhen = when + step;
   const LOOKAHEAD = 0.08;

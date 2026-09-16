@@ -398,19 +398,31 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 /* Mellow ambient glow that breathes with each played note. Hue is set from
    the note's pitch (--glow-hue). Brightness is driven by `opacity` and reach
    by `transform: scale()` — real animatable properties, so the swell actually
-   interpolates (transitioning a var() inside `background` would not). */
+   interpolates (transitioning a var() inside `background` would not).
+   The light is a HALO that is transparent behind the centered ocarina card and
+   brightens toward the screen edges, so it's never hidden by the card and reads
+   well on any aspect ratio (pools in whatever margins the screen has). */
 #tabPanel.focus::before {
   content: "";
-  position: absolute; inset: -20%;
+  position: absolute;
+  /* A SQUARE element keeps the radial halo a true circle on any aspect ratio;
+     centered on the fingering card (--glow-x/--glow-y, set from JS). Sized in
+     vmin (the SMALLER viewport dimension) so on wide screens the ring stays
+     close to the card instead of pushing far out into the side margins. */
+  width: 120vmin; height: 120vmin;
+  left: var(--glow-x, 50%); top: var(--glow-y, 52%);
+  margin-left: -60vmin; margin-top: -60vmin;
   pointer-events: none; z-index: 0;
-  background: radial-gradient(circle at 50% 55%,
-    hsla(var(--glow-hue, 30), 70%, 55%, 0.5) 0%,
-    hsla(var(--glow-hue, 30), 70%, 45%, 0.2) 22%,
-    transparent 55%);
-  filter: blur(40px);
+  background: radial-gradient(circle at 50% 50%,
+    transparent 0%,
+    transparent 24%,
+    hsla(var(--glow-hue, 30), var(--glow-sat, 70%), var(--glow-light, 50%), 0.55) 42%,
+    hsla(var(--glow-hue, 30), var(--glow-sat, 72%), calc(var(--glow-light, 45%) - 5%), 0.3) 58%,
+    transparent 72%);
+  filter: blur(55px);
   opacity: var(--glow-alpha, 0);
   transform: scale(var(--glow-scale, 0.5));
-  transform-origin: 50% 55%;
+  transform-origin: 50% 50%;
   transition: opacity var(--glow-fade, 1.6s) ease-out,
               transform var(--glow-fade, 1.6s) ease-out;
   will-change: opacity, transform;

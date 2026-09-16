@@ -368,7 +368,7 @@ function tokenSeconds(tokOrDur, dotted) {
   return Math.max(0.12, beats * quarterSec());
 }
 
-function highlightToken(i, noteId, durSec) {
+function highlightToken(i, noteId, durSec, sounding) {
   liveIdx = i;
   document.querySelectorAll(".tok.now, .card.now, .rest.now, .key.now").forEach(el => el.classList.remove("now"));
   document.querySelectorAll('.tok[data-i="' + i + '"]').forEach(el => el.classList.add("now"));
@@ -395,7 +395,7 @@ function highlightToken(i, noteId, durSec) {
   }
   if (noteId) {
     document.querySelectorAll('.key[data-note="' + noteId + '"]').forEach(el => el.classList.add("now"));
-    pulseZenGlow(noteId, durSec);
+    if (sounding) pulseZenGlow(noteId, durSec);
   }
 }
 
@@ -415,18 +415,38 @@ function pulseZenGlow(noteId, durSec) {
   if (!panel || !panel.classList.contains("focus")) return;
   const lo = 57, hi = 91; // A3 .. G6
   const t = Math.max(0, Math.min(1, (noteMidi(noteId) - lo) / (hi - lo)));
-  const hue = Math.round(30 + t * 230); // warm amber → cool teal/violet
+  // Low = warm amber, mid = teal; high notes desaturate and brighten toward
+  // white so they stand out against the dark warm background (purple did not).
+  const hue = Math.round(30 + t * 160);        // 30° amber → 190° teal (no purple)
+  const sat = Math.round(72 - t * t * 72);     // high notes fully desaturate → white
+  const light = Math.round(50 + t * t * 48);   // high notes brighten to ~98% → white
   const dur = (durSec && durSec > 0 ? durSec : 0.4) * 1000; // ms
   // The glow swells across almost the whole note, peaking near the end, then a
   // short fade. Short notes still rise quickly enough to register.
   const fade = Math.min(500, Math.max(220, dur * 0.25)); // short tail
   const rise = Math.max(160, dur - fade);                // build over the note body
-  // Glow reach: short notes stay small/contained; long notes swell outward.
-  const startScale = 0.45;
-  const fullScale = Math.min(1.15, startScale + dur / 2500); // grows with duration
+  // Glow reach: short notes keep the halo tight around the card, long notes
+  // swell it out into the screen margins.
+  const startScale = 0.7;
+  const fullScale = Math.min(1.25, startScale + dur / 3000); // grows with duration
 
   clearTimeout(zenGlowFadeTimer);
   panel.style.setProperty("--glow-hue", hue);
+  panel.style.setProperty("--glow-sat", sat + "%");
+  panel.style.setProperty("--glow-light", light + "%");
+  // Center the halo on the fingering card (its center may sit below the panel
+  // center due to the title/transport). Measured relative to the panel.
+  const card = panel.querySelector(".card.live") ||
+               panel.querySelector(".sheet.live .card") ||
+               panel.querySelector("svg.ocarina");
+  if (card) {
+    const p = panel.getBoundingClientRect();
+    const c = card.getBoundingClientRect();
+    if (p.width && p.height) {
+      panel.style.setProperty("--glow-x", ((c.left + c.width / 2 - p.left) / p.width * 100) + "%");
+      panel.style.setProperty("--glow-y", ((c.top + c.height / 2 - p.top) / p.height * 100) + "%");
+    }
+  }
   // Commit the small/dim START state instantly (no transition), then flip to
   // the END state so opacity+scale interpolate over `rise` and the peak lands
   // near the note's end.
@@ -435,13 +455,27 @@ function pulseZenGlow(noteId, durSec) {
   panel.style.setProperty("--glow-scale", startScale);
   void panel.offsetWidth; // force reflow so the start state is committed
   panel.style.setProperty("--glow-fade", rise + "ms");
-  panel.style.setProperty("--glow-alpha", "0.28");
+  // Peak intensity scales with pitch (high = white/bright) AND note length:
+  // short notes stay dim, long sustained notes build to the full bright glow.
+  const durF = Math.min(1, dur / 1200); // ramps in over ~1.2s of sustain
+  const peak = (0.28 + t * t * 0.4) * (0.45 + 0.55 * durF);
+  panel.style.setProperty("--glow-alpha", peak.toFixed(3));
   panel.style.setProperty("--glow-scale", fullScale);
   // Fade out over the final short tail.
   zenGlowFadeTimer = setTimeout(() => {
     panel.style.setProperty("--glow-fade", fade + "ms");
     panel.style.setProperty("--glow-alpha", "0");
   }, rise);
+}
+
+// Immediately dim the zen glow and cancel any pending swell/fade — used when
+// playback pauses/stops mid-note so the light doesn't keep animating on its own.
+function freezeZenGlow() {
+  const panel = document.getElementById("tabPanel");
+  clearTimeout(zenGlowFadeTimer);
+  if (!panel) return;
+  panel.style.setProperty("--glow-fade", "260ms");
+  panel.style.setProperty("--glow-alpha", "0");
 }
 
 function barStartIndex(tokens, i) {
