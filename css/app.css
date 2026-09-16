@@ -368,7 +368,7 @@ h2#title { margin: 8px 0 10px; font-size: 18px; }
 }
 .sheet.scroll { flex-wrap: nowrap; overflow: visible; padding: 8px 16px 12px; }
 .sheet-wrap:has(.scroll) {
-  overflow-x: auto; scroll-behavior: smooth; padding: 8px 0;
+  overflow-x: auto; padding: 8px 0;
 }
 .sheet.scroll .card { flex: 0 0 260px; width: 260px; }
 .card.now { box-shadow: 0 0 0 3px var(--ink); }

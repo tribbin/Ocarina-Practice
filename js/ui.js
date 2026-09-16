@@ -385,22 +385,38 @@ function highlightToken(i, noteId, durSec, sounding) {
   if (isLiveTab()) {
     updateLiveTab(lastTokens.length ? lastTokens : parse(document.getElementById("src").value), i);
   } else {
-    const card = document.querySelector('.card[data-i="' + i + '"], .rest[data-i="' + i + '"]');
-    if (card) {
-      card.classList.add("now");
-      const sheet = document.getElementById("sheet");
-      if (sheet && sheet.classList.contains("scroll") && !lite) {
-        const wrap = sheet.parentElement;
-        const anchor = barAnchorCard(sheet, i) || card;
-        if (wrap) {
-          const c = anchor.getBoundingClientRect();
-          const w = wrap.getBoundingClientRect();
-          const inset = 16;
-          const delta = c.left - (w.left + inset);
-          wrap.scrollTo({ left: Math.max(0, wrap.scrollLeft + delta), behavior: "smooth" });
+      const card = document.querySelector('.card[data-i="' + i + '"], .rest[data-i="' + i + '"]');
+      if (card) {
+        card.classList.add("now");
+        const sheet = document.getElementById("sheet");
+        if (sheet && sheet.classList.contains("scroll") && !lite) {
+          const wrap = sheet.parentElement;
+          if (wrap) {
+            const inset = 16;
+            const toks = lastTokens.length ? lastTokens : parse(document.getElementById("src").value);
+            // Default cadence: at every bar, re-anchor the playing card to the
+            // left inset. Mid-bar, catch up early — as soon as the NEXT card
+            // pokes past the inset, align the playing card to the left so the
+            // upcoming card is revealed without waiting for it to overlap.
+            const barStart = atBarStart(toks, i);
+            let move = barStart;
+            if (!barStart) {
+              const nk = nextCardIdx(toks, i);
+              const next = nk >= 0 ? document.querySelector('.card[data-i="' + nk + '"], .rest[data-i="' + nk + '"]') : null;
+              if (next) {
+                const nc = next.getBoundingClientRect();
+                const nw = wrap.getBoundingClientRect();
+                move = nc.right > nw.right - inset || nc.left < nw.left + inset;
+              }
+            }
+            if (move) {
+              const w = wrap.getBoundingClientRect();
+              const delta = card.getBoundingClientRect().left - (w.left + inset);
+              animatedScrollTo(wrap, Math.max(0, wrap.scrollLeft + delta));
+            }
+          }
         }
       }
-    }
   }
   if (noteId) {
     document.querySelectorAll('.key[data-note="' + noteId + '"]').forEach(el => el.classList.add("now"));
@@ -487,19 +503,46 @@ function freezeZenGlow() {
   panel.style.setProperty("--glow-alpha", "0");
 }
 
-function barStartIndex(tokens, i) {
-  let start = 0;
-  for (let k = Math.min(i, tokens.length - 1); k >= 0; k--) {
-    if (tokens[k] && tokens[k].type === "bar") { start = k + 1; break; }
+// True when token i is the first sounding card of its bar (bars and inline
+// tempo markers are zero-time boundaries).
+function atBarStart(toks, i) {
+  let k = i - 1, sawBreak = false;
+  while (k >= 0) {
+    const t = toks[k];
+    if (t.type === "bar" || t.type === "tempo") { sawBreak = true; k--; }
+    else break;
   }
-  while (start < tokens.length && tokens[start] && tokens[start].type === "bar") start++;
-  return start;
+  return sawBreak || i === 0;
 }
 
-function barAnchorCard(sheet, i) {
-  const toks = lastTokens.length ? lastTokens : parse(document.getElementById("src").value);
-  const bi = barStartIndex(toks, i);
-  return sheet.querySelector('.card[data-i="' + bi + '"], .rest[data-i="' + bi + '"]');
+// Index of the next sounding card (note/tie/rest) after token i, skipping
+// zero-time bar/tempo tokens; -1 when none remains.
+function nextCardIdx(toks, i) {
+  for (let k = i + 1; k < toks.length; k++) {
+    const t = toks[k];
+    if (t.type === "note" || t.type === "tie" || t.type === "rest") return k;
+    if (t.type !== "bar" && t.type !== "tempo") break;
+  }
+  return -1;
+}
+
+let sheetScrollRaf = 0;
+// The sheet scroll should stay readable but quick: a short ease-out glide of
+// ~2px/ms (60–160ms), so bar jumps are perceived as motion, not teleports —
+// and never lag behind the playing notes.
+function animatedScrollTo(wrap, target) {
+  if (sheetScrollRaf) cancelAnimationFrame(sheetScrollRaf);
+  const from = wrap.scrollLeft, dist = target - from;
+  if (Math.abs(dist) < 1) { wrap.scrollLeft = target; sheetScrollRaf = 0; return; }
+  const dur = Math.max(60, Math.min(160, Math.abs(dist) / 2));
+  const t0 = performance.now();
+  const ease = x => 1 - Math.pow(1 - x, 3);
+  const step = now => {
+    const p = Math.min(1, (now - t0) / dur);
+    wrap.scrollLeft = from + dist * ease(p);
+    sheetScrollRaf = p < 1 ? requestAnimationFrame(step) : 0;
+  };
+  sheetScrollRaf = requestAnimationFrame(step);
 }
 
 function scrollFocusStripTo(i) {
