@@ -269,16 +269,28 @@ function applySwing(n) {
   if (lab) lab.textContent = String(n);
 }
 
+// Optional per-song playback defaults live as JSON fields next to
+// name/tempo/swing (e.g. "tick": false starts the metronome switched off).
+// Only applied when the song actually specifies one; otherwise the user's
+// current checkbox state carries over.
+function applySongTick(v) {
+  if (v == null) return;
+  const cb = document.getElementById("tickMel");
+  if (cb) cb.checked = !!v;
+}
+
 function loadLibraryItem(id) {
   if (typeof stopMelody === "function") stopMelody();
   if (typeof resetLiveTab === "function") resetLiveTab();
   let tempo = currentTempo();
   let swing = currentSwing();
+  let tick;
   if (BUILTIN[id]) {
     const item = BUILTIN[id];
     const body = String(item.body || "").replace(/^\s*#.*\n/, "");
     tempo = item.tempo || tempoFromText(item.body) || 96;
     swing = item.swing != null ? item.swing : (swingFromText(item.body) || 0);
+    tick = item.tick;
     document.getElementById("src").value = withPlayHeaders(body.trim(), item.name, tempo, swing);
   } else {
     const item = userLib()[id];
@@ -286,10 +298,12 @@ function loadLibraryItem(id) {
       document.getElementById("src").value = item.body || "";
       tempo = item.tempo || tempoFromText(item.body) || tempo;
       swing = item.swing != null ? item.swing : (swingFromText(item.body) != null ? swingFromText(item.body) : swing);
+      tick = item.tick;
     }
   }
   applyTempo(tempo);
   applySwing(swing);
+  applySongTick(tick);
   render();
 }
 
@@ -308,9 +322,10 @@ function wireLibrary() {
     const id = slugName(named);
     const tempo = currentTempo();
     const swing = currentSwing();
+    const tickEl = document.getElementById("tickMel");
     const next = withPlayHeaders(body, named, tempo, swing);
     ta.value = next;
-    lib[id] = { name: named, body: next, tempo, swing };
+    lib[id] = { name: named, body: next, tempo, swing, tick: tickEl ? tickEl.checked : undefined };
     setUserLib(lib);
     fillLibrary(id);
     render();
