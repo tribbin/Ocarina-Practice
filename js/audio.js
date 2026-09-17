@@ -23,7 +23,9 @@ let lastHoldSec = 0.5; // sounding duration of the last scheduled note (for zen 
 const AUDIO_DEFAULTS = {
   // Base PeriodicWave harmonic amplitudes (real/cosine parts; imag = 0).
   // Normalized by the Web Audio API, so these set the relative mix.
-  h1: 1, h2: 0.06, h3: 0.03, h4: 0.012, h5: 0.006,
+  // First-pass recording-matched values (2026-09-17, tuner-verified C5 take;
+  // details and open gaps: analysis/alto-recordings-tone-data.json).
+  h1: 1, h2: 0.0046909, h3: 0.0075963, h4: 0.0007649, h5: 0.0015,
   // Tone lowpass: cutoff tracks the fundamental (lpMult × freq), capped at
   // lpMax so high notes keep their harmonic tail (higher-bright edits here
   // are usually the fix if the top of the range sounds dull OR stringy).
@@ -34,24 +36,27 @@ const AUDIO_DEFAULTS = {
   hiFrom: 660, hiTo: 1568,
   // Faint inharmonic "air" partial: level, how much it recedes on high
   // notes (airFade), and its frequency ratio (slightly detuned octave).
-  airLevel: 0.02, airFade: 0.75, airRatio: 2.01,
-  // Vibrato/tremolo LFO: shared 5.5Hz pitch+loudness wobble.
-  vibRate: 5.5, vibDepth: 0.0035, vibHighFade: 0.4, tremDepth: 0.05,
-  // Edge / windway whistle: level grows with the chamber register
-  // (edgeBase + reg²·edgeReg) and recedes on high notes (edgeFade).
-  // edgeDet/edgeDetSpread sit it sharp of pitch; wanderDepth adds slow
-  // pitch instability (itself scaled by wanderFade edgeFade at the top).
-  edgeBase: 0.035, edgeReg: 0.022, edgeFade: 0.7,
+  // The recordings show nothing measurable at that slot, so the level is 0.
+  airLevel: 0.0, airFade: 0.75, airRatio: 2.01,
+  // Vibrato/tremolo LFO: shared pitch+loudness wobble. The recordings have
+  // no periodic vibrato (only slow intrinsic wander), so depths are 0.
+  vibRate: 5.5, vibDepth: 0.0, vibHighFade: 0.4, tremDepth: 0.0,
+  // Edge / windway whistle: recordings show no tonal content near 1.01-1.05×f0
+  // (only a faint ~-40 dB island on D6), so the whistle sits just under that.
+  edgeBase: 0.0008, edgeReg: 0.0005, edgeFade: 0.7,
   edgeDet: 0.012, edgeDetSpread: 0.008,
   wanderDepth: 0.006, wanderFade: 0.8,
   // Dry-clay onset chiff level (multiplier on the chamber-shaped peak).
-  chiffScale: 1,
+  // The recorded chiff is a ~60-80 ms broadband swipe, nearly inaudible;
+  // ours is longer (chamber-derived length), so the scale stays small.
+  chiffScale: 0.25,
   // Onset octave overtone ("blown on a bottle" bloom): level and the extra
-  // part that scales with attackEffort, plus its noise/sine mix.
-  otBase: 0.12, otEffort: 0.08, otNoise: 0.35,
+  // part that scales with attackEffort, plus its noise/sine mix. The
+  // recording shows only a small ~+9 dB blip above plateau H2 for ~60 ms.
+  otBase: 0.00137, otEffort: 0.0011, otNoise: 0.35,
   // Full-voice master gain plateau (the breathy pre-tone and "tone speaks"
   // stages scale proportionally so the envelope shape holds).
-  masterLevel: 0.26,
+  masterLevel: 0.09,
   reverbWet: 0.32,
 };
 const AUDIO_DEBUG = Object.assign({}, AUDIO_DEFAULTS);

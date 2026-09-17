@@ -102,6 +102,7 @@
       '<span class="dbg-notes" id="dbgNotes"></span>' +
       '<button class="dbg-btn" type="button" id="dbgSweep">Sweep range</button>' +
       '<button class="dbg-btn" type="button" id="dbgStop">Stop</button>' +
+      '<button class="dbg-btn" type="button" id="dbgWav" title="Capture what plays next for 3.5 s (single notes only; skips the output limiter) and download it as a WAV">\u2913 Export WAV</button>' +
     '</div>' +
     '<div id="dbgGroups"></div>' +
     '<div class="dbg-foot">' +
@@ -166,6 +167,78 @@
   panel.querySelector("#dbgStop").addEventListener("click", function () {
     stopSweep();
     if (typeof cutLive === "function") cutLive();
+  });
+
+  // ---- WAV export: capture the next played note(s) for 3.5 s and download ----
+  // Taps the reverb-bus input (dry source mix; the output limiter/headroom
+  // stage is bypassed, so absolute levels read ~4.4 dB hotter than playback —
+  // fine for spectral analysis, which is the point). Single notes only: a
+  // loud chord can exceed ±1 and clamp in the 16-bit file.
+  var wavBtn = panel.querySelector("#dbgWav");
+  var wavTap = null, wavBlocks = null, wavN = 0, wavEl = null;
+  function wavDone() {
+    try { wavEl.removeEventListener("click", wavClick); } catch (e) {}
+    if (wavEl) wavEl.textContent = "\u2913 Export WAV";
+    wavEl = null;
+  }
+  function wavClick(ev) {
+    ev.preventDefault();
+    finishWav();
+  }
+  function finishWav() {
+    if (!wavTap) { wavDone(); return; }
+    try { wavTap.onaudioprocess = null; wavTap.disconnect(); } catch (e) {}
+    // flush captured blocks into one buffer
+    var flat = new Float32Array(wavN * 4096);
+    for (var i = 0; i < wavN; i++) flat.set(wavBlocks[i], i * 4096);
+    wavTap = null; wavBlocks = null; wavN = 0;
+    // encode 16-bit mono WAV + download
+    var n = flat.length;
+    var buf = new ArrayBuffer(44 + n * 2), dv = new DataView(buf);
+    var ws = function (off, str) { for (var i2 = 0; i2 < str.length; i2++) dv.setUint8(off + i2, str.charCodeAt(i2)); };
+    ws(0, "RIFF"); dv.setUint32(4, 36 + n * 2, true); ws(8, "WAVE"); ws(12, "fmt ");
+    dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+    dv.setUint32(24, 44100, true); dv.setUint32(28, 88200, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true);
+    ws(36, "data"); dv.setUint32(40, n * 2, true);
+    for (var j = 0; j < n; j++) {
+      var v = Math.max(-1, Math.min(1, flat[j]));
+      dv.setInt16(44 + j * 2, v < 0 ? v * 0x8000 : v * 0x7FFF, true);
+    }
+    var blob = new Blob([buf], { type: "audio/wav" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "ocarina_debug_export.wav";
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+    wavDone();
+    console.log("[audio debug] WAV exported (" + (n / 44100).toFixed(2) + " s, 44.1 k mono 16-bit)");
+  }
+  wavBtn.addEventListener("click", function () {
+    if (wavEl) { finishWav(); return; }  // second click truncates + saves
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      wavEl = wavBtn;
+      wavBtn.textContent = "\u25cf recording next note\u2026";
+      wavBlocks = [];
+      wavN = 0;
+      wavTap = audioCtx.createScriptProcessor(4096, 1, 1);
+      wavTap.onaudioprocess = function (e) {
+        if (wavBlocks) {
+          wavBlocks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+          wavN++;
+          if (wavN >= Math.ceil(3.5 * 44100 / 4096)) finishWav();
+        }
+      };
+      (typeof getReverbBus === "function" ? getReverbBus(audioCtx) : audioCtx.destination).connect(wavTap);
+      wavTap.connect(audioCtx.destination);
+      // keep the capture armed even if the user plays within the panel
+      wavEl.addEventListener("click", wavClick);
+      console.log("[audio debug] capture armed \u2014 play a note now (single notes only)");
+    } catch (e) {
+      console.log("[audio debug] export failed: " + e);
+      wavDone();
+    }
   });
 
   // ---- slider rows ----
