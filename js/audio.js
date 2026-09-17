@@ -38,9 +38,12 @@ const AUDIO_DEFAULTS = {
   // notes (airFade), and its frequency ratio (slightly detuned octave).
   // The recordings show nothing measurable at that slot, so the level is 0.
   airLevel: 0.0, airFade: 0.75, airRatio: 2.01,
-  // Vibrato/tremolo LFO: shared pitch+loudness wobble. The recordings have
-  // no periodic vibrato (only slow intrinsic wander), so depths are 0.
-  vibRate: 5.5, vibDepth: 0.0, vibHighFade: 0.4, tremDepth: 0.0,
+  // Vibrato/tremolo LFO: shared pitch+loudness wobble. The reference
+  // recordings contain no periodic vibrato (slow intrinsic wander only), but
+  // the expressive vibrato is part of the synth's voice: depth sits at the
+  // original ±~6 cents / 5% loudness, entering after a 0.35 s settle. Set
+  // depths to 0 when recording-matching non-vibrato sources.
+  vibRate: 5.5, vibDepth: 0.0035, vibHighFade: 0.4, tremDepth: 0.05,
   // Edge / windway whistle: recordings show no tonal content near 1.01-1.05×f0
   // (only a faint ~-40 dB island on D6), so the whistle sits just under that.
   edgeBase: 0.0008, edgeReg: 0.0005, edgeFade: 0.7,
@@ -55,8 +58,10 @@ const AUDIO_DEFAULTS = {
   // recording shows only a small ~+9 dB blip above plateau H2 for ~60 ms.
   otBase: 0.00137, otEffort: 0.0011, otNoise: 0.35,
   // Full-voice master gain plateau (the breathy pre-tone and "tone speaks"
-  // stages scale proportionally so the envelope shape holds).
-  masterLevel: 0.09,
+  // stages scale proportionally so the envelope shape holds). Kept at the
+  // pre-tune playback loudness: the recording's absolute level is a mic-gain
+  // artifact, so comparisons below use ratios, never absolute level.
+  masterLevel: 0.26,
   reverbWet: 0.32,
 };
 const AUDIO_DEBUG = Object.assign({}, AUDIO_DEFAULTS);
