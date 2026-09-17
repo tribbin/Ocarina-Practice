@@ -577,3 +577,94 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 #tabPanel.focus .focus-tempo label { color: var(--paper); }
 .focus-tempo input[type=range] { width: min(38vw, 340px); }
 #focusTempoVal { min-width: 3ch; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---- Dev: audio debug panel (console: DEBUG=1) ---- */
+#dbgPanel {
+  display: none;
+  position: fixed; top: 10px; right: 10px; z-index: 90;
+  width: 350px; max-height: calc(100vh - 20px); overflow: auto;
+  background: #201711; color: var(--paper);
+  border: 1px solid var(--clay-dark); border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.45);
+  font: 12px/1.35 ui-monospace, SFMono-Regular, Consolas, monospace;
+  padding: 10px 12px 12px;
+}
+#dbgPanel.open { display: block; }
+#dbgPanel .dbg-head {
+  display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;
+}
+#dbgPanel .dbg-head b {
+  font-size: 13px; letter-spacing: .08em; color: var(--clay);
+}
+#dbgPanel .dbg-head .dbg-hint { opacity: .55; flex: 1; }
+#dbgPanel .dbg-x {
+  background: transparent; color: var(--paper); opacity: .7;
+  border: 0; padding: 2px 6px; font: inherit; cursor: pointer;
+}
+#dbgPanel .dbg-x:hover { opacity: 1; }
+#dbgPanel .dbg-tests {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding: 8px; margin-bottom: 8px;
+  background: rgba(255,255,255,.06); border-radius: 8px;
+}
+#dbgPanel .dbg-testcap { opacity: .6; }
+#dbgPanel .dbg-note {
+  background: var(--clay-dark); color: var(--paper);
+  border: 0; border-radius: 6px; padding: 3px 8px;
+  font: 11px/1 inherit; cursor: pointer;
+}
+#dbgPanel .dbg-note:hover { background: var(--clay); color: var(--ink); }
+#dbgPanel .dbg-btn {
+  background: rgba(255,255,255,.1); color: var(--paper);
+  border: 1px solid rgba(255,255,255,.25); border-radius: 6px;
+  padding: 3px 8px; font: 11px/1 inherit; cursor: pointer;
+}
+#dbgPanel .dbg-btn:hover { background: rgba(255,255,255,.22); }
+#dbgPanel .dbg-group {
+  margin-bottom: 4px; border-top: 1px solid rgba(255,255,255,.14);
+  padding-top: 4px;
+}
+#dbgPanel .dbg-group summary {
+  cursor: pointer; padding: 3px 0; opacity: .85;
+  font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+  user-select: none; list-style: none;
+}
+#dbgPanel .dbg-group summary::-webkit-details-marker { display: none; }
+#dbgPanel .dbg-group summary::before { content: "▸ "; opacity: .5; }
+#dbgPanel .dbg-group[open] summary::before { content: "▾ "; }
+#dbgPanel .dbg-group[open] summary { color: var(--clay); }
+#dbgPanel .dbg-rows { padding: 2px 0 4px; }
+#dbgPanel .dbg-row {
+  display: grid; grid-template-columns: 108px 1fr 52px 18px;
+  align-items: center; gap: 6px; padding: 1px 0 2px;
+}
+#dbgPanel .dbg-row.mod .dbg-lab { color: var(--clay); font-weight: 700; }
+#dbgPanel .dbg-row.mod::after {
+  content: "\2731"; /* ✱ tweaked-from-default marker */
+  color: var(--clay); justify-self: start; font-size: 11px;
+}
+#dbgPanel .dbg-lab {
+  font-size: 11px; opacity: .8; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; cursor: default;
+}
+#dbgPanel .dbg-row input[type=range] { width: 100%; height: 12px; margin: 0; padding: 0; accent-color: var(--clay); }
+#dbgPanel .dbg-num {
+  width: 100%; background: rgba(255,255,255,.08); color: var(--paper);
+  border: 1px solid rgba(255,255,255,.2); border-radius: 4px;
+  font: 10px/1.4 inherit; padding: 1px 3px;
+  -moz-appearance: textfield;
+}
+#dbgPanel .dbg-num::-webkit-outer-spin-button,
+#dbgPanel .dbg-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+#dbgPanel .dbg-rst {
+  background: transparent; color: rgba(255,255,255,.55);
+  border: 0; padding: 0; font: 12px/1 inherit; cursor: pointer;
+}
+#dbgPanel .dbg-rst:hover { color: var(--paper); }
+#dbgPanel .dbg-foot {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  border-top: 1px solid rgba(255,255,255,.14); margin-top: 8px; padding-top: 8px;
+}
+#dbgPanel .dbg-tip { opacity: .45; font-size: 10px; }
+@media print { #dbgPanel { display: none !important; } }
+

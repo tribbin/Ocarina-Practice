@@ -14,6 +14,56 @@ let melodyNextTime = 0; // absolute ctx time of the next note to schedule
 let melodyQuarter = null; // seconds per quarter for the CURRENT tempo (inline # tempo changes update this)
 let lastHoldSec = 0.5; // sounding duration of the last scheduled note (for zen glow)
 
+// ---- Dev-tunable synthesis parameters -------------------------------------
+// The defaults are exactly the values that used to be hardcoded throughout
+// this file. The dev panel (js/debug.js — enable with `DEBUG=1` in the
+// console) mutates these live and persists them to localStorage, so
+// synthesis code must READ these values per note — never bake them into a
+// closure or a cached node at build time.
+const AUDIO_DEFAULTS = {
+  // Base PeriodicWave harmonic amplitudes (real/cosine parts; imag = 0).
+  // Normalized by the Web Audio API, so these set the relative mix.
+  h1: 1, h2: 0.06, h3: 0.03, h4: 0.012, h5: 0.006,
+  // Tone lowpass: cutoff tracks the fundamental (lpMult × freq), capped at
+  // lpMax so high notes keep their harmonic tail (higher-bright edits here
+  // are usually the fix if the top of the range sounds dull OR stringy).
+  lpMult: 4.2, lpMax: 9000, lpQ: 0.7,
+  // High-note mapping: the "hiF" factor that fades air/edge layers toward
+  // the top of the range. hiFrom = frequency where fading begins, hiTo =
+  // where the fade reaches full. Changing this shifts where the tone turns.
+  hiFrom: 660, hiTo: 1568,
+  // Faint inharmonic "air" partial: level, how much it recedes on high
+  // notes (airFade), and its frequency ratio (slightly detuned octave).
+  airLevel: 0.02, airFade: 0.75, airRatio: 2.01,
+  // Vibrato/tremolo LFO: shared 5.5Hz pitch+loudness wobble.
+  vibRate: 5.5, vibDepth: 0.0035, vibHighFade: 0.4, tremDepth: 0.05,
+  // Edge / windway whistle: level grows with the chamber register
+  // (edgeBase + reg²·edgeReg) and recedes on high notes (edgeFade).
+  // edgeDet/edgeDetSpread sit it sharp of pitch; wanderDepth adds slow
+  // pitch instability (itself scaled by wanderFade edgeFade at the top).
+  edgeBase: 0.035, edgeReg: 0.022, edgeFade: 0.7,
+  edgeDet: 0.012, edgeDetSpread: 0.008,
+  wanderDepth: 0.006, wanderFade: 0.8,
+  // Dry-clay onset chiff level (multiplier on the chamber-shaped peak).
+  chiffScale: 1,
+  // Onset octave overtone ("blown on a bottle" bloom): level and the extra
+  // part that scales with attackEffort, plus its noise/sine mix.
+  otBase: 0.12, otEffort: 0.08, otNoise: 0.35,
+  // Full-voice master gain plateau (the breathy pre-tone and "tone speaks"
+  // stages scale proportionally so the envelope shape holds).
+  masterLevel: 0.26,
+  reverbWet: 0.32,
+};
+const AUDIO_DEBUG = Object.assign({}, AUDIO_DEFAULTS);
+// Exposed for the dev panel: params are tweaked in place; invalidateWave()
+// drops the cached PeriodicWave so the next note rebuilds it from the
+// current harmonic amplitudes.
+window.OCA_DEBUG = {
+  params: AUDIO_DEBUG,
+  defaults: AUDIO_DEFAULTS,
+  invalidateWave() { ocarinaWave = null; },
+};
+
 function syncTransport() {
   if (typeof updateTransportUI === "function") updateTransportUI();
 }
@@ -82,7 +132,7 @@ function gridBeatsBefore(tokens, idx) {
 let reverbBus = null;   // input node that notes connect to (dry + wet split)
 let reverbWetGain = null;
 let reverbEnabled = false;
-const REVERB_WET = 0.32; // canonical "on" wet level (lazy bus init + toggle ramp)
+// Canonical "on" wet level lives in AUDIO_DEBUG.reverbWet (dev-tunable).
 
 function makeReverbImpulse(ctx, seconds, decay) {
   const rate = ctx.sampleRate;
@@ -110,7 +160,7 @@ function getReverbBus(ctx) {
   const convolver = ctx.createConvolver();
   convolver.buffer = makeReverbImpulse(ctx, 2.6, 3.2);
   const wet = ctx.createGain();
-  wet.gain.value = reverbEnabled ? REVERB_WET : 0;
+  wet.gain.value = reverbEnabled ? AUDIO_DEBUG.reverbWet : 0;
   // Safety limiter to catch peaks. Lower threshold + a soft knee and slower
   // attack keep it from clamping the vibrato/tremolo peaks of a sustained note
   // hard enough to add buzzy harmonic distortion; the outGain below provides
@@ -167,7 +217,7 @@ function setReverbEnabled(on) {
   reverbEnabled = !!on;
   if (reverbWetGain && audioCtx) {
     const now = audioCtx.currentTime;
-    const target = reverbEnabled ? REVERB_WET : 0;
+    const target = reverbEnabled ? AUDIO_DEBUG.reverbWet : 0;
     reverbWetGain.gain.cancelScheduledValues(now);
     reverbWetGain.gain.setValueAtTime(reverbWetGain.gain.value, now);
     reverbWetGain.gain.linearRampToValueAtTime(target, now + 0.25);
@@ -305,7 +355,8 @@ let ocarinaWave = null;
 function getOcarinaWave(ctx) {
   if (ocarinaWave && ocarinaWave._ctx === ctx) return ocarinaWave;
   const w = ctx.createPeriodicWave(
-    new Float32Array([0, 1, 0.06, 0.03, 0.012, 0.006]),
+    new Float32Array([0, AUDIO_DEBUG.h1, AUDIO_DEBUG.h2, AUDIO_DEBUG.h3,
+                      AUDIO_DEBUG.h4, AUDIO_DEBUG.h5]),
     new Float32Array([0, 0, 0, 0, 0, 0])
   );
   w._ctx = ctx;
@@ -349,13 +400,13 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     if (liteMode()) {
       const g = ctx.createGain();
       g.gain.setValueAtTime(0.0001, t0);
-      g.gain.linearRampToValueAtTime(0.26, t0 + Math.min(0.03, dur * (slideFrom ? 0.4 : 0.2)));
-      g.gain.setValueAtTime(0.26, intoSlide ? t0 + dur : t0 + relStart);
+      g.gain.linearRampToValueAtTime(AUDIO_DEBUG.masterLevel, t0 + Math.min(0.03, dur * (slideFrom ? 0.4 : 0.2)));
+      g.gain.setValueAtTime(AUDIO_DEBUG.masterLevel, intoSlide ? t0 + dur : t0 + relStart);
       g.gain.linearRampToValueAtTime(0.0001, t0 + dur + fadeOff);
       const lp2 = ctx.createBiquadFilter();
       lp2.type = "lowpass";
-      lp2.frequency.value = Math.min(9000, freq * 4.2);
-      lp2.Q.value = 0.7;
+      lp2.frequency.value = Math.min(AUDIO_DEBUG.lpMax, freq * AUDIO_DEBUG.lpMult);
+      lp2.Q.value = AUDIO_DEBUG.lpQ;
       const osc2 = ctx.createOscillator();
       osc2.setPeriodicWave(getOcarinaWave(ctx));
       if (slideFrom) {
@@ -372,7 +423,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
           const now = ctx.currentTime;
           try {
             g.gain.cancelScheduledValues(now);
-            g.gain.setValueAtTime(Math.max(0.0001, g.gain.value || 0.26), now);
+            g.gain.setValueAtTime(Math.max(0.0001, g.gain.value || AUDIO_DEBUG.masterLevel), now);
             g.gain.linearRampToValueAtTime(0.0001, now + 0.03);
             osc2.stop(now + 0.05);
           } catch (e) {}
@@ -382,6 +433,12 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     }
 
     const master = ctx.createGain();
+    // Master plateau level (dev-tunable). The breathy pre-tone and "tone
+    // speaks" stages keep their original proportions of 0.26 so the envelope
+    // shape is unchanged at the default and simply scales with the level.
+    const M = AUDIO_DEBUG.masterLevel;
+    const preLevel = M * (0.05 / 0.26);   // breathy pre-tone (exactly 0.05 at default M)
+    const toneLevel = M * (0.16 / 0.26);  // tone begins to speak (exactly 0.16 at default M)
     // Tone speaks slightly after onset (breathy pre-tone → full), pairing with
     // the pitch "catch up" bloom below for a soft ocarina attack. Larger
     // chambers + more open holes build pressure slower → a longer, softer
@@ -405,19 +462,19 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       // ~ Legato: the tone carries straight over from the previous note — no
       // breathy pre-tone or tongued attack; swell to full in ~35ms while the
       // glide leaves the previous pitch.
-      master.gain.linearRampToValueAtTime(0.26, t0 + Math.min(0.035, dur * 0.4));
+      master.gain.linearRampToValueAtTime(M, t0 + Math.min(0.035, dur * 0.4));
     } else {
-      master.gain.linearRampToValueAtTime(0.05, t1); // breathy pre-tone
+      master.gain.linearRampToValueAtTime(preLevel, t1); // breathy pre-tone
       if (t3 > t2 + 0.001) {
-        master.gain.linearRampToValueAtTime(0.16, t2); // tone begins to speak
-        master.gain.linearRampToValueAtTime(0.26, t3); // reaches full equilibrium
+        master.gain.linearRampToValueAtTime(toneLevel, t2); // tone begins to speak
+        master.gain.linearRampToValueAtTime(M, t3); // reaches full equilibrium
       } else {
         // Very short note: no room for the two-stage climb; go straight to full
         // by t2 so the automation stays monotonic and click-free.
-        master.gain.linearRampToValueAtTime(0.26, Math.min(t2, relStartT - 0.003));
+        master.gain.linearRampToValueAtTime(M, Math.min(t2, relStartT - 0.003));
       }
     }
-    master.gain.setValueAtTime(0.26, intoSlide ? t0 + dur : relStartT);
+    master.gain.setValueAtTime(M, intoSlide ? t0 + dur : relStartT);
     master.gain.linearRampToValueAtTime(0.0001, t0 + dur + fadeOff);
     if (!intoSlide) master.gain.setValueAtTime(0.0001, t0 + dur + tail);
     master.connect(getReverbBus(ctx));
@@ -433,12 +490,12 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       // Timbre morphs WITH the glide so the landed note speaks with the same
       // brightness a fresh onset of that pitch would have (down-slides no
       // longer stay stubbornly bright, up-slides no longer start over-bright).
-      lp.frequency.setValueAtTime(Math.min(9000, slideFrom * 4.2), t0);
-      lp.frequency.linearRampToValueAtTime(Math.min(9000, freq * 4.2), t0 + glide);
+      lp.frequency.setValueAtTime(Math.min(AUDIO_DEBUG.lpMax, slideFrom * AUDIO_DEBUG.lpMult), t0);
+      lp.frequency.linearRampToValueAtTime(Math.min(AUDIO_DEBUG.lpMax, freq * AUDIO_DEBUG.lpMult), t0 + glide);
     } else {
-      lp.frequency.setValueAtTime(Math.min(9000, freq * 4.2), t0);
+      lp.frequency.setValueAtTime(Math.min(AUDIO_DEBUG.lpMax, freq * AUDIO_DEBUG.lpMult), t0);
     }
-    lp.Q.value = 0.7;
+    lp.Q.value = AUDIO_DEBUG.lpQ;
     // Tremolo node: vibrato modulates breath pressure, which on a Helmholtz
     // resonator changes pitch AND loudness together (in phase). The tone runs
     // through `trem` so the same LFO can add a small amplitude wobble; its
@@ -495,18 +552,19 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // level tapers off toward the top of the range: on high notes this beating
     // partial is a strong bowed-string cue, and a real ocarina is nearly a
     // pure sine up high, so it should recede there.
-    const hiF = Math.max(0, Math.min(1, (freq - 660) / (1568 - 660))); // 0 below E5 → 1 by G6
+    const hiF = Math.max(0, Math.min(1, (freq - AUDIO_DEBUG.hiFrom) /
+      Math.max(60, AUDIO_DEBUG.hiTo - AUDIO_DEBUG.hiFrom))); // 0 below E5 → 1 by G6 (dev-tunable)
     const air = ctx.createOscillator();
     air.type = "sine";
     if (slideFrom) {
       // Keep the same harmonic ratio while the pitch morphs (no beating).
-      air.frequency.setValueAtTime(slideFrom * 2.01, t0);
-      air.frequency.linearRampToValueAtTime(freq * 2.01, t0 + glide);
+      air.frequency.setValueAtTime(slideFrom * AUDIO_DEBUG.airRatio, t0);
+      air.frequency.linearRampToValueAtTime(freq * AUDIO_DEBUG.airRatio, t0 + glide);
     } else {
-      air.frequency.setValueAtTime(freq * 2.01, t0);
+      air.frequency.setValueAtTime(freq * AUDIO_DEBUG.airRatio, t0);
     }
     const airGain = ctx.createGain();
-    const airLevel = 0.02 * (1 - 0.75 * hiF);
+    const airLevel = AUDIO_DEBUG.airLevel * (1 - AUDIO_DEBUG.airFade * hiF);
     airGain.gain.setValueAtTime(0.0001, t0);
     airGain.gain.linearRampToValueAtTime(airLevel, t0 + 0.03);
     airGain.gain.setValueAtTime(airLevel, t0 + relStart);
@@ -522,13 +580,13 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     const VIB_DELAY = 0.35;
     const lfo = ctx.createOscillator();
     lfo.type = "sine";
-    lfo.frequency.value = 5.5;
+    lfo.frequency.value = AUDIO_DEBUG.vibRate;
     const lfoGain = ctx.createGain();     // pitch depth
     const tremGain = ctx.createGain();    // amplitude depth (in phase)
     // Only wire up vibrato if the note is long enough to reach the sustain.
     if (dur > VIB_DELAY + 0.1) {
-      const vibDepth = freq * 0.0035 * (1 - 0.4 * hiF); // ~6 cents, a touch less up high
-      const tremDepth = 0.05;         // ~5% loudness wobble, in phase with pitch
+      const vibDepth = freq * AUDIO_DEBUG.vibDepth * (1 - AUDIO_DEBUG.vibHighFade * hiF); // ~6 cents, a touch less up high
+      const tremDepth = AUDIO_DEBUG.tremDepth; // ~5% loudness wobble, in phase with pitch
       lfoGain.gain.setValueAtTime(0.0001, t0);
       lfoGain.gain.setValueAtTime(0.0001, t0 + VIB_DELAY);
       lfoGain.gain.linearRampToValueAtTime(vibDepth, t0 + VIB_DELAY + 0.2);
@@ -560,7 +618,8 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // level, detune spread and wander all recede toward the top (hiF → 1).
     const edge = ctx.createOscillator();
     edge.type = "sine";
-    const detune = 1.012 + Math.random() * 0.008 * (1 - hiF); // tighter to pitch up high
+    const detune = 1 + AUDIO_DEBUG.edgeDet +
+      Math.random() * AUDIO_DEBUG.edgeDetSpread * (1 - hiF); // tighter to pitch up high
     if (slideFrom) {
       edge.frequency.setValueAtTime(slideFrom * detune, t0);
       edge.frequency.linearRampToValueAtTime(freq * detune, t0 + glide);
@@ -572,10 +631,11 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     wander.type = "sine";
     wander.frequency.value = 7 + Math.random() * 4;
     const wanderGain = ctx.createGain();
-    wanderGain.gain.value = freq * 0.006 * (1 - 0.8 * hiF);
+    wanderGain.gain.value = freq * AUDIO_DEBUG.wanderDepth * (1 - AUDIO_DEBUG.wanderFade * hiF);
     wander.connect(wanderGain); wanderGain.connect(edge.frequency);
     const edgeGain = ctx.createGain();
-    const edgeLevel = (0.035 + reg * reg * 0.022) * (1 - 0.7 * hiF); // recede up high
+    const edgeLevel = (AUDIO_DEBUG.edgeBase + reg * reg * AUDIO_DEBUG.edgeReg) *
+      (1 - AUDIO_DEBUG.edgeFade * hiF); // recede up high
     edgeGain.gain.setValueAtTime(0.0001, t0);
     edgeGain.gain.linearRampToValueAtTime(edgeLevel, t0 + 0.03);
     edgeGain.gain.setValueAtTime(edgeLevel, t0 + relStart);
@@ -625,7 +685,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       chiffLp.frequency.setValueAtTime(startHz, t0);
       chiffLp.frequency.exponentialRampToValueAtTime(endHz, t0 + chiffLen * 0.6);
       const chiffGain = ctx.createGain();
-      const chiffPeak = 0.018 - 0.0812 * chSize + 0.1412 * chSize * chSize; // low strong, mid softest, high modest
+      const chiffPeak = (0.018 - 0.0812 * chSize + 0.1412 * chSize * chSize) * AUDIO_DEBUG.chiffScale; // low strong, mid softest, high modest
       // Gentle attack, then a sustain-and-decay so the breathy onset lingers as
       // the tone establishes. The tail uses a linear ramp that actually reaches
       // zero (exponential ramps never do) with a small guard before the source
@@ -654,7 +714,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     const otRoom = relStart - otOff - 0.005;
     if (otF < ctx.sampleRate * 0.45 && (!slideFrom || otRoom > 0.03)) { // guard against aliasing on the very top notes
       const otDur = Math.max(slideFrom ? 0.03 : 0.04, Math.min(otRoom, 0.22 + 0.14 * effort)); // longer, breathy bloom
-      const otPeak = (0.12 + 0.08 * effort) * (slideFrom ? 0.85 : 1); // toned down from the audibility test
+      const otPeak = (AUDIO_DEBUG.otBase + AUDIO_DEBUG.otEffort * effort) * (slideFrom ? 0.85 : 1); // toned down from the audibility test
       // Shared onset envelope: fast in, exponential collapse (the mode "loses").
       const otGain = ctx.createGain();
       otGain.gain.setValueAtTime(0.0001, t0 + otOff);
@@ -676,7 +736,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       const otNoise = ctx.createBufferSource();
       otNoise.buffer = getChiffBuffer(ctx);
       const otNoiseGain = ctx.createGain();
-      otNoiseGain.gain.value = 0.35; // quiet: just a breathy edge on the overtone
+      otNoiseGain.gain.value = AUDIO_DEBUG.otNoise; // quiet: just a breathy edge on the overtone
       otNoise.connect(otBp); otBp.connect(otNoiseGain); otNoiseGain.connect(otGain);
       otNoise.start(t0 + otOff); otNoise.stop(t0 + otOff + otDur + 0.02);
 
@@ -704,7 +764,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
           const now = ctx.currentTime;
           try {
             master.gain.cancelScheduledValues(now);
-            master.gain.setValueAtTime(Math.max(0.0001, master.gain.value || 0.26), now);
+            master.gain.setValueAtTime(Math.max(0.0001, master.gain.value || M), now);
             master.gain.linearRampToValueAtTime(0.0001, now + 0.03);
             osc.stop(now + 0.05);
             lfo.stop(now + 0.05);
