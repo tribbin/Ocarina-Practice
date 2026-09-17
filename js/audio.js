@@ -61,8 +61,8 @@ const AUDIO_DEFAULTS = {
   // stages scale proportionally so the envelope shape holds). Kept at the
   // pre-tune playback loudness: the recording's absolute level is a mic-gain
   // artifact, so comparisons below use ratios, never absolute level.
-  masterLevel: 0.26,
-  reverbWet: 0.32,
+  masterLevel: 0.40,
+  reverbWet: 0.20,
 };
 const AUDIO_DEBUG = Object.assign({}, AUDIO_DEFAULTS);
 // Exposed for the dev panel: params are tweaked in place; invalidateWave()
