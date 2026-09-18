@@ -18,6 +18,14 @@
       "svg": "ocarina-template-alto.svg"
     },
     {
+      "id": "oot-alto-c-12",
+      "type": "Alto C 12-hole",
+      "version": "Ocarina of Time",
+      "range": "A4–F6",
+      "fingerings": "fingerings-alto-12.json",
+      "svg": "ocarina-template-alto-12.svg"
+    },
+    {
       "id": "mock-double-test",
       "type": "Double Bass C",
       "version": "(dummy)",
