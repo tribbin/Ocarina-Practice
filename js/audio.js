@@ -191,6 +191,88 @@ function makeReverbImpulse(ctx, seconds, decay) {
   return buf;
 }
 
+// ---------------------------------------------------------------------------
+// PERFORMANCE / HEADROOM METERS — diagnostics for the phone "clipping" (see
+// the perf dropdown in ui.js). The bus wiring below is deliberately STATIC:
+// the convolver stays in the graph even at wet = 0, because connect/
+// disconnect switching of the reverb mid-playback is believed to cause
+// audible cut-outs — Lite voice is the supported path on slow devices
+// instead. The meters exist to SEE the cost: output peak → headroom, how
+// hard the output limiter is working, audio-clock stalls (underruns).
+// ---------------------------------------------------------------------------
+const perf = {
+  wallBase: null, clockBase: null,
+  glitches: 0,   // audio clock lagged the wall clock by >0.25 s in one window
+  jumps: 0,      // audio clock suddenly leapt forward (context restart)
+  sessionPeak: 0, // max |sample| at the output since the last reset
+  snapBuf: null,
+};
+let perfAnalyser = null;
+let perfComps = [];   // the buses' DynamicsCompressors, for .reduction reads
+
+function getPerfTap(ctx) {
+  if (perfAnalyser && perfAnalyser.context === ctx) return perfAnalyser;
+  perfAnalyser = ctx.createAnalyser();
+  perfAnalyser.fftSize = 1024;
+  return perfAnalyser; // metering only — never connected to the destination
+}
+
+// Watchdog: the audio clock normally tracks (even slightly leads) the wall
+// clock while streaming; a large deficit means the audio thread starved.
+setInterval(() => {
+  if (!audioCtx || audioCtx.state !== "running") { perf.wallBase = null; return; }
+  const wall = performance.now() / 1000, clock = audioCtx.currentTime;
+  if (perf.wallBase != null) {
+    const dWall = wall - perf.wallBase, dClock = clock - perf.clockBase;
+    if (dWall > 0.3 && dClock < dWall - 0.25) perf.glitches++;
+    else if (dClock > dWall + 0.3) perf.jumps++;
+  }
+  perf.wallBase = wall; perf.clockBase = clock;
+}, 500);
+
+// Live snapshot for the UI probe. Reading the analyser here folds anything
+// since the last read into the session peak, so the UI can read it as often
+// as it likes and lose nothing that matters.
+function audioPerfSnapshot() {
+  const p = { ok: false };
+  if (!audioCtx) return p;
+  p.ok = true;
+  p.state = audioCtx.state;
+  p.sampleRate = audioCtx.sampleRate;
+  p.baseLatency = typeof audioCtx.baseLatency === "number" ? audioCtx.baseLatency : null;
+  p.outputLatency = typeof audioCtx.outputLatency === "number" ? audioCtx.outputLatency : null;
+  p.voices = melodyBag.length;
+  p.hoverVoices = liveVoices.length;
+  p.glitches = perf.glitches;
+  p.jumps = perf.jumps;
+  p.reverb = reverbEnabled;
+  p.lite = liteMode();
+  if (perfAnalyser && perfAnalyser.context === audioCtx) {
+    if (!perf.snapBuf || perf.snapBuf.length !== perfAnalyser.fftSize) {
+      perf.snapBuf = new Float32Array(perfAnalyser.fftSize);
+    }
+    perfAnalyser.getFloatTimeDomainData(perf.snapBuf);
+    let peak = 0;
+    for (let i = 0; i < perf.snapBuf.length; i++) {
+      const v = Math.abs(perf.snapBuf[i]);
+      if (v > peak) peak = v;
+    }
+    if (peak > perf.sessionPeak) perf.sessionPeak = peak;
+  }
+  p.peak = perf.sessionPeak;
+  let red = 0;
+  for (const comp of perfComps) {
+    try {
+      const r = (comp && typeof comp.reduction === "number" && isFinite(comp.reduction)) ? comp.reduction : 0;
+      if (r < red) red = r; // deepest gain reduction of any working limiter
+    } catch (e) {}
+  }
+  p.limitReduction = red;
+  return p;
+}
+
+function audioPerfReset() { perf.sessionPeak = 0; }
+
 // Lazily build (and return) the reverb bus. All melodic voices connect here
 // instead of straight to ctx.destination, so the wet level can be toggled.
 // A limiter on the bus output protects headroom: individual voices sum to
@@ -227,6 +309,8 @@ function getReverbBus(ctx) {
   outGain.gain.value = 0.6;
   limiter.connect(outGain);
   outGain.connect(ctx.destination);
+  outGain.connect(getPerfTap(ctx)); // headroom probe (post-limiter output)
+  perfComps.push(limiter);
   // Pin the bus input at 2 channels with a forever-silent stereo feed: when
   // the first Zen chorus panner connects (or the connection's channel count
   // changes later), a mono↔stereo topology switch can click. With the anchor
@@ -261,6 +345,8 @@ function getLiteBus(ctx) {
   const outGain = ctx.createGain();
   outGain.gain.value = 0.6;
   input.connect(limiter); limiter.connect(outGain); outGain.connect(ctx.destination);
+  outGain.connect(getPerfTap(ctx)); // headroom probe (post-limiter output)
+  perfComps.push(limiter);
   liteBus = input;
   return liteBus;
 }

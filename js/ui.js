@@ -827,6 +827,7 @@ function wireUi() {
   };
   document.addEventListener("mousemove", revealZenUi);
   wireZen();
+  perfRelocate();
   wireFocusControls();
   wireSpacebar();
   updateTransportUI();
@@ -887,13 +888,14 @@ function syncFocusMode() {
   if (!panel) return;
   const on = isFullscreen() && isLiveTab();
   panel.classList.toggle("focus", on);
-  if (on) {
-    applyTempoPct(tempoPct());
-    syncLoopUI();
-    revealZenUi();
-    const toks = lastTokens.length ? lastTokens : parse(document.getElementById("src").value);
-    scrollFocusStripTo(liveIdx >= 0 ? liveIdx : firstSoundIdx(toks));
-  }
+    if (on) {
+      applyTempoPct(tempoPct());
+      syncLoopUI();
+      revealZenUi();
+      const toks = lastTokens.length ? lastTokens : parse(document.getElementById("src").value);
+      scrollFocusStripTo(liveIdx >= 0 ? liveIdx : firstSoundIdx(toks));
+    }
+    if (typeof perfRelocate === "function") perfRelocate();
 }
 
 function updateTransportUI() {
@@ -1022,4 +1024,122 @@ function wireZen() {
   document.addEventListener("fullscreenchange", sync);
   document.addEventListener("webkitfullscreenchange", sync);
   window.onZenChange = sync;
+}
+
+// ---------------------------------------------------------------------------
+// Performance / headroom dropdown — live audio meters (output peak →
+// headroom, limiter gain reduction, clock stalls, active voices) used to
+// diagnose phone "clipping" that is really audio-thread starvation (the
+// meters themselves live in audio.js: audioPerfSnapshot). The button drops
+// the panel in the playback bar; in Zen/focus mode it is moved top-left,
+// mirroring the ✕ exit button in the top-right.
+let perfWrap = null, perfBtn = null, perfPop = null;
+let perfOpen = false, perfRaf = 0, perfLastRows = -1;
+
+function fmtMs(v) { return v == null ? "—" : (v * 1000).toFixed(1) + " ms"; }
+function fmtDb(v) { return v == null ? "—" : (v <= -60 ? "−∞" : v.toFixed(1)); }
+
+function buildPerfWidget() {
+  if (perfWrap) return;
+  perfWrap = document.createElement("div");
+  perfWrap.className = "perf-dd noprint";
+  perfBtn = document.createElement("button");
+  perfBtn.type = "button";
+  perfBtn.id = "perfBtn";
+  perfBtn.className = "ghost perf-btn";
+  perfBtn.title = "Audio performance — headroom, limiter, stalls";
+  perfBtn.setAttribute("aria-haspopup", "true");
+  perfBtn.setAttribute("aria-expanded", "false");
+  perfBtn.innerHTML = '<span class="perf-ico" aria-hidden="true">∿</span>' +
+    '<span class="perf-hr" id="perfHr">perf</span>';
+  perfBtn.addEventListener("click", e => {
+    e.stopPropagation();
+    perfOpen = !perfOpen;
+    perfBtn.setAttribute("aria-expanded", perfOpen ? "true" : "false");
+    perfPop.hidden = !perfOpen;
+    if (perfOpen) {
+      if (typeof audioPerfReset === "function") audioPerfReset();
+      perfLastRows = -1;
+      perfRaf = requestAnimationFrame(perfTick);
+    } else cancelAnimationFrame(perfRaf);
+  });
+  perfPop = document.createElement("div");
+  perfPop.className = "perf-pop";
+  perfPop.hidden = true;
+  perfPop.addEventListener("click", e => e.stopPropagation());
+  perfWrap.appendChild(perfBtn);
+  perfWrap.appendChild(perfPop);
+  document.addEventListener("click", () => {
+    if (perfOpen) {
+      perfOpen = false;
+      perfPop.hidden = true;
+      perfBtn.setAttribute("aria-expanded", "false");
+      cancelAnimationFrame(perfRaf);
+    }
+  });
+}
+
+function perfTick() {
+  if (!perfOpen) return;
+  const s = (typeof audioPerfSnapshot === "function") ? audioPerfSnapshot() : { ok: false };
+  perfUpdateBadge(s);
+  const now = performance.now();
+  if (now - perfLastRows > 180) { perfLastRows = now; perfUpdateRows(s); }
+  perfRaf = requestAnimationFrame(perfTick);
+}
+
+function perfUpdateBadge(s) {
+  const hr = document.getElementById("perfHr");
+  if (!hr || !perfBtn) return;
+  let cls = "";
+  let txt = "—";
+  if (s.ok && s.peak > 1e-5) {
+    const db = -20 * Math.log10(s.peak); // headroom to 0 dBFS
+    txt = db.toFixed(1) + " dB";
+    cls = db >= 6 ? "perf-ok" : db >= 3 ? "perf-warn" : "perf-bad";
+  } else if (s.ok) txt = "idle";
+  else txt = "no ctx";
+  hr.textContent = txt;
+  hr.className = "perf-hr " + cls;
+}
+
+function perfUpdateRows(s) {
+  if (!perfPop) return;
+  if (!s.ok) {
+    perfPop.innerHTML = '<div class="perf-cap">Play a note once so the audio context exists, then reopen.</div>';
+    return;
+  }
+  const peakDb = s.peak > 1e-5 ? 20 * Math.log10(s.peak) : null;
+  const head = peakDb == null ? null : -peakDb;
+  const headCls = head == null ? "" : head >= 6 ? "perf-ok" : head >= 3 ? "perf-warn" : "perf-bad";
+  const lim = s.limitReduction || 0;
+  const row = (k, v, cls) =>
+    '<tr><td>' + k + '</td><td' + (cls ? ' class="' + cls + '"' : "") + '>' + v + '</td></tr>';
+  const rows = [
+    row("Output peak (since open)", peakDb == null ? "silent" : fmtDb(peakDb) + " dBFS"),
+    row("Headroom to clipping", head == null ? "—" : fmtDb(head) + " dB", headCls),
+    row("Limiter gain reduction", lim <= -0.5 ? fmtDb(lim) + " dB (working)" : "inactive"),
+    row("Clock stalls (underruns)", String(s.glitches) + (s.glitches >= 3 ? " ⚠" : "")),
+    row("Clock jumps (restarts)", String(s.jumps)),
+    row("Active voices (melody)", String(s.voices) + " + " + s.hoverVoices + " hover"),
+    row("Sample rate", s.sampleRate + " Hz"),
+    row("baseLatency / outputLatency", fmtMs(s.baseLatency) + " / " + fmtMs(s.outputLatency)),
+    row("Reverb / voice", (s.reverb ? "on (Zen)" : "off") + " / " + (s.lite ? "Lite" : "full")),
+  ];
+  perfPop.innerHTML = '<table class="perf-tbl">' + rows.join("") + '</table>' +
+    '<p class="perf-cap">Stalls = the audio clock lagged the wall clock — underrun/' +
+    'glitches. Headroom &lt; 3 dB risks digital clipping before the limiter. On a slow phone' +
+    ' keep Lite on; the full voice runs ~7 biquads + ~10 oscillators per note on top of the' +
+    ' always-on reverb convolver.</p>';
+}
+
+// Move the widget: fixed top-left in Zen/focus mode (mirrors the ✕), inline
+// in the playback bar otherwise.
+function perfRelocate() {
+  buildPerfWidget();
+  const panel = document.getElementById("tabPanel");
+  const head = document.querySelector("#playback .box-head");
+  const zen = !!(panel && panel.classList.contains("focus"));
+  const target = zen ? panel : head;
+  if (target && perfWrap.parentElement !== target) target.appendChild(perfWrap);
 }

@@ -568,6 +568,52 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 #tabPanel.focus.ui-visible .focus-exit { opacity: 1; pointer-events: auto; }
 #tabPanel.focus .focus-exit:hover { background: rgba(0,0,0,.55); }
 
+/* Performance / headroom dropdown */
+.perf-dd { position: relative; display: inline-flex; }
+.perf-btn { display: inline-flex; align-items: center; gap: 7px; }
+.perf-btn .perf-ico { font-size: 15px; line-height: 1; }
+.perf-hr { font-size: 12px; font-variant-numeric: tabular-nums; color: #6a5648; }
+.perf-hr.perf-ok { color: var(--good); }
+.perf-hr.perf-warn { color: #a15c00; }
+.perf-hr.perf-bad { color: var(--accent); }
+.perf-pop {
+  position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+  z-index: 70; width: 340px; max-width: 92vw;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(0,0,0,.22);
+  padding: 10px 12px 8px;
+}
+.perf-tbl { width: 100%; border-collapse: collapse; }
+.perf-tbl td {
+  padding: 3px 4px; border-bottom: 1px dashed var(--line); color: var(--ink); font-size: 12.5px;
+}
+.perf-tbl td:first-child { color: #6a5648; }
+.perf-tbl td:last-child {
+  text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600;
+}
+.perf-tbl td.perf-ok { color: var(--good) !important; }
+.perf-tbl td.perf-warn { color: #a15c00 !important; }
+.perf-tbl td.perf-bad { color: var(--accent) !important; }
+.perf-cap { margin: 7px 0 0; font-size: 11px; line-height: 1.5; color: #6a5648; }
+
+/* Zen: the perf button sits fixed top-left, mirroring the ✕ in the top-right */
+#tabPanel.focus .perf-dd { position: static; }
+#tabPanel.focus .perf-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  position: fixed; top: 18px; left: 22px; z-index: 50;
+  width: 48px; height: 48px; border-radius: 50%; font-size: 22px; cursor: pointer;
+  background: rgba(0,0,0,.35); color: var(--paper);
+  border: 1px solid rgba(255,255,255,.28);
+  opacity: 0; pointer-events: none; transition: opacity .35s ease;
+}
+#tabPanel.focus .perf-btn .perf-hr { display: none; }
+#tabPanel.focus.ui-visible .perf-btn { opacity: 1; pointer-events: auto; }
+#tabPanel.focus .perf-btn:hover { background: rgba(0,0,0,.55); }
+#tabPanel.focus .perf-pop {
+  position: fixed; top: 76px; left: 22px; transform: none;
+  width: min(320px, 80vw); z-index: 80;
+}
+
 .focus-tempo {
   display: flex; align-items: center; gap: 10px;
   font-weight: 700; font-size: 15px; color: var(--ink);
