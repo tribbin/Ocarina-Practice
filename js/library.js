@@ -325,17 +325,96 @@ function loadLibraryItem(id) {
   render();
 }
 
+// Small non-blocking notice pill (fixed bottom, auto-fades). Used to explain
+// library states that would otherwise look like a no-op (e.g. a freshly
+// saved song being filed as hidden by the range rule).
+let libToastEl = null, libToastTimer = 0;
+function libToast(msg) {
+  if (typeof document === "undefined") return;
+  if (libToastTimer) { clearTimeout(libToastTimer); libToastTimer = 0; }
+  if (!libToastEl) {
+    libToastEl = document.createElement("div");
+    libToastEl.className = "lib-toast noprint";
+    document.body.appendChild(libToastEl);
+  }
+  libToastEl.textContent = msg
+  libToastEl.hidden = false;
+  libToastTimer = setTimeout(() => { if (libToastEl) libToastEl.hidden = true; }, 6500);
+}
+
+// alert() / prompt() / confirm() throw inside sandboxed and embedded views
+// ("prompt() is not supported"), which made the library buttons unusable
+// there. In-page equivalents for everything modal.
+function safeAlert(msg) {
+  try { alert(msg); } catch (e) { libToast(msg); }
+}
+function libPrompt(title, suggested) {
+  return new Promise(resolve => {
+    if (typeof document === "undefined") { resolve(null); return; }
+    const wrap = document.createElement("div");
+    wrap.className = "lib-dialog noprint";
+    wrap.innerHTML =
+      '<div class="lib-dialog-card">' +
+      '<div class="lib-dialog-title"></div>' +
+      '<input type="text" class="lib-dialog-input" spellcheck="false" maxlength="80">' +
+      '<div class="lib-dialog-row">' +
+      '<button type="button" class="lib-dialog-ok">Save</button>' +
+      '<button type="button" class="lib-dialog-cancel">Cancel</button></div></div>';
+    wrap.querySelector(".lib-dialog-title").textContent = title;
+    const input = wrap.querySelector("input");
+    input.value = suggested || "";
+    document.body.appendChild(wrap);
+    const done = (val) => {
+      const name = (val || "").trim();
+      wrap.remove();
+      document.removeEventListener("keydown", key);
+      resolve(name || null);       // empty means cancel, like prompt() did
+    };
+    const key = (e) => {
+      if (e.key === "Enter") { e.preventDefault(); done(input.value); }
+      else if (e.key === "Escape") { e.preventDefault(); done(null); }
+    };
+    wrap.querySelector(".lib-dialog-ok").addEventListener("click", () => done(input.value));
+    wrap.querySelector(".lib-dialog-cancel").addEventListener("click", () => done(null));
+    document.addEventListener("keydown", key);
+    setTimeout(() => { try { input.focus(); input.select(); } catch (e) {} }, 0);
+  });
+}
+function libConfirm(text) {
+  return new Promise(resolve => {
+    if (typeof document === "undefined") { resolve(false); return; }
+    const wrap = document.createElement("div");
+    wrap.className = "lib-dialog noprint";
+    wrap.innerHTML =
+      '<div class="lib-dialog-card">' +
+      '<div class="lib-dialog-title"></div>' +
+      '<div class="lib-dialog-row">' +
+      '<button type="button" class="lib-dialog-ok">Remove</button>' +
+      '<button type="button" class="lib-dialog-cancel">Cancel</button></div></div>';
+    wrap.querySelector(".lib-dialog-title").textContent = text;
+    document.body.appendChild(wrap);
+    const done = (val) => { wrap.remove(); document.removeEventListener("keydown", key); resolve(val); };
+    const key = (e) => {
+      if (e.key === "Enter") { e.preventDefault(); done(true); }
+      else if (e.key === "Escape") { e.preventDefault(); done(false); }
+    };
+    wrap.querySelector(".lib-dialog-ok").addEventListener("click", () => done(true));
+    wrap.querySelector(".lib-dialog-cancel").addEventListener("click", () => done(false));
+    document.addEventListener("keydown", key);
+  });
+}
+
 function wireLibrary() {
   wireLibraryDropdown();
   document.getElementById("scale").onchange = e => loadLibraryItem(e.target.value);
   document.getElementById("src").addEventListener("input", clearLibrarySelection);
-  document.getElementById("libSave").onclick = () => {
+  document.getElementById("libSave").onclick = async () => {
     const ta = document.getElementById("src");
     const body = ta.value;
     const suggested = titleFromText(body);
-    const name = prompt("Name in library:", suggested || "My song");
-    if (!name || !name.trim()) return;
-    const named = name.trim();
+    const name = await libPrompt("Name in library:", suggested || "My song");
+    if (!name) return;
+    const named = name;
     const lib = userLib();
     const id = slugName(named);
     const tempo = songTempo();
@@ -347,13 +426,21 @@ function wireLibrary() {
     setUserLib(lib);
     fillLibrary(id);
     render();
+    // The range rule may file the song as hidden for THIS ocarina: say so,
+    // otherwise saving looks like a no-op.
+    if (!showHiddenSongs() && songOutOfRange(id) > 0) {
+      const n = songOutOfRange(id);
+      libToast("\"" + named + "\" saved — filed as hidden: " + n +
+        " note" + (n === 1 ? "" : "s") + " outside this ocarina's range. " +
+        "Tick \"Show hidden songs\" in the library to see it.");
+    }
   };
-  document.getElementById("libRemove").onclick = () => {
+  document.getElementById("libRemove").onclick = async () => {
     const id = document.getElementById("scale").value;
-    if (BUILTIN[id]) { alert("Built-in presets cannot be removed."); return; }
+    if (BUILTIN[id]) { safeAlert("Built-in presets cannot be removed."); return; }
     const lib = userLib();
     if (!lib[id]) return;
-    if (!confirm("Remove \"" + (lib[id].name || id) + "\" from this browser?")) return;
+    if (!(await libConfirm("Remove \"" + (lib[id].name || id) + "\" from this browser?"))) return;
     delete lib[id];
     setUserLib(lib);
     fillLibrary("major");

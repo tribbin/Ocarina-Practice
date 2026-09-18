@@ -841,7 +841,7 @@ function wireUi() {
       w.focus();
       setTimeout(() => { try { w.print(); } catch (e) {} }, 250);
     } else {
-      alert("Popup blocked — use Download tabs instead.");
+      safeAlert("Popup blocked — use Download tabs instead.");
     }
   };
   document.getElementById("download").onclick = () => {
