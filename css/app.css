@@ -127,17 +127,29 @@ button.tiny { padding: 4px 8px; font-size: 12px; }
 }
 .card.head { width: 100%; background: transparent; border: 0; padding: 4px 2px 2px; }
 .card img { display: block; width: 100%; height: auto; background: #fff; }
-.card .meta { display: flex; justify-content: space-between; align-items: baseline; padding: 5px 8px 7px; font-size: 13px; }
-.card.live .meta { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
-.card.live .meta .nm { justify-self: start; }
-.card.live .meta .badge { justify-self: center; }
-.card.live .meta .dur { justify-self: end; }
-.card .nm { font-weight: 800; font-size: 22px; letter-spacing: .01em; }
-.card .dur { color: var(--ink); font-size: 28px; line-height: 1; font-weight: 500; min-width: 1.3em; text-align: right; font-family: "Noto Music", "Noto Sans Symbols 2", "Segoe UI Symbol", serif; }
+.card .meta { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px 16px; font-size: 13px; }
+.card.live .meta { padding: 16px 20px 18px; }
+.card .nm { font-weight: 800; font-size: 22px; letter-spacing: .01em; line-height: 1.25; }
+.card .dur { color: var(--ink); font-size: 28px; line-height: 1; font-weight: 500; min-width: 1.3em; text-align: right; position: relative; top: 0.14em; font-family: "Noto Music", "Noto Sans Symbols 2", "Segoe UI Symbol", serif; }
+.card.ch1 .meta { background: var(--ch1); }
+.card.ch2 .meta { background: var(--ch2); }
+.card.ch3 .meta { background: var(--ch3); }
+.card.ch1 .meta,
+.card.ch2 .meta,
+.card.ch3 .meta {
+  color: #fff;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+.card.ch1 .meta .nm,
+.card.ch2 .meta .nm,
+.card.ch3 .meta .nm,
+.card.ch1 .meta .dur,
+.card.ch2 .meta .dur,
+.card.ch3 .meta .dur {
+  color: #fff;
+}
 .badge { font-size: 10px; font-weight: 700; letter-spacing: .06em; padding: 2px 6px; border-radius: 99px; color: #fff; }
-.badge.ch1 { background: var(--ch1); }
-.badge.ch2 { background: var(--ch2); }
-.badge.ch3 { background: var(--ch3); }
 .card, .rest { margin-right: 28px; }
 .tab-bar {
   flex: 0 0 0; width: 0; position: relative; align-self: stretch;
@@ -439,7 +451,7 @@ body.zen-fallback #tabPanel .sheet.live .card.live {
   width: min(90vmin, 900px); min-width: 0; max-width: min(90vmin, 900px);
 }
 #tabPanel:fullscreen .sheet.live .card.live .meta,
-body.zen-fallback #tabPanel .sheet.live .card.live .meta { padding: 12px 20px 16px; }
+body.zen-fallback #tabPanel .sheet.live .card.live .meta { padding: 18px 24px 22px; }
 #tabPanel:fullscreen .sheet.live .card.live .nm,
 body.zen-fallback #tabPanel .sheet.live .card.live .nm { font-size: 44px; }
 #tabPanel:fullscreen .sheet.live .card.live .dur,

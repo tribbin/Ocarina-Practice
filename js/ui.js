@@ -164,11 +164,10 @@ function appendNoteCard(sheet, t, i) {
   }
   const ch = CHAMBER[id];
   const card = document.createElement("div");
-  card.className = "card";
+  card.className = "card" + (ch ? " ch" + ch : "");
   card.dataset.i = String(i);
   card.innerHTML = `<div class="compact">${ocarinaSVG(COVER[id] || [], ch)}</div>
     <div class="meta"><span class="nm">${spelledLabel(t)}${t.staccato ? '<span class="stac-mark" title="staccato (short, with a pause)">\u2022</span>' : ''}</span>
-     <span class="badge ch${ch}">CH ${ch}</span>
      <span class="dur">${durLabel(t.dur, t.dotted, t.triplet)}</span></div>`;
   sheet.appendChild(card);
 }
@@ -215,6 +214,8 @@ function fillFullSheet(sheet, tokens) {
         r.textContent = (t.raw || "-") + " ✕"; sheet.appendChild(r); return;
       }
       const r = document.createElement("div"); r.className = "card rest tie";
+      const tieCh = t.id && CHAMBER[t.id];
+      if (tieCh) r.classList.add("ch" + tieCh);
       r.dataset.i = String(i);
       r.innerHTML = `<div class="compact">–</div>
         <div class="meta"><span class="nm">–</span>
@@ -243,7 +244,6 @@ function liveCardHtml(t, tokens, i) {
     const ch = CHAMBER[id];
     return `<div class="compact">${ocarinaSVG(COVER[id] || [], ch)}</div>
       <div class="meta"><span class="nm">${spelledLabel(t)}${t.staccato ? '<span class="stac-mark" title="staccato (short, with a pause)">\u2022</span>' : ''}</span>
-        <span class="badge ch${ch}">CH ${ch}</span>
         <span class="dur">${combinedDurLabel(tokens, i)}</span></div>`;
   }
   if ((t.type === "note" || t.type === "tie") && isOutOfRange(id)) {
@@ -270,8 +270,10 @@ function fillLiveSheet(sheet, tokens, idx) {
   if (!tokens.length || i < 0 || !tokens[i] || tokens[i].type === "bar") return;
   const card = document.createElement("div");
   const t = tokens[i];
+  const liveCh = t.id && NOTES.includes(t.id) && CHAMBER[t.id];
   card.className = "card live" + (t.type === "rest" ? " is-rest" : "") +
-    (isOutOfRange(t.id) ? " oor" : "");
+    (isOutOfRange(t.id) ? " oor" : "") +
+    (liveCh ? " ch" + liveCh : "");
   card.dataset.i = String(i);
   if (t.id) card.dataset.pitch = t.id;
   card.innerHTML = liveCardHtml(t, tokens, i);
@@ -703,7 +705,8 @@ function pianoNotePreview(id) {
   sheet.classList.remove("scroll");
   sheet.classList.add("live");
   const card = document.createElement("div");
-  card.className = "card live now";
+  const previewCh = CHAMBER[id];
+  card.className = "card live now" + (previewCh ? " ch" + previewCh : "");
   card.dataset.pitch = id; // no dataset.i: not a score position
   // One-token array (i=0) so combinedDurLabel stays well-defined — the card
   // then shows the ordinary quarter-label slot, no tie chain.

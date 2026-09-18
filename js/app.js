@@ -9,6 +9,11 @@ function installFingerings(fing) {
   window.DISPLAY = Object.fromEntries(fing.notes.map(n => [n.id, n.display]));
   window.CHAMBER = Object.fromEntries(fing.notes.map(n => [n.id, n.chamber]));
   window.COVER = Object.fromEntries(fing.notes.map(n => [n.id, n.covered]));
+  const root = document.documentElement;
+  const chambers = fing.chambers || {};
+  for (const [id, cfg] of Object.entries(chambers)) {
+    if (cfg && cfg.color) root.style.setProperty("--ch" + id, cfg.color);
+  }
 }
 
 async function loadText(path) {
