@@ -665,6 +665,38 @@ function addNote(id) {
   render();
 }
 
+// Piano press in single mode: show the note's fingering in the live card,
+// exactly like hovering that note's token does. The card is built from a
+// synthesized token (no score position) so it doesn't touch liveIdx and the
+// next real highlight replaces it naturally. Skipped while a melody plays:
+// there the live card belongs to the playback highlight.
+function pianoPreviewToken(id) {
+  const m = /^(.)(s?)(\d+)$/.exec(String(id));
+  return {
+    type: "note", id,
+    dur: 4, dotted: false, triplet: false, beats: 1,
+    spellLetter: m ? m[1] : id[0],
+    spellAcc: m && m[2] === "s" ? "#" : "",
+    spellOct: m ? m[3] : "",
+  };
+}
+
+function pianoNotePreview(id) {
+  if (!isLiveTab() || !NOTES.includes(id) || isMelodyPlaying()) return;
+  const sheet = document.getElementById("sheet");
+  if (!sheet) return;
+  sheet.innerHTML = "";
+  sheet.classList.remove("scroll");
+  sheet.classList.add("live");
+  const card = document.createElement("div");
+  card.className = "card live now";
+  card.dataset.pitch = id; // no dataset.i: not a score position
+  // One-token array (i=0) so combinedDurLabel stays well-defined — the card
+  // then shows the ordinary quarter-label slot, no tie chain.
+  card.innerHTML = liveCardHtml(pianoPreviewToken(id), [pianoPreviewToken(id)], 0);
+  sheet.appendChild(card);
+}
+
 function buildKB() {
   const kb = document.getElementById("kb");
   kb.innerHTML = "";
@@ -680,8 +712,8 @@ function buildKB() {
         k.dataset.note = id;
         k.title = id + " — click hear, right-click add";
         k.innerHTML = `<span class="n">${w}${oct===4?"":oct}</span>`;
-        k.onclick = () => playNote(id);
-        k.oncontextmenu = e => { e.preventDefault(); playNote(id); addNote(id); };
+        k.onclick = () => { playNote(id); pianoNotePreview(id); };
+        k.oncontextmenu = e => { e.preventDefault(); playNote(id); addNote(id); pianoNotePreview(id); };
       } else {
         k.style.opacity = .25;
       }
@@ -697,8 +729,8 @@ function buildKB() {
         if (NOTES.includes(sid)) {
           b.dataset.note = sid;
           b.title = sid + " — click hear, right-click add";
-          b.onclick = () => playNote(sid);
-          b.oncontextmenu = e => { e.preventDefault(); playNote(sid); addNote(sid); };
+          b.onclick = () => { playNote(sid); pianoNotePreview(sid); };
+          b.oncontextmenu = e => { e.preventDefault(); playNote(sid); addNote(sid); pianoNotePreview(sid); };
         } else {
           b.style.opacity = .2;
         }
