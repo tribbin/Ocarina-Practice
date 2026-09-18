@@ -657,6 +657,11 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     const zenPan = Math.max(0, Math.min(1, AUDIO_DEBUG.zenPan));
 
     const master = ctx.createGain();
+    // Nodes that must RAMP to zero (not just stop) when the note is cut
+    // short (cutLive/fade): fast hover note-changes used to chop layers whose
+    // gains sit at a steady level (wind/edge/chiff/overtone do not fade with
+    // master alone) — chopping mid-level is audible as a tick.
+    const cutFades = [{ g: master, level: undefined }];
     // Master plateau level (dev-tunable) scaled by the note's profile level
     // curve (mild reproduction of the measured non-monotonic chamber
     // loudness). The breathy pre-tone and "tone speaks" stages keep their
@@ -753,6 +758,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     if (chorus) {
       const coreL = ctx.createGain();
       schedEnv(coreL);
+      cutFades.push({ g: coreL, level: M });
       const panL = ctx.createStereoPanner();
       panL.pan.value = -zenPan;
       trem.connect(coreL); coreL.connect(panL);
@@ -830,6 +836,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     airGain.gain.linearRampToValueAtTime(airLevel, t0 + 0.03);
     airGain.gain.setValueAtTime(airLevel, t0 + relStart);
     airGain.gain.linearRampToValueAtTime(0.0001, t0 + dur);
+    cutFades.push({ g: airGain, level: airLevel });
     air.connect(airGain); airGain.connect(lp);
     air.start(t0);
     air.stop(t0 + dur + tail);
@@ -854,13 +861,15 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
         wob.frequency.value = c.rate;
         const wobPitch = ctx.createGain();  // pitch drift depth (Hz)
         const wobAmp = ctx.createGain();    // loudness wobble depth
-        wobPitch.gain.value = freq * (Math.pow(2, vp.wanderC * 1.2 * c.share / 1200) - 1);
-        wobAmp.gain.value = vp.wobDepth * 0.85 * c.share;
+        // Explicit ramp targets (never touch .value: that schedules an
+        // implicit event which would cancel the 0→depth ramp on live notes).
+        const pTarget = freq * (Math.pow(2, vp.wanderC * 1.2 * c.share / 1200) - 1);
+        const aTarget = vp.wobDepth * 0.85 * c.share;
         // Settle in just after the attack so it doesn't smear the onset.
         wobPitch.gain.setValueAtTime(0.0001, t0);
         wobAmp.gain.setValueAtTime(0.0001, t0);
-        wobPitch.gain.linearRampToValueAtTime(wobPitch.gain.value, t0 + 0.35);
-        wobAmp.gain.linearRampToValueAtTime(wobAmp.gain.value, t0 + 0.35);
+        wobPitch.gain.linearRampToValueAtTime(pTarget, t0 + 0.35);
+        wobAmp.gain.linearRampToValueAtTime(aTarget, t0 + 0.35);
         wob.connect(wobPitch); wobPitch.connect(osc.frequency);
         wob.connect(wobAmp); wobAmp.connect(trem.gain);
         wob.start(t0); wob.stop(t0 + dur + stopOff);
@@ -902,6 +911,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       tremT.gain.value = 1;
       const twinEnv = ctx.createGain();
       schedEnv(twinEnv);
+      cutFades.push({ g: twinEnv, level: M });
       const panR = ctx.createStereoPanner();
       panR.pan.value = zenPan;
       twinOsc.connect(lpT); lpT.connect(tremT); tremT.connect(twinEnv);
@@ -958,6 +968,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     edgeGain.gain.linearRampToValueAtTime(edgeLevel, t0 + 0.03);
     edgeGain.gain.setValueAtTime(edgeLevel, t0 + relStart);
     edgeGain.gain.linearRampToValueAtTime(0.0001, t0 + dur);
+    cutFades.push({ g: edgeGain, level: edgeLevel });
     // A little breathiness on the whistle itself via a gentle bandpass.
     const edgeBp = ctx.createBiquadFilter();
     edgeBp.type = "bandpass";
@@ -999,6 +1010,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       windGain.gain.linearRampToValueAtTime(vp.windBump, t0 + 0.06);
       windGain.gain.setValueAtTime(vp.windBump, t0 + relStart);
       windGain.gain.linearRampToValueAtTime(0.0001, t0 + dur);
+      cutFades.push({ g: windGain, level: vp.windBump });
       windSrc.connect(windBp); windBp.connect(windLp); windLp.connect(windGain);
       windGain.connect(master);
       windSrc.start(t0);
@@ -1053,6 +1065,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       chiffGain.gain.linearRampToValueAtTime(chiffPeak, t0 + chAtk);
       chiffGain.gain.linearRampToValueAtTime(chiffPeak * 0.85, t0 + chiffLen * 0.5);
       chiffGain.gain.linearRampToValueAtTime(0.0, t0 + chiffLen); // reach true zero
+      cutFades.push({ g: chiffGain, level: 0.0001 });
       chiffSrc.connect(chiffHp); chiffHp.connect(chiffLp); chiffLp.connect(chiffGain); chiffGain.connect(master);
       chiffSrc.start(t0); chiffSrc.stop(t0 + chiffLen + 0.02);
     }
@@ -1078,6 +1091,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       otGain.gain.setValueAtTime(0.0001, t0 + otOff);
       otGain.gain.linearRampToValueAtTime(otPeak, t0 + otOff + Math.min(0.02, otDur * 0.25));
       otGain.gain.exponentialRampToValueAtTime(0.0001, t0 + otOff + otDur);
+      cutFades.push({ g: otGain, level: 0.0001 });
       // Connect PAST master's attack envelope (which is near-zero during the
       // onset and would swallow this transient) straight to the output bus.
       otGain.connect(getReverbBus(ctx));
@@ -1117,19 +1131,29 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
 
     if (bag) {
       const stopN = (n, t) => { try { if (n) (t == null ? n.stop() : n.stop(t)); } catch (e) {} };
-      bag.push({
-        // lfo/lfoT: only the chorus twin's LFO exists, and only in Zen.
-        stop() { stopN(osc); stopN(twinOsc); stopN(lfoT); stopN(air); stopN(edge); stopN(wander); stopN(chiffSrc); },
-        fade() {
-          const now = ctx.currentTime;
+      // fade() ramps EVERY saved gain edge (master, chorus sends, air/edge/
+      // wind/chiff/overtone gains) from its CURRENT scheduled value down to
+      // near-zero over 30 ms, THEN stops the sources — no component is cut
+      // mid-level (the fast-hover "ticks": the wind gain held its plateau
+      // right to the release and got chopped dead by the old stop-only cut).
+      const rampFades = () => {
+        const now = ctx.currentTime;
+        for (const e of cutFades) {
           try {
-            master.gain.cancelScheduledValues(now);
-            master.gain.setValueAtTime(Math.max(0.0001, master.gain.value || M), now);
-            master.gain.linearRampToValueAtTime(0.0001, now + 0.03);
-            stopN(osc, now + 0.05); stopN(twinOsc, now + 0.05); stopN(lfoT, now + 0.05);
-            stopN(air, now + 0.05); stopN(edge, now + 0.05); stopN(wander, now + 0.05);
-            stopN(chiffSrc, now + 0.05);
-          } catch (e) {}
+            e.g.gain.cancelScheduledValues(now);
+            e.g.gain.setValueAtTime(Math.max(0.0001, e.g.gain.value || e.level), now);
+            e.g.gain.linearRampToValueAtTime(0.0001, now + 0.03);
+          } catch (err) {}
+        }
+      };
+      bag.push({
+        stop() { rampFades(); stopN(osc); stopN(twinOsc); stopN(lfoT); stopN(air); stopN(edge); stopN(wander); stopN(chiffSrc); },
+        fade() {
+          rampFades();
+          const stopAt = ctx.currentTime + 0.05;
+          stopN(osc, stopAt); stopN(twinOsc, stopAt); stopN(lfoT, stopAt);
+          stopN(air, stopAt); stopN(edge, stopAt); stopN(wander, stopAt);
+          stopN(chiffSrc, stopAt);
         }
       });
     }
