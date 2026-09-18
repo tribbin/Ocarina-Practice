@@ -27,6 +27,7 @@
 
   const P = {
     active: false, paused: false, completed: false,
+    calibrating: false,
     tokens: [], idx: 0, quarter: 0.5,
     bar: null,          // { startIdx, endIdx, zones:[hz], targetSec, filled, chainId, slide:false, stac:false }
     state: "idle",      // await | ready | hit | fill | drain? (drain is fill w/ neg) | rest
@@ -42,7 +43,10 @@
   const TEST = /[?&]practiceTest=1\b/.test(location.search);
 
   // ---------------------------------------------------------------- helpers
-  function dbg() { return (window.OCA_DEBUG && window.OCA_DEBUG.params) || { tuneCents: 20, transientCents: 60, transientMs: 150, gapMs: 120, drainRate: 2, rmsGate: 0.01 }; }
+  function dbg() {
+    return (window.OCA_DEBUG && OCA_DEBUG.params) ||
+      (typeof AUDIO_DEFAULTS !== "undefined" ? AUDIO_DEFAULTS : {});
+  }
 
   function freqOfId(id) {
     if (typeof freqOf === "function") return freqOf(id);
@@ -192,9 +196,16 @@
   function renderPanel() {
     if (!panel || !P.bar) return;
     const dg = dbg();
-    const studio = P.paused
+    let studio = P.paused
       ? (P.completed ? "Song end — Play or Practice resumes." : "Paused — Play/Practice or Space resumes.")
       : (statusText(P.state) || P.err);
+    // 44.1/48 kHz suspicion: when the mic track reports a rate that differs
+    // from the analyser context's, that mismatch would show up as a fixed
+    // ±148.7¢ in the cents readout — say so, it is a measurement, displayed.
+    if (P.mic && !TEST && P.mic.trackRate && P.mic.trackRate !== P.mic.sr) {
+      studio += " · mic " + (P.mic.trackRate / 1000).toFixed(1) + "kHz → ctx " +
+        (P.mic.sr / 1000).toFixed(1) + "kHz";
+    }
     els.status.textContent = studio;
     if (P.bar) {
       els.note.textContent = barName();
@@ -260,6 +271,12 @@
   // ------------------------------------------------------------------- mic
   async function ensureMic() {
     if (P.mic) return;
+    // TEST harness: no real capture — frames come from window.__pracFrame;
+    // the fake track exposes plain rates for the diagnostics readout.
+    if (TEST) {
+      P.mic = { stream: null, source: null, analyser: null, buf: null, sr: 48000, trackRate: 48000 };
+      return;
+    }
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       throw new Error("Microphone access needs HTTPS (localhost is fine).");
     }
@@ -273,21 +290,39 @@
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 2048;
     source.connect(analyser); // NOT to ctx.destination — no monitoring feedback
+    // Rate diagnostics: the browser resamples the mic into the context rate,
+    // so analysis at ctx.sampleRate is normally exact; a track/context rate
+    // disagreement is displayed in the tuner (a 44.1/48 mix would read a
+    // fixed ±148.7¢ in the cents delta).
+    let trackRate = null;
+    try {
+      const st = stream.getAudioTracks()[0] && stream.getAudioTracks()[0].getSettings();
+      if (st && st.sampleRate) trackRate = st.sampleRate;
+    } catch (e) {}
     P.mic = {
       stream, source, analyser,
       buf: new Float32Array(analyser.fftSize),
       sr: ctx.sampleRate,
+      trackRate,
     };
   }
 
-  // Normalized autocorrelation, octave-safe: prefers the shortest lag whose
-  // clarity is within 5% of the best (avoids locking onto subharmonics).
+  // Normalized autocorrelation with parabolic peak interpolation.
+  // History: an earlier "first lag within 95% of the best clarity" octave
+  // guard snapped onto the SHOULDER of the true peak (only ~4-5% short of the
+  // true period on mid/high notes), reading +72..+90¢ high depending on the
+  // note — a pure detector artifact, never a recording problem. The guard is
+  // gone; octave protection now only considers true SUB-MULTIPLES of the best
+  // lag (k× the fundamental period — the honest subharmonic case), each with
+  // a local-maximum clarity check.
   function autoCorrelate(buf, sr) {
     const n = buf.length;
     const half = Math.floor(n / 2);
     const minLag = Math.max(2, Math.floor(sr / MAX_HZ));
     const maxLag = Math.min(half, Math.ceil(sr / MIN_HZ));
-    const ac = (lag) => {
+    // correlation curve computed once
+    const c = new Float32Array(maxLag + 1);
+    for (let lag = minLag; lag <= maxLag; lag++) {
       let corr = 0, ea = 0, eb = 0;
       const m = n - lag;
       for (let i = 0; i < m; i++) {
@@ -295,18 +330,87 @@
         ea += buf[i] * buf[i];
         eb += buf[i + lag] * buf[i + lag];
       }
-      return (ea && eb) ? corr / Math.sqrt(ea * eb) : 0;
-    };
-    let bestLag = -1, bestC = 0;
+      c[lag] = (ea && eb) ? corr / Math.sqrt(ea * eb) : 0;
+    }
+    c[0] = -1; c[1] = -1; // sentinel: no lags below minLag exist
+    let globalLag = -1, globalC = 0;
     for (let lag = minLag; lag <= maxLag; lag++) {
-      const c = ac(lag);
-      if (c > bestC) { bestC = c; bestLag = lag; }
+      if (c[lag] > globalC) { globalC = c[lag]; globalLag = lag; }
     }
-    if (bestLag < 0 || bestC < 0.85) return 0;
-    for (let lag = minLag; lag < bestLag; lag++) {
-      if (ac(lag) >= bestC * 0.95) { bestLag = lag; break; }
+    if (globalLag < 0 || globalC < 0.85) return 0;
+    // The pitch = the SHORTEST local maximum whose clarity is ~that of the
+    // global best. Integer multiples of a fractional period always re-
+    // correlate nearly perfectly (the global max can be 5× the true period),
+    // and non-maximum shoulders are never periods — comparing against those
+    // caused the old +72..+90¢ shoulder-snap.
+    let bestLag = -1, bestC = 0;
+    for (let lag = minLag; lag < maxLag; lag++) {
+      if (c[lag] >= c[lag - 1] && c[lag] >= c[lag + 1] &&
+          c[lag] >= globalC * 0.9) {
+        bestLag = lag; bestC = c[lag];
+        break;
+      }
     }
-    return sr / bestLag;
+    if (bestLag < 0) { bestLag = globalLag; bestC = globalC; }
+    // Sub-multiple safety net (weak fundamentals locked onto a harmonic):
+    // only k× multiples qualify, each with local-max clarity.
+    for (let k = 4; k >= 2; k--) {
+      const cand = Math.round(bestLag / k);
+      if (cand < minLag) continue;
+      let m = cand;
+      if (c[cand - 1] > c[m]) m = cand - 1;
+      if (c[cand + 1] > c[m]) m = cand + 1;
+      if (m < minLag || m >= bestLag) continue;
+      if (c[m] >= bestC * 0.9) { bestLag = m; bestC = c[m]; }
+    }
+    // Parabolic interpolation around the final lag (sub-sample precision):
+    // removes the integer-lag quantization that used to read anywhere from
+    // -26¢ to +26¢ depending on where the true period fell.
+    let delta = 0;
+    if (bestLag > minLag && bestLag < maxLag) {
+      const a = c[bestLag - 1], b = c[bestLag], cc = c[bestLag + 1];
+      const den = a - 2 * b + cc;
+      if (den > 1e-12) {
+        delta = 0.5 * (a - cc) / den;
+        if (delta > 1 || delta < -1) delta = 0;
+      }
+    }
+    let fl = bestLag + delta;
+    // Fine refine: correlate against a linearly-shifted copy on a 0.25-sample
+    // grid around the parabolic estimate (the composite curve is not exactly
+    // parabolic when harmonics are present, so the analytic apex drifts).
+    const fine = (fq) => {
+      const k = Math.floor(fq), fr = fq - k;
+      const m = Math.min(n - k - 2, n - Math.ceil(fl) - 2);
+      if (m < 64) return -1;
+      let corr = 0, ea = 0, eb = 0;
+      for (let i = 0; i < m; i++) {
+        const y = (1 - fr) * buf[i + k] + fr * buf[i + k + 1];
+        const xi = buf[i];
+        corr += xi * y;
+        ea += xi * xi;
+        eb += y * y;
+      }
+      return corr / Math.sqrt(ea * eb);
+    };
+    let best = -2, bestFl = fl;
+    for (let fq = fl - 1; fq <= fl + 1; fq += 0.25) {
+      if (fq < minLag || fq > maxLag) continue;
+      const v = fine(fq);
+      if (v > best) { best = v; bestFl = fq; }
+    }
+    if (best > 0) {
+      // parabola on the fine grid (0.25 steps)
+      const fC = fine(bestFl), fL2 = fine(bestFl - 0.25), fR = fine(bestFl + 0.25);
+      const den2 = fL2 - 2 * fC + fR;
+      let d2 = 0;
+      if (den2 > 1e-12) {
+        d2 = 0.5 * (fL2 - fR) / den2;
+        if (d2 > 1 || d2 < -1) d2 = 0;
+      }
+      fl = bestFl + d2 * 0.25;
+    }
+    return sr / fl;
   }
 
   function readFrame() {
@@ -322,8 +426,10 @@
       for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
       P.rms = Math.sqrt(s / buf.length);
       P.hz = P.rms >= dbg().rmsGate ? autoCorrelate(buf, sr) : 0;
-      if (P.hz && (P.hz < MIN_HZ * 0.6 || P.hz > MAX_HZ * 1.3)) P.hz = 0;
     }
+    // The pitch is measured as-is — no correction factors. Whatever the
+    // capture chain does shows up in the cents delta, displayed live.
+    if (P.hz && (P.hz < MIN_HZ * 0.6 || P.hz > MAX_HZ * 1.3)) P.hz = 0;
     P.hzSm = P.rms > 0 ? (P.hzSm && P.hz ? P.hzSm * (1 - 0.55) + P.hz * 0.55 : P.hz) : 0;
     const zones = P.bar ? P.bar.zones : [];
     let best = 999;
@@ -663,6 +769,24 @@
     barInfo: () => P.bar && { start: P.bar.startIdx, end: P.bar.endIdx, zones: P.bar.zones, sec: P.bar.targetSec, slide: P.bar.slide, stac: P.bar.stac },
     micOn: () => !!P.mic,
     _p: P, // diagnostics/tests: full live state
+    // Detector test hook: renders a tone at f/sr with a harmonic mix (h =
+    // [1, 0.15] default = fundamental + 15% H2) plus optional noise, and
+    // returns the measured Hz — for verifying autoCorrelate from the console.
+    testAC: function (f, sr, h, noise) {
+      const n = 2048, buf = new Float32Array(n);
+      const H = h || [1, 0.15];
+      let seed = 42;
+      const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+      for (let i = 0; i < n; i++) {
+        let v = 0;
+        for (let k = 0; k < H.length; k++) {
+          v += H[k] * Math.sin(2 * Math.PI * f * (k + 1) * i / sr);
+        }
+        if (noise) v += noise * (rnd() * 2 - 1);
+        buf[i] = v;
+      }
+      return autoCorrelate(buf, sr);
+    },
     // transport anchors: where practice currently stands (token idx)
     posIdx: () => P.idx,
     from: practiceFrom, pauseToggle: practicePauseToggle,
