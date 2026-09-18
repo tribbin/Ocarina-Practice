@@ -218,6 +218,18 @@ function getReverbBus(ctx) {
   outGain.gain.value = 0.6;
   limiter.connect(outGain);
   outGain.connect(ctx.destination);
+  // Pin the bus input at 2 channels with a forever-silent stereo feed: when
+  // the first Zen chorus panner connects (or the connection's channel count
+  // changes later), a mono↔stereo topology switch can click. With the anchor
+  // the bus is always stereo and mono voices just upmix silently.
+  const anchor = ctx.createOscillator();
+  anchor.type = "sine";
+  const anchorGain = ctx.createGain();
+  anchorGain.gain.value = 0;
+  const anchorPan = ctx.createStereoPanner();
+  anchor.connect(anchorGain); anchorGain.connect(anchorPan);
+  anchorPan.connect(input);
+  anchor.start();
   reverbWetGain = wet;
   reverbBus = input;
   return reverbBus;
@@ -503,6 +515,27 @@ function getChiffBuffer(ctx) {
   const d = buf.getChannelData(0);
   for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
   chiffBuf = buf;
+  return buf;
+}
+
+// Seamless-looping wind-noise buffer: the raw loop of white noise clicks
+// every wrap (a ~10 ms broadband step at these levels), audible as ticks.
+// Overwrite the buffer tail with a short crossfade INTO THE HEAD so the
+// wrap is continuous; the head itself stays untouched for chiff/ot (which
+// only read the first ~150 ms and never reach the tail).
+let windBuf = null;
+function getWindBuffer(ctx) {
+  if (windBuf && windBuf.sampleRate === ctx.sampleRate) return windBuf;
+  const len = Math.floor(ctx.sampleRate * 0.5);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  const k = Math.floor(ctx.sampleRate * 0.01); // 10 ms crossfade at the seam
+  for (let i = 0; i < k; i++) {
+    const w = (i + 1) / (k + 1);
+    d[len - k + i] = d[len - k + i] * (1 - w) + d[i] * w;
+  }
+  windBuf = buf;
   return buf;
 }
 
@@ -938,7 +971,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // tones, so only the island detector can catch that mistake).
     if (vp.windBump > 1e-5) {
       const windSrc = ctx.createBufferSource();
-      windSrc.buffer = getChiffBuffer(ctx);
+      windSrc.buffer = getWindBuffer(ctx);
       windSrc.loop = true;
       // Chamber-resonance bump just above the tone.
       const windBp = ctx.createBiquadFilter();
