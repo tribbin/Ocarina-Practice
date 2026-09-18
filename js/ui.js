@@ -1071,6 +1071,7 @@ function wireZen() {
 // the panel in the playback bar; in Zen/focus mode it is moved top-left,
 // mirroring the ✕ exit button in the top-right.
 let perfWrap = null, perfBtn = null, perfPop = null;
+let perfBody = null, perfAct = null;
 let perfOpen = false, perfRaf = 0, perfLastRows = -1;
 
 function fmtMs(v) { return v == null ? "—" : (v * 1000).toFixed(1) + " ms"; }
@@ -1104,6 +1105,43 @@ function buildPerfWidget() {
   perfPop.className = "perf-pop";
   perfPop.hidden = true;
   perfPop.addEventListener("click", e => e.stopPropagation());
+  // The rows rebuild every ~180 ms, so the Lite switch lives in its own
+  // strip OUTSIDE the rebuilt body — its label/state wouldn't survive the
+  // innerHTML swap otherwise. Always available (the point: switch right
+  // where you see the problem), accent-highlighted when issues are detected.
+  perfBody = document.createElement("div");
+  perfBody.className = "perf-body";
+  perfAct = document.createElement("div");
+  perfAct.className = "perf-act";
+  const actBtn = document.createElement("button");
+  actBtn.type = "button";
+  actBtn.id = "perfActLite";
+  // State toggle, same vocabulary as the "Enlarge small holes" button: label
+  // stays "Lite", the pressed/engaged look carries the state, and the plain
+  // "(enabled)/(disabled)" text after it says what is what.
+  actBtn.className = "toggle-btn";
+  actBtn.setAttribute("aria-pressed", "false");
+  actBtn.title = "Toggle the Lite voice — skips the air/edge/wind/chiff/overtone layers, the wander LFOs and the reverb convolver; cheaper CPU, same pitch and level (not quieter)";
+  actBtn.textContent = "Lite";
+  actBtn.addEventListener("click", () => {
+    const liteCb = document.getElementById("liteMel");
+    if (!liteCb) return;
+    liteCb.checked = !liteCb.checked;
+    liteCb.dispatchEvent(new Event("change")); // persists via the checkbox listener
+    // Re-sync from a FRESH snapshot: a stale/absent `s` would drop the
+    // "issues detected" accent until the next poll.
+    perfSyncAct((typeof audioPerfSnapshot === "function") ? audioPerfSnapshot() : null);
+  });
+  perfAct.appendChild(actBtn);
+  const actState = document.createElement("span");
+  actState.className = "perf-act-state";
+  actState.id = "perfActState";
+  perfAct.appendChild(actState);
+  const actTip = document.createElement("span");
+  actTip.className = "perf-act-tip";
+  perfAct.appendChild(actTip);
+  perfPop.appendChild(perfBody);
+  perfPop.appendChild(perfAct);
   perfWrap.appendChild(perfBtn);
   perfWrap.appendChild(perfPop);
   document.addEventListener("click", () => {
@@ -1141,11 +1179,13 @@ function perfUpdateBadge(s) {
 }
 
 function perfUpdateRows(s) {
-  if (!perfPop) return;
+  if (!perfBody) return;
   if (!s.ok) {
-    perfPop.innerHTML = '<div class="perf-cap">Play a note once so the audio context exists, then reopen.</div>';
+    perfBody.innerHTML = '<div class="perf-cap">Play a note once so the audio context exists, then reopen.</div>';
+    if (perfAct) perfAct.hidden = true;
     return;
   }
+  if (perfAct) perfAct.hidden = false;
   const peakDb = s.peak > 1e-5 ? 20 * Math.log10(s.peak) : null;
   const head = peakDb == null ? null : -peakDb;
   const headCls = head == null ? "" : head >= 6 ? "perf-ok" : head >= 3 ? "perf-warn" : "perf-bad";
@@ -1163,11 +1203,32 @@ function perfUpdateRows(s) {
     row("baseLatency / outputLatency", fmtMs(s.baseLatency) + " / " + fmtMs(s.outputLatency)),
     row("Reverb / voice", (s.reverb ? "on (Zen)" : "off") + " / " + (s.lite ? "Lite" : "full")),
   ];
-  perfPop.innerHTML = '<table class="perf-tbl">' + rows.join("") + '</table>' +
+  perfBody.innerHTML = '<table class="perf-tbl">' + rows.join("") + '</table>' +
     '<p class="perf-cap">Stalls = the audio clock lagged the wall clock — underrun/' +
     'glitches. Headroom &lt; 3 dB risks digital clipping before the limiter. On a slow phone' +
     ' keep Lite on; the full voice runs ~7 biquads + ~10 oscillators per note on top of the' +
     ' always-on reverb convolver.</p>';
+  perfSyncAct(s);
+}
+
+// Sync the Lite toggle strip from the live state: the button is the toggle
+// (engaged look = .toggle-btn.on), the plain "(enabled)/(disabled)" text
+// after it states the mode, and the tip carries the issues nudge.
+function perfSyncAct(s) {
+  if (!perfAct) return;
+  const liteCb = document.getElementById("liteMel");
+  const btn = perfAct.querySelector("#perfActLite");
+  const state = perfAct.querySelector("#perfActState");
+  const tip = perfAct.querySelector(".perf-act-tip");
+  const on = !!(liteCb && liteCb.checked);
+  btn.classList.toggle("on", on);
+  btn.setAttribute("aria-pressed", on ? "true" : "false");
+  if (state) state.textContent = on ? "(enabled)" : "(disabled)";
+  const issues = s && s.ok && (s.glitches > 0 || s.jumps > 0);
+  perfAct.classList.toggle("warn", !!(issues && !on));
+  if (tip) {
+    tip.textContent = issues && !on ? "Issues detected — Lite reduces the CPU load" : "";
+  }
 }
 
 // Move the widget: fixed top-left in Zen/focus mode (mirrors the ✕), inline

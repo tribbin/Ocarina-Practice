@@ -617,6 +617,20 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 .perf-tbl td.perf-warn { color: #a15c00 !important; }
 .perf-tbl td.perf-bad { color: var(--accent) !important; }
 .perf-cap { margin: 7px 0 0; font-size: 11px; line-height: 1.5; color: #6a5648; }
+/* Lite switch strip inside the meters pop: plain when idle, accent when the
+   counters show trouble (the point: switch right where the problem shows). */
+.perf-act {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-top: 9px; padding-top: 8px; border-top: 1px dashed var(--line);
+}
+.perf-act-tip { font-size: 11px; color: #6a5648; }
+/* State colors reuse the app's vocabulary: the button is a .toggle-btn, so
+   ".on" gives the engaged ink fill; "issues detected" borrows the
+   .range-warn accent (paper-red tint + accent border) as usual. */
+.perf-act-state { font-size: 12.5px; font-weight: 400; color: #6a5648; }
+.perf-act.warn #perfActLite {
+  background: #fbe9e5; border-color: var(--accent); color: #7a2a1f;
+}
 
 /* Zen: the perf button sits fixed top-left, mirroring the ✕ in the top-right */
 #tabPanel.focus .perf-dd { position: static; }
