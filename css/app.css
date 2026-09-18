@@ -668,6 +668,25 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
   font-size: 15px; padding: 5px 8px; cursor: pointer; border-radius: 6px;
 }
 .glitch-toast.in-zen { bottom: auto; top: 84px; }
+/* The dbgPanel and the toast are reparented into #tabPanel while Zen's
+   fullscreen is active — undo the blanket `#tabPanel.focus > *` rule
+   (position:relative, z-index:1), which would break their fixed layouts.
+   The panel sits below the ✕ (right side); both ride above perf-pop (z-80). */
+#tabPanel.focus > #dbgPanel {
+  position: fixed; top: 76px; right: 10px; z-index: 120;
+  width: min(350px, calc(100vw - 20px)); max-height: calc(100vh - 96px);
+}
+#tabPanel.focus > .glitch-toast {
+  position: fixed;
+  /* NO bottom here: with both top (from .in-zen) and bottom set, a fixed
+     element stretches across them — the toast grew to ~500px tall. .in-zen
+     (stronger than the base rule) keeps it top-centered with height=auto. */
+  font-size: 12.5px;
+  gap: 8px;
+  padding: 8px 10px 8px 13px;
+  max-width: min(92vw, 380px);
+}
+#tabPanel.focus > .glitch-toast button.ghost { padding: 5px 9px; }
 
 /* Collapsible section: the top-left chevron folds the body away */
 .block.collapsed > :not(.box-head) { display: none; }

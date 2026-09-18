@@ -1097,7 +1097,7 @@ function buildPerfWidget() {
     if (perfOpen) {
       if (typeof audioPerfReset === "function") audioPerfReset();
       perfLastRows = -1;
-      perfRaf = requestAnimationFrame(perfTick);
+      perfTick(); // synchronous first render — the pop never shows empty
     } else cancelAnimationFrame(perfRaf);
   });
   perfPop = document.createElement("div");
@@ -1218,6 +1218,7 @@ function perfAlert() {
   if (perfToast) return; // one toast at a time
   perfToast = document.createElement("div");
   perfToast.className = "glitch-toast noprint" + (isFocusMode() ? " in-zen" : "");
+  perfToast.addEventListener("click", e => e.stopPropagation()); // keep a pop opened via "Details" alive — the document click-closer would otherwise kill it in the same bubble
   perfToast.innerHTML =
     '<span class="gt-txt">Audio glitches detected</span>' +
     '<button type="button" class="ghost" id="gtLite">Turn on Lite</button>' +
@@ -1239,7 +1240,9 @@ function perfAlert() {
     perfDismissToast();
   };
   perfToast.querySelector(".gt-x").onclick = () => perfDismissToast();
-  document.body.appendChild(perfToast);
+  // Mount INSIDE #tabPanel in Zen/focus mode: a body-level toast would be
+  // painted over by the fullscreen element and never seen there.
+  (isFocusMode() ? document.getElementById("tabPanel") : document.body).appendChild(perfToast);
   perfToastTimer = setTimeout(perfDismissToast, 25000);
 }
 

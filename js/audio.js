@@ -97,6 +97,24 @@ window.OCA_DEBUG = {
   invalidateWave() { ocWaveCache = null; },
   // Live audit helper: the full derived voice profile for a note id.
   profile(id) { return voiceProfileFor(id, freqOf(id)); },
+  // DEBUG panel "Induce lag": fakes audio-clock starvation. Seeds what
+  // raisePerfAlert needs (a running ctx + one alive voice, the button click
+  // itself is the user gesture), then loads the lag budget; the next
+  // watchdog tick (<0.5 s) consumes it — the exact path real starvation
+  // takes: glitch counter + Lite proposal.
+  simulateLag() {
+    try {
+      unlockAudio();
+      const notes = window.NOTES || [];
+      if (!countAliveVoices(melodyBag) && !liveVoices.length)
+        playNote(notes[Math.floor(notes.length / 2)] || "C5", 0.9);
+      perf.lag = 1;
+    } catch (e) {}
+  },
+  // ms until the 15 s alert throttle releases (0 = next raise goes through).
+  alertThrottleLeftMs() {
+    return Math.max(0, perfLastAlert + 15000 - performance.now());
+  },
 };
 
 function syncTransport() {

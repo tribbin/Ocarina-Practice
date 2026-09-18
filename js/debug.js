@@ -118,6 +118,7 @@
       '<button class="dbg-btn" type="button" id="dbgSweep">Sweep range</button>' +
       '<button class="dbg-btn" type="button" id="dbgStop">Stop</button>' +
       '<button class="dbg-btn" type="button" id="dbgWav" title="Capture what plays next for 3.5 s (single notes only; skips the output limiter) and download it as a WAV">\u2913 Export WAV</button>' +
+      '<button class="dbg-btn" type="button" id="dbgLag" title="Fakes audio-clock starvation: triggers the perf fallback (red pulse + Lite proposal)">Induce lag</button>' +
     '</div>' +
     '<div id="dbgGroups"></div>' +
     '<div class="dbg-foot">' +
@@ -182,6 +183,28 @@
   panel.querySelector("#dbgStop").addEventListener("click", function () {
     stopSweep();
     if (typeof cutLive === "function") cutLive();
+  });
+
+  // ---- Induce lag: fakes audio-clock starvation so the perf fallback ----
+  // (red-pulse button, Lite proposal toast, counters) can be exercised on
+  // demand, without waiting for a real underrun.
+  var lagBtn = panel.querySelector("#dbgLag");
+  var lagT = 0;
+  lagBtn.addEventListener("click", function () {
+    if (!api || typeof api.simulateLag !== "function") return;
+    api.simulateLag();
+    var left = (typeof api.alertThrottleLeftMs === "function") ? api.alertThrottleLeftMs() : 0;
+    if (left > 0) {
+      // Raise still counts the glitch; only the toast/pulse is throttled.
+      lagBtn.title = "Raise fires, toast throttled — retry in " + Math.ceil(left / 1000) + " s";
+      clearTimeout(lagT);
+      lagT = setTimeout(function () {
+        lagBtn.title = "Fakes audio-clock starvation: triggers the perf fallback (red pulse + Lite proposal)";
+      }, left + 500);
+      return;
+    }
+    lagBtn.textContent = "\u2026 induced";
+    setTimeout(function () { lagBtn.textContent = "Induce lag"; }, 1200);
   });
 
   // ---- WAV export: capture the next played note(s) for 3.5 s and download ----
@@ -388,4 +411,24 @@
   api.toggle = function () { show(!on); };
   api.resetAll = resetAll;
   window.OCO_DEBUG = api;
+
+  // ---- Zen overlay: the panel is fixed on <body>, so real fullscreen ----
+  // (Zen mode) paints the fullscreen element over it and the panel vanishes.
+  // While anything is fullscreen we live INSIDE the fullscreen element
+  // (always #tabPanel, the only fullscreen target in this app); on exit we
+  // return to <body>. Relocation keeps all wiring (append, not recreate).
+  var debugPanelBody = document.body;
+  function zenRelocate() {
+    if (!panel || !panel.parentElement) return;
+    var fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+    if (fsEl && panel.parentElement !== fsEl) {
+      debugPanelBody = panel.parentElement;
+      fsEl.appendChild(panel);
+    } else if (!fsEl && panel.parentElement !== debugPanelBody) {
+      debugPanelBody.appendChild(panel);
+    }
+  }
+  document.addEventListener("fullscreenchange", zenRelocate);
+  document.addEventListener("webkitfullscreenchange", zenRelocate);
+  if (document.fullscreenElement || document.webkitFullscreenElement) zenRelocate();
 })();
