@@ -716,7 +716,9 @@ function buildKB() {
   kb.innerHTML = "";
   const whites = ["C","D","E","F","G","A","B"];
   const blackAfter = {C:"Cs", D:"Ds", F:"Fs", G:"Gs", A:"As"};
-  for (const oct of [3,4,5,6]) {
+  // Octaves 3-7: the full bass range (A3-G6) plus the alto's top octave
+  // (C7 lives in octave 7); room to spare for a future soprano.
+  for (const oct of [3, 4, 5, 6, 7]) {
     const col = document.createElement("div"); col.className = "oct";
     for (const w of whites) {
       const cell = document.createElement("div"); cell.className = "pkey";
