@@ -58,8 +58,8 @@
         <span class="box-sub">(click a note to play from there)</span>
         <div class="tempo-lab">
           Tempo
-          <input type="range" id="tempo" min="40" max="180" value="100">
-          <span id="tempoVal">100</span> BPM
+          <input type="range" id="tempo" min="10" max="100" value="100" title="Playback speed relative to the song's own tempo (10%–100%)">
+          <span id="tempoVal">100</span>%
           Swing
           <input type="range" id="swing" min="0" max="100" value="0">
           <span id="swingVal">0</span>%
@@ -109,8 +109,8 @@
       <div class="focus-settings">
         <label class="focus-tempo">
           <span>Tempo</span>
-          <input type="range" id="focusTempo" min="40" max="180" value="100">
-          <span id="focusTempoVal">100</span> BPM
+          <input type="range" id="focusTempo" min="10" max="100" value="100" title="Playback speed relative to the song's own tempo (10%–100%)">
+          <span id="focusTempoVal">100</span>%
         </label>
       </div>
     </div>
