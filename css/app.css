@@ -79,11 +79,11 @@ button.tiny { padding: 4px 8px; font-size: 12px; }
 .badge.oor-badge { background: var(--accent); text-transform: uppercase; }
 .kb { display: flex; gap: 0; align-items: flex-end; flex-wrap: nowrap; flex: 1; }
 .kb .oct { display: flex; gap: 0; position: relative; height: 122px; flex: 1; }
-.pkey { position: relative; flex: 1; min-width: 26px; }
+.pkey { position: relative; flex: 1; min-width: 0; }
 .key { width: 100%; height: 104px; background: #faf7f2; border: 1px solid #c9b8a4; border-right-width: 0; border-radius: 0 0 0 0; cursor: pointer; position: relative; box-sizing: border-box; }
 .pkey:last-child .key:not(.black) { border-right-width: 1px; border-radius: 0 0 5px 0; }
 .pkey:first-child .key:not(.black) { border-radius: 0 0 0 5px; }
-.key.black { position: absolute; left: 100%; top: 0; width: 58%; min-width: 16px; max-width: 28px; height: 64px; background: var(--ink); border: 1px solid var(--ink); border-radius: 0 0 3px 3px; margin: 0; transform: translateX(-50%); z-index: 2; }
+.key.black { position: absolute; left: 100%; top: 0; width: 58%; min-width: 0; max-width: 28px; height: 64px; background: var(--ink); border: 1px solid var(--ink); border-radius: 0 0 3px 3px; margin: 0; transform: translateX(-50%); z-index: 2; }
 .key:hover { filter: brightness(1.05); }
 .key .n { position: absolute; bottom: 3px; left: 0; right: 0; text-align: center; font-size: 9px; color: #7a6552; }
 .key.black .n { color: #ddd; bottom: 2px; }
@@ -471,6 +471,18 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
   }
 }
 
+/* Small screens: the piano must squeeze inside the viewport instead of
+   pushing keys past it (28 white keys + flexible flex widths), and shrink its
+   label/height a touch. */
+@media (max-width: 760px) {
+  .kb .oct { height: 92px; }
+  .key { height: 76px; }
+  .key.black { height: 48px; }
+  .key .n { font-size: 7px; }
+  .pkey .ch-line { height: 4px; margin-top: 2px; }
+  #pianoBlock .kb { padding: 8px 8px 4px; }
+}
+
 #tabPanel.focus .tab-heading,
 #tabPanel.focus .tab-tools,
 #tabPanel.focus #stats { display: none !important; }
@@ -646,6 +658,10 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
   font-size: 15px; padding: 5px 8px; cursor: pointer; border-radius: 6px;
 }
 .glitch-toast.in-zen { bottom: auto; top: 84px; }
+
+/* Collapsible section: the top-left chevron folds the body away */
+.block.collapsed > :not(.box-head) { display: none; }
+.block.collapsed .collapse-btn { transform: rotate(-90deg); }
 
 .focus-tempo {
   display: flex; align-items: center; gap: 10px;

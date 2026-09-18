@@ -832,6 +832,7 @@ function wireUi() {
   wireZen();
   perfRelocate();
   wirePerfAlerts();
+  wireCollapsers();
   wireFocusControls();
   wireSpacebar();
   updateTransportUI();
@@ -1146,6 +1147,24 @@ function perfRelocate() {
   const zen = !!(panel && panel.classList.contains("focus"));
   const target = zen ? panel : head;
   if (target && perfWrap.parentElement !== target) target.appendChild(perfWrap);
+}
+
+// Collapsible section bodies: INPUT / PLAYBACK get a far-right chevron in
+// their box-head so the tall blocks fold away (small screens start collapsed
+// — the tab is the point of the page).
+function wireCollapsers() {
+  ["inputBlock", "playback"].forEach(id => {
+    const block = document.getElementById(id);
+    const btn = block && block.querySelector(".collapse-btn");
+    if (!block || !btn) return;
+    const set = c => {
+      block.classList.toggle("collapsed", c);
+      btn.setAttribute("aria-expanded", c ? "false" : "true");
+      btn.title = c ? "Expand" : "Collapse";
+    };
+    btn.onclick = () => set(!block.classList.contains("collapsed"));
+    if (typeof matchMedia === "function" && matchMedia("(max-width: 760px)").matches) set(true);
+  });
 }
 
 // Audio-glitch alert: the watchdog in audio.js raises perfAlert() when it

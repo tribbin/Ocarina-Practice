@@ -731,7 +731,14 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === "suspended") audioCtx.resume();
     const ctx = audioCtx;
-    const t0 = when == null ? ctx.currentTime : when;
+    // Late scheduling (a main-thread stall past the 0.3 s lookahead — GC/JIT
+    // bursts, worse on phones) hands a `when` already in the past. All gain/
+    // pitch automation scheduled for the past collapses into one instant
+    // step: the whole attack executes as a jump to plateau level — audible
+    // as a click. Never start earlier than a small live lead; a late note
+    // joins the grid late, it must not click.
+    let t0 = when == null ? ctx.currentTime : when;
+    if (t0 < ctx.currentTime + 0.015) t0 = ctx.currentTime + 0.015;
     const freq = freqOf(id);
     const dur = Math.max(0.12, durSec);
     const tail = 0.03;
@@ -1343,7 +1350,8 @@ function playTickAt(when, bag) {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === "suspended") audioCtx.resume();
     const ctx = audioCtx;
-    const t0 = when == null ? ctx.currentTime : when;
+    let t0 = when == null ? ctx.currentTime : when;
+    if (t0 < ctx.currentTime + 0.015) t0 = ctx.currentTime + 0.015; // past-scheduled tick = click (see playNoteAt)
     const dur = 0.04;
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, t0);
@@ -1494,7 +1502,10 @@ function scheduleMelody(when) {
         return;
       }
     }
-    const noteWhen = melodyNextTime;
+    // Keep the grid time but never schedule in the past: a late timer hands
+    // melodyNextTime already behind currentTime, and past automation
+    // collapses into instant steps (attack skipped → click; see playNoteAt).
+    const noteWhen = Math.max(melodyNextTime, audioCtx.currentTime + 0.02);
     if (atBar && tickEnabled() && barHasNote(melodyTokens, melodyIdx)) playTickAt(noteWhen, melodyBag);
     const tok = melodyTokens[melodyIdx];
     const step = Math.max(0.001, swungBeats(tok, melodyPos) * melodyQuarter /
