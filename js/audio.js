@@ -204,11 +204,30 @@ const perf = {
   wallBase: null, clockBase: null,
   glitches: 0,   // audio clock lagged the wall clock by >0.25 s in one window
   jumps: 0,      // audio clock suddenly leapt forward (context restart)
+  lag: 0,        // cumulative audio-clock lag budget (s) — sees slow/mild
+                 // starvation the per-window stall threshold misses (an
+                 // underrun blanks buffer chunks while the clock keeps
+                 // moving, so "stalls" can read 0 while clicks are audible)
   sessionPeak: 0, // max |sample| at the output since the last reset
   snapBuf: null,
 };
 let perfAnalyser = null;
 let perfComps = [];   // the buses' DynamicsCompressors, for .reduction reads
+let perfAlertListener = null;
+let perfLastAlert = -15000; // ms; first alert is never throttled
+
+// The UI registers a callback (ui.js: perfAlert) that gets called when a
+// glitch is suspected — it pulses the perf button and proposes Lite mode.
+function setPerfAlertListener(fn) { perfAlertListener = fn; }
+
+function raisePerfAlert() {
+  if (!perfAlertListener) return;
+  const now = performance.now();
+  if (now - perfLastAlert < 15000) return; // throttle: one toast per 15 s max
+  if (countAliveVoices(melodyBag) < 1 && liveVoices.length < 1) return;
+  perfLastAlert = now;
+  try { perfAlertListener(); } catch (e) {}
+}
 
 // Voices that still have scheduled content ahead (bag entries prune
 // themselves once their `until` is past — see pruneBag).
@@ -237,8 +256,18 @@ setInterval(() => {
   const wall = performance.now() / 1000, clock = audioCtx.currentTime;
   if (perf.wallBase != null) {
     const dWall = wall - perf.wallBase, dClock = clock - perf.clockBase;
-    if (dWall > 0.3 && dClock < dWall - 0.25) perf.glitches++;
+    if (dWall > 0.3 && dClock < dWall - 0.25) { perf.glitches++; raisePerfAlert(); }
     else if (dClock > dWall + 0.3) perf.jumps++;
+    // Cumulative lag budget: lends credibility to mild, continuous
+    // starvation (e.g. phones) that never lags one window by 0.25 s. Behind
+    // by >50 ms per window accumulates; caught up time pays back.
+    if (dClock - dWall < -0.05) perf.lag += (dWall - dClock) - 0.05;
+    else if (dClock - dWall > 0.05) perf.lag = Math.max(0, perf.lag - ((dClock - dWall) - 0.05));
+    if (perf.lag > 0.12) {
+      perf.glitches++;
+      perf.lag = 0;
+      raisePerfAlert();
+    }
   }
   perf.wallBase = wall; perf.clockBase = clock;
 }, 500);

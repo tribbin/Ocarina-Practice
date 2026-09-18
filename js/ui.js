@@ -828,6 +828,7 @@ function wireUi() {
   document.addEventListener("mousemove", revealZenUi);
   wireZen();
   perfRelocate();
+  wirePerfAlerts();
   wireFocusControls();
   wireSpacebar();
   updateTransportUI();
@@ -1142,4 +1143,53 @@ function perfRelocate() {
   const zen = !!(panel && panel.classList.contains("focus"));
   const target = zen ? panel : head;
   if (target && perfWrap.parentElement !== target) target.appendChild(perfWrap);
+}
+
+// Audio-glitch alert: the watchdog in audio.js raises perfAlert() when it
+// suspects underruns (repeated clock lag, cumulative drift). The perf button
+// pulses red — forced visible even in Zen — and a toast proposes Lite with a
+// one-tap switch. Mounted on <body> so it survives focus-mode relocation of
+// the playback bar.
+let perfToast = null, perfToastTimer = 0;
+
+function wirePerfAlerts() {
+  if (typeof setPerfAlertListener === "function") setPerfAlertListener(perfAlert);
+}
+
+function perfAlert() {
+  buildPerfWidget();
+  perfBtn.classList.add("alerted");
+  if (perfToast) return; // one toast at a time
+  perfToast = document.createElement("div");
+  perfToast.className = "glitch-toast noprint" + (isFocusMode() ? " in-zen" : "");
+  perfToast.innerHTML =
+    '<span class="gt-txt">Audio glitches detected</span>' +
+    '<button type="button" class="ghost" id="gtLite">Turn on Lite</button>' +
+    '<button type="button" class="ghost" id="gtMore">Details</button>' +
+    '<button type="button" class="gt-x" title="Dismiss" aria-label="Dismiss">✕</button>';
+  const lite = perfToast.querySelector("#gtLite");
+  const liteCb = document.getElementById("liteMel");
+  if (liteCb && liteCb.checked) lite.textContent = "Lite already on";
+  lite.onclick = () => {
+    if (liteCb && !liteCb.checked) {
+      liteCb.checked = true;
+      liteCb.dispatchEvent(new Event("change")); // persists via the checkbox listener
+      lite.textContent = "Lite on";
+    }
+    perfDismissToast();
+  };
+  perfToast.querySelector("#gtMore").onclick = () => {
+    if (!perfOpen) perfBtn.click(); // open the meters for inspection
+    perfDismissToast();
+  };
+  perfToast.querySelector(".gt-x").onclick = () => perfDismissToast();
+  document.body.appendChild(perfToast);
+  perfToastTimer = setTimeout(perfDismissToast, 25000);
+}
+
+function perfDismissToast() {
+  clearTimeout(perfToastTimer);
+  if (perfToast && perfToast.parentElement) perfToast.remove();
+  perfToast = null;
+  if (perfBtn) perfBtn.classList.remove("alerted");
 }
