@@ -385,7 +385,10 @@ function highlightToken(i, noteId, durSec, sounding) {
   const lite = typeof liteMode === "function" && liteMode();
   document.querySelectorAll(".tok.now, .card.now, .rest.now, .key.now").forEach(el => el.classList.remove("now"));
   document.querySelectorAll('.tok[data-i="' + i + '"]').forEach(el => el.classList.add("now"));
-  if (isMelodyPlaying() && !lite) scrollFocusStripTo(i);
+  // The focus strip is the reading line in Zen — keep it moving even in Lite
+  // (smooth scrolling is browser-native and cheap; Lite still skips the
+  // sheet auto-scroll and the glow below).
+  if (isMelodyPlaying()) scrollFocusStripTo(i);
   if (isLiveTab()) {
     updateLiveTab(lastTokens.length ? lastTokens : parse(document.getElementById("src").value), i);
   } else {
