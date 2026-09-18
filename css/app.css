@@ -31,6 +31,11 @@ header.app span { opacity: .7; font-size: 13px; }
 .inst-sel option { color: var(--ink); background: var(--paper); }
 .wrap { max-width: 1440px; margin: 0 auto; padding: 16px 22px 80px; }
 .panel { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 0 0 14px; }
+.block { border: 1px solid var(--line); border-radius: 8px; background: #fff; margin: 0 0 12px; }
+/* The square box-head sits flush at the block's top: round its own corners so
+   the head's background doesn't poke past the block's rounded border
+   (top-left/top-right of each sub-section were visually clipped). */
+.block > .box-head { border-radius: 7px 7px 0 0; }
 label.k { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--clay-dark); font-weight: 700; display: block; margin-bottom: 6px; }
 textarea#src {
   width: 100%; min-height: 74px; resize: vertical; font: 15px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -85,6 +90,7 @@ button.tiny { padding: 4px 8px; font-size: 12px; }
 .pkey:first-child .key:not(.black) { border-radius: 0 0 0 5px; }
 .key.black { position: absolute; left: 100%; top: 0; width: 58%; min-width: 0; max-width: 28px; height: 64px; background: var(--ink); border: 1px solid var(--ink); border-radius: 0 0 3px 3px; margin: 0; transform: translateX(-50%); z-index: 2; }
 .key:hover { filter: brightness(1.05); }
+.key:not([data-note]) { cursor: default; }
 .key .n { position: absolute; bottom: 3px; left: 0; right: 0; text-align: center; font-size: 9px; color: #7a6552; }
 .key.black .n { color: #ddd; bottom: 2px; }
 .legend { display: flex; gap: 14px; font-size: 12px; color: #5a4638; flex-wrap: wrap; }
