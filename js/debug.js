@@ -65,6 +65,7 @@
       ["vibHighFade", "Pitch high fade", 0, 1, 0.05],
       ["tremDepth", "Tremolo depth", 0, 0.3, 0.01],
       ["vibDelay", "Entry delay s", 0.05, 1, 0.05],
+      ["zenPan", "Chorus spread L/R", 0, 1, 0.05],
     ]},
     { t: "Edge / windway whistle", r: [
       ["edgeBase", "Level base", 0, 0.2, 0.002],

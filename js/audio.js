@@ -62,6 +62,10 @@ const AUDIO_DEFAULTS = {
   // wander only), which is why it is off in normal playback.
   vibRate: 5.5, vibDepth: 0.0035, vibHighFade: 0.4, tremDepth: 0.05,
   vibDelay: 0.35,
+  // Zen stereo chorus: sustained Zen notes split the core tone — clean LEFT,
+  // pitch-vibrato twin RIGHT (a douber-chorus); chiff/edge/wind stay center.
+  // 0 = mono again, 1 = fully hard sides.
+  zenPan: 0.9,
   // Edge / windway whistle: recordings show no tonal content near 1.01-1.05×f0
   // (only a faint ~-40 dB island on D6), so the whistle sits just under that.
   edgeBase: 0.0008, edgeReg: 0.0005, edgeFade: 0.7,
@@ -599,6 +603,17 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       return;
     }
 
+    // Zen CHORUS: sustained Zen notes double the core tone — the clean core
+    // goes hard LEFT, a vibrato twin (pitch LFO only) hard RIGHT; chiff /
+    // edge / wind / onset layers stay center mono (they are tiny anyway).
+    // Uses the same envelope schedule on every send, and the reverb bus
+    // preserves per-channel sums for stereo sources.
+    const VIB_DELAY = AUDIO_DEBUG.vibDelay;
+    const vibOn = vibratoEnabled &&
+      (AUDIO_DEBUG.vibDepth > 1e-4 || AUDIO_DEBUG.tremDepth > 1e-4);
+    const chorus = vibOn && dur > VIB_DELAY + 0.1;
+    const zenPan = Math.max(0, Math.min(1, AUDIO_DEBUG.zenPan));
+
     const master = ctx.createGain();
     // Master plateau level (dev-tunable) scaled by the note's profile level
     // curve (mild reproduction of the measured non-monotonic chamber
@@ -632,34 +647,38 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // right after the tone speaks, the level briefly busts above the plateau
     // and settles back — a real "blown harder than it needs" tell.
     const osLin = slideFrom ? 1 : Math.pow(10, vp.osDb / 20);
-    master.gain.setValueAtTime(0.0001, t0);
-    if (slideFrom) {
-      // ~ Legato: the tone carries straight over from the previous note — no
-      // breathy pre-tone or tongued attack; swell to full in ~35ms while the
-      // glide leaves the previous pitch.
-      master.gain.linearRampToValueAtTime(M, t0 + Math.min(0.035, dur * 0.4));
-    } else {
-      master.gain.linearRampToValueAtTime(preLevel, t1); // breathy pre-tone
-      if (t3 > t2 + 0.001) {
-        if (osLin > 1.02) {
-          // Overshoot bump between "tone speaks" and equilibrium, then settle.
-          const osAt = Math.min(t3 - 0.01, t2 + Math.max(0.03, (t3 - t2) * 0.45));
-          master.gain.linearRampToValueAtTime(toneLevel, t2); // tone begins to speak
-          master.gain.linearRampToValueAtTime(M * osLin, osAt);
-          master.gain.linearRampToValueAtTime(M, t3); // settles at full equilibrium
-        } else {
-          master.gain.linearRampToValueAtTime(toneLevel, t2); // tone begins to speak
-          master.gain.linearRampToValueAtTime(M, t3); // reaches full equilibrium
-        }
+    // The full note envelope, also reused verbatim by the Zen chorus sends.
+    function schedEnv(g) {
+      g.gain.setValueAtTime(0.0001, t0);
+      if (slideFrom) {
+        // ~ Legato: the tone carries straight over from the previous note — no
+        // breathy pre-tone or tongued attack; swell to full in ~35ms while the
+        // glide leaves the previous pitch.
+        g.gain.linearRampToValueAtTime(M, t0 + Math.min(0.035, dur * 0.4));
       } else {
-        // Very short note: no room for the two-stage climb; go straight to full
-        // by t2 so the automation stays monotonic and click-free.
-        master.gain.linearRampToValueAtTime(M, Math.min(t2, relStartT - 0.003));
+        g.gain.linearRampToValueAtTime(preLevel, t1); // breathy pre-tone
+        if (t3 > t2 + 0.001) {
+          if (osLin > 1.02) {
+            // Overshoot bump between "tone speaks" and equilibrium, then settle.
+            const osAt = Math.min(t3 - 0.01, t2 + Math.max(0.03, (t3 - t2) * 0.45));
+            g.gain.linearRampToValueAtTime(toneLevel, t2); // tone begins to speak
+            g.gain.linearRampToValueAtTime(M * osLin, osAt);
+            g.gain.linearRampToValueAtTime(M, t3); // settles at full equilibrium
+          } else {
+            g.gain.linearRampToValueAtTime(toneLevel, t2); // tone begins to speak
+            g.gain.linearRampToValueAtTime(M, t3); // reaches full equilibrium
+          }
+        } else {
+          // Very short note: no room for the two-stage climb; go straight to full
+          // by t2 so the automation stays monotonic and click-free.
+          g.gain.linearRampToValueAtTime(M, Math.min(t2, relStartT - 0.003));
+        }
       }
+      g.gain.setValueAtTime(M, intoSlide ? t0 + dur : relStartT);
+      g.gain.linearRampToValueAtTime(0.0001, t0 + dur + fadeOff);
+      if (!intoSlide) g.gain.setValueAtTime(0.0001, t0 + dur + tail);
     }
-    master.gain.setValueAtTime(M, intoSlide ? t0 + dur : relStartT);
-    master.gain.linearRampToValueAtTime(0.0001, t0 + dur + fadeOff);
-    if (!intoSlide) master.gain.setValueAtTime(0.0001, t0 + dur + tail);
+    schedEnv(master);
     master.connect(getReverbBus(ctx));
 
     const lp = ctx.createBiquadFilter();
@@ -686,46 +705,63 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     const trem = ctx.createGain();
     trem.gain.value = 1;
     lp.connect(trem);
-    trem.connect(master);
+
+    // Core-tone send routing for the Zen chorus (see above): CLEAN core to
+    // the left channel; in normal playback the core rides master as always.
+    if (chorus) {
+      const coreL = ctx.createGain();
+      schedEnv(coreL);
+      const panL = ctx.createStereoPanner();
+      panL.pan.value = -zenPan;
+      trem.connect(coreL); coreL.connect(panL);
+      panL.connect(getReverbBus(ctx));
+    } else {
+      trem.connect(master);
+    }
 
     const wave = getOcarinaWave(ctx, vp);
-    const osc = ctx.createOscillator();
-    osc.setPeriodicWave(wave);
-    if (slideFrom) {
-      // ~ Legato portamento: pick the pitch up exactly where the prior note
-      // left off, bend fast to the target, then settle through the same tiny
-      // overshoot a freshly blown note has, so the landed pitch reads + sounds
-      // identically.
-      const over = 1.002 + 0.004 * effort;
-      const settle = Math.min(0.05, Math.max(0.02, dur * 0.2));
-      osc.frequency.setValueAtTime(slideFrom, t0);
-      osc.frequency.linearRampToValueAtTime(freq * over, t0 + glide);
-      osc.frequency.exponentialRampToValueAtTime(freq, t0 + glide + settle);
-    } else {
-      // Airflow "catch up" onset: the pitch begins slightly flat and blooms
-      // to target with a tiny overshoot — a brief breath chiff, NOT a long
-      // pitch slide (that reads as brass). The pitch locks in fast (~15–30ms)
-      // even on high-effort notes; effort mainly shapes the softer AMPLITUDE
-      // attack (see `speak` above), not a long glide.
-      const rise = Math.min(0.03, Math.max(0.01, dur * 0.12)) * (0.7 + 0.3 * effort);
-      const flat = 0.993 - 0.007 * effort;  // start pitch: 0.7%–1.4% flat
-      const over = 1.002 + 0.004 * effort;  // overshoot: 0.2%–0.6% sharp
-      const overshootAt = t0 + rise;
-      const settleAt = overshootAt + rise * 0.9;
-      osc.frequency.setValueAtTime(freq * flat, t0);            // starts flat (air slow)
-      osc.frequency.linearRampToValueAtTime(freq * over, overshootAt); // overshoot sharp
-      osc.frequency.exponentialRampToValueAtTime(freq, settleAt);      // settle to pitch
-      // Release pitch sag: as breath pressure falls at the end of the note the
-      // pitch bends flat — a subtle downward "sigh". Scaled by effort/chamber
-      // so bigger chambers sag a touch more. Only if the note is long enough to
-      // have settled first, and never on a note that flows into a ~ slide
-      // (the pitch must stay put until the glide takes over).
-      if (!intoSlide && relStart > settleAt + 0.02) {
-        const sag = 0.01 + 0.008 * effort; // ~17–31 cents flat over the release
-        osc.frequency.setValueAtTime(freq, relStart);
-        osc.frequency.linearRampToValueAtTime(freq * (1 - sag), t0 + dur);
+    // The pitch automation (legato bend / catch-up bloom / release sag) —
+    // also used verbatim by the chorus twin so both sides land identically.
+    function scheduleFreq(o) {
+      if (slideFrom) {
+        // ~ Legato portamento: pick the pitch up exactly where the prior note
+        // left off, bend fast to the target, then settle through the same tiny
+        // overshoot a freshly blown note has, so the landed pitch reads + sounds
+        // identically.
+        const over = 1.002 + 0.004 * effort;
+        const settle = Math.min(0.05, Math.max(0.02, dur * 0.2));
+        o.frequency.setValueAtTime(slideFrom, t0);
+        o.frequency.linearRampToValueAtTime(freq * over, t0 + glide);
+        o.frequency.exponentialRampToValueAtTime(freq, t0 + glide + settle);
+      } else {
+        // Airflow "catch up" onset: the pitch begins slightly flat and blooms
+        // to target with a tiny overshoot — a brief breath chiff, NOT a long
+        // pitch slide (that reads as brass). The pitch locks in fast (~15–30ms)
+        // even on high-effort notes; effort mainly shapes the softer AMPLITUDE
+        // attack (see `speak` above), not a long glide.
+        const rise = Math.min(0.03, Math.max(0.01, dur * 0.12)) * (0.7 + 0.3 * effort);
+        const flat = 0.993 - 0.007 * effort;  // start pitch: 0.7%–1.4% flat
+        const over = 1.002 + 0.004 * effort;  // overshoot: 0.2%–0.6% sharp
+        const overshootAt = t0 + rise;
+        const settleAt = overshootAt + rise * 0.9;
+        o.frequency.setValueAtTime(freq * flat, t0);            // starts flat (air slow)
+        o.frequency.linearRampToValueAtTime(freq * over, overshootAt); // overshoot sharp
+        o.frequency.exponentialRampToValueAtTime(freq, settleAt);      // settle to pitch
+        // Release pitch sag: as breath pressure falls at the end of the note the
+        // pitch bends flat — a subtle downward "sigh". Scaled by effort/chamber
+        // so bigger chambers sag a touch more. Only if the note is long enough to
+        // have settled first, and never on a note that flows into a ~ slide
+        // (the pitch must stay put until the glide takes over).
+        if (!intoSlide && relStart > settleAt + 0.02) {
+          const sag = 0.01 + 0.008 * effort; // ~17–31 cents flat over the release
+          o.frequency.setValueAtTime(freq, relStart);
+          o.frequency.linearRampToValueAtTime(freq * (1 - sag), t0 + dur);
+        }
       }
     }
+    const osc = ctx.createOscillator();
+    osc.setPeriodicWave(wave);
+    scheduleFreq(osc);
     osc.connect(lp);
     osc.start(t0);
     osc.stop(t0 + dur + stopOff);
@@ -764,6 +800,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // each other per component: breath pressure moves pitch AND loudness
     // together. Combined depth ≈ std×0.88 (sine-equivalent) — faithful to
     // the measured detrended std WITHOUT the earlier sine overshoot.
+    const wobAmpGains = [];     // shared with the chorus twin's tremolo below
     if (vp.wanderC > 0.01 || vp.wobDepth > 0.0005) {
       const comps = [
         { share: 0.85, rate: vp.wobRate, type: "triangle" },
@@ -785,26 +822,19 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
         wob.connect(wobPitch); wobPitch.connect(osc.frequency);
         wob.connect(wobAmp); wobAmp.connect(trem.gain);
         wob.start(t0); wob.stop(t0 + dur + stopOff);
+        wobAmpGains.push(wobAmp);
       }
     }
 
-    // Expressive vibrato (~5.5 Hz), ZEN MODE ONLY (vibratoEnabled, gated
-    // like the reverb) and only on SUSTAINED notes: it begins after a fixed
-    // settle delay, so short/fast notes end before it starts. Breath vibrato
-    // couples PITCH and LOUDNESS in phase (harder blow = sharper AND
-    // louder), so the same LFO drives both osc.frequency and the tremolo
-    // gain. Outside Zen no vibrato LFO is created at all — the voice then
-    // matches the recordings (slow intrinsic wander only).
-    const VIB_DELAY = AUDIO_DEBUG.vibDelay;
-    const vibOn = vibratoEnabled &&
-      (AUDIO_DEBUG.vibDepth > 1e-4 || AUDIO_DEBUG.tremDepth > 1e-4);
+    // Expressive vibrato ZEN MODE ONLY (vibratoEnabled, gated like the
+    // reverb), and on sustained notes it runs as a stereo CHORUS: clean core
+    // LEFT, vibrato twin RIGHT (see the chorus note above). The vibrato LFO
+    // therefore lives on the TWIN — the left side stays clean — and short
+    // notes (no room for the vibrato entry) simply stay mono-centered.
     const lfoGain = ctx.createGain();     // pitch depth
     const tremGain = ctx.createGain();    // amplitude depth (in phase)
-    let lfo = null;
-    if (vibOn && dur > VIB_DELAY + 0.1) {
-      lfo = ctx.createOscillator();
-      lfo.type = "sine";
-      lfo.frequency.value = AUDIO_DEBUG.vibRate;
+    let twinOsc = null, lfoT = null;
+    if (chorus) {
       const vibDepth = freq * AUDIO_DEBUG.vibDepth * (1 - AUDIO_DEBUG.vibHighFade * hiF); // ~6 cents, a touch less up high
       const tremDepth = AUDIO_DEBUG.tremDepth; // ~5% loudness wobble, in phase with pitch
       lfoGain.gain.setValueAtTime(0.0001, t0);
@@ -813,12 +843,38 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       tremGain.gain.setValueAtTime(0.0001, t0);
       tremGain.gain.setValueAtTime(0.0001, t0 + VIB_DELAY);
       tremGain.gain.linearRampToValueAtTime(tremDepth, t0 + VIB_DELAY + 0.2);
-      lfo.connect(lfoGain);
-      lfoGain.connect(osc.frequency);
-      lfo.connect(tremGain);
-      tremGain.connect(trem.gain);
-      lfo.start(t0);
-      lfo.stop(t0 + dur + stopOff);
+      // RIGHT channel: twin of the core tone, pitch+amp vibrato only.
+      twinOsc = ctx.createOscillator();
+      twinOsc.setPeriodicWave(wave);
+      scheduleFreq(twinOsc);
+      const lpT = ctx.createBiquadFilter();
+      lpT.type = "lowpass";
+      if (slideFrom) {
+        lpT.frequency.setValueAtTime(Math.min(AUDIO_DEBUG.lpMax, slideFrom * AUDIO_DEBUG.lpMult), t0);
+        lpT.frequency.linearRampToValueAtTime(Math.min(AUDIO_DEBUG.lpMax, freq * AUDIO_DEBUG.lpMult), t0 + glide);
+      } else {
+        lpT.frequency.setValueAtTime(Math.min(AUDIO_DEBUG.lpMax, freq * AUDIO_DEBUG.lpMult), t0);
+      }
+      lpT.Q.value = AUDIO_DEBUG.lpQ;
+      const tremT = ctx.createGain();
+      tremT.gain.value = 1;
+      const twinEnv = ctx.createGain();
+      schedEnv(twinEnv);
+      const panR = ctx.createStereoPanner();
+      panR.pan.value = zenPan;
+      twinOsc.connect(lpT); lpT.connect(tremT); tremT.connect(twinEnv);
+      twinEnv.connect(panR);
+      panR.connect(getReverbBus(ctx));
+      wobAmpGains.forEach(g => g.connect(tremT.gain));
+      lfoT = ctx.createOscillator();
+      lfoT.type = "sine";
+      lfoT.frequency.value = AUDIO_DEBUG.vibRate;
+      lfoT.connect(lfoGain);
+      lfoGain.connect(twinOsc.frequency);
+      lfoT.connect(tremGain);
+      tremGain.connect(tremT.gain);
+      twinOsc.start(t0); twinOsc.stop(t0 + dur + stopOff);
+      lfoT.start(t0); lfoT.stop(t0 + dur + stopOff);
     } else {
       lfoGain.gain.setValueAtTime(0.0001, t0);
       tremGain.gain.setValueAtTime(0.0001, t0);
@@ -1018,20 +1074,19 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     }
 
     if (bag) {
+      const stopN = (n, t) => { try { if (n) (t == null ? n.stop() : n.stop(t)); } catch (e) {} };
       bag.push({
-        stop() { try { osc.stop(); } catch (e) {} try { lfo.stop(); } catch (e) {} try { air.stop(); } catch (e) {} try { edge.stop(); } catch (e) {} try { wander.stop(); } catch (e) {} try { chiffSrc.stop(); } catch (e) {} },
+        // lfo/lfoT: only the chorus twin's LFO exists, and only in Zen.
+        stop() { stopN(osc); stopN(twinOsc); stopN(lfoT); stopN(air); stopN(edge); stopN(wander); stopN(chiffSrc); },
         fade() {
           const now = ctx.currentTime;
           try {
             master.gain.cancelScheduledValues(now);
             master.gain.setValueAtTime(Math.max(0.0001, master.gain.value || M), now);
             master.gain.linearRampToValueAtTime(0.0001, now + 0.03);
-            osc.stop(now + 0.05);
-            lfo.stop(now + 0.05);
-            air.stop(now + 0.05);
-            edge.stop(now + 0.05);
-            wander.stop(now + 0.05);
-            try { chiffSrc.stop(now + 0.05); } catch (e) {}
+            stopN(osc, now + 0.05); stopN(twinOsc, now + 0.05); stopN(lfoT, now + 0.05);
+            stopN(air, now + 0.05); stopN(edge, now + 0.05); stopN(wander, now + 0.05);
+            stopN(chiffSrc, now + 0.05);
           } catch (e) {}
         }
       });
