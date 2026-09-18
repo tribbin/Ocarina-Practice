@@ -2,7 +2,10 @@ function parse(src) {
   const tokens = [];
   const re = /([A-Ga-g])([#b])?(\d)?(\/\d+\.?t?)?(!)?|(\|)(\[[^\]]*\])?|(r)(\/\d+\.?t?)?|(-)(\/\d+\.?t?)?|(~)|(#[^\n]*)/g;
   let m, lastOct = 4, lastPitch = null, canTie = false, pendingSlide = false;
-  const text = src.replace(/[–—]/g, "|");
+  // Staccato may be written before or after the duration: normalize
+  // "C5!/8" -> "C5/8!" so the /8 always parses (the note regex consumes
+  // dur-then-bang only).
+  const text = src.replace(/[–—]/g, "|").replace(/!(\/\d+\.?t?)/g, "$1!");
   while ((m = re.exec(text))) {
     if (m[13]) {
       // Inline "# tempo N" AFTER music has started emits a tempo-change token so

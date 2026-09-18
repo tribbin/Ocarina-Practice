@@ -86,6 +86,14 @@
       ["otDurMax", "Oct decay max s", 0.04, 0.36, 0.005],
       ["otDurEffort", "Oct decay effort add s", 0, 0.2, 0.005],
     ]},
+    { t: "Practice tuner (js/practice.js)", r: [
+      ["tuneCents", "In-tune zone \u00A2", 0, 50, 1],
+      ["transientCents", "Onset grace \u00A2", 0, 120, 5],
+      ["transientMs", "Onset grace ms", 50, 400, 10],
+      ["gapMs", "Attack gap ms", 50, 400, 10],
+      ["drainRate", "Out-of-tune drain \u00d7", 1, 5, 0.5],
+      ["rmsGate", "Mic silence gate", 0.002, 0.08, 0.002],
+    ]},
     { t: "Output", r: [
       ["masterLevel", "Master level", 0.05, 1, 0.01],
       ["reverbWet", "Reverb wet", 0, 1, 0.01],

@@ -86,6 +86,13 @@ const AUDIO_DEFAULTS = {
   // artifact, so comparisons below use ratios, never absolute level.
   masterLevel: 0.40,
   reverbWet: 0.20,
+  // Practice-mode tuner gates (js/practice.js): in-tune zone (cents), onset
+  // transient grace (wider cents for the first N ms of an attack), the
+  // silence needed before a hit counts as a fresh articulation, how fast the
+  // fill bar drains when out of tune (× the fill rate), and the mic RMS the
+  // detector treats as "not playing".
+  tuneCents: 20, transientCents: 60, transientMs: 150,
+  gapMs: 120, drainRate: 2, rmsGate: 0.01,
 };
 const AUDIO_DEBUG = Object.assign({}, AUDIO_DEFAULTS);
 // Exposed for the dev panel: params are tweaked in place; invalidateWave()

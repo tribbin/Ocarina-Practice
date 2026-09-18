@@ -387,8 +387,12 @@ function highlightToken(i, noteId, durSec, sounding) {
   document.querySelectorAll('.tok[data-i="' + i + '"]').forEach(el => el.classList.add("now"));
   // The focus strip is the reading line in Zen — keep it moving even in Lite
   // (smooth scrolling is browser-native and cheap; Lite still skips the
-  // sheet auto-scroll and the glow below).
-  if (isMelodyPlaying()) scrollFocusStripTo(i);
+  // sheet auto-scroll and the glow below). Practice mode follows it too: the
+  // reading line should track the note the player is about to hit.
+  if (isMelodyPlaying() ||
+      (typeof isPracticeActive === "function" && isPracticeActive())) {
+    scrollFocusStripTo(i);
+  }
   if (isLiveTab()) {
     updateLiveTab(lastTokens.length ? lastTokens : parse(document.getElementById("src").value), i);
   } else {
@@ -571,6 +575,9 @@ function clearHighlight() {
 
 function hoverPreview(i, t) {
   if (isMelodyPlaying() || hoverQuietUntil > Date.now()) return;
+  // Practicing owns the glow and the sounds: token hovers would inject
+  // playback-mode pulses over the fill-driven halo.
+  if (typeof isPracticeActive === "function" && isPracticeActive()) return;
   highlightToken(i, t.id);
   unlockAudio();
   if (!audioCtx || audioCtx.state !== "running") return;
@@ -641,7 +648,14 @@ function buildTokenEl(t, i) {
       if (!isMelodyPlaying()) clearHighlight();
     });
   }
-  el.addEventListener("click", e => { e.preventDefault(); unlockAudio(); playMelody(i); });
+  // While practicing, the same click re-anchors the practice from this token
+  // instead of starting normal playback.
+  el.addEventListener("click", e => {
+    e.preventDefault(); unlockAudio();
+    if (typeof isPracticeActive === "function" && isPracticeActive()) {
+      if (window.OCA_PRACTICE) OCA_PRACTICE.from(i);
+    } else playMelody(i);
+  });
   return el;
 }
 
@@ -782,7 +796,11 @@ function persistPlayHeaders() {
 }
 
 function wireUi() {
-  document.getElementById("playMel").onclick = playMelody;
+  document.getElementById("playMel").onclick = transportEngagePlay;
+  const pracBtn = document.getElementById("practiceBtn");
+  if (pracBtn) pracBtn.onclick = transportEngagePractice;
+  const pracFocusBtn = document.getElementById("practiceFocusBtn");
+  if (pracFocusBtn) pracFocusBtn.onclick = transportEngagePractice;
   const liteCb = document.getElementById("liteMel");
   if (liteCb) {
     try { if (localStorage.getItem("oco-lite") === "1") liteCb.checked = true; } catch (e) {}
@@ -884,8 +902,15 @@ function wireFocusControls() {
   const st = document.getElementById("focusStop");
   const lp = document.getElementById("focusLoop");
   const ex = document.getElementById("focusExit");
-  if (pp) pp.onclick = () => { unlockAudio(); togglePlayPause(); };
-  if (st) st.onclick = () => stopMelody();
+  if (pp) pp.onclick = () => { unlockAudio(); transportEngagePlay(); };
+  if (st) st.onclick = () => {
+    // Full reset of whichever mode owns the transport.
+    if (typeof isPracticeActive === "function" && isPracticeActive() && window.OCA_PRACTICE) {
+      OCA_PRACTICE.stop();
+      return;
+    }
+    stopMelody();
+  };
   if (lp) lp.onclick = () => {
     const cb = document.getElementById("loopMel");
     if (cb) cb.checked = !cb.checked;
@@ -936,14 +961,60 @@ function syncFocusMode() {
 }
 
 function updateTransportUI() {
-  const playing = typeof isMelodyPlaying === "function" && isMelodyPlaying();
+  // Three symmetric states: play running, practice running, neither (paused).
+  // Both buttons stay ENABLED at all times — that is what makes the swap
+  // seamless (the other button switches modes from the current position, the
+  // active one disengages). Active = colored, paused = neutral.
+  const pracRuns = (typeof isPracticeActive === "function" && isPracticeActive()) &&
+    !(typeof isPracticePaused === "function" && isPracticePaused());
+  const playing = (typeof isMelodyPlaying === "function" && isMelodyPlaying());
   const main = document.getElementById("playMel");
-  if (main) main.textContent = playing ? "Stop" : "Play";
+  if (main) {
+    main.textContent = playing ? "Stop" : "Play";
+    // Neutral (idle/paused) is outline — never the black filled look.
+    main.classList.toggle("on", playing);
+  }
+  ["practiceBtn", "practiceFocusBtn"].forEach(id => {
+    const b = document.getElementById(id);
+    if (!b) return;
+    b.classList.toggle("on", pracRuns);
+    b.setAttribute("aria-pressed", pracRuns ? "true" : "false");
+  });
   const fp = document.getElementById("focusPlay");
   if (fp) {
     fp.textContent = playing ? "\u23F8" : "\u25B6";
     fp.classList.toggle("is-playing", playing);
   }
+}
+
+// The two transports engage / swap / disengage symmetrically:
+//  - play while practicing  -> playing from the practice position
+//  - practice while playing -> practicing from the playing position
+//  - the active button      -> disengage (paused mode, position retained)
+//  - a paused mode          -> resumes from its own position
+function transportEngagePlay() {
+  if (typeof isPracticeActive === "function" && isPracticeActive() && window.OCA_PRACTICE) {
+    const pos = Math.max(0, OCA_PRACTICE.posIdx());
+    OCA_PRACTICE.stop();
+    playMelody(pos);
+    return;
+  }
+  if (typeof isMelodyPlaying === "function" && isMelodyPlaying()) { pauseMelody(); return; }
+  if (typeof isMelodyPaused === "function" && isMelodyPaused()) { resumeMelody(); return; }
+  playMelody();
+}
+
+function transportEngagePractice() {
+  if (window.OCA_PRACTICE && (
+    (typeof isMelodyPlaying === "function" && isMelodyPlaying()) ||
+    (typeof isMelodyPaused === "function" && isMelodyPaused()))) {
+    // Swap from playback (or a paused playback) with the melody's position.
+    const pos = (typeof liveIdx !== "undefined" && liveIdx >= 0) ? liveIdx : 0;
+    OCA_PRACTICE.start(pos);
+    return;
+  }
+  if (typeof isPracticeActive === "function" && isPracticeActive()) { practiceToggle(); return; }
+  OCA_PRACTICE.start();
 }
 
 function isTextEntry(el) {
@@ -965,7 +1036,9 @@ function wireSpacebar() {
     if (isTextEntry(document.activeElement)) return;
     e.preventDefault();
     unlockAudio();
-    if (isFocusMode()) togglePlayPause();
+    if (typeof isPracticeActive === "function" && isPracticeActive()) practiceToggle();
+    else if (isFocusMode()) togglePlayPause();
+    else if (typeof isMelodyPaused === "function" && isMelodyPaused()) resumeMelody();
     else playMelody();
   });
 }

@@ -1,0 +1,677 @@
+// Practice mode: the song advances when the player HITS each note with the
+// ocarina through the microphone — a real articulation (fresh attack after a
+// short silence), not a slide into the pitch. A sliding, chamber-colored bar
+// fills while the note stays in tune; wandering out drains it at 2x; emptying
+// it resets the note to a new attack. A tuner (needle + in-tune zone) guides
+// the player.
+//
+// Notation drives everything: the bar's length is the note's own sounding
+// duration at the SONG's tempo (header + inline `# tempo`); the playback
+// tempo dial is ignored here. Staccato notes require half their normal
+// duration. Ties are one bar with one hit; a `~` slide pair is one bar whose
+// in-tune zone is the union of both pitches (the bend must not be punished).
+//
+// The mic pipeline is analyser-only (never connected to the destination) so
+// there is no monitoring feedback, and no reference tone is ever played.
+//
+// Tests: appending ?practiceTest=1 replaces the mic frames with the synthetic
+// provider at window.__pracFrame = { hz, rms } (the same code paths run).
+(function () {
+  "use strict";
+
+  const TICK_MS = 66;          // detection/UI tick
+  const MIN_HZ = 160;
+  const MAX_HZ = 2000;
+  const needleLo = -50;        // display window in cents
+  const needleHi = 50;
+
+  const P = {
+    active: false, paused: false, completed: false,
+    tokens: [], idx: 0, quarter: 0.5,
+    bar: null,          // { startIdx, endIdx, zones:[hz], targetSec, filled, chainId, slide:false, stac:false }
+    state: "idle",      // await | ready | hit | fill | drain? (drain is fill w/ neg) | rest
+    gapAcc: 0,          // ms of continuous silence accumulated (await phase)
+    transientLeft: 0,   // ms of onset-grace remaining
+    restLeft: 0,        // ms left of a rest
+    hz: 0, hzSm: 0, rms: 0, cents: 0,
+    mic: null,          // { stream, source, analyser, buf, sr }
+    interval: 0, last: 0,
+    err: "",
+  };
+
+  const TEST = /[?&]practiceTest=1\b/.test(location.search);
+
+  // ---------------------------------------------------------------- helpers
+  function dbg() { return (window.OCA_DEBUG && window.OCA_DEBUG.params) || { tuneCents: 20, transientCents: 60, transientMs: 150, gapMs: 120, drainRate: 2, rmsGate: 0.01 }; }
+
+  function freqOfId(id) {
+    if (typeof freqOf === "function") return freqOf(id);
+    const m = String(id).match(/^([A-G]s?)(\d)$/);
+    if (!m) return 440;
+    const semi = { C: 0, Cs: 1, D: 2, Ds: 3, E: 4, F: 5, Fs: 6, G: 7, Gs: 8, A: 9, As: 10, B: 11 };
+    return 440 * Math.pow(2, (semi[m[1]] + (+m[2] + 1) * 12 - 69) / 12);
+  }
+  function gridBeats(t) {
+    if (!t || t.type === "bar" || t.type === "tempo") return 0;
+    return t.beats || ((4 / (t.dur || 4)) * (t.dotted ? 1.5 : 1) * (t.triplet ? 2 / 3 : 1));
+  }
+  function spelled(id, tok) {
+    if (tok && typeof spelledLabel === "function") return spelledLabel(tok);
+    return String(id).replace(/^([A-G])s(\d)$/, "$1#$2");
+  }
+  function centsOf(hz, target) {
+    return hz > 0 && target > 0 ? 1200 * Math.log2(hz / target) : 999;
+  }
+
+  function isPitchedTok(t) {
+    return (t.type === "note" || t.type === "tie") && window.NOTES && NOTES.includes(t.id);
+  }
+  function soundableAfter(tokens, i) {
+    // first non bar/tempo token at or after i (the junction check for ~)
+    for (let k = i; k < tokens.length; k++) {
+      const t = tokens[k];
+      if (t.type === "bar" || t.type === "tempo") continue;
+      return k;
+    }
+    return -1;
+  }
+
+  // One practice bar = one hit + one fill track. Absorbs the tie chain and,
+  // when the chain flows straight into a ~ slide, the slide target + its ties.
+  function buildBar(tokens, i) {
+    const chainId = tokens[i].id;
+    let end = i;
+    while (end + 1 < tokens.length && tokens[end + 1].type === "tie" &&
+           NOTES.includes(tokens[end + 1].id) && tokens[end + 1].id === chainId) end++;
+    let zones = [freqOfId(chainId)];
+    let slide = false;
+    const j = soundableAfter(tokens, end + 1);
+    if (j > 0) {
+      const nt = tokens[j];
+      if (nt.type !== "tie" && nt.slide && NOTES.includes(nt.id) && nt.slideFrom === chainId && nt.id !== chainId) {
+        slide = true;
+        zones.push(freqOfId(nt.id));
+        let e2 = j;
+        while (e2 + 1 < tokens.length && tokens[e2 + 1].type === "tie" &&
+               NOTES.includes(tokens[e2 + 1].id) && tokens[e2 + 1].id === nt.id) e2++;
+        end = e2;
+      }
+    }
+    let beats = 0;
+    for (let k = i; k <= end; k++) {
+      if (tokens[k].type === "bar" || tokens[k].type === "tempo") continue;
+      beats += gridBeats(tokens[k]);
+    }
+    // Staccato: practice half the note's normal duration (melody is leading).
+    const stac = tokens[i].staccato && end === i;
+    const targetSec = Math.max(0.05, beats * P.quarter * (stac ? 0.5 : 1));
+    return { startIdx: i, endIdx: end, zones, targetSec, filled: 0, chainId, slide, stac };
+  }
+
+  // ------------------------------------------------------------ state texts
+  function barName() { return spelled(P.bar.chainId, P.tokens[P.bar.startIdx]); }
+  function statusText(s) {
+    switch (s) {
+      case "await": return "Fresh attack needed — pause briefly, then hit " + barName();
+      case "ready": return "Ready — play " + barName();
+      case "hit": return "Hit. Steady to the pitch…";
+      case "fill": return P.bar.slide ? "Hold / bend " + barName() : "Hold " + barName();
+      case "rest": return "Rest";
+      default: return "";
+    }
+  }
+
+  // ------------------------------------------------------------------ UI
+  let panel = null, els = {};
+  function buildPanel() {
+    if (panel || typeof document === "undefined") return panel;
+    panel = document.createElement("div");
+    panel.className = "prac-panel noprint";
+    panel.hidden = true;
+    panel.innerHTML =
+      '<div class="prac-row1"><span class="prac-note">—</span>' +
+      '<span class="prac-cents">0¢</span>' +
+      '<span class="prac-status"></span>' +
+      '<span class="prac-fillval"></span></div>' +
+      '<div class="prac-scale"><div class="prac-zone"></div><div class="prac-mark"></div></div>' +
+      '<div class="prac-track"><div class="prac-fill"></div></div>';
+    els.note = panel.querySelector(".prac-note");
+    els.cents = panel.querySelector(".prac-cents");
+    els.status = panel.querySelector(".prac-status");
+    els.fillval = panel.querySelector(".prac-fillval");
+    els.scale = panel.querySelector(".prac-scale");
+    els.zone = panel.querySelector(".prac-zone");
+    els.mark = panel.querySelector(".prac-mark");
+    els.track = panel.querySelector(".prac-track");
+    els.fill = panel.querySelector(".prac-fill");
+    // No Pause/Skip/Restart/End here: the transports own mode control, and
+    // clicking any token re-anchors the practice. The panel is a pure tuner
+    // display (draggable by its face).
+    makeDraggable(panel);
+    // Inside #tabPanel in both layouts: it must be visible while the
+    // zen fullscreen is active (body-level content would be painted over).
+    const host = document.getElementById("tabPanel") || document.body;
+    host.appendChild(panel);
+    return panel;
+  }
+
+  function makeDraggable(p) {
+    let sx = 0, sy = 0, ox = 0, oy = 0, dragging = false;
+    p.addEventListener("pointerdown", e => {
+      if (e.button !== 0) return;
+      if (e.target.closest("button")) return; // drag the face, not the controls
+      const r = p.getBoundingClientRect();
+      // Drop the centering transform; anchor by the panel's top-left corner
+      // (clamped to stay on screen when re-applying after zen relief).
+      p.style.transform = "none";
+      p.style.left = r.left + "px";
+      p.style.top = r.top + "px";
+      dragging = true;
+      sx = e.clientX; sy = e.clientY; ox = r.left; oy = r.top;
+      p.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+    p.addEventListener("pointermove", e => {
+      if (!dragging) return;
+      const w = p.offsetWidth, h = p.offsetHeight;
+      const x = Math.max(4, Math.min(window.innerWidth - w - 4, ox + e.clientX - sx));
+      const y = Math.max(4, Math.min(window.innerHeight - h - 4, oy + e.clientY - sy));
+      p.style.left = x + "px";
+      p.style.top = y + "px";
+    });
+    const done = () => dragging = false;
+    p.addEventListener("pointerup", done);
+    p.addEventListener("pointercancel", done);
+  }
+
+  function zoneHex() {
+    const id = P.bar.chainId;
+    const ch = window.CHAMBER ? CHAMBER[id] : 1;
+    return "var(--ch" + (ch || 1) + ")";
+  }
+  function renderPanel() {
+    if (!panel || !P.bar) return;
+    const dg = dbg();
+    const studio = P.paused
+      ? (P.completed ? "Song end — Play or Practice resumes." : "Paused — Play/Practice or Space resumes.")
+      : (statusText(P.state) || P.err);
+    els.status.textContent = studio;
+    if (P.bar) {
+      els.note.textContent = barName();
+      // needle
+      const c = Math.max(needleLo, Math.min(needleHi, P.cents));
+      els.mark.style.left = (50 + (c / needleHi) * 50) + "%";
+      els.cents.textContent = Math.abs(P.cents) > 300 ? "—" : (P.cents > 0 ? "+" : "") + P.cents.toFixed(0) + "\u00A2";
+      const zw = Math.min(100, (dg.tuneCents / needleHi) * 50);
+      els.zone.style.left = (50 - zw) + "%";
+      els.zone.style.width = (zw * 2) + "%";
+      // fill
+      const pct = Math.max(0, Math.min(1, P.bar.filled / (P.bar.targetSec * 1000))) * 100;
+      els.fill.style.width = pct + "%";
+      els.fill.style.background = (P.state === "fill" && P.bar.filled > 0) || P.state === "hit"
+        ? zoneHex() : (P.bar.filled > 0 ? "var(--accent)" : "transparent");
+      els.fillval.textContent = Math.round(pct) + "% · " + (P.bar.targetSec).toFixed(1) + "s";
+      els.fillval.classList.toggle("prac-warn", P.state === "fill" && P.bar.filled <= 0 && P.rms > dg.rmsGate);
+    }
+  }
+
+  // Fill line under the highlighted token/card (both strips + live card).
+  let fillBars = new Map(); // element -> span child
+  const posRel = new Set();  // elements we granted .prac-pos-rel
+  function updateFillOverlays() {
+    if (!P.active) { clearOverlays(); return; }
+    const targets = ["#tokens", "#focusTokens", "#sheet"].map(s => document.querySelector(s)).filter(Boolean);
+    const dg = dbg();
+    const pct = P.bar && P.bar.targetSec > 0 ? Math.max(0, Math.min(1, P.bar.filled / (P.bar.targetSec * 1000))) : 0;
+    const live = new Set();
+    for (const host of targets) {
+      const el = host.querySelector(".tok.now");
+      if (!el) continue;
+      live.add(el);
+      let bar = fillBars.get(el);
+      if (!bar) {
+        if (getComputedStyle(el).position === "static") {
+          el.classList.add("prac-pos-rel");
+          posRel.add(el);
+        }
+        bar = document.createElement("span");
+        bar.className = "prac-tok-fill";
+        el.appendChild(bar);
+        fillBars.set(el, bar);
+      }
+      bar.style.width = (pct * 100) + "%";
+      bar.style.background = P.state === "fill" || P.state === "hit" ? zoneHex() : "var(--accent)";
+      bar.style.opacity = P.state === "fill" || P.state === "hit" || pct > 0 ? "1" : "0.35";
+    }
+    for (const [el, bar] of Array.from(fillBars)) {
+      if (!live.has(el)) { try { bar.remove(); } catch (e) {} fillBars.delete(el); }
+    }
+  }
+
+  // Remove every accuracy bar and the positioning helper classes — leaving
+  // practice (or completing the song) must return the score to its normal look.
+  function clearOverlays() {
+    for (const [, bar] of Array.from(fillBars)) { try { bar.remove(); } catch (e) {} }
+    fillBars.clear();
+    for (const el of Array.from(posRel)) { try { el.classList.remove("prac-pos-rel"); } catch (e) {} }
+    posRel.clear();
+  }
+
+  // ------------------------------------------------------------------- mic
+  async function ensureMic() {
+    if (P.mic) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error("Microphone access needs HTTPS (localhost is fine).");
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+    });
+    if (typeof unlockAudio === "function") unlockAudio();
+    const ctx = typeof audioCtx !== "undefined" && audioCtx ? audioCtx : null;
+    if (!ctx) throw new Error("Audio context unavailable.");
+    const source = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 2048;
+    source.connect(analyser); // NOT to ctx.destination — no monitoring feedback
+    P.mic = {
+      stream, source, analyser,
+      buf: new Float32Array(analyser.fftSize),
+      sr: ctx.sampleRate,
+    };
+  }
+
+  // Normalized autocorrelation, octave-safe: prefers the shortest lag whose
+  // clarity is within 5% of the best (avoids locking onto subharmonics).
+  function autoCorrelate(buf, sr) {
+    const n = buf.length;
+    const half = Math.floor(n / 2);
+    const minLag = Math.max(2, Math.floor(sr / MAX_HZ));
+    const maxLag = Math.min(half, Math.ceil(sr / MIN_HZ));
+    const ac = (lag) => {
+      let corr = 0, ea = 0, eb = 0;
+      const m = n - lag;
+      for (let i = 0; i < m; i++) {
+        corr += buf[i] * buf[i + lag];
+        ea += buf[i] * buf[i];
+        eb += buf[i + lag] * buf[i + lag];
+      }
+      return (ea && eb) ? corr / Math.sqrt(ea * eb) : 0;
+    };
+    let bestLag = -1, bestC = 0;
+    for (let lag = minLag; lag <= maxLag; lag++) {
+      const c = ac(lag);
+      if (c > bestC) { bestC = c; bestLag = lag; }
+    }
+    if (bestLag < 0 || bestC < 0.85) return 0;
+    for (let lag = minLag; lag < bestLag; lag++) {
+      if (ac(lag) >= bestC * 0.95) { bestLag = lag; break; }
+    }
+    return sr / bestLag;
+  }
+
+  function readFrame() {
+    if (TEST) {
+      const f = window.__pracFrame;
+      if (!f) { P.rms = 0; P.hz = 0; return; }
+      P.rms = f.rms || 0;
+      P.hz = f.hz || 0;
+    } else if (P.mic) {
+      P.mic.analyser.getFloatTimeDomainData(P.mic.buf);
+      const buf = P.mic.buf, sr = P.mic.sr;
+      let s = 0;
+      for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
+      P.rms = Math.sqrt(s / buf.length);
+      P.hz = P.rms >= dbg().rmsGate ? autoCorrelate(buf, sr) : 0;
+      if (P.hz && (P.hz < MIN_HZ * 0.6 || P.hz > MAX_HZ * 1.3)) P.hz = 0;
+    }
+    P.hzSm = P.rms > 0 ? (P.hzSm && P.hz ? P.hzSm * (1 - 0.55) + P.hz * 0.55 : P.hz) : 0;
+    const zones = P.bar ? P.bar.zones : [];
+    let best = 999;
+    for (const z of zones) best = Math.min(best, Math.abs(centsOf(P.hzSm, z)));
+    P.cents = zones.length ? (centsOf(P.hzSm, zones[0]) === 999 ? 999 : centsOf(P.hzSm, zones[0])) : 0;
+    P.zonesBest = zones.length ? best : 999;
+  }
+
+  // Zen glow, practice edition: same envelope as the play-mode pulse — the
+  // halo rises toward the duration-scaled PEAK (not to full white) over the
+  // note body while the player holds it, sinks when the bar drains, and on
+  // completion the current intensity SPARKS (brief overshoot, then fades).
+  // ON TOP: the HIT gets a burst — a bright pop that explodes outward from
+  // the halo center and decays back onto the sustain rise (strong positive
+  // feedback for the articulation itself). Playback's one-shot pulse is
+  // bypassed (highlightToken sound=false).
+  const BURST_MS = 360;
+  let sparkUntil = 0, sparkTimer = 0;
+  let burstUntil = 0, burstT0 = 0;
+
+  function glowParams() {
+    const id = P.bar ? P.bar.chainId : null;
+    const t = (typeof noteMidi === "function" && id)
+      ? Math.max(0, Math.min(1, (noteMidi(id) - 57) / 34))
+      : 0;
+    const dur = P.bar ? P.bar.targetSec * 1000 : 400;
+    const startScale = 0.7;
+    const fullScale = Math.min(1.25, startScale + dur / 3000);
+    const durF = Math.min(1, dur / 1200);
+    const peak = (0.28 + t * t * 0.4) * (0.45 + 0.55 * durF);
+    return { t, startScale, fullScale, peak };
+  }
+
+  function zenGlowApply(panel, alpha, scale, fadeMs) {
+    panel.style.setProperty("--glow-alpha", alpha.toFixed(3));
+    panel.style.setProperty("--glow-scale", scale.toFixed(3));
+    panel.style.setProperty("--glow-fade", fadeMs + "ms");
+  }
+
+  function zenGlowFill() {
+    const panel = document.getElementById("tabPanel");
+    if (!panel || !panel.classList.contains("focus")) return;
+    if (performance.now() < sparkUntil) return; // the completion spark owns the glow
+    // Anchor the halo on the live card, same as pulseZenGlow.
+    const card = panel.querySelector(".card.live") ||
+                 panel.querySelector(".sheet.live .card") ||
+                 panel.querySelector("svg.ocarina");
+    if (card) {
+      const p = panel.getBoundingClientRect();
+      const c = card.getBoundingClientRect();
+      if (p.width && p.height) {
+        panel.style.setProperty("--glow-x", ((c.left + c.width / 2 - p.left) / p.width * 100) + "%");
+        panel.style.setProperty("--glow-y", ((c.top + c.height / 2 - p.top) / p.height * 100) + "%");
+      }
+    }
+    const { t, startScale, fullScale, peak } = glowParams();
+    panel.style.setProperty("--glow-hue", Math.round(30 + t * 160));
+    panel.style.setProperty("--glow-sat", Math.round(72 - t * t * 72) + "%");
+    panel.style.setProperty("--glow-light", Math.round(50 + t * t * 48) + "%");
+    // HIT BURST: bright pop, ring exploding outward, decaying onto the rise.
+    if (performance.now() < burstUntil) {
+      const p = Math.min(1, (performance.now() - burstT0) / BURST_MS);
+      const k = Math.pow(1 - p, 1.4);
+      const alpha = Math.min(1, peak * 2.4) * k;
+      const scale = fullScale * (0.8 + 0.55 * p); // expands outward past the reach
+      zenGlowApply(panel, alpha, scale, 60);
+      return;
+    }
+    const f = (P.bar && P.bar.targetSec > 0)
+      ? Math.max(0, Math.min(1, P.bar.filled / (P.bar.targetSec * 1000))) : 0;
+    const e = 1 - (1 - f) * (1 - f); // ease-out, like the play pulse's rise
+    if (P.state === "hit") {
+      // At the onset the glow starts swelling right away, like play.
+      const p0 = 1 - (P.transientLeft / Math.max(1, dbg().transientMs));
+      zenGlowApply(panel, 0.45 * peak * p0, startScale + 0.15 * (fullScale - startScale), 140);
+    } else if (P.state === "fill" && f > 0) {
+      zenGlowApply(panel, peak * e, startScale + (fullScale - startScale) * e, 140);
+    } else {
+      zenGlowApply(panel, 0, startScale, 450);
+    }
+  }
+
+  // HIT burst: fired exactly when the onset is armed. The circle pops at a
+  // high intensity and blows outward past the normal reach, giving the
+  // player an immediate "you hit it" flash before the sustain glow takes
+  // over.
+  function zenGlowBurst() {
+    const panel = document.getElementById("tabPanel");
+    if (!panel || !panel.classList.contains("focus")) return;
+    burstT0 = performance.now();
+    burstUntil = burstT0 + BURST_MS;
+    zenGlowFill(); // apply the first burst frame immediately
+  }
+
+  // Completion spark: the current intensity overshoots briefly, then dies.
+  function zenGlowSpark() {
+    const panel = document.getElementById("tabPanel");
+    if (!panel || !panel.classList.contains("focus")) return;
+    const { fullScale, peak } = glowParams();
+    clearTimeout(sparkTimer);
+    zenGlowApply(panel, Math.min(1, peak * 1.7), fullScale * 1.15, 90);
+    sparkUntil = performance.now() + 480;
+    sparkTimer = setTimeout(() => {
+      sparkTimer = 0;
+      if (!panel.classList.contains("focus")) return;
+      zenGlowApply(panel, 0, fullScale, 340);
+    }, 140);
+  }
+
+  function zenGlowOff() {
+    sparkUntil = 0;
+    burstUntil = 0;
+    if (sparkTimer) { clearTimeout(sparkTimer); sparkTimer = 0; }
+    if (typeof freezeZenGlow === "function") { try { freezeZenGlow(); } catch (e) {} }
+  }
+
+  // ------------------------------------------------------------- transport
+  // Button on/off classes and disable states live in ui.js
+  // (updateTransportUI — the single symmetric source of truth).
+
+  function enterIdx(i) {
+    P.idx = i;
+    const t = P.tokens[i];
+    if (!t) { P.state = "done"; return; }
+    if (t.type === "tempo") { P.quarter = quarterSecFor(t.bpm); enterIdx(i + 1); return; }
+    if (t.type === "bar") { enterIdx(i + 1); return; }
+    if (t.type === "rest") {
+      P.state = "rest";
+      P.restLeft = gridBeats(t) * P.quarter * 1000;
+      try { if (typeof highlightToken === "function") highlightToken(i, null, undefined, false); } catch (e) {}
+      return;
+    }
+    P.bar = buildBar(P.tokens, i);
+    P.state = "await";
+    P.gapAcc = 0;
+    P.transientLeft = 0;
+    P.hzSm = 0;
+    try {
+      // sound=false: the practice glow is driven by the FILL progress below,
+      // not by the one-shot arrival pulse of playback.
+      if (typeof highlightToken === "function") highlightToken(i, t.id, P.bar ? P.bar.targetSec : undefined, false);
+    } catch (e) {}
+  }
+
+  function advance() { enterIdx(P.idx + 1); }
+  function nextPitchedIdx(i) {
+    for (let k = i; k < P.tokens.length; k++) if (isPitchedTok(P.tokens[k])) return k;
+    return -1;
+  }
+
+  function tick() {
+    if (!P.active || P.paused) return;
+    const now = performance.now();
+    const dt = Math.min(50, now - (P.last || now));
+    P.last = now;
+    const dg = dbg();
+
+    const t = P.tokens[P.idx];
+    if (!t) { endReached(); return; }
+    readFrame();
+
+    // auto-pass tokens
+    if (t.type === "tempo") { P.quarter = quarterSecFor(t.bpm); advance(); return; }
+    if (t.type === "bar") { advance(); return; }
+    if (t.type === "rest") {
+      P.state = "rest";
+      P.restLeft -= dt;
+      if (P.restLeft <= 0) advance();
+      return;
+    }
+
+    const b = P.bar;
+    const inZoneStrict = P.zonesBest != null && P.zonesBest <= dg.tuneCents;
+    const sounding = P.rms >= dg.rmsGate;
+
+    switch (P.state) {
+      case "await": {
+        // A hit needs a real articulation: continuous silence for gapMs first.
+        if (!sounding) {
+          P.gapAcc += dt;
+          if (P.gapAcc >= dg.gapMs) { P.state = "ready"; renderPanel(); }
+        } else P.gapAcc = 0;
+        break;
+      }
+      case "ready": {
+        // Arm on in-tune onset (transient tolerance against zone 0).
+        const armErr = Math.abs(centsOf(P.hzSm, b.zones[0]));
+        if (P.hzSm > 0 && armErr <= dg.transientCents) {
+          P.state = "hit";
+          P.transientLeft = dg.transientMs;
+          b.filled = 0;
+          zenGlowBurst(); // "you hit it" — the halo pops and blows outward
+        } else if (!sounding) P.gapAcc = Math.min(P.gapAcc + dt, dg.gapMs);
+        break;
+      }
+      case "hit": {
+        // Onset grace: the chiff may read flat/short; hold the attack zone.
+        P.transientLeft -= dt;
+        if (P.transientLeft <= 0) { P.state = "fill"; }
+        break;
+      }
+      case "fill": {
+        if (inZoneStrict) {
+          b.filled += dt;
+          if (b.filled >= b.targetSec * 1000) { finishBar(); return; }
+        } else {
+          b.filled -= dg.drainRate * dt;
+          if (b.filled <= 0) {
+            b.filled = 0;
+            P.state = "await";
+            P.gapAcc = 0;
+          }
+        }
+        break;
+      }
+    }
+    renderPanel();
+    zenGlowFill();
+    updateFillOverlays();
+  }
+
+  function finishBar() {
+    zenGlowSpark(); // the completed note's intensity sparks as the advance lands
+    const afterIdx = P.bar.endIdx + 1;
+    enterIdx(afterIdx < P.tokens.length ? afterIdx : P.tokens.length);
+    if (P.idx >= P.tokens.length) endReached();
+  }
+
+  // There is no "end" state per the mode's design: the song just stops
+  // waiting — with Loop on it wraps and keeps practicing, without it the
+  // practice disengages to paused (the user toggles Loop themselves).
+  function endReached() {
+    if (typeof loopOn === "function" && loopOn()) {
+      enterIdx(nextPitchedIdx(0));
+      return;
+    }
+    standby();
+  }
+
+  function standby() {
+    P.completed = true;
+    P.paused = true; // frozen at the end; Resume wraps to the first note
+    clearOverlays(); // the last note's bar ends with the song
+    if (panel) panel.hidden = true; // neutral: no tuner
+    zenGlowOff();
+    if (typeof syncTransport === "function") try { syncTransport(); } catch (e) {}
+  }
+
+  // --------------------------------------------------------------- control
+  function startPractice(fromIdx) {
+    if (typeof stopMelody === "function") try { stopMelody(); } catch (e) {}
+    P.tokens = (typeof lastTokens !== "undefined" && lastTokens.length)
+      ? lastTokens : (typeof parse === "function" ? parse(document.getElementById("src").value) : []);
+    if (!P.tokens.length) { P.err = "No melody to practice — type some notes first."; openPanel(); renderPanel(); return; }
+    P.quarter = quarterSec();
+    P.completed = false;
+    P.paused = false;
+    P.err = "";
+    P.active = true;
+    openPanel();
+    const start = nextPitchedIdx((typeof fromIdx === "number") ? fromIdx : 0);
+    if (start < 0) { P.err = "No playable notes in this melody."; renderPanel(); return; }
+    enterIdx(start);
+    if (!TEST) { try { micFlow(); } catch (e) { P.err = String(e && e.message || e); renderPanel(); } }
+    if (!P.interval) {
+      P.last = performance.now();
+      P.interval = setInterval(tick, TICK_MS);
+    }
+    syncTransportAny();
+  }
+
+  async function micFlow() {
+    try {
+      await ensureMic();
+      P.err = "";
+    } catch (e) {
+      P.err = String(e && e.message || e).replace("Error: ", "");
+      renderPanel();
+    }
+  }
+
+  function stopPractice() {
+    P.active = false; P.paused = false; P.completed = false; P.bar = null;
+    if (P.interval) { clearInterval(P.interval); P.interval = 0; }
+    if (P.mic) {
+      try { P.mic.source.disconnect(); } catch (e) {}
+      try { P.mic.stream.getTracks().forEach(tr => tr.stop()); } catch (e) {}
+      P.mic = null;
+    }
+    clearOverlays();
+    // The last note is still wearing its "now" highlight; reset the score UI
+    // so nothing of practice mode is left behind.
+    if (typeof clearHighlight === "function") { try { clearHighlight(); } catch (e) {} }
+    zenGlowOff();
+    if (panel) panel.hidden = true;
+    syncTransportAny();
+  }
+
+  function practicePauseToggle() {
+    if (!P.active) return;
+    P.paused = !P.paused;
+    P.last = performance.now();
+    // Disengaged (paused) = neutral: the tuner never shows while practice is
+    // not running.
+    if (panel) panel.hidden = P.paused;
+    zenGlowOff(); // pause must not leave the halo animating on its own
+    // Resuming while parked at the song end: wrap to the first note (a fresh
+    // pass), regardless of the Loop setting.
+    if (!P.paused && P.idx >= P.tokens.length) enterIdx(nextPitchedIdx(0));
+    renderPanel();
+    syncTransportAny();
+  }
+  function practiceFrom(idx) {
+    if (!P.active) return;
+    P.paused = false; P.completed = false;
+    enterIdx(nextPitchedIdx(idx));
+    renderPanel();
+    syncTransportAny();
+  }
+
+  function openPanel() {
+    buildPanel();
+    panel.hidden = false;
+  }
+
+  function syncTransportAny() {
+    if (typeof updateTransportUI === "function") { try { updateTransportUI(); } catch (e) {} }
+  }
+
+  // Public surface (guarded-globals like the other modules)
+  window.OCA_PRACTICE = {
+    // state getters (debug/tests)
+    active: () => P.active, paused: () => P.paused, idx: () => P.idx,
+    state: () => P.state, fillPct: () => P.bar ? Math.max(0, Math.min(1, P.bar.filled / (P.bar.targetSec * 1000))) : 0,
+    targetSec: () => P.bar ? P.bar.targetSec : 0,
+    seq: () => P.tokens.map(t => t.id || t.type).join(" "),
+    barInfo: () => P.bar && { start: P.bar.startIdx, end: P.bar.endIdx, zones: P.bar.zones, sec: P.bar.targetSec, slide: P.bar.slide, stac: P.bar.stac },
+    micOn: () => !!P.mic,
+    _p: P, // diagnostics/tests: full live state
+    // transport anchors: where practice currently stands (token idx)
+    posIdx: () => P.idx,
+    from: practiceFrom, pauseToggle: practicePauseToggle,
+    start: startPractice, stop: stopPractice,
+    status: () => panel && els.status ? panel.querySelector(".prac-status").textContent : "",
+  };
+})();
+
+// Convenience globals used by ui.js hooks (guarded by typeof at call sites)
+function isPracticeActive() { return !!(window.OCA_PRACTICE && OCA_PRACTICE.active()); }
+function isPracticePaused() { return !!(window.OCA_PRACTICE && OCA_PRACTICE.paused()); }
+function practiceToggle() { if (window.OCA_PRACTICE) OCA_PRACTICE.pauseToggle(); }
