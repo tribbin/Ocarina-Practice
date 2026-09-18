@@ -19,6 +19,7 @@ function ocarinaSVG(covered, chamber) {
     clone.removeAttribute("width");
     clone.removeAttribute("height");
     clone.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    tagOcarinaParts(clone);
     const set = new Set(covered || []);
     const holes = (window.FING && FING.holes) || {};
     clone.querySelectorAll("[data-hole]").forEach(el => {
@@ -60,6 +61,16 @@ function ocarinaSVG(covered, chamber) {
   } catch (e) {
     return "<div>" + String(e) + "</div>";
   }
+}
+
+function tagOcarinaParts(svg) {
+  svg.querySelectorAll("*").forEach(el => {
+    const lab = el.getAttribute("inkscape:label") || "";
+    if (lab === "ocarina outline") el.classList.add("oca-body");
+    else if (lab === "rim") el.classList.add("oca-rim");
+    else if (lab === "triforce") el.classList.add("oca-deco");
+    else if (lab.indexOf("relief") === 0) el.classList.add("oca-relief");
+  });
 }
 
 function enlargeSmallHoles(svg) {

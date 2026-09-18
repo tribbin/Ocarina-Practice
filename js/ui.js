@@ -772,6 +772,14 @@ function pageCss() {
   }
 }
 
+function tabsFileStem() {
+  const song = (document.getElementById("title").textContent || "").trim();
+  const inst = window.CURRENT_INSTRUMENT;
+  const instBit = inst && inst.type ? inst.type : "";
+  const raw = [song || "ocarina-tabs", instBit].filter(Boolean).join(" - ");
+  return raw.replace(/[^\w\- ]+/g, "").replace(/\s+/g, " ").trim() || "ocarina-tabs";
+}
+
 function printableHtml() {
   const title = document.getElementById("title").textContent || "Ocarina Practice";
   const css = pageCss();
@@ -779,7 +787,8 @@ function printableHtml() {
   tmp.className = "sheet";
   fillFullSheet(tmp, lastTokens.length ? lastTokens : parse(document.getElementById("src").value));
   const sheet = tmp.innerHTML;
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
+  const heading = title.replace(/[<>&]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]));
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${heading}</title>
 <style>${css}
 body{background:#fff}
 header.app,.panel:first-of-type{display:none}
@@ -787,7 +796,7 @@ header.app,.panel:first-of-type{display:none}
 @media print { @page { margin: 10mm; } }
 </style></head>
 <body>
-<h1 style="font:650 18px/1.3 system-ui;margin:0 0 12px">${title}</h1>
+<h1 style="font:650 18px/1.3 system-ui;margin:0 0 12px">${heading}</h1>
 <div id="sheet" class="sheet">${sheet}</div>
 </body></html>`;
 }
@@ -851,7 +860,7 @@ function wireUi() {
     const blob = new Blob([printableHtml()], {type: "text/html"});
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "ocarina-tabs.html";
+    a.download = tabsFileStem() + ".html";
     a.click();
     URL.revokeObjectURL(a.href);
   };
