@@ -3,18 +3,10 @@
   "instruments": [
     {
       "id": "ico-oak-leaf-bass-c-triple",
-      "type": "Triple Bass in C",
+      "type": "Triple Bass C",
       "version": "Imperial City Oak Leaf",
       "range": "A3–G6",
       "fingerings": "fingerings.json",
-      "svg": "ocarina-template.svg"
-    },
-    {
-      "id": "mock-double-test",
-      "type": "Double Bass in C (test)",
-      "version": "low + middle only",
-      "range": "A3–C6",
-      "fingerings": "fingerings-mock.json",
       "svg": "ocarina-template.svg"
     },
     {
@@ -24,6 +16,14 @@
       "range": "A4–C7",
       "fingerings": "fingerings-alto.json",
       "svg": "ocarina-template-alto.svg"
+    },
+    {
+      "id": "mock-double-test",
+      "type": "Double Bass C",
+      "version": "(dummy)",
+      "range": "A3–C6",
+      "fingerings": "fingerings-mock.json",
+      "svg": "ocarina-template.svg"
     }
   ]
 }

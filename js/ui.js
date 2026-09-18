@@ -770,7 +770,7 @@ function pageCss() {
 }
 
 function printableHtml() {
-  const title = document.getElementById("title").textContent || "Ocarina tabs";
+  const title = document.getElementById("title").textContent || "Ocarina Practice";
   const css = pageCss();
   const tmp = document.createElement("div");
   tmp.className = "sheet";

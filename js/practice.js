@@ -8,8 +8,18 @@
 // Notation drives everything: the bar's length is the note's own sounding
 // duration at the SONG's tempo (header + inline `# tempo`); the playback
 // tempo dial is ignored here. Staccato notes require half their normal
-// duration. Ties are one bar with one hit; a `~` slide pair is one bar whose
-// in-tune zone is the union of both pitches (the bend must not be punished).
+// duration. Ties are one hit held for the chain's whole summed length, even
+// across a bar line, and a `~` slide becomes a CHAIN: one segment per
+// pitch, each held for its equal share — the player must actually travel
+// through the pitches (transit between zones is neutral; each zone is
+// reached with its own onset tolerance; successful zones lock in, and only
+// an all-zones-complete bar advances).
+//
+// Credit is gradient-based: 1x inside the clean zone; beyond the green
+// edge, within the outer bandwidth (2x the clean zone), the rate falls off
+// linearly 1 -> -2 — drifting far out drains (swimming against the
+// current); crossing the outer bandwidth or sustained silence wipes the
+// bar, while hiccups shorter than an articulation gap just pause it.
 //
 // The mic pipeline is analyser-only (never connected to the destination) so
 // there is no monitoring feedback, and no reference tone is ever played.
@@ -84,27 +94,53 @@
     return -1;
   }
 
-  // One practice bar = one hit + one fill track. Absorbs the tie chain and,
-  // when the chain flows straight into a ~ slide, the slide target + its ties.
+  // Absorb the tie chain that follows a note, passing straight through bar
+  // and tempo lines — a long note crossing a bar (`A4/2 | -/4`) is still one
+  // hold spanning its whole summed notated length.
+  function absorbTies(tokens, from, id) {
+    let end = from;
+    for (let k = from + 1; k < tokens.length; k++) {
+      const t = tokens[k];
+      if (t.type === "bar" || t.type === "tempo") continue;
+      if (t.type === "tie" && NOTES.includes(t.id) && t.id === id) { end = k; continue; }
+      break;
+    }
+    return end;
+  }
+
+  // Absorb consecutive ~ slide hops: each next soundable token that bends
+  // in (slideFrom === previous pitch, playable, a NEW pitch) joins the
+  // chain, and each hop's own ties are absorbed across bar lines too.
+  function absorbHops(tokens, from, firstId) {
+    const zones = [freqOfId(firstId)];
+    const names = [firstId];
+    const zoneIdx = [from];
+    let end = absorbTies(tokens, from, firstId);
+    let prevId = firstId;
+    let slide = false;
+    for (;;) {
+      const j = soundableAfter(tokens, end + 1);
+      if (j < 0) break;
+      const nt = tokens[j];
+      if (nt.type === "tie" || !nt.slide || !NOTES.includes(nt.id) ||
+          nt.id === prevId || nt.slideFrom !== prevId) break;
+      slide = true;
+      zones.push(freqOfId(nt.id));
+      names.push(nt.id);
+      zoneIdx.push(j);
+      prevId = nt.id;
+      end = absorbTies(tokens, j, nt.id);
+    }
+    return { end, zones, names, zoneIdx, slide };
+  }
+
+  // One practice bar = one hit + one fill track made of one segment per
+  // pitch (single notes have just zone 0). Ties are absorbed across bar
+  // lines; a ~ slide chain adds one zone per hop and the player must credit
+  // every zone's equal share — camping the first note no longer finishes.
   function buildBar(tokens, i) {
     const chainId = tokens[i].id;
-    let end = i;
-    while (end + 1 < tokens.length && tokens[end + 1].type === "tie" &&
-           NOTES.includes(tokens[end + 1].id) && tokens[end + 1].id === chainId) end++;
-    let zones = [freqOfId(chainId)];
-    let slide = false;
-    const j = soundableAfter(tokens, end + 1);
-    if (j > 0) {
-      const nt = tokens[j];
-      if (nt.type !== "tie" && nt.slide && NOTES.includes(nt.id) && nt.slideFrom === chainId && nt.id !== chainId) {
-        slide = true;
-        zones.push(freqOfId(nt.id));
-        let e2 = j;
-        while (e2 + 1 < tokens.length && tokens[e2 + 1].type === "tie" &&
-               NOTES.includes(tokens[e2 + 1].id) && tokens[e2 + 1].id === nt.id) e2++;
-        end = e2;
-      }
-    }
+    const { end, zones, names, zoneIdx, slide } = absorbHops(tokens, i, chainId);
     let beats = 0;
     for (let k = i; k <= end; k++) {
       if (tokens[k].type === "bar" || tokens[k].type === "tempo") continue;
@@ -113,17 +149,30 @@
     // Staccato: practice half the note's normal duration (melody is leading).
     const stac = tokens[i].staccato && end === i;
     const targetSec = Math.max(0.05, beats * P.quarter * (stac ? 0.5 : 1));
-    return { startIdx: i, endIdx: end, zones, targetSec, filled: 0, chainId, slide, stac };
+    const freqs = zones.slice().sort((a, b) => a - b);
+    return {
+      startIdx: i, endIdx: end, zones, names, chainId, slide, stac,
+      zoneIdx,                               // token index of each zone
+      hiZone: 0,                             // zone currently highlighted
+      targetSec,
+      segTarget: targetSec * 1000 / zones.length, // equal share per zone (ms)
+      segs: zones.map(() => 0),              // ms credited per zone
+      grace: zones.map(() => 0),             // arrival tolerance left per zone
+      minZ: freqs[0], maxZ: freqs[freqs.length - 1], // corridor bounds
+    };
   }
 
   // ------------------------------------------------------------ state texts
-  function barName() { return spelled(P.bar.chainId, P.tokens[P.bar.startIdx]); }
+  function barName() { return spelled(P.bar.names ? P.bar.names[0] : P.bar.chainId, P.tokens[P.bar.startIdx]); }
+  function barChain() { return (P.bar.names || [P.bar.chainId]).join("\u2192"); }
+  function barFilled(b) { let s = 0; for (const x of b.segs) s += x; return s; }
+  function barDone(b) { return b.segs.every(x => x >= b.segTarget - 1e-6); }
   function statusText(s) {
     switch (s) {
       case "await": return "Fresh attack needed — pause briefly, then hit " + barName();
       case "ready": return "Ready — play " + barName();
       case "hit": return "Hit. Steady to the pitch…";
-      case "fill": return P.bar.slide ? "Hold / bend " + barName() : "Hold " + barName();
+      case "fill": return P.bar.slide ? "Bend " + barChain() : "Hold " + barName();
       case "rest": return "Rest";
       default: return "";
     }
@@ -197,6 +246,53 @@
     const ch = window.CHAMBER ? CHAMBER[id] : 1;
     return "var(--ch" + (ch || 1) + ")";
   }
+  function zoneHexFor(id) {
+    const ch = window.CHAMBER ? CHAMBER[id] : 1;
+    return "var(--ch" + (ch || 1) + ")";
+  }
+  // Chain bars draw the track as one section per zone: N cells, each with
+  // its own credit-filled inner bar (colored by that zone's chamber).
+  // Single-note bars keep one slice; returns true when slice mode was used.
+  function fillSlices(el, bar) {
+    const n = bar.zones.length;
+    if (n > 1) {
+      if (el._slices !== n) {
+        el._slices = n;
+        el.innerHTML = "";
+        el.style.display = "flex";
+        el.style.gap = "2px";
+        el.style.width = "100%";
+        el.style.background = "transparent";
+        for (let k = 0; k < n; k++) {
+          const cell = document.createElement("div");
+          cell.style.cssText = "flex:1 1 0;position:relative;background:rgba(0,0,0,.25);border-radius:2px;overflow:hidden;height:100%";
+          const inner = document.createElement("div");
+          inner.style.cssText = "position:absolute;left:0;top:0;bottom:0;width:0%;transition:width .1s linear";
+          cell.appendChild(inner);
+          el.appendChild(cell);
+        }
+      }
+      [...el.children].forEach((cell, k) => {
+        const seg = bar.segs[k] || 0;
+        const frac = Math.max(0, Math.min(1, seg / (bar.segTarget || 1)));
+        const inner = cell.firstChild;
+        inner.style.width = (frac * 100) + "%";
+        inner.style.background = zoneHexFor(bar.names[k]);
+        inner.style.opacity = seg >= bar.segTarget ? "1" : ".8";
+      });
+      return true;
+    }
+    if (el._slices != null) {
+      // back to single mode: clear the section DOM so the plain fill applies
+      el._slices = null;
+      el.innerHTML = "";
+      el.style.display = "";
+      el.style.gap = "";
+      el.style.width = "";
+      el.style.background = "";
+    }
+    return false;
+  }
   function renderPanel() {
     if (!panel || !P.bar) return;
     const dg = dbg();
@@ -212,7 +308,10 @@
     }
     els.status.textContent = studio;
     if (P.bar) {
-      els.note.textContent = barName();
+      // The tuner names the CURRENT target: the chain's frontier zone —
+      // "zone 2/3" means the note shown is the one you must be on now.
+      const nm = (P.bar.names && P.zonesNear >= 0 ? P.bar.names[P.zonesNear] : P.bar.names ? P.bar.names[0] : P.bar.chainId);
+      els.note.textContent = String(nm).replace(/^([A-G])s(\d)$/, "$1#$2");
       // needle
       const c = Math.max(needleLo, Math.min(needleHi, P.cents));
       els.mark.style.left = (50 + (c / needleHi) * 50) + "%";
@@ -221,12 +320,16 @@
       els.zone.style.left = (50 - zw) + "%";
       els.zone.style.width = (zw * 2) + "%";
       // fill
-      const pct = Math.max(0, Math.min(1, P.bar.filled / (P.bar.targetSec * 1000))) * 100;
-      els.fill.style.width = pct + "%";
-      els.fill.style.background = (P.state === "fill" && P.bar.filled > 0) || P.state === "hit"
-        ? zoneHex() : (P.bar.filled > 0 ? "var(--accent)" : "transparent");
-      els.fillval.textContent = Math.round(pct) + "% · " + (P.bar.targetSec).toFixed(1) + "s";
-      els.fillval.classList.toggle("prac-warn", P.state === "fill" && P.bar.filled <= 0 && P.rms > dg.rmsGate);
+      const pct = Math.max(0, Math.min(1, barFilled(P.bar) / (P.bar.targetSec * 1000))) * 100;
+      if (!fillSlices(els.fill, P.bar)) {
+        els.fill.style.width = pct + "%";
+        els.fill.style.background = (P.state === "fill" && barFilled(P.bar) > 0) || P.state === "hit"
+          ? zoneHex() : (barFilled(P.bar) > 0 ? "var(--accent)" : "transparent");
+      }
+      els.fillval.textContent = (P.bar.zones.length > 1
+        ? "zone " + ((P.zonesNear < 0 ? 0 : P.zonesNear) + 1) + "/" + P.bar.zones.length + " · " : "") +
+        Math.round(pct) + "% · " + (P.bar.targetSec).toFixed(1) + "s";
+      els.fillval.classList.toggle("prac-warn", P.state === "fill" && barFilled(P.bar) <= 0 && P.rms > dg.rmsGate);
     }
   }
 
@@ -237,10 +340,12 @@
     if (!P.active) { clearOverlays(); return; }
     const targets = ["#tokens", "#focusTokens", "#sheet"].map(s => document.querySelector(s)).filter(Boolean);
     const dg = dbg();
-    const pct = P.bar && P.bar.targetSec > 0 ? Math.max(0, Math.min(1, P.bar.filled / (P.bar.targetSec * 1000))) : 0;
+    const pct = P.bar && P.bar.targetSec > 0 ? Math.max(0, Math.min(1, barFilled(P.bar) / (P.bar.targetSec * 1000))) : 0;
     const live = new Set();
     for (const host of targets) {
-      const el = host.querySelector(".tok.now");
+      // token strips and card sheets: the sliding fill lives on whichever
+      // element is highlighted (.tok.now in grid mode, .card.now otherwise)
+      const el = host.querySelector(".tok.now") || host.querySelector(".card.now");
       if (!el) continue;
       live.add(el);
       let bar = fillBars.get(el);
@@ -254,9 +359,10 @@
         el.appendChild(bar);
         fillBars.set(el, bar);
       }
-      bar.style.width = (pct * 100) + "%";
       bar.style.background = P.state === "fill" || P.state === "hit" ? zoneHex() : "var(--accent)";
       bar.style.opacity = P.state === "fill" || P.state === "hit" || pct > 0 ? "1" : "0.35";
+      if (!fillSlices(bar, P.bar)) bar.style.width = (pct * 100) + "%";
+      else bar.style.width = "100%";
     }
     for (const [el, bar] of Array.from(fillBars)) {
       if (!live.has(el)) { try { bar.remove(); } catch (e) {} fillBars.delete(el); }
@@ -437,14 +543,32 @@
     P.hzSm = P.rms > 0 ? (P.hzSm && P.hz ? P.hzSm * (1 - 0.55) + P.hz * 0.55 : P.hz) : 0;
     const zones = P.bar ? P.bar.zones : [];
     let best = 999;
-    for (const z of zones) best = Math.min(best, Math.abs(centsOf(P.hzSm, z)));
-    P.cents = zones.length ? (centsOf(P.hzSm, zones[0]) === 999 ? 999 : centsOf(P.hzSm, zones[0])) : 0;
-    P.zonesBest = zones.length ? best : 999;
+    zones.forEach((z, k) => {
+      const c = centsOf(P.hzSm, z);
+      if (c === 999) return;
+      const a = Math.abs(c);
+      if (a < best) best = a;
+    });
+    // The tuner (and the credit) point at the NEXT REQUIRED section: the
+    // first zone that still needs its share. Sections fill strictly in
+    // order along the chain — a pitch duplicated later in the chain must
+    // never advance its later section while the middle is still open.
+    let near = -1, cents = 999;
+    if (P.bar) {
+      const segT = P.bar.segTarget;
+      near = P.bar.zones.findIndex((z, k) => P.bar.segs[k] < segT - 1e-6);
+      if (near < 0) near = zones.length - 1; // all locked: park on the last zone
+      cents = centsOf(P.hzSm, zones[near]);
+    }
+    P.zonesBest = best;
+    P.zonesNear = near;
+    P.zonesNearCents = near >= 0 && cents !== 999 ? Math.abs(cents) : 999;
+    P.cents = cents;
   }
 
   // Zen glow, practice edition: same envelope as the play-mode pulse — the
   // halo rises toward the duration-scaled PEAK (not to full white) over the
-  // note body while the player holds it, sinks when the bar drains, and on
+  // note body while the player holds it, sinks when the hold breaks, and on
   // completion the current intensity SPARKS (brief overshoot, then fades).
   // ON TOP: the HIT gets a burst — a bright pop that explodes outward from
   // the halo center and decays back onto the sustain rise (strong positive
@@ -503,7 +627,7 @@
       return;
     }
     const f = (P.bar && P.bar.targetSec > 0)
-      ? Math.max(0, Math.min(1, P.bar.filled / (P.bar.targetSec * 1000))) : 0;
+      ? Math.max(0, Math.min(1, barFilled(P.bar) / (P.bar.targetSec * 1000))) : 0;
     const e = 1 - (1 - f) * (1 - f); // ease-out, like the play pulse's rise
     if (P.state === "hit") {
       // At the onset the glow starts swelling right away, like play.
@@ -606,7 +730,6 @@
     }
 
     const b = P.bar;
-    const inZoneStrict = P.zonesBest != null && P.zonesBest <= dg.tuneCents;
     const sounding = P.rms >= dg.rmsGate;
 
     switch (P.state) {
@@ -624,28 +747,87 @@
         if (P.hzSm > 0 && armErr <= dg.transientCents) {
           P.state = "hit";
           P.transientLeft = dg.transientMs;
-          b.filled = 0;
+          b.segs = b.segs.map(() => 0);
+          b.grace = b.grace.map(() => 0);
+          b.grace[0] = dg.transientMs;
           zenGlowBurst(); // "you hit it" — the halo pops and blows outward
         } else if (!sounding) P.gapAcc = Math.min(P.gapAcc + dt, dg.gapMs);
         break;
       }
       case "hit": {
-        // Onset grace: the chiff may read flat/short; hold the attack zone.
+        // Onset grace: the chiff may read flat/short. The onset COUNTS: the
+        // moment it lands in tolerance the hold accrues from there on.
         P.transientLeft -= dt;
+        b.segs[0] = Math.min(b.segTarget, b.segs[0] + dt);
+        if (barDone(b)) { finishBar(); return; }
         if (P.transientLeft <= 0) { P.state = "fill"; }
         break;
       }
       case "fill": {
-        if (inZoneStrict) {
-          b.filled += dt;
-          if (b.filled >= b.targetSec * 1000) { finishBar(); return; }
-        } else {
-          b.filled -= dg.drainRate * dt;
-          if (b.filled <= 0) {
-            b.filled = 0;
+        // Gradient credit: 1x inside the clean zone. Beyond the green edge
+        // — still inside the outer bandwidth (2x the green width) — the
+        // rate falls off linearly from 1 to a 2x DRAIN at the outer edge:
+        // drift further out and it feels like swimming against a current
+        // that grows with how far off you are. Passing the outer bandwidth
+        // of the bar's corridor, or sustained silence, wipes the bar (fresh
+        // attack); a hiccup shorter than an articulation gap only pauses
+        // it (a measurement glitch must not bankrupt a real hold).
+        //
+        // Chain bars (~/slides, multi-hop) split the notated length into
+        // equal shares, one per zone: each zone must be held for its own
+        // share ("the ones that were successful count in the chain"). The
+        // region between zones is in transit: neutral — no accrual, no
+        // drain (so a fast sweep and a slow walk are both legitimate).
+        // Every zone is reached with its own onset tolerance, renewed in
+        // transit; completed zones are locked and never drained.
+        const TUNE = dg.tuneCents, TRANS = dg.transientCents, OUTER = dg.tuneCents * 2;
+        const k = P.zonesNear, ci = P.zonesNearCents;
+        const outOfCorridor = !sounding ||
+          (P.hz && (centsOf(P.hzSm, b.minZ) < -OUTER || centsOf(P.hzSm, b.maxZ) > OUTER));
+        if (outOfCorridor) {
+          P.dropAcc = (P.dropAcc || 0) + dt;
+          if (P.dropAcc >= dg.gapMs) {
+            b.segs = b.segs.map(() => 0);
+            P.dropAcc = 0;
             P.state = "await";
             P.gapAcc = 0;
           }
+        } else if (k < 0) {
+          // defensive: sounding but unmappable (should not happen)
+        } else if (ci <= TUNE) {
+          P.dropAcc = 0;
+          b.grace[k] = dg.transientMs;
+          if (b.segs[k] < b.segTarget) b.segs[k] = Math.min(b.segTarget, b.segs[k] + dt);
+        } else if (ci <= TRANS && b.grace[k] > 0) {
+          // arrival tolerance: the note counts from the moment it lands
+          P.dropAcc = 0;
+          b.grace[k] -= dt;
+          if (b.segs[k] < b.segTarget) b.segs[k] = Math.min(b.segTarget, b.segs[k] + dt);
+        } else if (ci <= OUTER) {
+          P.dropAcc = 0;
+          if (b.segs[k] < b.segTarget) {
+            const rate = 1 - 3 * (ci - TUNE) / (OUTER - TUNE); // 1 .. -2
+            b.segs[k] = Math.max(0, b.segs[k] + rate * dt);
+          }
+        } else {
+          // inside the corridor but far from every zone: in transit
+          P.dropAcc = 0;
+          b.grace[k] = dg.transientMs; // renewed for the arrival
+        }
+        if (barDone(b)) { finishBar(); return; }
+        // A finished section advances the frontier: move the reading line,
+        // the token bar and the fingering card to the CURRENT target.
+        const nf = b.zones.findIndex((z, k) => b.segs[k] < b.segTarget - 1e-6);
+        const fi = nf < 0 ? b.zones.length - 1 : nf;
+        if (fi !== b.hiZone && b.zoneIdx) {
+          b.hiZone = fi;
+          // Keep the tuner on the new target in the same tick: needle, cents
+          // and note name must not lag a frame behind the reading line.
+          P.zonesNear = fi;
+          P.zonesNearCents = Math.abs(centsOf(P.hzSm, b.zones[fi]));
+          P.cents = centsOf(P.hzSm, b.zones[fi]);
+          const hi = Math.min(fi, b.zoneIdx.length - 1);
+          try { if (typeof highlightToken === "function") highlightToken(b.zoneIdx[hi], b.names[fi], b.targetSec, false); } catch (e) {}
         }
         break;
       }
@@ -767,10 +949,10 @@
   window.OCA_PRACTICE = {
     // state getters (debug/tests)
     active: () => P.active, paused: () => P.paused, idx: () => P.idx,
-    state: () => P.state, fillPct: () => P.bar ? Math.max(0, Math.min(1, P.bar.filled / (P.bar.targetSec * 1000))) : 0,
+    state: () => P.state, fillPct: () => P.bar ? Math.max(0, Math.min(1, barFilled(P.bar) / (P.bar.targetSec * 1000))) : 0,
     targetSec: () => P.bar ? P.bar.targetSec : 0,
     seq: () => P.tokens.map(t => t.id || t.type).join(" "),
-    barInfo: () => P.bar && { start: P.bar.startIdx, end: P.bar.endIdx, zones: P.bar.zones, sec: P.bar.targetSec, slide: P.bar.slide, stac: P.bar.stac },
+    barInfo: () => P.bar && { start: P.bar.startIdx, end: P.bar.endIdx, zones: P.bar.zones, names: P.bar.names, sec: P.bar.targetSec, chain: P.bar.zones.length > 1, slide: P.bar.slide, stac: P.bar.stac },
     micOn: () => !!P.mic,
     _p: P, // diagnostics/tests: full live state
     // Detector test hook: renders a tone at f/sr with a harmonic mix (h =

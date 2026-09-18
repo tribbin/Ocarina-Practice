@@ -92,7 +92,7 @@ const AUDIO_DEFAULTS = {
   // fill bar drains when out of tune (× the fill rate), and the mic RMS the
   // detector treats as "not playing".
   tuneCents: 20, transientCents: 60, transientMs: 150,
-  gapMs: 120, drainRate: 2, rmsGate: 0.01,
+  gapMs: 120, rmsGate: 0.01,
 };
 const AUDIO_DEBUG = Object.assign({}, AUDIO_DEFAULTS);
 // Exposed for the dev panel: params are tweaked in place; invalidateWave()
