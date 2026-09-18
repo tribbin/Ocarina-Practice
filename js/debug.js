@@ -29,12 +29,21 @@
   // ---- slider table: { t: group title, wave: rebuilds PeriodicWave, r: rows } ----
   // row = [param, label, min, max, step]
   var GROUPS = [
-    { t: "Wave — base timbre", wave: 1, r: [
-      ["h1", "H1 fundamental", 0, 2, 0.02],
-      ["h2", "H2 octave", 0, 1, 0.005],
-      ["h3", "H3 12th", 0, 1, 0.005],
-      ["h4", "H4 two oct", 0, 1, 0.002],
-      ["h5", "H5 17th", 0, 1, 0.002],
+    { t: "Wave — pitch-keyed timbre", wave: 1, r: [
+      // Global scales on the interpolated anchor curves (V_ANCHORS in
+      // audio.js): every note rebuilds its wave from the pitch-keyed
+      // profile, so these brighten/darken the whole range at once.
+      ["h2Mul", "H2 scale (all notes)", 0, 3, 0.05],
+      ["h3Mul", "H3 scale (all notes)", 0, 3, 0.05],
+      ["h4Mul", "H4 scale (all notes)", 0, 3, 0.05],
+      ["h5Mul", "H5 scale (all notes)", 0, 3, 0.05],
+    ]},
+    { t: "Measured-curve shape", r: [
+      ["hardAmt", "Hard-blow drift", 0, 2, 0.05],
+      ["levelCurveAmt", "Chamber level curve", 0, 2, 0.05],
+      ["wanderAmt", "Slow pitch wander", 0, 2, 0.05],
+      ["wobbleAmt", "Slow breath wobble", 0, 2, 0.05],
+      ["windAmt", "Wind noise layer", 0, 2, 0.05],
     ]},
     { t: "Tone lowpass", r: [
       ["lpMult", "Cutoff \u00d7freq", 1, 20, 0.1],
@@ -50,11 +59,12 @@
       ["airFade", "High-note fade", 0, 1, 0.05],
       ["airRatio", "Ratio \u00d7freq", 1.9, 3, 0.01],
     ]},
-    { t: "Vibrato / tremolo", r: [
+    { t: "Vibrato / tremolo (Zen only)", r: [
       ["vibRate", "Rate Hz", 1, 12, 0.1],
       ["vibDepth", "Pitch depth", 0, 0.02, 0.0005],
       ["vibHighFade", "Pitch high fade", 0, 1, 0.05],
       ["tremDepth", "Tremolo depth", 0, 0.3, 0.01],
+      ["vibDelay", "Entry delay s", 0.05, 1, 0.05],
     ]},
     { t: "Edge / windway whistle", r: [
       ["edgeBase", "Level base", 0, 0.2, 0.002],
@@ -67,9 +77,13 @@
     ]},
     { t: "Onset — chiff & octave", r: [
       ["chiffScale", "Chiff level \u00d7", 0, 3, 0.05],
+      ["chiffBase", "Chiff base s", 0.03, 0.2, 0.005],
+      ["chiffSize", "Chiff chamber add s", 0, 0.2, 0.005],
       ["otBase", "Oct overtone level", 0, 0.5, 0.005],
       ["otEffort", "Overtone effort add", 0, 0.3, 0.005],
       ["otNoise", "Overtone noise mix", 0, 1, 0.05],
+      ["otDurMax", "Oct decay max s", 0.04, 0.36, 0.005],
+      ["otDurEffort", "Oct decay effort add s", 0, 0.2, 0.005],
     ]},
     { t: "Output", r: [
       ["masterLevel", "Master level", 0.05, 1, 0.01],

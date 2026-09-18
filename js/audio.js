@@ -21,11 +21,28 @@ let lastHoldSec = 0.5; // sounding duration of the last scheduled note (for zen 
 // synthesis code must READ these values per note — never bake them into a
 // closure or a cached node at build time.
 const AUDIO_DEFAULTS = {
-  // Base PeriodicWave harmonic amplitudes (real/cosine parts; imag = 0).
-  // Normalized by the Web Audio API, so these set the relative mix.
-  // First-pass recording-matched values (2026-09-17, tuner-verified C5 take;
-  // details and open gaps: analysis/alto-recordings-tone-data.json).
-  h1: 1, h2: 0.0046909, h3: 0.0075963, h4: 0.0007649, h5: 0.0015,
+  // == Pitch-keyed voice profile (measured-curve synthesis) ==
+  // Harmonic amplitudes are no longer one fixed wave: every note rebuilds
+  // its PeriodicWave from V_ANCHORS (below noteArticulation), interpolated
+  // in log-pitch through the tuner-verified alto C5/G6 recordings and
+  // conservatively extrapolated below C4. These multipliers scale the
+  // anchor curves globally (by-ear brightening all notes at once).
+  h2Mul: 1, h3Mul: 1, h4Mul: 1, h5Mul: 1,
+  // Chamber "hard blow" drift: more open holes lose more air on big
+  // chambers, so the player blows harder — wind noise rebalances toward
+  // the upper bands, slow wobble deepens and the attack overshoot grows,
+  // rising toward the top of every chamber and resetting at each boundary
+  // (the smallest chamber hardly shows it). 0 disables the drift.
+  hardAmt: 1,
+  // Measured non-monotonic loudness curve between chambers, dialed to a
+  // mild fraction of the recorded chamber jumps (0 = even playback).
+  levelCurveAmt: 1,
+  // Slow intrinsic wander layers measured in the recordings (the
+  // recordings contain NO periodic vibrato): slow pitch wander (cents)
+  // and slow breath (amplitude) wobble, one LFO driving both.
+  wanderAmt: 1, wobbleAmt: 1,
+  // Broadband wind/breath noise keyed to the measured noise bands.
+  windAmt: 1,
   // Tone lowpass: cutoff tracks the fundamental (lpMult × freq), capped at
   // lpMax so high notes keep their harmonic tail (higher-bright edits here
   // are usually the fix if the top of the range sounds dull OR stringy).
@@ -38,25 +55,27 @@ const AUDIO_DEFAULTS = {
   // notes (airFade), and its frequency ratio (slightly detuned octave).
   // The recordings show nothing measurable at that slot, so the level is 0.
   airLevel: 0.0, airFade: 0.75, airRatio: 2.01,
-  // Vibrato/tremolo LFO: shared pitch+loudness wobble. The reference
-  // recordings contain no periodic vibrato (slow intrinsic wander only), but
-  // the expressive vibrato is part of the synth's voice: depth sits at the
-  // original ±~6 cents / 5% loudness, entering after a 0.35 s settle. Set
-  // depths to 0 when recording-matching non-vibrato sources.
+  // Expressive vibrato/tremolo LFO: shared pitch+loudness wobble — belongs
+  // to Zen/focus mode like the reverb (gated per voice by vibratoEnabled,
+  // on/off only switches what NEW notes get; live ones are left alone).
+  // The reference recordings contain no periodic vibrato (slow intrinsic
+  // wander only), which is why it is off in normal playback.
   vibRate: 5.5, vibDepth: 0.0035, vibHighFade: 0.4, tremDepth: 0.05,
+  vibDelay: 0.35,
   // Edge / windway whistle: recordings show no tonal content near 1.01-1.05×f0
   // (only a faint ~-40 dB island on D6), so the whistle sits just under that.
   edgeBase: 0.0008, edgeReg: 0.0005, edgeFade: 0.7,
   edgeDet: 0.012, edgeDetSpread: 0.008,
   wanderDepth: 0.006, wanderFade: 0.8,
-  // Dry-clay onset chiff level (multiplier on the chamber-shaped peak).
-  // The recorded chiff is a ~60-80 ms broadband swipe, nearly inaudible;
-  // ours is longer (chamber-derived length), so the scale stays small.
-  chiffScale: 0.25,
-  // Onset octave overtone ("blown on a bottle" bloom): level and the extra
-  // part that scales with attackEffort, plus its noise/sine mix. The
-  // recording shows only a small ~+9 dB blip above plateau H2 for ~60 ms.
+  // Dry-clay onset chiff: the recorded chiff is a ~60-80 ms broadband swipe,
+  // nearly inaudible, so the length now matches it directly (chiffBase +
+  // chiffSize per chamber size) and the level scale stays small.
+  chiffScale: 0.25, chiffBase: 0.075, chiffSize: 0.05,
+  // Onset octave overtone ("blown on a bottle" bloom): level, the extra
+  // part scaling with attackEffort, noise/sine mix, and the decay length —
+  // recorded ~60-115 ms total (was 0.22-0.36 s).
   otBase: 0.00137, otEffort: 0.0011, otNoise: 0.35,
+  otDurMax: 0.10, otDurEffort: 0.05,
   // Full-voice master gain plateau (the breathy pre-tone and "tone speaks"
   // stages scale proportionally so the envelope shape holds). Kept at the
   // pre-tune playback loudness: the recording's absolute level is a mic-gain
@@ -71,7 +90,9 @@ const AUDIO_DEBUG = Object.assign({}, AUDIO_DEFAULTS);
 window.OCA_DEBUG = {
   params: AUDIO_DEBUG,
   defaults: AUDIO_DEFAULTS,
-  invalidateWave() { ocarinaWave = null; },
+  invalidateWave() { ocWaveCache = null; },
+  // Live audit helper: the full derived voice profile for a note id.
+  profile(id) { return voiceProfileFor(id, freqOf(id)); },
 };
 
 function syncTransport() {
@@ -234,6 +255,15 @@ function setReverbEnabled(on) {
   }
 }
 
+// Expressive vibrato/tremolo belongs to Zen/focus mode like the reverb: the
+// UI calls this on the same Zen transitions. Voices read the flag per note,
+// so switching only changes what future notes get (short-lived voices make
+// any live ramp pointless).
+let vibratoEnabled = false;
+function setVibratoEnabled(on) {
+  vibratoEnabled = !!on;
+}
+
 function unlockAudio() {
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
@@ -347,6 +377,119 @@ function attackEffort(id, freq) {
   return Math.max(0, Math.min(1, 0.6 * sizeF + 0.4 * openF));
 }
 
+// ---------------------------------------------------------------------------
+// PITCH-KEYED VOICE PROFILE — interpolated/extrapolated from the alto
+// recordings (analysis/alto-recordings-tone-data.json; tuner-verified C5 and
+// G6 takes, C5 = the shipped ideal tone). The low end (A3-B4, below any
+// measurement) is extrapolated conservatively: harmonics roughly 2x the C5
+// values at A3 and somewhat deeper wobble, to be re-fitted once the physical
+// triple bass can be recorded.
+//
+// Chamber model (from the player + fingerings.json): bigger chambers with
+// more open holes lose more air, so the player must blow harder toward the
+// top of every chamber — wind noise rebalances toward the upper bands, slow
+// wobble deepens and the attack overshoot grows. It resets at each chamber
+// boundary. The smallest (top) chamber hardly shows the drift at all, but it
+// carries the measured G6 "different character": a high formant with
+// H3 > H2 near 4.7 kHz that grows across chamber 3.
+//
+// Each table is keyed by f0 (Hz) and interpolated linearly in log2-f, with a
+// slope-clamped extrapolation (max ±1.5 octaves) outside the measured range.
+// ---------------------------------------------------------------------------
+const V_ANCHORS = {
+  // Harmonic amplitudes re H1. Deliberately smooth pitch curves: the
+  // measured D6 dip (H3 0.0027) in the recordings is an artifact of that
+  // alto fingering (worst case of the LARGE chamber), not a feature to copy
+  // — on the triple, that pitch sits at the pure floor of chamber 3.
+  h2: [[220, 0.0095], [523.25, 0.00469], [1174, 0.0040], [1568, 0.0033]],
+  h3: [[220, 0.0140], [523.25, 0.0076], [1174, 0.0090], [1568, 0.021]],
+  h4: [[220, 0.0015], [523.25, 0.00077], [1174, 0.0008], [1568, 0.0096]],
+  h5: [[220, 0.0017], [523.25, 0.0015], [1174, 0.0006], [1568, 0.0017]],
+  // Relative plateau loudness (dB vs C5). The measured chamber jumps
+  // (+14.9 dB at the hard D6, +10.2 dB at G6) are dialed to a mild fraction
+  // for playback; scaled live by levelCurveAmt.
+  levelDb: [[220, -2.5], [523.25, 0], [1174, 6.7], [1568, 4.6]],
+  // Slow intrinsic pitch wander (detrended std, cents; low notes wander
+  // much more than the steadier top of the range).
+  wanderC: [[220, 9.0], [523.25, 6.9], [1174, 1.3], [1568, 1.05]],
+  // Breath (amplitude) wobble: depth (% of plateau) and dominant rate (Hz).
+  wobPct: [[220, 7.0], [523.25, 5.5], [1568, 4.9]],
+  wobHz: [[220, 2.0], [523.25, 2.5], [1568, 4.5]],
+  // Wind/breath noise band re H1 (dB): the measured bands around the tone.
+  // Low end is NOT conservative — the big bass chamber's hiss reads louder
+  // to the player than the C5 extrapolation suggested.
+  noiseLoDb: [[220, -22.0], [523.25, -25.9], [1174, -28.6], [1568, -29.4]],
+  // Chamber-resonance bump sharpness of that noise: the bass chamber
+  // concentrates its hiss just above the tone (residual centroid ~1.2xf0),
+  // the top chamber's measured bands flatten into a broad wash. Anchored at
+  // A3 too: below C5 the bump must NOT keep narrowing (an overtight bump
+  // hides the noise from the ear).
+  noiseBumpQ: [[220, 6.0], [523.25, 9.0], [1568, 2.5]],
+  // Onset attack stretch vs C5 (measured attack time 20 → 35 ms up the range).
+  attackF: [[220, 0.9], [523.25, 1.0], [1174, 1.25], [1568, 1.75]],
+};
+
+// Wind-noise spectral-shape constants (mirrored in synth_replica.py):
+// white noise -> chamber bump (1.26xf0, pitch-keyed Q) -> steep noise
+// lowpass. The trims are an absolute calibration of the noise chain
+// against the band meters (white noise through the filters reads hotter
+// than the band-relative design targets).
+const WIND_SHAPE = { bumpRatio: 1.26, noiseLpRatio: 2.7, noiseLpQ: 1.2 };
+
+// Piecewise-linear interpolation in log2-f with slope-clamped extrapolation.
+function vInterp(pts, f) {
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [f0, v0] = pts[i], [f1, v1] = pts[i + 1];
+    if (f <= f1) {
+      // Clamp the extrapolation span so a stray table can't run away.
+      const t = Math.max(-1.5, Math.min(1.5, Math.log2(f / f0) / Math.log2(f1 / f0)));
+      return v0 + (v1 - v0) * t;
+    }
+  }
+  // Beyond the last point: continue the last segment's slope.
+  const n = pts.length - 1;
+  const [f0, v0] = pts[n - 1], [f1, v1] = pts[n];
+  const slope = (v1 - v0) / Math.log2(f1 / f0);
+  return v1 + slope * Math.max(-1.5, Math.min(1.5, Math.log2(f / f1)));
+}
+const db2lin = db => Math.pow(10, db / 20);
+
+// Everything a single note's voice needs, derived live from AUDIO_DEBUG +
+// V_ANCHORS + the note's chamber data (never cached — the debug panel must
+// be able to retune mid-session).
+function voiceProfileFor(id, freq) {
+  const art = noteArticulation(id);
+  // "Hard blow" drive: air lost through open holes. The larger the chamber
+  // the more that loss costs breath pressure (openF weight grows with
+  // sizeF), and hardAmt scales the whole effect.
+  const hh = Math.max(0, Math.min(1,
+    art.openF * (0.25 + 0.75 * art.sizeF) * AUDIO_DEBUG.hardAmt));
+  return {
+    // PeriodicWave harmonic amplitudes (real/cosine parts, h1 fixed at 1).
+    h: [1,
+        vInterp(V_ANCHORS.h2, freq) * AUDIO_DEBUG.h2Mul,
+        vInterp(V_ANCHORS.h3, freq) * AUDIO_DEBUG.h3Mul,
+        vInterp(V_ANCHORS.h4, freq) * AUDIO_DEBUG.h4Mul,
+        vInterp(V_ANCHORS.h5, freq) * AUDIO_DEBUG.h5Mul],
+    // Plateau loudness multiplier for the master envelope.
+    levelLin: db2lin(vInterp(V_ANCHORS.levelDb, freq) * AUDIO_DEBUG.levelCurveAmt),
+    // Wind noise: one chain keyed to the measured band (gain), the blow
+    // shape coming out of the pitch-keyed bump Q. The loud-note part of the
+    // hard signature is carried by the level curve (reproduces the real
+    // absolute noise growth with breath pressure).
+    windBump: db2lin(vInterp(V_ANCHORS.noiseLoDb, freq) - 2.0) * AUDIO_DEBUG.windAmt,
+    windQ: vInterp(V_ANCHORS.noiseBumpQ, freq),
+    // Slow intrinsic wander (one LFO drives pitch + loudness in phase,
+    // like breath pressure does physically; deeper + faster on hard blow).
+    wanderC: (vInterp(V_ANCHORS.wanderC, freq) + 2.0 * hh) * AUDIO_DEBUG.wanderAmt,
+    wobDepth: (vInterp(V_ANCHORS.wobPct, freq) + 2.5 * hh) / 100 * AUDIO_DEBUG.wobbleAmt,
+    wobRate: (vInterp(V_ANCHORS.wobHz, freq) + 1.2 * hh) * (0.9 + 0.2 * Math.random()),
+    // Attack timing stretch + the blow-dependent amplitude overshoot.
+    attackF: vInterp(V_ANCHORS.attackF, freq),
+    osDb: 0.8 + 3.2 * hh,
+  };
+}
+
 // Short white-noise buffer reused for chiff bursts.
 let chiffBuf = null;
 function getChiffBuffer(ctx) {
@@ -359,18 +502,25 @@ function getChiffBuffer(ctx) {
   return buf;
 }
 
-// Cached ocarina periodic wave — reused across notes instead of rebuilding it
-// on every note (per-note allocation adds needless main-thread work).
-let ocarinaWave = null;
-function getOcarinaWave(ctx) {
-  if (ocarinaWave && ocarinaWave._ctx === ctx) return ocarinaWave;
+// Cached ocarina periodic waves — one per distinct harmonic set (the
+// pitch-keyed profile only changes smoothly), reused across notes instead of
+// rebuilding on every note. Keyed by the rounded harmonic values; invalidated
+// wholesale by the debug panel's invalidateWave().
+let ocWaveCache = null;
+function getOcarinaWave(ctx, vp) {
+  const k = vp.h.join(",");
+  if (ocWaveCache && ocWaveCache._ctx === ctx) {
+    const hit = ocWaveCache.get(k);
+    if (hit) return hit;
+  } else {
+    ocWaveCache = new Map();
+    ocWaveCache._ctx = ctx;
+  }
   const w = ctx.createPeriodicWave(
-    new Float32Array([0, AUDIO_DEBUG.h1, AUDIO_DEBUG.h2, AUDIO_DEBUG.h3,
-                      AUDIO_DEBUG.h4, AUDIO_DEBUG.h5]),
+    new Float32Array([0].concat(vp.h)),
     new Float32Array([0, 0, 0, 0, 0, 0])
   );
-  w._ctx = ctx;
-  ocarinaWave = w;
+  ocWaveCache.set(k, w);
   return w;
 }
 
@@ -403,22 +553,29 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     const rel = intoSlide ? 0.04 : Math.min(0.18, Math.max(0.05, dur * 0.35)); // ~40ms fade before a slide, else 50–180ms taper
     const relStart = Math.max(0.02, dur - rel);
 
+    // Per-note voice profile (pitch-keyed harmonics, chamber-relative
+    // loudness, wobble/wind levels, attack shape) — derived live so the
+    // debug panel can retune anything mid-session.
+    const vp = voiceProfileFor(id, freq);
+
     // LITE VOICE: a minimal 3-node voice (osc → lowpass → gain) for slow
-    // devices. Skips the air/edge/wander/chiff/vibrato/overtone layers so the
-    // audio thread isn't overloaded (the main crackle cause). Same pitch and
-    // rough envelope so it still reads as the ocarina, just plainer.
+    // devices. Skips the air/edge/wander/chiff/vibrato/overtone layers and
+    // the profile's slow-wander/wind layers so the audio thread isn't
+    // overloaded (the main crackle cause). Same pitch, level and rough
+    // envelope so it still reads as the ocarina, just plainer.
     if (liteMode()) {
+      const lvM = AUDIO_DEBUG.masterLevel * vp.levelLin;
       const g = ctx.createGain();
       g.gain.setValueAtTime(0.0001, t0);
-      g.gain.linearRampToValueAtTime(AUDIO_DEBUG.masterLevel, t0 + Math.min(0.03, dur * (slideFrom ? 0.4 : 0.2)));
-      g.gain.setValueAtTime(AUDIO_DEBUG.masterLevel, intoSlide ? t0 + dur : t0 + relStart);
+      g.gain.linearRampToValueAtTime(lvM, t0 + Math.min(0.03, dur * (slideFrom ? 0.4 : 0.2)));
+      g.gain.setValueAtTime(lvM, intoSlide ? t0 + dur : t0 + relStart);
       g.gain.linearRampToValueAtTime(0.0001, t0 + dur + fadeOff);
       const lp2 = ctx.createBiquadFilter();
       lp2.type = "lowpass";
       lp2.frequency.value = Math.min(AUDIO_DEBUG.lpMax, freq * AUDIO_DEBUG.lpMult);
       lp2.Q.value = AUDIO_DEBUG.lpQ;
       const osc2 = ctx.createOscillator();
-      osc2.setPeriodicWave(getOcarinaWave(ctx));
+      osc2.setPeriodicWave(getOcarinaWave(ctx, vp));
       if (slideFrom) {
         osc2.frequency.setValueAtTime(slideFrom, t0);
         osc2.frequency.linearRampToValueAtTime(freq, t0 + glide);
@@ -443,20 +600,24 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     }
 
     const master = ctx.createGain();
-    // Master plateau level (dev-tunable). The breathy pre-tone and "tone
-    // speaks" stages keep their original proportions of 0.26 so the envelope
-    // shape is unchanged at the default and simply scales with the level.
-    const M = AUDIO_DEBUG.masterLevel;
+    // Master plateau level (dev-tunable) scaled by the note's profile level
+    // curve (mild reproduction of the measured non-monotonic chamber
+    // loudness). The breathy pre-tone and "tone speaks" stages keep their
+    // original proportions of 0.26 so the envelope shape is unchanged at the
+    // default and simply scales with the level.
+    const M = AUDIO_DEBUG.masterLevel * vp.levelLin;
     const preLevel = M * (0.05 / 0.26);   // breathy pre-tone (exactly 0.05 at default M)
     const toneLevel = M * (0.16 / 0.26);  // tone begins to speak (exactly 0.16 at default M)
     // Tone speaks slightly after onset (breathy pre-tone → full), pairing with
     // the pitch "catch up" bloom below for a soft ocarina attack. Larger
     // chambers + more open holes build pressure slower → a longer, softer
-    // attack (see attackEffort). The big bass chamber is especially demanding:
-    // the pure tone takes noticeably longer to reach full equilibrium.
+    // attack (see attackEffort), stretched further by the profile's
+    // measured attack-time curve. The big bass chamber is especially
+    // demanding: the pure tone takes noticeably longer to reach full
+    // equilibrium.
     const art = noteArticulation(id);
     const effort = attackEffort(id, freq);
-    const speak = Math.min(0.05, Math.max(0.006, dur * 0.08)) * (0.5 + effort);
+    const speak = Math.min(0.05, Math.max(0.006, dur * 0.08)) * (0.5 + effort) * vp.attackF;
     const equilib = Math.min(dur * 0.4, art.sizeF * art.sizeF * 0.16); // big chamber = slow to settle
     const t1 = t0 + speak * 0.5;
     const t2 = t0 + speak + 0.015;
@@ -467,6 +628,10 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // automation (another click). Clamp into (t2, relStart).
     const relStartT = t0 + relStart;
     const t3 = Math.min(relStartT - 0.005, Math.max(t2 + 0.015, t2 + equilib));
+    // Measured attack-window overshoot (0.5-4.8 dB, hard blows worse):
+    // right after the tone speaks, the level briefly busts above the plateau
+    // and settles back — a real "blown harder than it needs" tell.
+    const osLin = slideFrom ? 1 : Math.pow(10, vp.osDb / 20);
     master.gain.setValueAtTime(0.0001, t0);
     if (slideFrom) {
       // ~ Legato: the tone carries straight over from the previous note — no
@@ -476,8 +641,16 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     } else {
       master.gain.linearRampToValueAtTime(preLevel, t1); // breathy pre-tone
       if (t3 > t2 + 0.001) {
-        master.gain.linearRampToValueAtTime(toneLevel, t2); // tone begins to speak
-        master.gain.linearRampToValueAtTime(M, t3); // reaches full equilibrium
+        if (osLin > 1.02) {
+          // Overshoot bump between "tone speaks" and equilibrium, then settle.
+          const osAt = Math.min(t3 - 0.01, t2 + Math.max(0.03, (t3 - t2) * 0.45));
+          master.gain.linearRampToValueAtTime(toneLevel, t2); // tone begins to speak
+          master.gain.linearRampToValueAtTime(M * osLin, osAt);
+          master.gain.linearRampToValueAtTime(M, t3); // settles at full equilibrium
+        } else {
+          master.gain.linearRampToValueAtTime(toneLevel, t2); // tone begins to speak
+          master.gain.linearRampToValueAtTime(M, t3); // reaches full equilibrium
+        }
       } else {
         // Very short note: no room for the two-stage climb; go straight to full
         // by t2 so the automation stays monotonic and click-free.
@@ -515,7 +688,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     lp.connect(trem);
     trem.connect(master);
 
-    const wave = getOcarinaWave(ctx);
+    const wave = getOcarinaWave(ctx, vp);
     const osc = ctx.createOscillator();
     osc.setPeriodicWave(wave);
     if (slideFrom) {
@@ -583,18 +756,55 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     air.start(t0);
     air.stop(t0 + dur + tail);
 
-    // Gentle vibrato (~5.5 Hz), only on SUSTAINED notes: it begins after a
-    // fixed settle delay, so short/fast notes end before it starts. Breath
-    // vibrato couples PITCH and LOUDNESS in phase (harder blow = sharper AND
-    // louder), so the same LFO drives both osc.frequency and the tremolo gain.
-    const VIB_DELAY = 0.35;
-    const lfo = ctx.createOscillator();
-    lfo.type = "sine";
-    lfo.frequency.value = AUDIO_DEBUG.vibRate;
+    // Slow INTRINSIC wander (the recordings' non-vibrato wobble): breath
+    // pressure meanders quasi-randomly, so ONE sine reads as obvious —
+    // two INCOMMENSURATE LFOs (triangle + sine at an inharmonic rate ratio,
+    // per-note re-jittered so every note starts elsewhere) share the depth;
+    // their sum is a meander, not a warble. Both modulations in phase with
+    // each other per component: breath pressure moves pitch AND loudness
+    // together. Combined depth ≈ std×0.88 (sine-equivalent) — faithful to
+    // the measured detrended std WITHOUT the earlier sine overshoot.
+    if (vp.wanderC > 0.01 || vp.wobDepth > 0.0005) {
+      const comps = [
+        { share: 0.85, rate: vp.wobRate, type: "triangle" },
+        { share: 0.6, rate: vp.wobRate * (0.61 + 0.08 * Math.random()), type: "sine" },
+      ];
+      for (const c of comps) {
+        const wob = ctx.createOscillator();
+        wob.type = c.type;
+        wob.frequency.value = c.rate;
+        const wobPitch = ctx.createGain();  // pitch drift depth (Hz)
+        const wobAmp = ctx.createGain();    // loudness wobble depth
+        wobPitch.gain.value = freq * (Math.pow(2, vp.wanderC * 1.2 * c.share / 1200) - 1);
+        wobAmp.gain.value = vp.wobDepth * 0.85 * c.share;
+        // Settle in just after the attack so it doesn't smear the onset.
+        wobPitch.gain.setValueAtTime(0.0001, t0);
+        wobAmp.gain.setValueAtTime(0.0001, t0);
+        wobPitch.gain.linearRampToValueAtTime(wobPitch.gain.value, t0 + 0.35);
+        wobAmp.gain.linearRampToValueAtTime(wobAmp.gain.value, t0 + 0.35);
+        wob.connect(wobPitch); wobPitch.connect(osc.frequency);
+        wob.connect(wobAmp); wobAmp.connect(trem.gain);
+        wob.start(t0); wob.stop(t0 + dur + stopOff);
+      }
+    }
+
+    // Expressive vibrato (~5.5 Hz), ZEN MODE ONLY (vibratoEnabled, gated
+    // like the reverb) and only on SUSTAINED notes: it begins after a fixed
+    // settle delay, so short/fast notes end before it starts. Breath vibrato
+    // couples PITCH and LOUDNESS in phase (harder blow = sharper AND
+    // louder), so the same LFO drives both osc.frequency and the tremolo
+    // gain. Outside Zen no vibrato LFO is created at all — the voice then
+    // matches the recordings (slow intrinsic wander only).
+    const VIB_DELAY = AUDIO_DEBUG.vibDelay;
+    const vibOn = vibratoEnabled &&
+      (AUDIO_DEBUG.vibDepth > 1e-4 || AUDIO_DEBUG.tremDepth > 1e-4);
     const lfoGain = ctx.createGain();     // pitch depth
     const tremGain = ctx.createGain();    // amplitude depth (in phase)
-    // Only wire up vibrato if the note is long enough to reach the sustain.
-    if (dur > VIB_DELAY + 0.1) {
+    let lfo = null;
+    if (vibOn && dur > VIB_DELAY + 0.1) {
+      lfo = ctx.createOscillator();
+      lfo.type = "sine";
+      lfo.frequency.value = AUDIO_DEBUG.vibRate;
       const vibDepth = freq * AUDIO_DEBUG.vibDepth * (1 - AUDIO_DEBUG.vibHighFade * hiF); // ~6 cents, a touch less up high
       const tremDepth = AUDIO_DEBUG.tremDepth; // ~5% loudness wobble, in phase with pitch
       lfoGain.gain.setValueAtTime(0.0001, t0);
@@ -603,16 +813,16 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       tremGain.gain.setValueAtTime(0.0001, t0);
       tremGain.gain.setValueAtTime(0.0001, t0 + VIB_DELAY);
       tremGain.gain.linearRampToValueAtTime(tremDepth, t0 + VIB_DELAY + 0.2);
+      lfo.connect(lfoGain);
+      lfoGain.connect(osc.frequency);
+      lfo.connect(tremGain);
+      tremGain.connect(trem.gain);
+      lfo.start(t0);
+      lfo.stop(t0 + dur + stopOff);
     } else {
       lfoGain.gain.setValueAtTime(0.0001, t0);
       tremGain.gain.setValueAtTime(0.0001, t0);
     }
-    lfo.connect(lfoGain);
-    lfoGain.connect(osc.frequency);
-    lfo.connect(tremGain);
-    tremGain.connect(trem.gain);
-    lfo.start(t0);
-    lfo.stop(t0 + dur + stopOff);
 
     // Chamber-relative "blowing effort": rises toward the top of each chamber
     // and resets at the next, so a higher note within a chamber is breathier.
@@ -664,6 +874,43 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     edge.start(t0); edge.stop(t0 + dur + tail);
     wander.start(t0); wander.stop(t0 + dur + tail);
 
+    // Broadband wind/breath noise (measured: the band 0.85–1.95×f0 sits at
+    // −26..−29 dB re H1, concentrated just above the tone by the chamber's
+    // resonance). One looping noise source through the chamber bump and a
+    // steep post lowpass. Truly broadband — a hard blow must NEVER be tuned
+    // as a sustained pitched partial (the band-1 metric is blind to narrow
+    // tones, so only the island detector can catch that mistake).
+    if (vp.windBump > 1e-5) {
+      const windSrc = ctx.createBufferSource();
+      windSrc.buffer = getChiffBuffer(ctx);
+      windSrc.loop = true;
+      // Chamber-resonance bump just above the tone.
+      const windBp = ctx.createBiquadFilter();
+      windBp.type = "bandpass";
+      windBp.frequency.value = Math.min(9000, freq * WIND_SHAPE.bumpRatio);
+      windBp.Q.value = vp.windQ;
+      // Steep noise lowpass: keeps the hiss hugging the tone instead of a
+      // bright wash at the octave+ (the recordings show the upper noise
+      // bands dropping ~14+ dB by 4×f0).
+      const windLp = ctx.createBiquadFilter();
+      windLp.type = "lowpass";
+      windLp.frequency.value = Math.min(ctx.sampleRate * 0.45, freq * WIND_SHAPE.noiseLpRatio);
+      windLp.Q.value = WIND_SHAPE.noiseLpQ;
+      const windGain = ctx.createGain();
+      windGain.gain.setValueAtTime(0.0001, t0);
+      windGain.gain.linearRampToValueAtTime(vp.windBump, t0 + 0.06);
+      windGain.gain.setValueAtTime(vp.windBump, t0 + relStart);
+      windGain.gain.linearRampToValueAtTime(0.0001, t0 + dur);
+      windSrc.connect(windBp); windBp.connect(windLp); windLp.connect(windGain);
+      windGain.connect(master);
+      windSrc.start(t0);
+      windSrc.stop(t0 + dur + tail);
+      if (bag) bag.push({
+        stop() { try { windSrc.stop(); } catch (e) {} },
+        fade() { const n = ctx.currentTime + 0.05; try { windSrc.stop(n); } catch (e) {} }
+      });
+    }
+
     // Dry-clay CHIFF: the tongued onset is a noise burst that "focuses" as the
     // Helmholtz cavity catches the jet. Its color is set by chamber size: big
     // (bass) chambers give a dark, muffled, longer "phh"; small chambers a
@@ -675,7 +922,9 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       // Cap to the note's release start so the chiff always fades to zero before
       // `master` cuts the note. On short notes (fast 16ths) an uncapped chiff is
       // still at high level when master fades at t0+dur → truncation click.
-      const chiffLen = Math.min((0.11 + chSize * 0.24) * (0.85 + 0.15 * chOpen), relStart - 0.005);
+      const chiffLen = Math.min(
+        (AUDIO_DEBUG.chiffBase + chSize * AUDIO_DEBUG.chiffSize) * (0.85 + 0.15 * chOpen),
+        relStart - 0.005);
       // Chamber character comes from WHERE the noise energy sits. A big (bass)
       // chamber is a dark, muffled "phh"; a small chamber a bright, airy "tss".
       // Use a resonant lowpass with a strongly chamber-dependent cutoff and a
@@ -723,7 +972,8 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     const otOff = slideFrom ? glide : 0;
     const otRoom = relStart - otOff - 0.005;
     if (otF < ctx.sampleRate * 0.45 && (!slideFrom || otRoom > 0.03)) { // guard against aliasing on the very top notes
-      const otDur = Math.max(slideFrom ? 0.03 : 0.04, Math.min(otRoom, 0.22 + 0.14 * effort)); // longer, breathy bloom
+      const otDur = Math.max(slideFrom ? 0.03 : 0.04,
+        Math.min(otRoom, AUDIO_DEBUG.otDurMax + AUDIO_DEBUG.otDurEffort * effort)); // recorded-scale bloom
       const otPeak = (AUDIO_DEBUG.otBase + AUDIO_DEBUG.otEffort * effort) * (slideFrom ? 0.85 : 1); // toned down from the audibility test
       // Shared onset envelope: fast in, exponential collapse (the mode "loses").
       const otGain = ctx.createGain();

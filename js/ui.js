@@ -979,6 +979,8 @@ function exitZen() {
   // Turn reverb off up front so it can't be stranded if the async
   // fullscreenchange/onZenChange sync is missed or fires out of order.
   if (typeof setReverbEnabled === "function") setReverbEnabled(false);
+  // Vibrato/tremolo lives in Zen mode too (same ownership as the reverb).
+  if (typeof setVibratoEnabled === "function") setVibratoEnabled(false);
   const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
   if (fsEl) {
     toggleFullscreen();
@@ -1006,8 +1008,10 @@ function wireZen() {
     if (fsBtn) fsBtn.textContent = isFullscreen() ? "Exit full screen" : "Full screen";
     syncFocusMode();
     // Reverb belongs to zen/focus mode, not to any fullscreen: plain full
-    // screen with grid/scroll stays dry.
+    // screen with grid/scroll stays dry. Vibrato/tremolo is owned by the
+    // same mode — the expressive layer only sounds in Zen.
     if (typeof setReverbEnabled === "function") setReverbEnabled(isFocusMode());
+    if (typeof setVibratoEnabled === "function") setVibratoEnabled(isFocusMode());
     if (isFullscreen() && isLiveTab() && !isMelodyPlaying()) stopMelody();
   };
   document.addEventListener("fullscreenchange", sync);
