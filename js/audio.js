@@ -210,6 +210,19 @@ const perf = {
 let perfAnalyser = null;
 let perfComps = [];   // the buses' DynamicsCompressors, for .reduction reads
 
+// Voices that still have scheduled content ahead (bag entries prune
+// themselves once their `until` is past — see pruneBag).
+function countAliveVoices(bag) {
+  if (!audioCtx || !bag) return 0;
+  const now = audioCtx.currentTime;
+  let v = 0;
+  for (let i = 0; i < bag.length; i++) {
+    const n = bag[i];
+    if (n && (n.until == null || n.until > now)) v++;
+  }
+  return v;
+}
+
 function getPerfTap(ctx) {
   if (perfAnalyser && perfAnalyser.context === ctx) return perfAnalyser;
   perfAnalyser = ctx.createAnalyser();
@@ -241,8 +254,8 @@ function audioPerfSnapshot() {
   p.sampleRate = audioCtx.sampleRate;
   p.baseLatency = typeof audioCtx.baseLatency === "number" ? audioCtx.baseLatency : null;
   p.outputLatency = typeof audioCtx.outputLatency === "number" ? audioCtx.outputLatency : null;
-  p.voices = melodyBag.length;
-  p.hoverVoices = liveVoices.length;
+  p.voices = countAliveVoices(melodyBag);
+  p.hoverVoices = countAliveVoices(liveVoices);
   p.glitches = perf.glitches;
   p.jumps = perf.jumps;
   p.reverb = reverbEnabled;
@@ -661,6 +674,24 @@ function cutLive() {
   liveVoices = [];
 }
 
+// Retire voices whose scheduled end time has passed: disconnect their head
+// sends so the browser can drop the whole finished branch from the graph, and
+// drop the JS references. Without this the bag closures keep every node of
+// every note alive for the whole song — 300+ finished voices still churning
+// their filters at the audio thread on slow phones (the meter read exactly
+// that as "Active voices").
+function pruneBag(bag) {
+  if (!audioCtx || !bag || !bag.length) return;
+  const now = audioCtx.currentTime;
+  for (let i = bag.length; i-- > 0;) {
+    const n = bag[i];
+    if (n && n.until != null && n.until < now) {
+      try { if (n.kill) n.kill(); } catch (e) {}
+      bag.splice(i, 1);
+    }
+  }
+}
+
 function playNote(id, durSec) {
   cutLive();
   playNoteAt(id, null, durSec == null ? tokenSeconds(4) : durSec, liveVoices);
@@ -716,8 +747,13 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       }
       osc2.connect(lp2); lp2.connect(g); g.connect(getLiteBus(ctx));
       osc2.start(t0); osc2.stop(t0 + dur + stopOff);
+      // until: absolute audio time past which nothing of this voice still
+      // sounds — lets pruneBag() retire finished voices (and let the browser
+      // GC the whole branch from the audio graph).
       if (bag) bag.push({
+        until: t0 + dur + stopOff + 0.08,
         stop() { try { osc2.stop(); } catch (e) {} },
+        kill() { g.disconnect(); },
         fade() {
           const now = ctx.currentTime;
           try {
@@ -841,6 +877,10 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
 
     // Core-tone send routing for the Zen chorus (see above): CLEAN core to
     // the left channel; in normal playback the core rides master as always.
+    // The panner refs are kept for kill() below: in the chorus the core/twin
+    // branches reach the bus via panL/panR, so only disconnecting `master`
+    // would not detach the whole voice.
+    const panDisc = [];
     if (chorus) {
       const coreL = ctx.createGain();
       schedEnv(coreL);
@@ -849,6 +889,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       panL.pan.value = -zenPan;
       trem.connect(coreL); coreL.connect(panL);
       panL.connect(getReverbBus(ctx));
+      panDisc.push(panL);
     } else {
       trem.connect(master);
     }
@@ -1003,6 +1044,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       twinOsc.connect(lpT); lpT.connect(tremT); tremT.connect(twinEnv);
       twinEnv.connect(panR);
       panR.connect(getReverbBus(ctx));
+      panDisc.push(panR);
       wobAmpGains.forEach(g => g.connect(tremT.gain));
       lfoT = ctx.createOscillator();
       lfoT.type = "sine";
@@ -1102,7 +1144,9 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       windSrc.start(t0);
       windSrc.stop(t0 + dur + tail);
       if (bag) bag.push({
+        until: t0 + dur + tail + 0.08,
         stop() { try { windSrc.stop(); } catch (e) {} },
+        kill() { windGain.disconnect(); },
         fade() { const n = ctx.currentTime + 0.05; try { windSrc.stop(n); } catch (e) {} }
       });
     }
@@ -1210,7 +1254,9 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       ot.start(t0 + otOff); ot.stop(t0 + otOff + otDur + 0.02);
 
       if (bag) bag.push({
+        until: t0 + otOff + otDur + 0.1,
         stop() { try { ot.stop(); } catch (e) {} try { otNoise.stop(); } catch (e) {} },
+        kill() { otGain.disconnect(); },
         fade() { const n = ctx.currentTime + 0.05; try { ot.stop(n); } catch (e) {} try { otNoise.stop(n); } catch (e) {} }
       });
     }
@@ -1233,7 +1279,12 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
         }
       };
       bag.push({
+        until: t0 + dur + stopOff + 0.08,
         stop() { rampFades(); stopN(osc); stopN(twinOsc); stopN(lfoT); stopN(air); stopN(edge); stopN(wander); stopN(chiffSrc); },
+        kill() {
+          master.disconnect();
+          for (const p of panDisc) { try { p.disconnect(); } catch (e) {} }
+        },
         fade() {
           rampFades();
           const stopAt = ctx.currentTime + 0.05;
@@ -1276,7 +1327,11 @@ function playTickAt(when, bag) {
     osc.connect(g);
     osc.start(t0);
     osc.stop(t0 + dur + 0.02);
-    if (bag) bag.push({ stop() { try { osc.stop(); } catch (e) {} } });
+    if (bag) bag.push({
+      until: t0 + dur + 0.02 + 0.08,
+      stop() { try { osc.stop(); } catch (e) {} },
+      kill() { g.disconnect(); }
+    });
   } catch (e) {}
 }
 
@@ -1377,6 +1432,7 @@ function scheduleMelody(when) {
   if (!melodyPlaying) return;
   // First call after (re)start seeds the clock from the passed absolute time.
   if (when != null) melodyNextTime = when;
+  pruneBag(melodyBag);
 
   while (melodyNextTime < audioCtx.currentTime + SCHED_AHEAD) {
     let atBar = (melodyIdx === melodyFrom);
