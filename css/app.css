@@ -31,12 +31,14 @@ header.app span { opacity: .7; font-size: 13px; }
 .inst-sel option { color: var(--ink); background: var(--paper); }
 .wrap { max-width: 1440px; margin: 0 auto; padding: 16px 22px 80px; }
 .panel { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 0 0 14px; }
-.block { border: 1px solid var(--line); border-radius: 8px; background: #fff; margin: 0 0 12px; }
 /* The square box-head sits flush at the block's top: round its own corners so
    the head's background doesn't poke past the block's rounded border
    (top-left/top-right of each sub-section were visually clipped). */
 .block > .box-head { border-radius: 7px 7px 0 0; }
 label.k { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--clay-dark); font-weight: 700; display: block; margin-bottom: 6px; }
+textarea { display: block; } /* baseline-gap fix — LOW specificity on purpose: the
+   `.block.collapsed > :not(.box-head)` hide rule (0,3,0) must keep beating it;
+   `textarea#src` carries an ID and would win over any class-level rule */
 textarea#src {
   width: 100%; min-height: 74px; resize: vertical; font: 15px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--paper);
@@ -248,7 +250,9 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
 #inputBlock textarea#src {
   width: 100%; min-height: 74px; resize: vertical; border: 0;
   font: 15px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  padding: 10px 12px; background: var(--paper); border-radius: 0 0 8px 8px;
+  padding: 10px 12px; background: var(--paper);
+  /* straight rectangle inside the block — sub-section edges carry the rounding */
+  border-radius: 0;
 }
 
 .tok.now {
@@ -668,6 +672,9 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 /* Collapsible section: the top-left chevron folds the body away */
 .block.collapsed > :not(.box-head) { display: none; }
 .block.collapsed .collapse-btn { transform: rotate(-90deg); }
+/* Collapsed, the box-head IS the block: round its bottom corners too, so
+   they don't poke past the block's rounded border at the bottom. */
+.block.collapsed > .box-head { border-radius: 7px 7px 7px 7px; }
 
 .focus-tempo {
   display: flex; align-items: center; gap: 10px;

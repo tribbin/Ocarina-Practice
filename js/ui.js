@@ -1193,6 +1193,8 @@ function wireCollapsers() {
       block.classList.toggle("collapsed", c);
       btn.setAttribute("aria-expanded", c ? "false" : "true");
       btn.title = c ? "Expand" : "Collapse";
+      // Re-measure the textarea (fitInput computed it while display:none).
+      if (!c && id === "inputBlock" && typeof fitInput === "function") fitInput();
     };
     btn.onclick = () => set(!block.classList.contains("collapsed"));
     set(true); // always start collapsed — expand on demand
