@@ -1181,9 +1181,9 @@ function perfRelocate() {
   if (target && perfWrap.parentElement !== target) target.appendChild(perfWrap);
 }
 
-// Collapsible section bodies: INPUT / PLAYBACK get a far-right chevron in
-// their box-head so the tall blocks fold away (small screens start collapsed
-// — the tab is the point of the page).
+// Collapsible section bodies: INPUT / PLAYBACK have a top-left chevron in
+// their box-head so the tall blocks fold away. They start collapsed — expand
+// on demand.
 function wireCollapsers() {
   ["inputBlock", "playback"].forEach(id => {
     const block = document.getElementById(id);
@@ -1195,7 +1195,7 @@ function wireCollapsers() {
       btn.title = c ? "Expand" : "Collapse";
     };
     btn.onclick = () => set(!block.classList.contains("collapsed"));
-    if (typeof matchMedia === "function" && matchMedia("(max-width: 760px)").matches) set(true);
+    set(true); // always start collapsed — expand on demand
   });
 }
 
