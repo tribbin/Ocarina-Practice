@@ -52,10 +52,14 @@ function fillLibrary(selectId) {
   const sel = document.getElementById("scale");
   const cur = selectId !== undefined ? selectId : sel.value;
   sel.innerHTML = "";
+  const showHidden = showHiddenSongs();
+  // Songs are hidden when statically flagged OR when they contain notes
+  // outside the currently selected ocarina's range; both kinds are revealed
+  // by the same "Show hidden songs" toggle.
   const groups = {};
   Object.keys(BUILTIN).forEach(id => {
     const item = BUILTIN[id];
-    if (item.hidden && !showHiddenSongs()) return;
+    if ((item.hidden || songOutOfRange(id) > 0) && !showHidden) return;
     const gname = item.group || "Built-in";
     if (!groups[gname]) {
       groups[gname] = document.createElement("optgroup");
@@ -68,7 +72,7 @@ function fillLibrary(selectId) {
     groups[gname].appendChild(o);
   });
   const user = userLib();
-  const ids = Object.keys(user);
+  const ids = Object.keys(user).filter(id => showHidden || songOutOfRange(id) === 0);
   if (ids.length) {
     const g2 = document.createElement("optgroup"); g2.label = "My songs";
     ids.forEach(id => {
@@ -76,8 +80,10 @@ function fillLibrary(selectId) {
     });
     sel.appendChild(g2);
   }
+  // Keep the selection if it survived the filter; otherwise drop it so the
+  // dropdown cannot keep pointing at a song that is currently hidden.
   if (cur && [...sel.options].some(o => o.value === cur)) sel.value = cur;
-  else if (!cur) sel.selectedIndex = -1;
+  else sel.selectedIndex = -1;
   syncLibraryMenu();
 }
 

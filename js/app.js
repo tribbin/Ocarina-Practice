@@ -54,7 +54,8 @@ function fillInstrumentSelect(selectedId) {
 async function switchInstrument(inst) {
   await loadInstrument(inst);
   buildKB();
-  if (typeof syncLibraryMenu === "function") syncLibraryMenu();
+  if (typeof fillLibrary === "function") fillLibrary();
+  else if (typeof syncLibraryMenu === "function") syncLibraryMenu();
   if (typeof render === "function") render();
 }
 

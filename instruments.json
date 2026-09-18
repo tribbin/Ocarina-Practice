@@ -16,6 +16,14 @@
       "range": "A3–C6",
       "fingerings": "fingerings-mock.json",
       "svg": "ocarina-template.svg"
+    },
+    {
+      "id": "stein-double-alto-c",
+      "type": "Double Alto C",
+      "version": "Focalink Stein",
+      "range": "A4–C7",
+      "fingerings": "fingerings-alto.json",
+      "svg": "ocarina-template-alto.svg"
     }
   ]
 }

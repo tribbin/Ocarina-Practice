@@ -21,7 +21,11 @@
 
   const TICK_MS = 66;          // detection/UI tick
   const MIN_HZ = 160;
-  const MAX_HZ = 2000;
+  // Ceiling must cover the highest in-use note plus attack overshoot:
+  // C7 (the alto's top note) reads ~2093 Hz — its autocorrelation lag
+  // (~22.9 samples at 48 kHz) sits BELOW the search floor when MAX_HZ was
+  // 2000, and the detector then reported a far-lower ghost peak.
+  const MAX_HZ = 2600;
   const needleLo = -50;        // display window in cents
   const needleHi = 50;
 

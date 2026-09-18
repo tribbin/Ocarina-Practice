@@ -32,6 +32,11 @@ function ocarinaSVG(covered, chamber) {
       if (!meta || meta.ignored || inactive) {
         el.style.fill = "none";
         el.style.strokeDasharray = "1.2 1";
+        // Even though it is not playable in this view, the hole still belongs
+        // to a chamber — fade it like the other non-current-chamber holes so
+        // diagrams stay consistent between instruments.
+        const holeCh = (meta && meta.chamber) || 0;
+        if (!holeCh || holeCh !== chamber) el.style.opacity = "0.25";
         return;
       }
       el.style.fill = set.has(hid) ? "#1a120c" : "#ffffff";
