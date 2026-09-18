@@ -11,7 +11,7 @@ let melodyPos = 0;
 let melodyHoldUntil = -1;
 let melodyPaused = false;
 let melodyNextTime = 0; // absolute ctx time of the next note to schedule
-let melodyQuarter = null; // seconds per quarter for the CURRENT tempo (inline # tempo changes update this)
+let melodyQuarter = null; // seconds per quarter at the SONG's 100% speed (inline # tempo changes update this; the tempo dial applies relative to it)
 let lastHoldSec = 0.5; // sounding duration of the last scheduled note (for zen glow)
 
 // ---- Dev-tunable synthesis parameters -------------------------------------
@@ -103,10 +103,19 @@ function syncTransport() {
   if (typeof updateTransportUI === "function") updateTransportUI();
 }
 
-// Seconds per quarter note for a given bpm, clamped to the same 40–180 range
-// the tempo slider uses. Used for inline "# tempo N" changes during playback.
+// Seconds per quarter note at the song's own 100% tempo for a given bpm
+// (the song's leading header or any inline "# tempo N" change). The tempo
+// slider is a RELATIVE playback speed (10–100%) applied at scheduling time
+// (see melodyQuarter uses in scheduleMelody), so it must not bake in here.
 function quarterSecFor(bpm) {
-  return 60 / Math.max(40, Math.min(180, (+bpm) || 100));
+  return 60 / Math.max(10, Math.min(400, (+bpm) || 100));
+}
+
+// Relative playback speed from the tempo slider (0.1–1 of the song tempo).
+// Guarded: audio.js also runs in tooling without the library/UI scripts.
+function tempoSpeed() {
+  if (typeof tempoPct !== "function") return 1;
+  return Math.max(0.1, Math.min(1, (tempoPct() || 100) / 100));
 }
 
 function tokenGridBeats(tok) {
@@ -1293,7 +1302,8 @@ function scheduleMelody(when) {
     const noteWhen = melodyNextTime;
     if (atBar && tickEnabled() && barHasNote(melodyTokens, melodyIdx)) playTickAt(noteWhen, melodyBag);
     const tok = melodyTokens[melodyIdx];
-    const step = Math.max(0.001, swungBeats(tok, melodyPos) * melodyQuarter); // floor guards against a 0-beat token spinning the loop
+    const step = Math.max(0.001, swungBeats(tok, melodyPos) * melodyQuarter /
+                  tempoSpeed()); // tempo dial: % of the song's own speed (live — mid-song slider moves apply to upcoming notes)
     melodyPos += tokenGridBeats(tok);
     const pitched = (tok.type === "note" || tok.type === "tie") && NOTES.includes(tok.id);
     let didSound = false;

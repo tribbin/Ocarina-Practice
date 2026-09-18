@@ -239,21 +239,32 @@ function wireLibraryDropdown() {
   });
 }
 
-function currentTempo() {
+// The tempo slider is a RELATIVE playback speed (10–100%) applied on top of
+// the song's own tempo (its leading "# tempo" header and any inline "# tempo"
+// changes), never an absolute BPM.
+function tempoPct() {
   const el = document.getElementById("tempo");
-  return Math.max(40, Math.min(180, +(el && el.value) || 100));
+  return Math.max(10, Math.min(100, (el ? +el.value : 100) || 100));
 }
 
-function applyTempo(bpm) {
-  bpm = Math.max(40, Math.min(180, +bpm || 100));
+// The song's own base tempo comes from its text (leading "# tempo" header),
+// defaulting to 100 — used for library metadata/headers only.
+function songTempo() {
+  const ta = document.getElementById("src");
+  return Math.max(10, Math.min(400,
+    (ta && (tempoFromText(ta.value) || 100)) || 100));
+}
+
+function applyTempoPct(pct) {
+  pct = String(Math.max(10, Math.min(100, Math.round(+pct || 100))));
   const el = document.getElementById("tempo");
   const lab = document.getElementById("tempoVal");
-  if (el) el.value = String(bpm);
-  if (lab) lab.textContent = String(bpm);
+  if (el) el.value = pct;
+  if (lab) lab.textContent = pct;
   const fEl = document.getElementById("focusTempo");
   const fLab = document.getElementById("focusTempoVal");
-  if (fEl) fEl.value = String(bpm);
-  if (fLab) fLab.textContent = String(bpm);
+  if (fEl) fEl.value = pct;
+  if (fLab) fLab.textContent = pct;
 }
 
 function currentSwing() {
@@ -282,7 +293,9 @@ function applySongTick(v) {
 function loadLibraryItem(id) {
   if (typeof stopMelody === "function") stopMelody();
   if (typeof resetLiveTab === "function") resetLiveTab();
-  let tempo = currentTempo();
+  // The song's tempo lives in its text (withPlayHeaders writes the header);
+  // the relative playback speed stays at the user's dial between songs.
+  let tempo = 100;
   let swing = currentSwing();
   let tick;
   if (BUILTIN[id]) {
@@ -301,7 +314,6 @@ function loadLibraryItem(id) {
       tick = item.tick;
     }
   }
-  applyTempo(tempo);
   applySwing(swing);
   applySongTick(tick);
   render();
@@ -320,7 +332,7 @@ function wireLibrary() {
     const named = name.trim();
     const lib = userLib();
     const id = slugName(named);
-    const tempo = currentTempo();
+    const tempo = songTempo();
     const swing = currentSwing();
     const tickEl = document.getElementById("tickMel");
     const next = withPlayHeaders(body, named, tempo, swing);
@@ -344,7 +356,7 @@ function wireLibrary() {
   document.getElementById("diskSave").onclick = () => {
     const body = document.getElementById("src").value;
     const name = (titleFromText(body) || "melody").replace(/[^\w\- ]+/g, "").trim() || "melody";
-    const blob = new Blob([withPlayHeaders(body, null, currentTempo(), currentSwing())], {type: "text/plain"});
+    const blob = new Blob([withPlayHeaders(body, null, songTempo(), currentSwing())], {type: "text/plain"});
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = name + ".txt";
@@ -359,17 +371,14 @@ function wireLibrary() {
     const reader = new FileReader();
     reader.onload = () => {
       let text = String(reader.result || "");
-      let tpo = null, sw = null;
+      let sw = null;
       try {
         const j = JSON.parse(text);
         if (j && typeof j.body === "string") text = j.body;
         else if (j && typeof j.melody === "string") text = j.melody;
-        if (j && j.tempo) tpo = j.tempo;
         if (j && j.swing != null) sw = j.swing;
       } catch (err) {}
       document.getElementById("src").value = text;
-      tpo = tpo || tempoFromText(text);
-      if (tpo) applyTempo(tpo);
       sw = sw != null ? sw : swingFromText(text);
       if (sw != null) applySwing(sw);
       clearLibrarySelection();

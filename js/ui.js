@@ -332,8 +332,7 @@ function render() {
     const src = document.getElementById("src").value;
     fitInput();
     document.getElementById("title").textContent = titleFromText(src);
-    const typedTempo = tempoFromText(src);
-    if (typedTempo) applyTempo(typedTempo);
+    fitInput();
     const typedSwing = swingFromText(src);
     applySwing(typedSwing != null ? typedSwing : 0);
     const tokens = parse(src);
@@ -364,9 +363,14 @@ function render() {
 }
 
 function quarterSec() {
-  const el = document.getElementById("tempo");
-  const bpm = el ? +el.value : 100;
-  return 60 / Math.max(40, Math.min(180, bpm || 100));
+  // Base tempo of the CURRENT SONG: its own leading "# tempo" header (the
+  // same the inline "# tempo" tokens start from), else 100. The tempo slider
+  // is a RELATIVE playback speed (10–100%) applied at scheduling time in
+  // audio.js (tempoPct), not an absolute BPM — moving it mid-song only
+  // affects notes scheduled after the move.
+  const ta = document.getElementById("src");
+  const t = (ta && tempoFromText(ta.value)) || 100;
+  return 60 / Math.max(10, Math.min(400, t || 100));
 }
 
 function tokenSeconds(tokOrDur, dotted) {
@@ -737,7 +741,8 @@ header.app,.panel:first-of-type{display:none}
 function persistPlayHeaders() {
   const ta = document.getElementById("src");
   if (!ta) return;
-  ta.value = withPlayHeaders(ta.value, null, currentTempo(), currentSwing());
+  // The tempo header is the SONG's own — never the relative playback dial.
+  ta.value = withPlayHeaders(ta.value, null, songTempo(), currentSwing());
   fitInput();
 }
 
@@ -753,14 +758,14 @@ function wireUi() {
   const tempoEl = document.getElementById("tempo");
   if (tempoEl) {
     tempoEl.addEventListener("input", () => {
-      applyTempo(+tempoEl.value);
+      applyTempoPct(+tempoEl.value);
       persistPlayHeaders();
     });
   }
   const focusTempoEl = document.getElementById("focusTempo");
   if (focusTempoEl) {
     focusTempoEl.addEventListener("input", () => {
-      applyTempo(+focusTempoEl.value);
+      applyTempoPct(+focusTempoEl.value);
       persistPlayHeaders();
     });
   }
@@ -883,7 +888,7 @@ function syncFocusMode() {
   const on = isFullscreen() && isLiveTab();
   panel.classList.toggle("focus", on);
   if (on) {
-    applyTempo(currentTempo());
+    applyTempoPct(tempoPct());
     syncLoopUI();
     revealZenUi();
     const toks = lastTokens.length ? lastTokens : parse(document.getElementById("src").value);
