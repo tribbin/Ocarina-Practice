@@ -611,6 +611,12 @@ body.zen-fallback #tabPanel:not(.focus) {
 }
 /* CSS fallback for devices without the Fullscreen API (e.g. iPhone Safari) */
 body.zen-fallback { overflow: hidden; }
+/* The sticky app header stacks at z 5 at the root level, and in the oot
+   theme .wrap gets its own stacking context (z 1, to clear the background
+   image) — the fixed z-9999 panel *inside* it can never rise above the
+   header, so the app bar would float over the zen view. Nothing but the tab
+   panel belongs on screen in the fallback: drop the chrome. */
+body.zen-fallback header.app { display: none; }
 body.zen-fallback #tabPanel {
   position: fixed; inset: 0; z-index: 9999;
   width: 100vw; height: 100vh; height: 100dvh;

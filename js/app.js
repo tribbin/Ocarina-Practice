@@ -100,11 +100,19 @@ async function loadInstrument(inst) {
 // Visual themes live as `data-theme` on <html>. Chamber colors are not part of
 // a theme — they stay the fingering-data symbology. `?oot` is the hidden
 // Hyrule Field preview; later a model can pass its id here (e.g. inst.theme).
+// Shared zen links carry `?inst=<ocarina id>&song=<library id>&zen=1`.
+function queryParam(name) {
+  try { return new URLSearchParams(location.search).get(name) || ""; }
+  catch (e) { return ""; }
+}
+
+function queryHas(name) {
+  try { return new URLSearchParams(location.search).has(name); }
+  catch (e) { return false; }
+}
+
 function themeFromQuery() {
-  try {
-    if (new URLSearchParams(location.search).has("oot")) return "oot";
-  } catch (e) {}
-  return "";
+  return queryHas("oot") ? "oot" : "";
 }
 
 function applyTheme(name) {
@@ -160,7 +168,9 @@ async function boot() {
     ]);
     APP_CSS = cssText;
     window.INSTRUMENTS = manifest.instruments || [];
-    const chosen = INSTRUMENTS.find(i => i.id === manifest.default) || INSTRUMENTS[0];
+    const instParam = queryParam("inst");
+    const chosen = (instParam && INSTRUMENTS.find(i => i.id === instParam))
+      || INSTRUMENTS.find(i => i.id === manifest.default) || INSTRUMENTS[0];
     if (!chosen) throw new Error("No instruments defined in instruments.json");
     await loadInstrument(chosen);
     fillInstrumentSelect(chosen.id);
@@ -168,9 +178,19 @@ async function boot() {
     initBuiltin(songs);
     wireLibrary();
     wireUi();
-    fillLibrary("major");
     buildKB();
-    loadLibraryItem("major");
+    const songParam = queryParam("song");
+    if (songParam && (BUILTIN[songParam] || (typeof userLib === "function" && userLib()[songParam]))) {
+      // The linked song loads even when the range filter hides it from the
+      // dropdown (e.g. shared with another ocarina) — fillLibrary just can't
+      // highlight it there.
+      fillLibrary(songParam);
+      loadLibraryItem(songParam);
+    } else {
+      fillLibrary("major");
+      loadLibraryItem("major");
+    }
+    if (queryHas("zen")) enterZenFromLink();
   } catch (err) {
     const e = document.getElementById("err");
     if (e) {

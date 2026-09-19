@@ -900,6 +900,8 @@ function wireUi() {
     if (canFullscreen(panel)) toggleFullscreen(panel); else enterFullscreenFallback();
   };
   document.addEventListener("mousemove", revealZenUi);
+  const shareBtn = document.getElementById("shareZen");
+  if (shareBtn) shareBtn.onclick = copyShareZenLink;
   wireZen();
   perfRelocate();
   wirePerfAlerts();
@@ -1130,6 +1132,67 @@ function exitZen() {
 
 function toggleZen() {
   if (isFullscreen()) exitZen(); else enterZen();
+}
+
+// Shareable link for the current view: `?inst=<ocarina id>&song=<library id>
+// &zen=1`. Opened anywhere, the app starts on that ocarina with that song
+// loaded and straight in the zen view (boot reads the parameters back).
+// The hidden `?oot` theme rides along when it is on.
+function zenShareUrl() {
+  const p = new URLSearchParams();
+  const inst = window.CURRENT_INSTRUMENT;
+  if (inst && inst.id) p.set("inst", inst.id);
+  const sel = document.getElementById("scale");
+  if (sel && sel.value) p.set("song", sel.value);
+  p.set("zen", "1");
+  try { if (new URLSearchParams(location.search).has("oot")) p.set("oot", ""); } catch (e) {}
+  const q = p.toString();
+  return location.origin + location.pathname + (q ? "?" + q : "");
+}
+
+async function copyShareZenLink() {
+  const url = zenShareUrl();
+  let copied = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(url);
+      copied = true;
+    }
+  } catch (e) {}
+  if (!copied) {
+    // Clipboard API needs a secure context (localhost or HTTPS); the
+    // execCommand route covers http-on-a-LAN setups. Never plain alert() —
+    // sandboxed/embedded previews throw. Show the URL so it is still copyable.
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = url;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      copied = document.execCommand("copy");
+      ta.remove();
+    } catch (e) {}
+  }
+  if (typeof libToast !== "function") return;
+  libToast(copied ? "Zen link copied: " + url : "Auto-copy failed — copy this link: " + url);
+}
+
+// Zen entry from a shared link (?zen=1): there is no user gesture yet, so the
+// fullscreen request is refused. Catch the rejection and fall through to the
+// CSS fallback — the same chrome-less zen view as devices without the
+// Fullscreen API. A real fullscreen is still attempted first for the cases
+// where it *is* allowed (e.g. an embed with prior activation).
+function enterZenFromLink() {
+  const panel = document.getElementById("tabPanel");
+  if (!panel) return;
+  if (!isLiveTab()) { zenPrevMode = displayMode; setDisplayMode("single"); }
+  const req = canFullscreen(panel) && (panel.requestFullscreen || panel.webkitRequestFullscreen);
+  if (!req) { enterFullscreenFallback(); return; }
+  let p = null;
+  try { p = req.call(panel); } catch (e) {}
+  if (p && typeof p.catch === "function") p.catch(() => enterFullscreenFallback());
+  else setTimeout(() => { if (!isFullscreen()) enterFullscreenFallback(); }, 400);
 }
 
 function wireZen() {
