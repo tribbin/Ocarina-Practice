@@ -90,6 +90,20 @@ html[data-theme="oot"] .card.live.is-rest .nm,
 html[data-theme="oot"] .card.live .rest-over {
   color: var(--rest-ink);
 }
+/* --ink turns dark in the theme, so the .card.now ring would vanish against
+   the dark grass; give it a white ring (mirrors .tok.now's white + ink).
+   An outline with offset keeps a gap of grass between ring and cream card. */
+html[data-theme="oot"] .card.now {
+  box-shadow: none;
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+/* The ring paints 5px outside the card; zen clips at .sheet.live (overflow
+   hidden) and the live card fills it edge to edge, so pad the sheet — the
+   clip boundary is the padding box, which gives the ring room to breathe. */
+html[data-theme="oot"] #tabPanel.focus .sheet.live {
+  padding: 6px;
+}
 html[data-theme="oot"] header.app {
   background: rgba(6, 40, 6, 0.92);
   color: #fff;
