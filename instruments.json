@@ -23,7 +23,14 @@
       "version": "Ocarina of Time",
       "range": "A4–F6",
       "fingerings": "fingerings-alto-12.json",
-      "svg": "ocarina-template-alto-12.svg"
+      "svg": "ocarina-template-alto-12.svg",
+      "svgWhen": [
+        {
+          "theme": "oot",
+          "song": "sarias-song",
+          "svg": "ocarina-template-alto-12-saria.svg"
+        }
+      ]
     },
     {
       "id": "mock-double-test",

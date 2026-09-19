@@ -322,7 +322,11 @@ function loadLibraryItem(id) {
   }
   applySwing(swing);
   applySongTick(tick);
-  render();
+  if (typeof ensureOcarinaTemplate === "function") {
+    ensureOcarinaTemplate().then(() => render());
+  } else {
+    render();
+  }
 }
 
 // Small non-blocking notice pill (fixed bottom, auto-fades). Used to explain

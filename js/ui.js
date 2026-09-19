@@ -331,6 +331,13 @@ function updateRangeWarning(outOf) {
 
 function render() {
   try {
+    if (typeof currentTemplatePath === "function" && typeof ensureOcarinaTemplate === "function") {
+      const path = currentTemplatePath();
+      if (path && path !== installedTplPath) {
+        ensureOcarinaTemplate().then(changed => { if (changed) render(); });
+        return;
+      }
+    }
     const src = document.getElementById("src").value;
     fitInput();
     document.getElementById("title").textContent = titleFromText(src);

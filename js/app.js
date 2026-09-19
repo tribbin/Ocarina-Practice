@@ -26,6 +26,64 @@ async function loadJson(path) {
   return JSON.parse(await loadText(path));
 }
 
+const TPL_CACHE = {};
+let installedTplPath = "";
+let tplSyncing = null;
+
+function currentSongId() {
+  const sel = document.getElementById("scale");
+  return (sel && sel.value) || "";
+}
+
+function currentSongTitle() {
+  const ta = document.getElementById("src");
+  if (!ta || typeof titleFromText !== "function") return "";
+  return String(titleFromText(ta.value) || "").trim();
+}
+
+function songMatchesStem(stem, id, title) {
+  if (!stem) return true;
+  if (id === stem || (id && id.startsWith(stem + "-"))) return true;
+  if (stem === "sarias-song" && /^saria'?s song$/i.test(title)) return true;
+  return false;
+}
+
+function currentTemplatePath() {
+  const inst = window.CURRENT_INSTRUMENT;
+  if (!inst) return "";
+  const theme = document.documentElement.getAttribute("data-theme") || "";
+  const id = currentSongId();
+  const title = currentSongTitle();
+  for (const rule of (inst.svgWhen || [])) {
+    if (rule.theme && rule.theme !== theme) continue;
+    if (rule.song && !songMatchesStem(rule.song, id, title)) continue;
+    if (rule.svg) return rule.svg;
+  }
+  return inst.svg;
+}
+
+function loadTemplateText(path) {
+  if (!TPL_CACHE[path]) TPL_CACHE[path] = loadText(path);
+  return TPL_CACHE[path];
+}
+
+function ensureOcarinaTemplate() {
+  const path = currentTemplatePath();
+  if (!path || path === installedTplPath) return Promise.resolve(false);
+  if (tplSyncing) return tplSyncing;
+  tplSyncing = loadTemplateText(path).then(text => {
+    installOcarinaTemplate(text);
+    installedTplPath = path;
+    tplSyncing = null;
+    return true;
+  }).catch(err => {
+    tplSyncing = null;
+    console.error(err);
+    return false;
+  });
+  return tplSyncing;
+}
+
 async function loadInstrument(inst) {
   const [fing, svgText] = await Promise.all([
     loadJson(inst.fingerings),
@@ -33,7 +91,10 @@ async function loadInstrument(inst) {
   ]);
   installFingerings(fing);
   installOcarinaTemplate(svgText);
+  installedTplPath = inst.svg;
+  TPL_CACHE[inst.svg] = Promise.resolve(svgText);
   window.CURRENT_INSTRUMENT = inst;
+  await ensureOcarinaTemplate();
 }
 
 // Visual themes live as `data-theme` on <html>. Chamber colors are not part of
