@@ -90,9 +90,12 @@ const AUDIO_DEFAULTS = {
   // transient grace (wider cents for the first N ms of an attack), the
   // silence needed before a hit counts as a fresh articulation, how fast the
   // fill bar drains when out of tune (× the fill rate), and the mic RMS the
-  // detector treats as "not playing".
+  // detector treats as "not playing". Inside a chained (~) slide the same
+  // silence/pitch wipe uses the much larger chainTravelMs instead, and that
+  // window also renews the arrival tolerance between zones — plenty of time
+  // to travel to (and settle onto) the next note.
   tuneCents: 20, transientCents: 60, transientMs: 150,
-  gapMs: 120, rmsGate: 0.01,
+  gapMs: 120, rmsGate: 0.01, chainTravelMs: 800,
 };
 const AUDIO_DEBUG = Object.assign({}, AUDIO_DEFAULTS);
 // Exposed for the dev panel: params are tweaked in place; invalidateWave()

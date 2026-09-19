@@ -91,6 +91,7 @@
       ["transientCents", "Onset grace \u00A2", 0, 120, 5],
       ["transientMs", "Onset grace ms", 50, 400, 10],
       ["gapMs", "Attack gap ms", 50, 400, 10],
+      ["chainTravelMs", "Chain travel grace ms", 100, 2000, 50],
       ["rmsGate", "Mic silence gate", 0.002, 0.08, 0.002],
     ]},
     { t: "Output", r: [

@@ -10,16 +10,22 @@
 // tempo dial is ignored here. Staccato notes require half their normal
 // duration. Ties are one hit held for the chain's whole summed length, even
 // across a bar line, and a `~` slide becomes a CHAIN: one segment per
-// pitch, each held for its equal share — the player must actually travel
-// through the pitches (transit between zones is neutral; each zone is
-// reached with its own onset tolerance; successful zones lock in, and only
-// an all-zones-complete bar advances).
+// pitch; each zone must earn 75% of its equal share — the player must
+// actually travel through the pitches (transit between zones is neutral;
+// each zone is reached with its own onset tolerance; successful zones lock
+// in, and only an all-zones-complete bar advances). The missing quarter is
+// the player's travel budget: chains get a rather large grace toward the
+// next zone (chainTravelMs) that covers breaths in transit and settling
+// after arrival.
 //
+// Every bar earns its release at 75% of the notated hold (REQUIRED_FRAC) —
+// dragging the whole note out before moving on is no longer asked for.
 // Credit is gradient-based: 1x inside the clean zone; beyond the green
 // edge, within the outer bandwidth (2x the clean zone), the rate falls off
 // linearly 1 -> -2 — drifting far out drains (swimming against the
-// current); crossing the outer bandwidth or sustained silence wipes the
-// bar, while hiccups shorter than an articulation gap just pause it.
+// current); leaving the outer bandwidth or silence beyond the grace wipes
+// the bar (gapMs for single notes, chainTravelMs inside a chain), while
+// shorter hiccups just pause it.
 //
 // The mic pipeline is analyser-only (never connected to the destination) so
 // there is no monitoring feedback, and no reference tone is ever played.
@@ -30,6 +36,9 @@
   "use strict";
 
   const TICK_MS = 66;          // detection/UI tick
+  const REQUIRED_FRAC = 0.75;  // a zone needs 75% of its share to be done —
+                               // the freed quarter is travel time toward the
+                               // next note
   const MIN_HZ = 160;
   // Ceiling must cover the highest in-use note plus attack overshoot:
   // C7 (the alto's top note) reads ~2093 Hz — its autocorrelation lag
@@ -137,7 +146,8 @@
   // One practice bar = one hit + one fill track made of one segment per
   // pitch (single notes have just zone 0). Ties are absorbed across bar
   // lines; a ~ slide chain adds one zone per hop and the player must credit
-  // every zone's equal share — camping the first note no longer finishes.
+  // 75% of every zone's equal share — camping the first note no longer
+  // finishes.
   function buildBar(tokens, i) {
     const chainId = tokens[i].id;
     const { end, zones, names, zoneIdx, slide } = absorbHops(tokens, i, chainId);
@@ -155,7 +165,7 @@
       zoneIdx,                               // token index of each zone
       hiZone: 0,                             // zone currently highlighted
       targetSec,
-      segTarget: targetSec * 1000 / zones.length, // equal share per zone (ms)
+      segTarget: targetSec * 1000 * REQUIRED_FRAC / zones.length, // ms each zone must earn
       segs: zones.map(() => 0),              // ms credited per zone
       grace: zones.map(() => 0),             // arrival tolerance left per zone
       minZ: freqs[0], maxZ: freqs[freqs.length - 1], // corridor bounds
@@ -166,6 +176,13 @@
   function barName() { return spelled(P.bar.names ? P.bar.names[0] : P.bar.chainId, P.tokens[P.bar.startIdx]); }
   function barChain() { return (P.bar.names || [P.bar.chainId]).join("\u2192"); }
   function barFilled(b) { let s = 0; for (const x of b.segs) s += x; return s; }
+  // Progress toward the release point: segTarget already carries the 75%
+  // requirement, so the whole-bar fraction reaches 1 exactly when the bar
+  // completes (every zone holding its required credit).
+  function barFrac(b) {
+    const need = b.segTarget * b.zones.length;
+    return need > 0 ? Math.max(0, Math.min(1, barFilled(b) / need)) : 0;
+  }
   function barDone(b) { return b.segs.every(x => x >= b.segTarget - 1e-6); }
   function statusText(s) {
     switch (s) {
@@ -320,7 +337,7 @@
       els.zone.style.left = (50 - zw) + "%";
       els.zone.style.width = (zw * 2) + "%";
       // fill
-      const pct = Math.max(0, Math.min(1, barFilled(P.bar) / (P.bar.targetSec * 1000))) * 100;
+      const pct = barFrac(P.bar) * 100;
       if (!fillSlices(els.fill, P.bar)) {
         els.fill.style.width = pct + "%";
         els.fill.style.background = (P.state === "fill" && barFilled(P.bar) > 0) || P.state === "hit"
@@ -340,7 +357,7 @@
     if (!P.active) { clearOverlays(); return; }
     const targets = ["#tokens", "#focusTokens", "#sheet"].map(s => document.querySelector(s)).filter(Boolean);
     const dg = dbg();
-    const pct = P.bar && P.bar.targetSec > 0 ? Math.max(0, Math.min(1, barFilled(P.bar) / (P.bar.targetSec * 1000))) : 0;
+    const pct = P.bar ? barFrac(P.bar) : 0;
     const live = new Set();
     for (const host of targets) {
       // token strips and card sheets: the sliding fill lives on whichever
@@ -626,8 +643,7 @@
       zenGlowApply(panel, alpha, scale, 60);
       return;
     }
-    const f = (P.bar && P.bar.targetSec > 0)
-      ? Math.max(0, Math.min(1, barFilled(P.bar) / (P.bar.targetSec * 1000))) : 0;
+    const f = P.bar ? barFrac(P.bar) : 0;
     const e = 1 - (1 - f) * (1 - f); // ease-out, like the play pulse's rise
     if (P.state === "hit") {
       // At the onset the glow starts swelling right away, like play.
@@ -768,25 +784,32 @@
         // — still inside the outer bandwidth (2x the green width) — the
         // rate falls off linearly from 1 to a 2x DRAIN at the outer edge:
         // drift further out and it feels like swimming against a current
-        // that grows with how far off you are. Passing the outer bandwidth
-        // of the bar's corridor, or sustained silence, wipes the bar (fresh
-        // attack); a hiccup shorter than an articulation gap only pauses
-        // it (a measurement glitch must not bankrupt a real hold).
+        // that grows with how far off you are. Leaving the outer bandwidth
+        // of the bar's corridor, or silence beyond the grace, wipes the bar
+        // (fresh attack); a shorter hiccup only pauses it (a measurement
+        // glitch must not bankrupt a real hold).
         //
         // Chain bars (~/slides, multi-hop) split the notated length into
-        // equal shares, one per zone: each zone must be held for its own
-        // share ("the ones that were successful count in the chain"). The
-        // region between zones is in transit: neutral — no accrual, no
-        // drain (so a fast sweep and a slow walk are both legitimate).
-        // Every zone is reached with its own onset tolerance, renewed in
-        // transit; completed zones are locked and never drained.
+        // equal shares, one per zone: each zone must earn 75% of its own
+        // share ("the ones that were successful count in the chain") — the
+        // freed quarter is travel budget. The region between zones is in
+        // transit: neutral — no accrual, no drain (so a fast sweep and a
+        // slow walk are both legitimate). Chains get a rather large grace
+        // toward the next zone (chainTravelMs): it is the wipe threshold
+        // for silence and stray pitches mid-travel, and it renews the
+        // arrival tolerance — so a breath between fingerings, a slow sweep
+        // and settling onto the next pitch after arrival are all
+        // legitimate. Completed zones are locked and never drained.
         const TUNE = dg.tuneCents, TRANS = dg.transientCents, OUTER = dg.tuneCents * 2;
+        const chain = b.zones.length > 1;
+        const wipeMs = chain ? dg.chainTravelMs : dg.gapMs;
+        const arrMs = chain ? Math.max(dg.transientMs, dg.chainTravelMs) : dg.transientMs;
         const k = P.zonesNear, ci = P.zonesNearCents;
         const outOfCorridor = !sounding ||
           (P.hz && (centsOf(P.hzSm, b.minZ) < -OUTER || centsOf(P.hzSm, b.maxZ) > OUTER));
         if (outOfCorridor) {
           P.dropAcc = (P.dropAcc || 0) + dt;
-          if (P.dropAcc >= dg.gapMs) {
+          if (P.dropAcc >= wipeMs) {
             b.segs = b.segs.map(() => 0);
             P.dropAcc = 0;
             P.state = "await";
@@ -796,7 +819,7 @@
           // defensive: sounding but unmappable (should not happen)
         } else if (ci <= TUNE) {
           P.dropAcc = 0;
-          b.grace[k] = dg.transientMs;
+          b.grace[k] = arrMs;
           if (b.segs[k] < b.segTarget) b.segs[k] = Math.min(b.segTarget, b.segs[k] + dt);
         } else if (ci <= TRANS && b.grace[k] > 0) {
           // arrival tolerance: the note counts from the moment it lands
@@ -812,7 +835,7 @@
         } else {
           // inside the corridor but far from every zone: in transit
           P.dropAcc = 0;
-          b.grace[k] = dg.transientMs; // renewed for the arrival
+          b.grace[k] = arrMs; // renewed for the arrival
         }
         if (barDone(b)) { finishBar(); return; }
         // A finished section advances the frontier: move the reading line,
