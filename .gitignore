@@ -1,0 +1,5 @@
+# Opencode agent config/skills (local tooling)
+.opencode/
+
+# Work files: recordings, FFT snapshots, tone analysis reports
+research/
