@@ -4,6 +4,14 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Ocarina Practice</title>
+<script>
+(function () {
+  try {
+    if (new URLSearchParams(location.search).has("oot"))
+      document.documentElement.setAttribute("data-theme", "oot");
+  } catch (e) {}
+})();
+</script>
 <link rel="stylesheet" href="css/app.css" />
 </head>
 <body>

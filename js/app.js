@@ -36,6 +36,22 @@ async function loadInstrument(inst) {
   window.CURRENT_INSTRUMENT = inst;
 }
 
+// Visual themes live as `data-theme` on <html>. Chamber colors are not part of
+// a theme — they stay the fingering-data symbology. `?oot` is the hidden
+// Hyrule Field preview; later a model can pass its id here (e.g. inst.theme).
+function themeFromQuery() {
+  try {
+    if (new URLSearchParams(location.search).has("oot")) return "oot";
+  } catch (e) {}
+  return "";
+}
+
+function applyTheme(name) {
+  const html = document.documentElement;
+  if (name) html.setAttribute("data-theme", name);
+  else html.removeAttribute("data-theme");
+}
+
 function instLabel(inst) {
   const parts = [inst.type, inst.version].filter(Boolean);
   let label = parts.join(" · ");
@@ -75,6 +91,7 @@ function wireInstrumentPicker() {
 
 async function boot() {
   try {
+    applyTheme(themeFromQuery());
     const [manifest, songs, cssText] = await Promise.all([
       loadJson("instruments.json"),
       loadJson("songs.json"),
