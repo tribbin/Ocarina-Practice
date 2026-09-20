@@ -916,6 +916,7 @@ function wireUi() {
   wireZen();
   perfRelocate();
   wirePerfAlerts();
+  window.addEventListener("resize", () => { if (perfOpen) clampPerfPop(); });
   wireCollapsers();
   wireFocusControls();
   wireSpacebar();
@@ -1267,6 +1268,7 @@ function buildPerfWidget() {
       if (typeof audioPerfReset === "function") audioPerfReset();
       perfLastRows = -1;
       perfTick(); // synchronous first render — the pop never shows empty
+      clampPerfPop();
     } else cancelAnimationFrame(perfRaf);
   });
   perfPop = document.createElement("div");
@@ -1322,8 +1324,34 @@ function buildPerfWidget() {
   });
 }
 
+// Keep the meters on-screen: on narrow windows the centered pop hangs past a
+// viewport edge and drags a horizontal scrollbar along (the user scrolls for
+// a screen they never asked for). Shift the pop so it hugs the edge instead.
+// Only the inline playback-head placement needs this — Zen's pop is fixed and
+// already viewport-anchored.
+function clampPerfPop() {
+  if (!perfPop || perfPop.hidden || !perfWrap || !perfWrap.offsetParent) return;
+  const panel = document.getElementById("tabPanel");
+  if (panel && panel.classList.contains("focus")) return; // Zen: own fixed geometry
+  perfPop.style.left = ""; // base: left 50% + translateX(-50%)
+  const r = perfPop.getBoundingClientRect();
+  const pad = 8;
+  // innerWidth counts the vertical-scrollbar gutter; clientWidth is the real
+  // layout viewport — clamping to innerWidth let the pop poke a few px into
+  // the scrollbar and spawn a horizontal scrollbar even with room to slide left.
+  const vw = document.documentElement.clientWidth;
+  /* one pass keeps both edges legal even on narrow windows */
+  const left = Math.min(
+    Math.max(r.left, pad),
+    Math.max(pad, vw - pad - Math.ceil(r.width))
+  );
+  const dx = left - r.left;
+  if (dx) perfPop.style.left = "calc(50% + " + dx + "px)";
+}
+
 function perfTick() {
   if (!perfOpen) return;
+  clampPerfPop();
   const s = (typeof audioPerfSnapshot === "function") ? audioPerfSnapshot() : { ok: false };
   perfUpdateBadge(s);
   const now = performance.now();
