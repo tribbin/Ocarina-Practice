@@ -59,6 +59,19 @@ html[data-theme="oot"] {
   --key-now-black-ring: #b8f090;
   --menu: #0a3a0a;
 }
+/* Light surfaces inside the Hyrule theme: the library dialog card and the perf
+   meters pop keep the app's cream look, so they need the light-surface token
+   values locally (OOT re-scopes --ink/--muted/--panel for the dark panels,
+   which made the save-dialog input/Cancel and the perf table unreadable). */
+html[data-theme="oot"] .lib-dialog-card { --panel: #fff; }
+html[data-theme="oot"] .lib-dialog-input {
+  background: #fff; border-color: rgba(24, 80, 18, 0.5);
+}
+html[data-theme="oot"] .lib-dialog-row button:not(.lib-dialog-ok) {
+  background: #fff; border-color: rgba(24, 80, 18, 0.5); color: #12380d;
+}
+html[data-theme="oot"] .lib-toast { --ink: #eaf6e2; }
+html[data-theme="oot"] .perf-pop { --muted: rgba(20, 62, 14, 0.82); }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: var(--paper); color: var(--ink);
   font: 15px/1.45 "Source Sans 3", "Segoe UI", sans-serif; }
@@ -115,6 +128,12 @@ html[data-theme="oot"] .panel {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
+/* The glass blur isolates each .panel into its own stacking context, so the
+   perf pop (descending from the playback head's glass) could never paint
+   over the fingering-cards panel below, whatever its z-index said. Order the
+   two sections explicitly: the input/playback panel rides above the tabs. */
+html[data-theme="oot"] section.panel.noprint { position: relative; z-index: 2; }
+html[data-theme="oot"] #tabPanel { position: relative; z-index: 1; }
 html[data-theme="oot"] .block {
   background: rgba(8, 52, 8, 0.4);
 }
