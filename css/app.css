@@ -72,6 +72,15 @@ html[data-theme="oot"] .lib-dialog-row button:not(.lib-dialog-ok) {
 }
 html[data-theme="oot"] .lib-toast { --ink: #eaf6e2; }
 html[data-theme="oot"] .perf-pop { --muted: rgba(20, 62, 14, 0.82); }
+/* Buttons on OOT light surfaces lose the white-on-glass treatment: the Lite
+   switch in the perf pop and the toast's ghost buttons sit on cream/warm
+   light backgrounds where white text vanished. */
+html[data-theme="oot"] .perf-pop button {
+  color: #12380d; border-color: rgba(24, 80, 18, 0.5);
+}
+html[data-theme="oot"] .glitch-toast button.ghost {
+  color: var(--warn-ink); border-color: rgba(122, 42, 31, 0.45);
+}
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: var(--paper); color: var(--ink);
   font: 15px/1.45 "Source Sans 3", "Segoe UI", sans-serif; }
