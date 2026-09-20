@@ -668,15 +668,26 @@ function buildTokenEl(t, i) {
   return el;
 }
 
-function drawTokenStrip(box, tokens) {
+function drawTokenStrip(box, tokens, sectioned) {
   if (!box) return;
   box.innerHTML = "";
-  tokens.forEach((t, i) => box.appendChild(buildTokenEl(t, i)));
+  tokens.forEach((t, i) => {
+    // Playback strip (sectioned): a named bar starts a new section — put its
+    // name on its own header row before the tokens resume. The Zen reading
+    // strip stays a flat line of tokens.
+    if (sectioned && t.type === "bar" && t.desc) {
+      const h = document.createElement("div");
+      h.className = "sec-head";
+      h.textContent = t.desc;
+      box.appendChild(h);
+    }
+    box.appendChild(buildTokenEl(t, i));
+  });
 }
 
 function drawTokens(tokens) {
   hoverQuietUntil = Date.now() + 400;
-  drawTokenStrip(document.getElementById("tokens"), tokens);
+  drawTokenStrip(document.getElementById("tokens"), tokens, true);
   drawTokenStrip(document.getElementById("focusTokens"), tokens);
 }
 
