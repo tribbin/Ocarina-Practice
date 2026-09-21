@@ -1037,7 +1037,9 @@ function updateTransportUI() {
   });
   const fp = document.getElementById("focusPlay");
   if (fp) {
-    fp.textContent = playing ? "\u23F8" : "\u25B6";
+    // text-only glyphs: the ⏸/▶ characters are emoji-default and phones
+    // paint them in the color emoji font (they ignored the button's color)
+    fp.textContent = playing ? "\u2016" : "\u25BA";
     fp.classList.toggle("is-playing", playing);
   }
 }
