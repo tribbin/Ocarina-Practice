@@ -1,0 +1,33 @@
+# Practice acceptance gate: the "play output accepted by practice" suite
+# (headless Chromium mic frames via the page's ?practiceTest=1 provider)
+# runs on every push/PR/manual dispatch. Deployment itself stays with
+# GitHub Pages' built-in branch deployment ("Deploy from a branch"): it
+# ships on every push to main without this workflow, so these runs are a
+# health check — NOT a deploy gate (flip the workflow to an Actions-based
+# publish if a hard gate is ever wanted).
+
+name: practice tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  practice-tests:
+    name: practice accepts the play output
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install Playwright + Chromium
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
+      - name: Run practice acceptance tests
+        run: python tests/practice_accepts_melody.py
