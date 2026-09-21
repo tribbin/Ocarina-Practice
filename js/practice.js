@@ -59,11 +59,16 @@
     restLeft: 0,        // ms left of a rest
     hz: 0, hzSm: 0, rms: 0, cents: 0,
     mic: null,          // { stream, source, analyser, buf, sr }
+    micTimer: 0,        // deferred getUserMedia kickoff (see startPractice)
     interval: 0, last: 0,
     err: "",
   };
 
   const TEST = /[?&]practiceTest=1\b/.test(location.search);
+  // ?nomic=1 — diagnostic: run the tuner UI without ever touching a capture
+  // device. Decides whether the engage-time click is capture-activation
+  // (mic-open churn at the audio endpoint) or something else entirely.
+  const NOMIC = /[?&]nomic=1\b/.test(location.search);
 
   // ---------------------------------------------------------------- helpers
   function dbg() {
@@ -407,12 +412,15 @@
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       throw new Error("Microphone access needs HTTPS (localhost is fine).");
     }
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
-    });
+    // Context first: ?micopen=1 boots straight into this call, before any
+    // gesture created one — a suspended context still accepts the analysis
+    // graph, and it runs as soon as the first button click resumes it.
     if (typeof unlockAudio === "function") unlockAudio();
     const ctx = typeof audioCtx !== "undefined" && audioCtx ? audioCtx : null;
     if (!ctx) throw new Error("Audio context unavailable.");
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+    });
     const source = ctx.createMediaStreamSource(stream);
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 2048;
@@ -431,6 +439,7 @@
       buf: new Float32Array(analyser.fftSize),
       sr: ctx.sampleRate,
       trackRate,
+      connected: true, // source→analyser wired; stopPractice detaches only
     };
   }
 
@@ -902,7 +911,22 @@
     const start = nextPitchedIdx((typeof fromIdx === "number") ? fromIdx : 0);
     if (start < 0) { P.err = "No playable notes in this melody."; renderPanel(); return; }
     enterIdx(start);
-    if (!TEST) { try { micFlow(); } catch (e) { P.err = String(e && e.message || e); renderPanel(); } }
+    if (!TEST && !NOMIC) {
+      if (P.mic) {
+        // Persistent capture session: attach the analysis node back — copying
+        // a live stream costs no device access, so no endpoint churn, no pop.
+        try { P.mic.source.connect(P.mic.analyser); P.mic.connected = true; } catch (e) {}
+      } else {
+        // First open on the page: drive out mid-note — defer until the last
+        // voice is fully stopped (fade 30 ms + source stop 50 ms + slack) so
+        // the endpoint churn happens over silence.
+        if (P.micTimer) clearTimeout(P.micTimer); // re-engage: one pending open
+        P.micTimer = setTimeout(() => {
+          P.micTimer = 0;
+          try { micFlow(); } catch (e) { P.err = String(e && e.message || e); renderPanel(); }
+        }, 450);
+      }
+    }
     if (!P.interval) {
       P.last = performance.now();
       P.interval = setInterval(tick, TICK_MS);
@@ -923,10 +947,14 @@
   function stopPractice() {
     P.active = false; P.paused = false; P.completed = false; P.bar = null;
     if (P.interval) { clearInterval(P.interval); P.interval = 0; }
-    if (P.mic) {
+    if (P.micTimer) { clearTimeout(P.micTimer); P.micTimer = 0; } // never open mic for a closed session
+    if (P.mic && P.mic.connected) {
+      // Detach the capture from the graph but KEEP the device session: on real
+      // hardware every fresh getUserMedia chums the audio endpoint (an audible
+      // pop when anything was sounding). One open per page session — later
+      // practice engagements reconnect the node instantly, silently.
       try { P.mic.source.disconnect(); } catch (e) {}
-      try { P.mic.stream.getTracks().forEach(tr => tr.stop()); } catch (e) {}
-      P.mic = null;
+      P.mic.connected = false;
     }
     clearOverlays();
     // The last note is still wearing its "now" highlight; reset the score UI
@@ -1002,6 +1030,14 @@
     start: startPractice, stop: stopPractice,
     status: () => panel && els.status ? panel.querySelector(".prac-status").textContent : "",
   };
+
+  // ?micopen=1 — diagnostic/probe mode: acquire the capture device ONCE at
+  // boot (over silence, before any melody) and keep it for the whole page
+  // session. Practice engagements then never touch capture access at all —
+  // if the engage-time pop vanishes in this mode, it was capture-open churn.
+  if (/[?&]micopen=1\b/.test(location.search) && !TEST && !NOMIC) {
+    try { micFlow(); } catch (e) {}
+  }
 })();
 
 // Convenience globals used by ui.js hooks (guarded by typeof at call sites)

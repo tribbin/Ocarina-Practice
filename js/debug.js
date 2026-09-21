@@ -238,13 +238,16 @@
     var flat = new Float32Array(wavN * 4096);
     for (var i = 0; i < wavN; i++) flat.set(wavBlocks[i], i * 4096);
     wavTap = null; wavBlocks = null; wavN = 0;
-    // encode 16-bit mono WAV + download
+    // encode 16-bit mono WAV + download (header rate = the context's real
+    // sample rate — a hardcoded 44100 made the export read wrong in Audacity
+    // on 48 kHz devices)
+    var sr = (typeof audioCtx !== "undefined" && audioCtx) ? audioCtx.sampleRate : 44100;
     var n = flat.length;
     var buf = new ArrayBuffer(44 + n * 2), dv = new DataView(buf);
     var ws = function (off, str) { for (var i2 = 0; i2 < str.length; i2++) dv.setUint8(off + i2, str.charCodeAt(i2)); };
     ws(0, "RIFF"); dv.setUint32(4, 36 + n * 2, true); ws(8, "WAVE"); ws(12, "fmt ");
     dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
-    dv.setUint32(24, 44100, true); dv.setUint32(28, 88200, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true);
+    dv.setUint32(24, sr, true); dv.setUint32(28, sr * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true);
     ws(36, "data"); dv.setUint32(40, n * 2, true);
     for (var j = 0; j < n; j++) {
       var v = Math.max(-1, Math.min(1, flat[j]));
@@ -257,7 +260,7 @@
     a.click();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
     wavDone();
-    console.log("[audio debug] WAV exported (" + (n / 44100).toFixed(2) + " s, 44.1 k mono 16-bit)");
+    console.log("[audio debug] WAV exported (" + (n / sr).toFixed(2) + " s, " + sr + " mono 16-bit)");
   }
   wavBtn.addEventListener("click", function () {
     if (wavEl) { finishWav(); return; }  // second click truncates + saves
@@ -273,7 +276,7 @@
         if (wavBlocks) {
           wavBlocks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
           wavN++;
-          if (wavN >= Math.ceil(3.5 * 44100 / 4096)) finishWav();
+          if (wavN >= Math.ceil(3.5 * audioCtx.sampleRate / 4096)) finishWav();
         }
       };
       (typeof getReverbBus === "function" ? getReverbBus(audioCtx) : audioCtx.destination).connect(wavTap);

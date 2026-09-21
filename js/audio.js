@@ -421,6 +421,81 @@ function getLiteBus(ctx) {
   return liteBus;
 }
 
+// Cut-safe melody bus: every melody-bag voice feeds this thin layer before the
+// output buses. Cutting the melody (stop / pause / practice swap) decays THIS
+// gain only — it carries its own single-event timeline (statically 1, set once
+// at creation), so the decay's start value is unambiguous — the exact static
+// value, never a cancel-and-re-anchor guess: no cancelScheduledValues /
+// cancelAndHoldAtTime / .value reads anywhere on this path. Per-voice fades
+// still run underneath for hover/live cuts. Live-preview voices bypass this
+// bus intentionally: they cut via their own fades.
+const cutBuses = new Map(); // wire -> bus gain
+function getMelodyCutBus(ctx, wire) {
+  let b = cutBuses.get(wire);
+  if (!b || b.context !== ctx) {
+    b = ctx.createGain();
+    b.gain.value = 1;
+    b.connect(wire);
+    cutBuses.set(wire, b);
+  }
+  return b;
+}
+function isMelodyBag(bag) { return bag === melodyBag; }
+// Render-cut the melody buses as ONE continuous event per bus: an exponential
+// setTargetAtTime decay, scheduled a little AHEAD of the render cursor. Three
+// rules come straight from this bug's history:
+// 1. Never schedule at exactly .currentTime — events that land on/behind the
+//    cursor execute as an instant step (the "speaker connect" pop; the same
+//    collapse playNoteAt already fights for note attacks with its +15 ms
+//    lead). A 30 ms lead buys the event safe headroom in front of the cursor.
+// 2. No .value writes at cut time — each raw write renders blockwise and was
+//    audible as individual clicks (the 10 ms staircase turned the pop into
+//    crackle). One continuous event replaces the whole staircase.
+// 3. Never cancel/re-anchor — the bus is statically 1 with no other
+//    automation, so the decay starts from the exact true value with no seam,
+//    and two cuts in a row chain smoothly (each event continues from the
+//    value the previous decay had reached).
+const CUT_LEAD = 0.03; // s ahead of the cursor when scheduling the decay
+const CUT_TAU = 0.035; // s time constant (~-60 dB after 6 tau ≈ 0.21 s)
+// Earliest safe source-stop horizon: strictly past the bus decay's end, so a
+// stopped oscillator can never sweep a still-sounding level.
+const melodyStopAt = ctx => ctx.currentTime + CUT_LEAD + 0.27;
+// Buses of already-cut generations. disconnect()ing a bus drops the whole
+// dead voice branch — but only once it is provably silent (voices are
+// stopped at melodyStopAt), or the disconnect itself is a wave-abort click.
+const retiredBuses = []; // { bus, at } — at = audio time of the cut
+function reapRetiredBuses(ctx) {
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  for (let i = retiredBuses.length; i-- > 0;) {
+    const r = retiredBuses[i];
+    if (r.at + 0.4 < now) {
+      try { r.bus.disconnect(); } catch (e) {}
+      retiredBuses.splice(i, 1);
+    }
+  }
+}
+function fadeMelodyBuses(ctx) {
+  if (!ctx) return;
+  const at = ctx.currentTime + CUT_LEAD;
+  for (const b of cutBuses.values()) {
+    if (b.context !== ctx) continue;
+    try { b.gain.setTargetAtTime(0.0001, at, CUT_TAU); } catch (e) {}
+    retiredBuses.push({ bus: b, at: ctx.currentTime });
+  }
+  cutBuses.clear();
+  reapRetiredBuses(ctx);
+}
+// Prepares a fresh bus generation (the next melody voices build brand-new
+// buses). No value writes: nothing here can disturb a still-decaying older
+// generation, and a replay pressed immediately after a cut can no longer
+// un-mute it (the old generation keeps decaying on its retired bus).
+function resetMelodyBuses(ctx) {
+  if (!ctx) return;
+  cutBuses.clear();
+  reapRetiredBuses(ctx);
+}
+
 // Called by the UI when Zen mode is entered/exited. Idempotent: safe to call
 // with the same state repeatedly. `reverbEnabled` is the single source of
 // truth — a lazily-created reverb bus reads it at build time, and any existing
@@ -809,7 +884,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       } else {
         osc2.frequency.setValueAtTime(freq, t0);
       }
-      osc2.connect(lp2); lp2.connect(g); g.connect(getLiteBus(ctx));
+      osc2.connect(lp2); lp2.connect(g); g.connect(isMelodyBag(bag) ? getMelodyCutBus(ctx, getLiteBus(ctx)) : getLiteBus(ctx));
       osc2.start(t0); osc2.stop(t0 + dur + stopOff);
       // until: absolute audio time past which nothing of this voice still
       // sounds — lets pruneBag() retire finished voices (and let the browser
@@ -819,10 +894,19 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
         stop() { try { osc2.stop(); } catch (e) {} },
         kill() { g.disconnect(); },
         fade() {
+          // Melody voices are faded by the cut-bus decay — no per-voice
+          // automation; sources are stopped strictly past the decay's end.
+          if (isMelodyBag(bag)) {
+            try { osc2.stop(melodyStopAt(ctx)); } catch (e) {}
+            return;
+          }
           const now = ctx.currentTime;
           try {
-            g.gain.cancelScheduledValues(now);
-            g.gain.setValueAtTime(Math.max(0.0001, g.gain.value || AUDIO_DEBUG.masterLevel), now);
+            if (g.gain.cancelAndHoldAtTime) g.gain.cancelAndHoldAtTime(now); // hold the computed value — no seam (see rampFades note)
+            else {
+              g.gain.cancelScheduledValues(now);
+              g.gain.setValueAtTime(Math.max(0.0001, g.gain.value || AUDIO_DEBUG.masterLevel), now);
+            }
             g.gain.linearRampToValueAtTime(0.0001, now + 0.03);
             osc2.stop(now + 0.05);
           } catch (e) {}
@@ -912,7 +996,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       if (!intoSlide) g.gain.setValueAtTime(0.0001, t0 + dur + tail);
     }
     schedEnv(master);
-    master.connect(getReverbBus(ctx));
+    master.connect(isMelodyBag(bag) ? getMelodyCutBus(ctx, getReverbBus(ctx)) : getReverbBus(ctx));
 
     const lp = ctx.createBiquadFilter();
     lp.type = "lowpass";
@@ -952,7 +1036,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       const panL = ctx.createStereoPanner();
       panL.pan.value = -zenPan;
       trem.connect(coreL); coreL.connect(panL);
-      panL.connect(getReverbBus(ctx));
+      panL.connect(isMelodyBag(bag) ? getMelodyCutBus(ctx, getReverbBus(ctx)) : getReverbBus(ctx));
       panDisc.push(panL);
     } else {
       trem.connect(master);
@@ -1107,7 +1191,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       panR.pan.value = zenPan;
       twinOsc.connect(lpT); lpT.connect(tremT); tremT.connect(twinEnv);
       twinEnv.connect(panR);
-      panR.connect(getReverbBus(ctx));
+      panR.connect(isMelodyBag(bag) ? getMelodyCutBus(ctx, getReverbBus(ctx)) : getReverbBus(ctx));
       panDisc.push(panR);
       wobAmpGains.forEach(g => g.connect(tremT.gain));
       lfoT = ctx.createOscillator();
@@ -1288,7 +1372,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       cutFades.push({ g: otGain, level: 0.0001 });
       // Connect PAST master's attack envelope (which is near-zero during the
       // onset and would swallow this transient) straight to the output bus.
-      otGain.connect(getReverbBus(ctx));
+      otGain.connect(isMelodyBag(bag) ? getMelodyCutBus(ctx, getReverbBus(ctx)) : getReverbBus(ctx));
 
       // Noisy, airy component: bandpass-filtered noise around the octave, with a
       // little downward sweep as the tone "focuses" onto the fundamental. High Q
@@ -1321,24 +1405,45 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
         until: t0 + otOff + otDur + 0.1,
         stop() { try { ot.stop(); } catch (e) {} try { otNoise.stop(); } catch (e) {} },
         kill() { otGain.disconnect(); },
-        fade() { const n = ctx.currentTime + 0.05; try { ot.stop(n); } catch (e) {} try { otNoise.stop(n); } catch (e) {} }
+        fade() {
+          // Melody cuts stop sources past the bus decay's end (no chop);
+          // hovering/live cuts stop shortly after a real 30 ms fade.
+          const n = isMelodyBag(bag) ? melodyStopAt(ctx) : ctx.currentTime + 0.05;
+          try { ot.stop(n); } catch (e) {} try { otNoise.stop(n); } catch (e) {}
+        }
       });
     }
 
     if (bag) {
       const stopN = (n, t) => { try { if (n) (t == null ? n.stop() : n.stop(t)); } catch (e) {} };
+      // Weave in a cut that does not click: cancelScheduledValues alone discards
+      // the plateau, so the param falls back to its INTRINSIC value — a gain
+      // never assigned statically sits at its default 1.0 while the note's
+      // real plateau is lower (measured seam: 0.87→1.0 step at ~bg full amp,
+      // heard as a click at the cut instant). cancelAndHoldAtTime freezes the
+      // COMPUTED value instead — that is the clickless anchor; the .value
+      // fallback only runs where cancelAndHold is still unsupported.
+      const holdNow = (g, level) => {
+        const now = ctx.currentTime;
+        try {
+          if (g.gain.cancelAndHoldAtTime) g.gain.cancelAndHoldAtTime(now);
+          else {
+            g.gain.cancelScheduledValues(now);
+            g.gain.setValueAtTime(Math.max(0.0001, g.gain.value || level), now);
+          }
+        } catch (err) {}
+      };
       // fade() ramps EVERY saved gain edge (master, chorus sends, air/edge/
       // wind/chiff/overtone gains) from its CURRENT scheduled value down to
-      // near-zero over 30 ms, THEN stops the sources — no component is cut
-      // mid-level (the fast-hover "ticks": the wind gain held its plateau
-      // right to the release and got chopped dead by the old stop-only cut).
+      // near-zero, THEN stops the sources — no component is cut mid-level.
+      // Live/hover voices only: melody cuts never come through here (their
+      // audible fade lives on the cut buses; see fadeMelodyBuses).
       const rampFades = () => {
-        const now = ctx.currentTime;
+        const tEnd = ctx.currentTime + 0.03;
         for (const e of cutFades) {
           try {
-            e.g.gain.cancelScheduledValues(now);
-            e.g.gain.setValueAtTime(Math.max(0.0001, e.g.gain.value || e.level), now);
-            e.g.gain.linearRampToValueAtTime(0.0001, now + 0.03);
+            holdNow(e.g, e.level);
+            e.g.gain.linearRampToValueAtTime(0.0001, tEnd);
           } catch (err) {}
         }
       };
@@ -1350,8 +1455,22 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
           for (const p of panDisc) { try { p.disconnect(); } catch (e) {} }
         },
         fade() {
+          // For melody voices: NO per-voice gain automation at all — the
+          // cut-bus decay owns the audible fade (one exponential event per
+          // bus, scheduled ahead of the cursor; see fadeMelodyBuses). Only
+          // the sources are stopped, strictly past the decay's end so a stop
+          // can never sweep a still-sounding level. Live/hover voices (piano,
+          // hover previews) keep their per-voice fade ramp: they are not
+          // reported popping and their cuts are rare.
+          if (isMelodyBag(bag)) {
+            const stopAt = melodyStopAt(ctx);
+            stopN(osc, stopAt); stopN(twinOsc, stopAt); stopN(lfoT, stopAt);
+            stopN(air, stopAt); stopN(edge, stopAt); stopN(wander, stopAt);
+            stopN(chiffSrc, stopAt);
+            return;
+          }
           rampFades();
-          const stopAt = ctx.currentTime + 0.05;
+          const stopAt = ctx.currentTime + 0.06;
           stopN(osc, stopAt); stopN(twinOsc, stopAt); stopN(lfoT, stopAt);
           stopN(air, stopAt); stopN(edge, stopAt); stopN(wander, stopAt);
           stopN(chiffSrc, stopAt);
@@ -1395,7 +1514,16 @@ function playTickAt(when, bag) {
     if (bag) bag.push({
       until: t0 + dur + 0.02 + 0.08,
       stop() { try { osc.stop(); } catch (e) {} },
-      kill() { g.disconnect(); }
+      kill() { g.disconnect(); },
+      fade() {
+        // A mid-tick cut needs NO gain writes: the tick's own envelope
+        // (attack to 0.09 in 2 ms, exponential down to 0.0001 by t0+40 ms)
+        // always finishes before any reachable stop time — a cut scheduled
+        // at now lands at earliest t0+50 ms, past the envelope's silent end,
+        // so stopping there can never sweep a sounding level. A tick cut
+        // before its start time simply never sounds.
+        try { osc.stop(ctx.currentTime + 0.05); } catch (e) {}
+      }
     });
   } catch (e) {}
 }
@@ -1407,6 +1535,7 @@ function stopMelody() {
   melodyPaused = false;
   melodyBag.forEach(n => { try { (n.fade || n.stop)(); } catch (e) {} });
   melodyBag = [];
+  fadeMelodyBuses(audioCtx); // one setTargetAtTime decay per bus — the melody's audible cut
   if (melodyTimer) { clearTimeout(melodyTimer); melodyTimer = 0; }
   if (typeof freezeZenGlow === "function") freezeZenGlow();
   const btn = document.getElementById("playMel");
@@ -1440,6 +1569,7 @@ function playMelody(fromIdx) {
   const btn = document.getElementById("playMel");
   if (btn) btn.textContent = "Stop";
   syncTransport();
+  resetMelodyBuses(audioCtx); // fresh bus generation for the upcoming voices
   scheduleMelody(audioCtx.currentTime + 0.05);
 }
 
@@ -1449,6 +1579,7 @@ function pauseMelody() {
   melodyPaused = true;
   melodyBag.forEach(n => { try { (n.fade || n.stop)(); } catch (e) {} });
   melodyBag = [];
+  fadeMelodyBuses(audioCtx); // one setTargetAtTime decay per bus — the melody's audible cut
   if (melodyTimer) { clearTimeout(melodyTimer); melodyTimer = 0; }
   if (typeof freezeZenGlow === "function") freezeZenGlow();
   const btn = document.getElementById("playMel");
@@ -1465,6 +1596,7 @@ function resumeMelody() {
   const btn = document.getElementById("playMel");
   if (btn) btn.textContent = "Stop";
   syncTransport();
+  resetMelodyBuses(audioCtx); // fresh bus generation for the upcoming voices
   scheduleMelody(audioCtx.currentTime + 0.05);
 }
 
