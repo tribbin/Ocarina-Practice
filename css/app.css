@@ -515,6 +515,13 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .sec-head:first-child { border-top: 0; margin-top: 0; }
+/* Same header row on the card sheet (grid view + the print/download sheet):
+   one step larger than the strip's, and printing must not strand a header
+   alone at a page bottom with its section's cards on the next page. */
+.sheet .sec-head {
+  font-size: 12px;
+  page-break-after: avoid; break-after: avoid;
+}
 
 .playback {
   margin-top: 12px; border: 1px solid var(--line); border-radius: 8px;

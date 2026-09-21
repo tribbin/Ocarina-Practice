@@ -172,10 +172,23 @@ function appendNoteCard(sheet, t, i) {
   sheet.appendChild(card);
 }
 
-function fillFullSheet(sheet, tokens) {
+function fillFullSheet(sheet, tokens, sectioned = true) {
   sheet.classList.remove("live");
   tokens.forEach((t, i) => {
     if (t.type === "bar") {
+      // A named bar OPENS a section: in row layouts (grid + print) its name
+      // gets a full-width .sec-head row and the measure line is dropped — the
+      // section header replaces it (a row-leading zero-width line would
+      // otherwise dangle outside the sheet's left edge, it has nothing to its
+      // left to sit between). The scroll band has no header row, so its
+      // tagged line stays there.
+      if (sectioned && t.desc) {
+        const h = document.createElement("div");
+        h.className = "sec-head";
+        h.textContent = t.desc;
+        sheet.appendChild(h);
+        return;
+      }
       const b = document.createElement("div"); b.className = "tab-bar";
       if (t.desc) { b.classList.add("has-note"); b.title = t.desc; }
       sheet.appendChild(b); return;
@@ -359,7 +372,9 @@ function render() {
       fillLiveSheet(sheet, tokens, liveIdx);
     } else {
       sheet.classList.toggle("scroll", isScrollMode());
-      fillFullSheet(sheet, tokens);
+      // Section headers belong to row/grid layouts: the scroll band is a
+      // nowrap strip where a full-width header row cannot fit.
+      fillFullSheet(sheet, tokens, !isScrollMode());
     }
     updateRangeWarning(outOf);
     err.textContent = problems.join(" · ");
