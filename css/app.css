@@ -1115,6 +1115,10 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
   display: flex; align-items: center; gap: 10px;
   font-weight: 700; font-size: 15px; color: var(--ink);
 }
+/* The playback-only dials dim while practice owns the transport — opacity
+   only: no layout change (the zen bar must not jump), ghosted and inert. */
+.tempo-grp, .focus-tempo { transition: opacity .2s linear; }
+.tempo-grp.dial-off, .focus-tempo.dial-off { opacity: .18; pointer-events: none; }
 #tabPanel.focus .focus-tempo,
 #tabPanel.focus .focus-tempo span,
 #tabPanel.focus .focus-tempo label { color: var(--paper); }

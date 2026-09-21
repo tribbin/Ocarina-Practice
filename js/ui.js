@@ -1015,6 +1015,14 @@ function updateTransportUI() {
   const pracRuns = (typeof isPracticeActive === "function" && isPracticeActive()) &&
     !(typeof isPracticePaused === "function" && isPracticePaused());
   const playing = (typeof isMelodyPlaying === "function" && isMelodyPlaying());
+  // The playback-only dials shape playback only — practice ignores them, so
+  // they DIM while practice is engaged. Opacity only (never hidden): the zen
+  // bar keeps its geometry (no jump) and restore is automatic.
+  const tempoOff = (typeof isPracticeActive === "function" && isPracticeActive());
+  const tg = document.getElementById("tempoGrp");
+  if (tg) tg.classList.toggle("dial-off", tempoOff);
+  const ft = document.getElementById("focusTempoLab");
+  if (ft) ft.classList.toggle("dial-off", tempoOff);
   const main = document.getElementById("playMel");
   if (main) {
     main.textContent = playing ? "Stop" : "Play";
