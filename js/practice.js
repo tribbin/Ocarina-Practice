@@ -235,7 +235,18 @@
   }
 
   function makeDraggable(p) {
-    let sx = 0, sy = 0, ox = 0, oy = 0, dragging = false;
+    let sx = 0, sy = 0, ox = 0, oy = 0, cbx = 0, cby = 0, dragging = false;
+    // Write a desired VIEWPORT top-left into the panel's left/top: any CSS
+    // filter/backdrop-filter ancestor (~oot blurs #tabPanel) or transform
+    // turns that ancestor into this fixed panel's containing block, so
+    // left/top coordinates stop being viewport ones by exactly that
+    // ancestor's origin — the "drag jumps away from the cursor" bug. The
+    // measured offset absorbs it (zero when the viewport IS the containing
+    // block, e.g. no theme, or the zen fullscreen element at 0,0).
+    const apply = (x, y) => {
+      p.style.left = (x - cbx) + "px";
+      p.style.top = (y - cby) + "px";
+    };
     p.addEventListener("pointerdown", e => {
       if (e.button !== 0) return;
       if (e.target.closest("button")) return; // drag the face, not the controls
@@ -245,6 +256,12 @@
       p.style.transform = "none";
       p.style.left = r.left + "px";
       p.style.top = r.top + "px";
+      // readback forces layout: the shift between anchor write and measured
+      // rect IS the containing block's origin (0 in the plain case)
+      const r2 = p.getBoundingClientRect();
+      cbx = r2.left - r.left;
+      cby = r2.top - r.top;
+      apply(r.left, r.top);
       dragging = true;
       sx = e.clientX; sy = e.clientY; ox = r.left; oy = r.top;
       p.setPointerCapture(e.pointerId);
@@ -255,8 +272,7 @@
       const w = p.offsetWidth, h = p.offsetHeight;
       const x = Math.max(4, Math.min(window.innerWidth - w - 4, ox + e.clientX - sx));
       const y = Math.max(4, Math.min(window.innerHeight - h - 4, oy + e.clientY - sy));
-      p.style.left = x + "px";
-      p.style.top = y + "px";
+      apply(x, y);
     });
     const done = () => dragging = false;
     p.addEventListener("pointerup", done);
