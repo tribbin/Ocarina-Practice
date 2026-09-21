@@ -99,10 +99,6 @@
     if (!t || t.type === "bar" || t.type === "tempo") return 0;
     return t.beats || ((4 / (t.dur || 4)) * (t.dotted ? 1.5 : 1) * (t.triplet ? 2 / 3 : 1));
   }
-  function spelled(id, tok) {
-    if (tok && typeof spelledLabel === "function") return spelledLabel(tok);
-    return String(id).replace(/^([A-G])s(\d)$/, "$1#$2");
-  }
   function centsOf(hz, target) {
     return hz > 0 && target > 0 ? 1200 * Math.log2(hz / target) : 999;
   }
@@ -205,7 +201,6 @@
   }
 
   // ------------------------------------------------------------ state texts
-  function barName() { return spelled(P.bar.names ? P.bar.names[0] : P.bar.chainId, P.tokens[P.bar.startIdx]); }
   function barChain() { return (P.bar.names || [P.bar.chainId]).join("\u2192"); }
   function barFilled(b) { let s = 0; for (const x of b.segs) s += x; return s; }
   // Progress toward the release point: segTargets already carry the 75%
@@ -225,11 +220,13 @@
     P.msgHoldUntil = performance.now() + HOLD_MSG_MS;
   }
   function statusText(s) {
+    // The target note is always shown by the tuner's own big note label, so
+    // the status line never repeats it. Only chains keep the segment route.
     switch (s) {
-      case "await": return "Fresh attack needed — pause briefly, then hit " + barName();
-      case "ready": return "Ready — play " + barName();
+      case "await": return "Fresh attack needed — pause briefly, then hit.";
+      case "ready": return "Ready.";
       case "hit": return "Hit. Steady to the pitch…";
-      case "fill": return P.bar.slide ? "Bend " + barChain() : "Hold " + barName();
+      case "fill": return P.bar.slide ? "Bend " + barChain() : "Hold.";
       case "rest": return "Rest";
       default: return "";
     }
@@ -248,13 +245,11 @@
     panel.hidden = true;
     panel.innerHTML =
       '<div class="prac-row1"><span class="prac-note">—</span>' +
-      '<span class="prac-cents">0¢</span>' +
       '<span class="prac-status"></span>' +
       '<span class="prac-fillval"></span></div>' +
       '<div class="prac-scale"><div class="prac-zone"></div><div class="prac-mark"></div></div>' +
       '<div class="prac-track"><div class="prac-fill"></div></div>';
     els.note = panel.querySelector(".prac-note");
-    els.cents = panel.querySelector(".prac-cents");
     els.status = panel.querySelector(".prac-status");
     els.fillval = panel.querySelector(".prac-fillval");
     els.scale = panel.querySelector(".prac-scale");
@@ -440,8 +435,6 @@
       // The tuning bar itself is the registered/unregistered feedback: it
       // only shows while the mic registers a pitch above the noise floor.
       els.scale.classList.toggle("prac-idle", !P.signal);
-      els.cents.textContent = (!P.signal || Math.abs(P.cents) > 300)
-        ? "—" : (P.cents > 0 ? "+" : "") + P.cents.toFixed(0) + "\u00A2";
       const zw = Math.min(100, (dg.tuneCents / needleHi) * 50);
       els.zone.style.left = (50 - zw) + "%";
       els.zone.style.width = (zw * 2) + "%";
@@ -452,9 +445,11 @@
         els.fill.style.background = (P.state === "fill" && barFilled(P.bar) > 0) || P.state === "hit"
           ? zoneHex() : (barFilled(P.bar) > 0 ? "var(--accent)" : "transparent");
       }
-      els.fillval.textContent = (P.bar.zones.length > 1
-        ? "zone " + ((P.zonesNear < 0 ? 0 : P.zonesNear) + 1) + "/" + P.bar.zones.length + " · " : "") +
-        Math.round(pct) + "% · " + (P.bar.targetSec).toFixed(1) + "s";
+      // No numeric readouts (percent/seconds live on the fill bar itself);
+      // chains keep only the zone counter, since the section order matters.
+      els.fillval.textContent = P.bar.zones.length > 1
+        ? "zone " + ((P.zonesNear < 0 ? 0 : P.zonesNear) + 1) + "/" + P.bar.zones.length
+        : "";
       els.fillval.classList.toggle("prac-warn", P.state === "fill" && barFilled(P.bar) <= 0 && P.rms > dg.rmsGate);
     }
   }
