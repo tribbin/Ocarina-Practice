@@ -178,7 +178,9 @@
     const targetSec = Math.max(0.05, beats * P.quarter * (stac ? 0.5 : 1));
     // Each zone's own sounding tone: its token plus the tie chain absorbed
     // after it, up to the next zone's token (or the bar's end). Held for
-    // 75% of that — travel between zones is covered by the freed quarter.
+    // exactly 75% of that — travel between zones is covered by the freed
+    // quarter. NO upward floor: short notes must never demand more than
+    // they notate; the 1 ms epsilon only guards a degenerate zero token.
     const zoneSecs = zones.map((_, k) => {
       const from = zoneIdx[k];
       const to = k + 1 < zoneIdx.length ? zoneIdx[k + 1] - 1 : end;
@@ -187,7 +189,7 @@
         if (tokens[j].type === "bar" || tokens[j].type === "tempo") continue;
         zb += gridBeats(tokens[j]);
       }
-      return Math.max(0.05, zb * P.quarter * (stac ? 0.5 : 1));
+      return zb * P.quarter * (stac ? 0.5 : 1);
     });
     const freqs = zones.slice().sort((a, b) => a - b);
     return {
@@ -195,7 +197,7 @@
       zoneIdx,                               // token index of each zone
       hiZone: 0,                             // zone currently highlighted
       targetSec,
-      segTargets: zoneSecs.map(s => s * 1000 * REQUIRED_FRAC), // ms each zone must earn
+      segTargets: zoneSecs.map(s => Math.max(1, s * 1000 * REQUIRED_FRAC)), // ms each zone must earn
       segs: zones.map(() => 0),              // ms credited per zone
       grace: zones.map(() => 0),             // arrival tolerance left per zone
       minZ: freqs[0], maxZ: freqs[freqs.length - 1], // corridor bounds
