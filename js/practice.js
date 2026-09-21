@@ -15,7 +15,8 @@
 // tempo dial is ignored here. Staccato notes require half their normal
 // duration. Ties are one hit held for the chain's whole summed length, even
 // across a bar line, and a `~` slide becomes a CHAIN: one segment per
-// pitch; each zone must earn 75% of its equal share — the player must
+// pitch; each zone must earn 75% of its own notated tone (ties included) —
+// the player must
 // actually travel through the pitches (transit between zones is neutral;
 // each zone is reached with its own onset tolerance; successful zones lock
 // in, and only an all-zones-complete bar advances). The missing quarter is
@@ -162,8 +163,8 @@
   // One practice bar = one hit + one fill track made of one segment per
   // pitch (single notes have just zone 0). Ties are absorbed across bar
   // lines; a ~ slide chain adds one zone per hop and the player must credit
-  // 75% of every zone's equal share — camping the first note no longer
-  // finishes.
+  // 75% of every zone's OWN notated tone — camping the first note no longer
+  // finishes, but a short hop never demands more than it notates.
   function buildBar(tokens, i) {
     const chainId = tokens[i].id;
     const { end, zones, names, zoneIdx, slide } = absorbHops(tokens, i, chainId);
@@ -175,13 +176,26 @@
     // Staccato: practice half the note's normal duration (melody is leading).
     const stac = tokens[i].staccato && end === i;
     const targetSec = Math.max(0.05, beats * P.quarter * (stac ? 0.5 : 1));
+    // Each zone's own sounding tone: its token plus the tie chain absorbed
+    // after it, up to the next zone's token (or the bar's end). Held for
+    // 75% of that — travel between zones is covered by the freed quarter.
+    const zoneSecs = zones.map((_, k) => {
+      const from = zoneIdx[k];
+      const to = k + 1 < zoneIdx.length ? zoneIdx[k + 1] - 1 : end;
+      let zb = 0;
+      for (let j = from; j <= to; j++) {
+        if (tokens[j].type === "bar" || tokens[j].type === "tempo") continue;
+        zb += gridBeats(tokens[j]);
+      }
+      return Math.max(0.05, zb * P.quarter * (stac ? 0.5 : 1));
+    });
     const freqs = zones.slice().sort((a, b) => a - b);
     return {
       startIdx: i, endIdx: end, zones, names, chainId, slide, stac,
       zoneIdx,                               // token index of each zone
       hiZone: 0,                             // zone currently highlighted
       targetSec,
-      segTarget: targetSec * 1000 * REQUIRED_FRAC / zones.length, // ms each zone must earn
+      segTargets: zoneSecs.map(s => s * 1000 * REQUIRED_FRAC), // ms each zone must earn
       segs: zones.map(() => 0),              // ms credited per zone
       grace: zones.map(() => 0),             // arrival tolerance left per zone
       minZ: freqs[0], maxZ: freqs[freqs.length - 1], // corridor bounds
@@ -192,14 +206,14 @@
   function barName() { return spelled(P.bar.names ? P.bar.names[0] : P.bar.chainId, P.tokens[P.bar.startIdx]); }
   function barChain() { return (P.bar.names || [P.bar.chainId]).join("\u2192"); }
   function barFilled(b) { let s = 0; for (const x of b.segs) s += x; return s; }
-  // Progress toward the release point: segTarget already carries the 75%
+  // Progress toward the release point: segTargets already carry the 75%
   // requirement, so the whole-bar fraction reaches 1 exactly when the bar
   // completes (every zone holding its required credit).
   function barFrac(b) {
-    const need = b.segTarget * b.zones.length;
+    const need = b.segTargets.reduce((a, x) => a + x, 0);
     return need > 0 ? Math.max(0, Math.min(1, barFilled(b) / need)) : 0;
   }
-  function barDone(b) { return b.segs.every(x => x >= b.segTarget - 1e-6); }
+  function barDone(b) { return b.segs.every((x, k) => x >= b.segTargets[k] - 1e-6); }
   // Feedback hold: entering "await" (a fresh bar, or a hold wiped mid-fill)
   // shows the fresh-attack instruction — but the engine reaches "ready" after
   // only gapMs of silence, so without a hold the long text flashed by
@@ -375,11 +389,12 @@
       }
       [...el.children].forEach((cell, k) => {
         const seg = bar.segs[k] || 0;
-        const frac = Math.max(0, Math.min(1, seg / (bar.segTarget || 1)));
+        const need = bar.segTargets ? bar.segTargets[k] : 0;
+        const frac = need > 0 ? Math.max(0, Math.min(1, seg / need)) : 0;
         const inner = cell.firstChild;
         inner.style.width = (frac * 100) + "%";
         inner.style.background = zoneHexFor(bar.names[k]);
-        inner.style.opacity = seg >= bar.segTarget ? "1" : ".8";
+        inner.style.opacity = need > 0 && seg >= need ? "1" : ".8";
       });
       return true;
     }
@@ -673,8 +688,7 @@
     // never advance its later section while the middle is still open.
     let near = -1, cents = 999;
     if (P.bar) {
-      const segT = P.bar.segTarget;
-      near = P.bar.zones.findIndex((z, k) => P.bar.segs[k] < segT - 1e-6);
+      near = P.bar.zones.findIndex((z, k) => P.bar.segs[k] < P.bar.segTargets[k] - 1e-6);
       if (near < 0) near = zones.length - 1; // all locked: park on the last zone
       cents = centsOf(P.hzSm, zones[near]);
     }
@@ -887,7 +901,7 @@
         // Onset grace: the chiff may read flat/short. The onset COUNTS: the
         // moment it lands in tolerance the hold accrues from there on.
         P.transientLeft -= dt;
-        b.segs[0] = Math.min(b.segTarget, b.segs[0] + dt);
+        b.segs[0] = Math.min(b.segTargets[0], b.segs[0] + dt);
         if (barDone(b)) { finishBar(); return; }
         if (P.transientLeft <= 0) { P.state = "fill"; }
         break;
@@ -902,10 +916,11 @@
         // (fresh attack); a shorter hiccup only pauses it (a measurement
         // glitch must not bankrupt a real hold).
         //
-        // Chain bars (~/slides, multi-hop) split the notated length into
-        // equal shares, one per zone: each zone must earn 75% of its own
-        // share ("the ones that were successful count in the chain") — the
-        // freed quarter is travel budget. The region between zones is in
+        // Chain bars (~/slides, multi-hop) require one hold per zone: each
+        // zone must earn 75% of its OWN notated tone (ties included) — a
+        // short hop never demands more than it notates, and the freed
+        // quarter of every zone is travel budget. The region between zones
+        // is in
         // transit: neutral — no accrual, no drain (so a fast sweep and a
         // slow walk are both legitimate). Chains get a rather large grace
         // toward the next zone (chainTravelMs): it is the wipe threshold
@@ -934,15 +949,15 @@
         } else if (ci <= TUNE) {
           P.dropAcc = 0;
           b.grace[k] = arrMs;
-          if (b.segs[k] < b.segTarget) b.segs[k] = Math.min(b.segTarget, b.segs[k] + dt);
+          if (b.segs[k] < b.segTargets[k]) b.segs[k] = Math.min(b.segTargets[k], b.segs[k] + dt);
         } else if (ci <= TRANS && b.grace[k] > 0) {
           // arrival tolerance: the note counts from the moment it lands
           P.dropAcc = 0;
           b.grace[k] -= dt;
-          if (b.segs[k] < b.segTarget) b.segs[k] = Math.min(b.segTarget, b.segs[k] + dt);
+          if (b.segs[k] < b.segTargets[k]) b.segs[k] = Math.min(b.segTargets[k], b.segs[k] + dt);
         } else if (ci <= OUTER) {
           P.dropAcc = 0;
-          if (b.segs[k] < b.segTarget) {
+          if (b.segs[k] < b.segTargets[k]) {
             const rate = 1 - 3 * (ci - TUNE) / (OUTER - TUNE); // 1 .. -2
             b.segs[k] = Math.max(0, b.segs[k] + rate * dt);
           }
@@ -954,7 +969,7 @@
         if (barDone(b)) { finishBar(); return; }
         // A finished section advances the frontier: move the reading line,
         // the token bar and the fingering card to the CURRENT target.
-        const nf = b.zones.findIndex((z, k) => b.segs[k] < b.segTarget - 1e-6);
+        const nf = b.zones.findIndex((z, k) => b.segs[k] < b.segTargets[k] - 1e-6);
         const fi = nf < 0 ? b.zones.length - 1 : nf;
         if (fi !== b.hiZone && b.zoneIdx) {
           b.hiZone = fi;
