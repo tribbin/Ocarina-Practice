@@ -2,6 +2,12 @@ let audioCtx = null;
 let hoverQuietUntil = 0;
 let liveVoices = [];
 let melodyBag = [];
+// Ledger of site-MADE sound (synth voices, ticks, previews, leftovers of a
+// cut): the latest absolute ctx time any of it can still ring, so practice
+// can deafen itself instead of registering the speakers as an ocarina.
+let sysSoundUntil = 0;
+function markSystemSound(t) { if (t > sysSoundUntil) sysSoundUntil = t; }
+function sysSoundUntilSec() { return sysSoundUntil; }
 let melodyTimer = 0;
 let melodyPlaying = false;
 let melodyTokens = [];
@@ -802,6 +808,7 @@ function getOcarinaWave(ctx, vp) {
 }
 
 function cutLive() {
+  if (audioCtx) markSystemSound(audioCtx.currentTime + 0.1); // fades + stops land soon after
   liveVoices.forEach(n => { try { (n.fade || n.stop)(); } catch (e) {} });
   liveVoices = [];
 }
@@ -854,6 +861,9 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     const stopOff = intoSlide ? tail * 2 : tail;
     const rel = intoSlide ? 0.04 : Math.min(0.18, Math.max(0.05, dur * 0.35)); // ~40ms fade before a slide, else 50–180ms taper
     const relStart = Math.max(0.02, dur - rel);
+    // this voice (its layers and their tails through the output bus) counts
+    // as site-made sound for practice-mode deafness
+    markSystemSound(t0 + dur + stopOff);
 
     // Per-note voice profile (pitch-keyed harmonics, chamber-relative
     // loudness, wobble/wind levels, attack shape) — derived live so the
@@ -1485,6 +1495,7 @@ function playTickAt(when, bag) {
     let t0 = when == null ? ctx.currentTime : when;
     if (t0 < ctx.currentTime + 0.015) t0 = ctx.currentTime + 0.015; // past-scheduled tick = click (see playNoteAt)
     const dur = 0.04;
+    markSystemSound(t0 + dur + 0.02); // the tick is site sound too
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, t0);
     g.gain.linearRampToValueAtTime(0.09, t0 + 0.002);
@@ -1518,6 +1529,7 @@ function isMelodyPlaying() { return melodyPlaying; }function isMelodyPaused() { 
 function stopMelody() {
   melodyPlaying = false;
   melodyPaused = false;
+  if (audioCtx) markSystemSound(melodyStopAt(audioCtx)); // sources stop past the bus decay
   melodyBag.forEach(n => { try { (n.fade || n.stop)(); } catch (e) {} });
   melodyBag = [];
   fadeMelodyBuses(audioCtx); // one setTargetAtTime decay per bus — the melody's audible cut
@@ -1562,6 +1574,7 @@ function pauseMelody() {
   if (!melodyPlaying) return;
   melodyPlaying = false;
   melodyPaused = true;
+  if (audioCtx) markSystemSound(melodyStopAt(audioCtx)); // sources stop past the bus decay
   melodyBag.forEach(n => { try { (n.fade || n.stop)(); } catch (e) {} });
   melodyBag = [];
   fadeMelodyBuses(audioCtx); // one setTargetAtTime decay per bus — the melody's audible cut

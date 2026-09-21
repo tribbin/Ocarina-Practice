@@ -48,6 +48,11 @@
   const HOLD_MSG_MS = 1800;    // the restart glyph/color is pinned this long:
                                // the state machine leaves "await" after just
                                // gapMs (120 ms), which flashed the wipe signal
+  const REVERB_TAIL_MS = 1200; // site-made sound keeps ringing after its
+                               // voices stop (reverb impulse + bus decay);
+                               // while anything rings, mic frames read as
+                               // the SPEAKERS, never as an ocarina, so they
+                               // are treated as silence
   const MIN_HZ = 160;
   // Ceiling must cover the highest in-use note plus attack overshoot:
   // C7 (the alto's top note) reads ~2093 Hz — its autocorrelation lag
@@ -712,6 +717,17 @@
       for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
       P.rms = Math.sqrt(s / buf.length);
       P.hz = P.rms >= dbg().rmsGate ? autoCorrelate(buf, sr) : 0;
+      // The mic hears the speakers too: any ring from site-made sound
+      // (playback, previews, ticks, their reverb tail) must not register as
+      // input. While it sounds, this frame reads as silence — the same road
+      // a real player's gap takes, so holds pause/wipe by the usual rules.
+      try {
+        if ((P.hz || P.rms) && typeof sysSoundUntilSec === "function" &&
+            audioCtx && audioCtx.currentTime < sysSoundUntilSec() + REVERB_TAIL_MS / 1000) {
+          P.rms = 0;
+          P.hz = 0;
+        }
+      } catch (e) {}
     }
     // The pitch is measured as-is — no correction factors. Whatever the
     // capture chain does shows up in the cents delta, displayed live.
@@ -1086,20 +1102,15 @@
     if (start < 0) { P.err = "No playable notes in this melody."; renderPanel(); return; }
     enterIdx(start, true); // a new session starts with a real articulation
     if (!TEST && !NOMIC) {
-      if (P.mic) {
-        // Persistent capture session: attach the analysis node back — copying
-        // a live stream costs no device access, so no endpoint churn, no pop.
-        try { P.mic.source.connect(P.mic.analyser); P.mic.connected = true; } catch (e) {}
-      } else {
-        // First open on the page: drive out mid-note — defer until the last
-        // voice is fully stopped (fade 30 ms + source stop 50 ms + slack) so
-        // the endpoint churn happens over silence.
-        if (P.micTimer) clearTimeout(P.micTimer); // re-engage: one pending open
-        P.micTimer = setTimeout(() => {
-          P.micTimer = 0;
-          try { micFlow(); } catch (e) { P.err = String(e && e.message || e); renderPanel(); }
-        }, 450);
-      }
+      // First open per session: drive out mid-note — defer until the last
+      // voice is fully stopped (fade 30 ms + source stop 50 ms + slack) so
+      // the endpoint churn happens over silence. The device is released on
+      // every stop, so every engage opens fresh.
+      if (P.micTimer) clearTimeout(P.micTimer); // re-engage: one pending open
+      P.micTimer = setTimeout(() => {
+        P.micTimer = 0;
+        try { micFlow(); } catch (e) { P.err = String(e && e.message || e); renderPanel(); }
+      }, 450);
     }
     if (!P.interval) {
       P.last = performance.now();
@@ -1129,12 +1140,16 @@
     if (P.interval) { clearInterval(P.interval); P.interval = 0; }
     if (P.micTimer) { clearTimeout(P.micTimer); P.micTimer = 0; } // never open mic for a closed session
     if (P.mic && P.mic.connected) {
-      // Detach the capture from the graph but KEEP the device session: on real
-      // hardware every fresh getUserMedia chums the audio endpoint (an audible
-      // pop when anything was sounding). One open per page session — later
-      // practice engagements reconnect the node instantly, silently.
+      // Detach from the graph first (silence the analysis path), then
+      // RELEASE THE DEVICE: practice ending must return the capture — the
+      // browser's rec indicator going off is the contract. Engaging again
+      // does the full getUserMedia open (over silence, deferred 450 ms).
       try { P.mic.source.disconnect(); } catch (e) {}
       P.mic.connected = false;
+    }
+    if (P.mic) {
+      try { P.mic.stream.getTracks().forEach(tr => tr.stop()); } catch (e) {}
+      P.mic = null;
     }
     clearOverlays();
     // The last note is still wearing its "now" highlight; reset the score UI
