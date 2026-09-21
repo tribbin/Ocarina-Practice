@@ -221,10 +221,11 @@ html[data-theme="oot"] #dbgPanel .dbg-note:hover {
 }
 header.app {
   background: var(--ink); color: var(--paper);
-  padding: 14px 20px; display: flex; align-items: baseline; gap: 14px;
+  padding: 14px 20px; display: flex; align-items: baseline; gap: 4px 14px;
+  flex-wrap: wrap;
   position: sticky; top: 0; z-index: 5;
 }
-header.app h1 { font-size: 18px; margin: 0; font-weight: 650; letter-spacing: .02em; }
+header.app h1 { font-size: 18px; margin: 0; font-weight: 650; letter-spacing: .02em; white-space: nowrap; }
 header.app span { opacity: .7; font-size: 13px; }
 .inst-picker { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .inst-sel {
