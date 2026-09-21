@@ -994,7 +994,8 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
    the note label — baseline-aligned small dots read like a dotted-note mark. */
 .prac-status.prac-glyph {
   font-size: 26px; line-height: 1;
-  align-self: center; text-align: right; align-items: baseline;
+  align-self: center; text-align: right;
+  min-height: 0; /* the 2-line reserve is for prose only — em here would resolve against the 26px glyph font */
   transition: color .15s linear;
 }
 .prac-scale {
