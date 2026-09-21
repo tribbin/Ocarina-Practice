@@ -687,6 +687,15 @@ body.zen-fallback #tabPanel:not(.focus) {
   padding: 20px 28px; overflow: auto;
   display: flex; flex-direction: column;
 }
+/* ?oot: the paper fill above is a light cream, but the theme's type and
+   chrome are white-on-dark — give fullscreen the same dark translucent glass
+   as a normal panel so white text and cream cards keep their contrast
+   (the blurred Hyrule field photo faintly shows through, as on page). */
+html[data-theme="oot"] #tabPanel:fullscreen:not(.focus),
+html[data-theme="oot"] #tabPanel:-webkit-full-screen:not(.focus),
+html[data-theme="oot"] body.zen-fallback #tabPanel:not(.focus) {
+  background: var(--panel);
+}
 /* CSS fallback for devices without the Fullscreen API (e.g. iPhone Safari) */
 body.zen-fallback { overflow: hidden; }
 /* The sticky app header stacks at z 5 at the root level, and in the oot
