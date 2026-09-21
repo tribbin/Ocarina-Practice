@@ -902,11 +902,8 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
           }
           const now = ctx.currentTime;
           try {
-            if (g.gain.cancelAndHoldAtTime) g.gain.cancelAndHoldAtTime(now); // hold the computed value — no seam (see rampFades note)
-            else {
-              g.gain.cancelScheduledValues(now);
-              g.gain.setValueAtTime(Math.max(0.0001, g.gain.value || AUDIO_DEBUG.masterLevel), now);
-            }
+            g.gain.cancelScheduledValues(now);
+            g.gain.setValueAtTime(Math.max(0.0001, g.gain.value || AUDIO_DEBUG.masterLevel), now);
             g.gain.linearRampToValueAtTime(0.0001, now + 0.03);
             osc2.stop(now + 0.05);
           } catch (e) {}
@@ -1416,34 +1413,22 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
 
     if (bag) {
       const stopN = (n, t) => { try { if (n) (t == null ? n.stop() : n.stop(t)); } catch (e) {} };
-      // Weave in a cut that does not click: cancelScheduledValues alone discards
-      // the plateau, so the param falls back to its INTRINSIC value — a gain
-      // never assigned statically sits at its default 1.0 while the note's
-      // real plateau is lower (measured seam: 0.87→1.0 step at ~bg full amp,
-      // heard as a click at the cut instant). cancelAndHoldAtTime freezes the
-      // COMPUTED value instead — that is the clickless anchor; the .value
-      // fallback only runs where cancelAndHold is still unsupported.
-      const holdNow = (g, level) => {
-        const now = ctx.currentTime;
-        try {
-          if (g.gain.cancelAndHoldAtTime) g.gain.cancelAndHoldAtTime(now);
-          else {
-            g.gain.cancelScheduledValues(now);
-            g.gain.setValueAtTime(Math.max(0.0001, g.gain.value || level), now);
-          }
-        } catch (err) {}
-      };
       // fade() ramps EVERY saved gain edge (master, chorus sends, air/edge/
       // wind/chiff/overtone gains) from its CURRENT scheduled value down to
-      // near-zero, THEN stops the sources — no component is cut mid-level.
-      // Live/hover voices only: melody cuts never come through here (their
-      // audible fade lives on the cut buses; see fadeMelodyBuses).
+      // near-zero over 30 ms, THEN stops the sources — no component is cut
+      // mid-level. Live/hover voices only: melody cuts never come through
+      // here (their audible fade lives on the cut buses; see fadeMelodyBuses).
+      // Anchor = .value read (the computed plateau) re-pinned at the cancel
+      // instant; this exact form is the one with a long click-free live/hover
+      // history — cancelAndHoldAtTime was tried here and popped on real
+      // hardware, so it stays out of this path.
       const rampFades = () => {
-        const tEnd = ctx.currentTime + 0.03;
+        const now = ctx.currentTime;
         for (const e of cutFades) {
           try {
-            holdNow(e.g, e.level);
-            e.g.gain.linearRampToValueAtTime(0.0001, tEnd);
+            e.g.gain.cancelScheduledValues(now);
+            e.g.gain.setValueAtTime(Math.max(0.0001, e.g.gain.value || e.level), now);
+            e.g.gain.linearRampToValueAtTime(0.0001, now + 0.03);
           } catch (err) {}
         }
       };
@@ -1460,8 +1445,8 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
           // bus, scheduled ahead of the cursor; see fadeMelodyBuses). Only
           // the sources are stopped, strictly past the decay's end so a stop
           // can never sweep a still-sounding level. Live/hover voices (piano,
-          // hover previews) keep their per-voice fade ramp: they are not
-          // reported popping and their cuts are rare.
+          // hover previews) keep their per-voice fade ramp: historically
+          // clean on real hardware and untouched by the melody-cut work.
           if (isMelodyBag(bag)) {
             const stopAt = melodyStopAt(ctx);
             stopN(osc, stopAt); stopN(twinOsc, stopAt); stopN(lfoT, stopAt);
@@ -1470,7 +1455,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
             return;
           }
           rampFades();
-          const stopAt = ctx.currentTime + 0.06;
+          const stopAt = ctx.currentTime + 0.05;
           stopN(osc, stopAt); stopN(twinOsc, stopAt); stopN(lfoT, stopAt);
           stopN(air, stopAt); stopN(edge, stopAt); stopN(wander, stopAt);
           stopN(chiffSrc, stopAt);
