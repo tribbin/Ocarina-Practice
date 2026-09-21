@@ -112,22 +112,23 @@ function rangeLabel() {
 function tallyTokens(tokens) {
   const problems = [];
   let notes = 0, outOf = 0, switches = 0, prevCh = null;
-  const rng = rangeLabel();
   tokens.forEach(t => {
     if (t.type === "bar" || t.type === "rest" || t.type === "tempo") return;
     if (t.type === "tie") {
+      // A tie after an out-of-range pitch is ITSELF out of range (that's how
+      // "A6/2 -/4" reads on an alto C): the sheet draws it as a marked oor tie
+      // card, so count it in the same bucket instead of shouting "(nothing to
+      // continue)" — the tie did have something to continue; it just can't
+      // sound. The !t.id arm stays as unreachable-by-parser safety net.
+      if (t.id && !NOTES.includes(t.id) && isOutOfRange(t.id)) { outOf++; return; }
       if (!t.id || !NOTES.includes(t.id)) problems.push((t.raw || "-") + " (nothing to continue)");
       return;
     }
     if (!NOTES.includes(t.id)) {
-      const rc = rangeCheck(t.id);
-      if (rc === "below") {
-        problems.push(pretty(t.id) + " is below this ocarina (range " + rng + ")");
-      } else if (rc === "above") {
-        problems.push(pretty(t.id) + " is above this ocarina (range " + rng + ")");
-      } else {
-        problems.push((t.raw || t.id) + " is not a playable note");
-      }
+      // Out-of-range notes are NOT listed here: the tablature section already
+      // surfaces them loudly (range-warn banner + the marked cards), so
+      // echoing every one into the input panel's error line just stacks
+      // redundant text. #err stays for genuine input problems only.
       outOf++;
       return;
     }
@@ -377,8 +378,9 @@ function render() {
       fillFullSheet(sheet, tokens, !isScrollMode());
     }
     updateRangeWarning(outOf);
+    // Out-of-range info lives in the tablature section (banner + marked
+    // cards) — #err carries only genuine input problems, so no has-oor magic.
     err.textContent = problems.join(" · ");
-    err.classList.toggle("has-oor", outOf > 0);
     document.getElementById("stats").textContent =
       notes ? `${notes} notes · ${switches} chamber switch${switches===1?"":"es"}` : "Type or click a melody.";
     if (typeof syncFocusMode === "function") syncFocusMode();
@@ -755,9 +757,10 @@ function buildKB() {
   kb.innerHTML = "";
   const whites = ["C","D","E","F","G","A","B"];
   const blackAfter = {C:"Cs", D:"Ds", F:"Fs", G:"Gs", A:"As"};
-  // Octaves 3-7: the full bass range (A3-G6) plus the alto's top octave
-  // (C7 lives in octave 7); room to spare for a future soprano.
-  for (const oct of [3, 4, 5, 6, 7]) {
+  // Octaves 2-7: the contrabass range (B2-F4) through the bass (A3-G6) and
+  // alto top (C7 lives in octave 7); keys outside an instrument's range
+  // render dimmed, so the extra bottom octave costs nothing unless it's used.
+  for (const oct of [2, 3, 4, 5, 6, 7]) {
     const col = document.createElement("div"); col.className = "oct";
     for (const w of whites) {
       const cell = document.createElement("div"); cell.className = "pkey";

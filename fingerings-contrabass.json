@@ -1,0 +1,319 @@
+{
+  "instrument": "Contrabass C 11-hole (Imperial City)",
+  "range": {
+    "low": "B2",
+    "high": "F4"
+  },
+  "system": "Asian linear",
+  "chambers": {
+    "1": {
+      "blow": "blow-ch1",
+      "color": "#8b3d2f"
+    }
+  },
+  "holes": {
+    "L-index": {
+      "hand": "left",
+      "finger": "index",
+      "chamber": 1
+    },
+    "L-middle-large": {
+      "hand": "left",
+      "finger": "middle",
+      "part": "large",
+      "chamber": 1
+    },
+    "L-ring": {
+      "hand": "left",
+      "finger": "ring",
+      "chamber": 1
+    },
+    "L-pinky": {
+      "hand": "left",
+      "finger": "pinky",
+      "chamber": 1
+    },
+    "R1-index": {
+      "hand": "right",
+      "finger": "index",
+      "chamber": 1
+    },
+    "R1-middle-small": {
+      "hand": "right",
+      "finger": "middle",
+      "part": "small",
+      "chamber": 1,
+      "small": true
+    },
+    "R1-middle-large": {
+      "hand": "right",
+      "finger": "middle",
+      "part": "large",
+      "chamber": 1
+    },
+    "R1-ring": {
+      "hand": "right",
+      "finger": "ring",
+      "chamber": 1
+    },
+    "R1-pinky": {
+      "hand": "right",
+      "finger": "pinky",
+      "chamber": 1
+    },
+    "thumb": {
+      "hand": "left",
+      "finger": "thumb",
+      "chamber": 1
+    },
+    "R-thumb": {
+      "hand": "right",
+      "finger": "thumb",
+      "chamber": 1
+    }
+  },
+  "notes": [
+    {
+      "id": "B2",
+      "display": "B₂",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-middle-large",
+        "L-ring",
+        "L-pinky",
+        "R1-index",
+        "R1-middle-large",
+        "R1-ring",
+        "R1-pinky",
+        "thumb",
+        "R1-middle-small",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "C3",
+      "display": "C₃",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-middle-large",
+        "L-ring",
+        "L-pinky",
+        "R1-index",
+        "R1-middle-large",
+        "R1-ring",
+        "R1-pinky",
+        "thumb",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "Cs3",
+      "display": "C♯₃/D♭₃",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-middle-large",
+        "L-ring",
+        "L-pinky",
+        "R1-index",
+        "R1-middle-large",
+        "R1-middle-small",
+        "R1-ring",
+        "thumb",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "D3",
+      "display": "D₃",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-middle-large",
+        "L-ring",
+        "L-pinky",
+        "R1-index",
+        "R1-middle-large",
+        "R1-ring",
+        "thumb",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "Ds3",
+      "display": "D♯₃/E♭₃",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-middle-large",
+        "L-ring",
+        "L-pinky",
+        "R1-index",
+        "R1-middle-large",
+        "R1-pinky",
+        "thumb",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "E3",
+      "display": "E₃",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-middle-large",
+        "L-ring",
+        "L-pinky",
+        "R1-index",
+        "R1-middle-large",
+        "thumb",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "F3",
+      "display": "F₃",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-middle-large",
+        "L-ring",
+        "L-pinky",
+        "R1-index",
+        "thumb",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "Fs3",
+      "display": "F♯₃/G♭₃",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-middle-large",
+        "L-ring",
+        "L-pinky",
+        "R1-ring",
+        "thumb",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "G3",
+      "display": "G₃",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-middle-large",
+        "L-ring",
+        "L-pinky",
+        "thumb",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "Gs3",
+      "display": "G♯₃/A♭₃",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-middle-large",
+        "L-pinky",
+        "R1-ring",
+        "thumb",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "A3",
+      "display": "A₃",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-middle-large",
+        "L-pinky",
+        "thumb",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "As3",
+      "display": "A♯₃/B♭₃",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-pinky",
+        "R1-ring",
+        "thumb",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "B3",
+      "display": "B₃",
+      "chamber": 1,
+      "covered": [
+        "L-index",
+        "L-pinky",
+        "thumb",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "C4",
+      "display": "C₄",
+      "chamber": 1,
+      "covered": [
+        "L-pinky",
+        "thumb",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "Cs4",
+      "display": "C♯₄/D♭₄",
+      "chamber": 1,
+      "covered": [
+        "L-pinky",
+        "R1-middle-small",
+        "R1-ring",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "D4",
+      "display": "D₄",
+      "chamber": 1,
+      "covered": [
+        "L-pinky",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "Ds4",
+      "display": "D♯₄/E♭₄",
+      "chamber": 1,
+      "covered": [
+        "L-pinky",
+        "R1-middle-small",
+        "R1-ring"
+      ]
+    },
+    {
+      "id": "E4",
+      "display": "E₄",
+      "chamber": 1,
+      "covered": [
+        "L-pinky"
+      ]
+    },
+    {
+      "id": "F4",
+      "display": "F₄",
+      "chamber": 1,
+      "covered": []
+    }
+  ]
+}
