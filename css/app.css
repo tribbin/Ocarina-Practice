@@ -1005,7 +1005,8 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 }
 .prac-zone {
   position: absolute; top: 0; bottom: 0; border-radius: 6px;
-  background: rgba(47,107,79,.55); box-shadow: 0 0 0 1px rgba(255,255,255,.18) inset;
+  background: var(--good); /* solid in-tune green — must read at a glance */
+  box-shadow: 0 0 0 1px rgba(255,255,255,.4) inset, 0 0 9px rgba(47,107,79,.6);
 }
 .prac-mark {
   position: absolute; top: -3px; bottom: -3px; width: 3px; border-radius: 2px;
