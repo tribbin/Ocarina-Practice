@@ -167,11 +167,19 @@ html[data-theme="oot"] button.ghost,
 html[data-theme="oot"] .toggle-btn {
   border-color: rgba(255, 255, 255, 0.45);
 }
-html[data-theme="oot"] .toggle-btn.on,
-html[data-theme="oot"] .seg-btn.on {
+html[data-theme="oot"] .toggle-btn.on {
   background: #082808;
   color: #fff;
   border-color: #082808;
+}
+/* Selected segment gets the same dark fill as the toggle, but keeps its plain
+   --line border-left: the divider between segments is the right segment's
+   border-left, so recoloring it dark would make the Grid|Scroll divider
+   vanish only when Scroll or Single is selected (asymmetric with Grid).
+   Keeping it painted makes dividers identical in every selection state. */
+html[data-theme="oot"] .seg-btn.on {
+  background: #082808;
+  color: #fff;
 }
 html[data-theme="oot"] .mode-seg {
   background: rgba(6, 36, 6, 0.6);
