@@ -94,17 +94,21 @@
 
   <section class="panel" id="tabPanel">
     <div class="row tab-tools">
-      <div class="mode-seg" id="modeSeg" role="radiogroup" aria-label="Display mode">
-        <button type="button" class="seg-btn" data-mode="grid" role="radio" aria-checked="true">Grid</button>
-        <button type="button" class="seg-btn" data-mode="scroll" role="radio" aria-checked="false">Scroll</button>
-        <button type="button" class="seg-btn" data-mode="single" role="radio" aria-checked="false">Single</button>
+      <div class="tools-left">
+        <div class="mode-seg" id="modeSeg" role="radiogroup" aria-label="Display mode">
+          <button type="button" class="seg-btn" data-mode="grid" role="radio" aria-checked="true">Grid</button>
+          <button type="button" class="seg-btn" data-mode="scroll" role="radio" aria-checked="false">Scroll</button>
+          <button type="button" class="seg-btn" data-mode="single" role="radio" aria-checked="false">Single</button>
+        </div>
+        <button class="ghost" type="button" id="fullscreen">Full screen</button>
+        <button type="button" class="toggle-btn" id="bigSmall" aria-pressed="false">Enlarge small holes</button>
       </div>
-      <button type="button" class="toggle-btn" id="bigSmall" aria-pressed="false">Enlarge small holes</button>
-      <button class="ghost" type="button" id="fullscreen">Full screen</button>
       <button class="zen-btn" type="button" id="zen" title="Distraction-free practice (full screen)">◎ Zen mode</button>
-      <button class="ghost" type="button" id="shareZen" title="Copy a link that opens this ocarina and song straight in Zen mode">Share zen link</button>
-      <button class="ghost" type="button" id="print">Print</button>
-      <button class="ghost" type="button" id="download">Download tabs</button>
+      <div class="tools-right">
+        <button class="ghost" type="button" id="shareZen" title="Copy a link that opens this ocarina and song straight in Zen mode">Share zen link</button>
+        <button class="ghost" type="button" id="print">Print</button>
+        <button class="ghost" type="button" id="download">Download tabs</button>
+      </div>
     </div>
     <h2 id="title"></h2>
     <div class="sheet-wrap"><div class="sheet" id="sheet"></div></div>

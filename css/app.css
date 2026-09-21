@@ -590,11 +590,27 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
 }
 .loop-lab input { margin: 0; }
 .tab-heading { margin: 0 0 8px; }
-.tab-tools { margin: 0 0 10px; justify-content: flex-start; }
-/* Push the right-hand tool cluster (Full screen onward) to the panel's right
-   edge; the auto margin collapses to 0 when the row is tight, so spacing stays
-   an even 8px gap both when pushed apart and when wrapped/narrow. */
-.tab-tools #fullscreen { margin-left: auto; }
+/* Three-zone tool row: left cluster (view controls) at the left edge, right
+   cluster at the right edge, Zen mode exactly centered. Both side columns are
+   equal 1fr, so the middle column's center is the panel's centerline — where
+   h2#title also centers: button and title line up pixel-for-pixel. */
+.tab-tools {
+  margin: 0 0 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+}
+.tab-tools .tools-left,
+.tab-tools .tools-right {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0;
+}
+.tab-tools .tools-right { justify-content: flex-end; }
+/* Narrow rows: release the exact centering and let the three zones wrap as
+   blocks (Zen stays its own block in the flow). */
+@media (max-width: 1000px) {
+  .tab-tools { display: flex; flex-wrap: wrap; gap: 8px; }
+  .zen-btn { justify-self: auto; }
+}
 
 /* Display-mode segmented control */
 .mode-seg {
@@ -610,13 +626,19 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
 .seg-btn:hover { background: var(--paper-2); }
 .seg-btn.on { background: var(--ink); color: var(--paper); }
 
-/* Zen mode call-to-action */
+/* Zen mode call-to-action — the marquee action: one step larger than the
+   surrounding buttons, crisp inner highlight, gentle lift on hover. */
 .zen-btn {
-  margin-left: auto; background: var(--accent); color: #fff; border: 0;
-  border-radius: 7px; padding: 8px 16px; font: 700 13px/1 inherit; cursor: pointer;
-  box-shadow: 0 1px 0 rgba(0,0,0,.15);
+  background: var(--accent); color: #fff; border: 0;
+  border-radius: 8px; padding: 10px 22px;
+  font: 700 14.5px/1 inherit; cursor: pointer;
+  box-shadow: 0 1px 0 rgba(0,0,0,.15), inset 0 0 0 1px rgba(255,255,255,.25);
 }
-.zen-btn:hover { filter: brightness(1.08); }
+.zen-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0,0,0,.22), inset 0 0 0 1px rgba(255,255,255,.25);
+}
+.zen-btn:active { transform: translateY(0); }
 
 .check-lab {
   margin: 0; display: flex; align-items: center; gap: 6px;
