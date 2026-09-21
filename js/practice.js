@@ -1,6 +1,11 @@
 // Practice mode: the song advances when the player HITS each note with the
-// ocarina through the microphone — a real articulation (fresh attack after a
-// short silence), not a slide into the pitch. A sliding, chamber-colored bar
+// ocarina through the microphone — a real articulation, not a slide into
+// the pitch. A fresh attack (a short silence) is only required to (RE)start
+// a note: at practice start, after a wiped hold, from a manual anchor or a
+// new pass. Between consecutive notes the player flows straight on (legato
+// is welcome): the next bar's frontier opens in "ready" and an in-tune
+// sounding note arms it immediately — no forced stop between notes. A
+// sliding, chamber-colored bar
 // fills while the note stays in tune; wandering out drains it at 2x; emptying
 // it resets the note to a new attack. A tuner (needle + in-tune zone) guides
 // the player.
@@ -790,21 +795,28 @@
   // Button on/off classes and disable states live in ui.js
   // (updateTransportUI — the single symmetric source of truth).
 
-  function enterIdx(i) {
+  function enterIdx(i, fresh) {
     P.idx = i;
     const t = P.tokens[i];
     if (!t) { P.state = "done"; return; }
-    if (t.type === "tempo") { P.quarter = quarterSecFor(t.bpm); enterIdx(i + 1); return; }
-    if (t.type === "bar") { enterIdx(i + 1); return; }
+    if (t.type === "tempo") { P.quarter = quarterSecFor(t.bpm); enterIdx(i + 1, fresh); return; }
+    if (t.type === "bar") { enterIdx(i + 1, fresh); return; }
     if (t.type === "rest") {
       P.state = "rest";
+      P.msgHoldUntil = 0; // no stale feedback may ride across a rest
       P.restLeft = gridBeats(t) * P.quarter * 1000;
       try { if (typeof highlightToken === "function") highlightToken(i, null, undefined, false); } catch (e) {}
       return;
     }
     P.bar = buildBar(P.tokens, i);
-    P.state = "await";
-    holdMsg(); // the fresh-attack instruction must stay readable
+    // FRESH entries (practice start, a wiped hold, a manual re-anchor, a new
+    // pass) demand a real articulation: continuous silence for gapMs — the
+    // "await" phase. That gate was only ever the RESTART rule; consecutive
+    // notes must not force silence between them. Such bars FLOW straight
+    // into "ready": an in-tune sounding note arms the frontier immediately.
+    P.state = fresh ? "await" : "ready";
+    if (fresh) holdMsg(); // the fresh-attack instruction must stay readable
+    else { P.msgHold = ""; P.msgHoldUntil = 0; } // no stale text rides along
     P.gapAcc = 0;
     P.transientLeft = 0;
     P.hzSm = 0;
@@ -847,7 +859,10 @@
 
     switch (P.state) {
       case "await": {
-        // A hit needs a real articulation: continuous silence for gapMs first.
+        // RE-ATTACK phase — reached only after a wipe / at a fresh entry:
+        // a hit needs a real articulation, continuous silence for gapMs.
+        // Note-to-note entries never come through here (they enter "ready"
+        // directly and can sound through — no forced stop between notes).
         if (!sounding) {
           P.gapAcc += dt;
           if (P.gapAcc >= dg.gapMs) { P.state = "ready"; renderPanel(); }
@@ -971,7 +986,7 @@
   // practice disengages to paused (the user toggles Loop themselves).
   function endReached() {
     if (typeof loopOn === "function" && loopOn()) {
-      enterIdx(nextPitchedIdx(0));
+      enterIdx(nextPitchedIdx(0), true); // a new pass opens with a real attack
       return;
     }
     standby();
@@ -1000,7 +1015,7 @@
     openPanel();
     const start = nextPitchedIdx((typeof fromIdx === "number") ? fromIdx : 0);
     if (start < 0) { P.err = "No playable notes in this melody."; renderPanel(); return; }
-    enterIdx(start);
+    enterIdx(start, true); // a new session starts with a real articulation
     if (!TEST && !NOMIC) {
       if (P.mic) {
         // Persistent capture session: attach the analysis node back — copying
@@ -1065,14 +1080,14 @@
     zenGlowOff(); // pause must not leave the halo animating on its own
     // Resuming while parked at the song end: wrap to the first note (a fresh
     // pass), regardless of the Loop setting.
-    if (!P.paused && P.idx >= P.tokens.length) enterIdx(nextPitchedIdx(0));
+    if (!P.paused && P.idx >= P.tokens.length) enterIdx(nextPitchedIdx(0), true);
     renderPanel();
     syncTransportAny();
   }
   function practiceFrom(idx) {
     if (!P.active) return;
     P.paused = false; P.completed = false;
-    enterIdx(nextPitchedIdx(idx));
+    enterIdx(nextPitchedIdx(idx), true); // manual re-anchor = a fresh start here
     renderPanel();
     syncTransportAny();
   }
