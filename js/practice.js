@@ -45,10 +45,9 @@
   const REQUIRED_FRAC = 0.75;  // a zone needs 75% of its share to be done —
                                // the freed quarter is travel time toward the
                                // next note
-  const HOLD_MSG_MS = 1800;    // state feedback that matters (fresh-attack
-                               // instructions) must stay on screen this long:
+  const HOLD_MSG_MS = 1800;    // the restart glyph/color is pinned this long:
                                // the state machine leaves "await" after just
-                               // gapMs (120 ms), which flashed the text by
+                               // gapMs (120 ms), which flashed the wipe signal
   const MIN_HZ = 160;
   // Ceiling must cover the highest in-use note plus attack overshoot:
   // C7 (the alto's top note) reads ~2093 Hz — its autocorrelation lag
@@ -211,25 +210,29 @@
     return need > 0 ? Math.max(0, Math.min(1, barFilled(b) / need)) : 0;
   }
   function barDone(b) { return b.segs.every((x, k) => x >= b.segTargets[k] - 1e-6); }
-  // Feedback hold: entering "await" (a fresh bar, or a hold wiped mid-fill)
-  // shows the fresh-attack instruction — but the engine reaches "ready" after
-  // only gapMs of silence, so without a hold the long text flashed by
-  // unreadably. It stays up for HOLD_MSG_MS, or until a hit is armed.
-  function holdMsg() {
-    P.msgHold = statusText("await");
-    P.msgHoldUntil = performance.now() + HOLD_MSG_MS;
+  // ------------------------------------------------------------ state texts
+  // Symbols + colors instead of running text: the big note label, the needle
+  // and the fill track carry the detail, so the status slot only reports the
+  // engine state at a glance. The wording lives in `tip` (tooltip / a11y).
+  const STATE_GLYPHS = {
+    await: { sym: "⟳", col: "#e8a07a", tip: "Fresh attack needed — pause briefly, then hit." },
+    ready: { sym: "●", col: "", tip: "Ready — play the note." },
+    hit: { sym: "●", col: "zone", tip: "Hit. Steady to the pitch…" },
+    fill: { sym: "●", col: "zone", tip: "Hold the note in tune." },
+    rest: { sym: "‖", col: "", tip: "Rest" },
+  };
+  function glyphTip(g) {
+    if (P.state === "fill" && P.bar && P.bar.slide) return "Bend " + barChain() + ".";
+    return g.tip;
   }
-  function statusText(s) {
-    // The target note is always shown by the tuner's own big note label, so
-    // the status line never repeats it. Only chains keep the segment route.
-    switch (s) {
-      case "await": return "Fresh attack needed — pause briefly, then hit.";
-      case "ready": return "Ready.";
-      case "hit": return "Hit. Steady to the pitch…";
-      case "fill": return P.bar.slide ? "Bend " + barChain() : "Hold.";
-      case "rest": return "Rest";
-      default: return "";
-    }
+  // Feedback hold: only a WIPE mid-fill pins the restart glyph/color — the
+  // engine reaches "ready" after only gapMs of silence, too briefly for the
+  // signal to register (session start / anchors announce nothing: the tuner
+  // itself already says what to do). It stays for HOLD_MSG_MS, or until a
+  // hit is armed.
+  function holdMsg() {
+    P.msgHold = STATE_GLYPHS.await.tip;
+    P.msgHoldUntil = performance.now() + HOLD_MSG_MS;
   }
 
   // ------------------------------------------------------------------ UI
@@ -245,13 +248,11 @@
     panel.hidden = true;
     panel.innerHTML =
       '<div class="prac-row1"><span class="prac-note">—</span>' +
-      '<span class="prac-status"></span>' +
-      '<span class="prac-fillval"></span></div>' +
+      '<span class="prac-status"></span></div>' +
       '<div class="prac-scale"><div class="prac-zone"></div><div class="prac-mark"></div></div>' +
       '<div class="prac-track"><div class="prac-fill"></div></div>';
     els.note = panel.querySelector(".prac-note");
     els.status = panel.querySelector(".prac-status");
-    els.fillval = panel.querySelector(".prac-fillval");
     els.scale = panel.querySelector(".prac-scale");
     els.zone = panel.querySelector(".prac-zone");
     els.mark = panel.querySelector(".prac-mark");
@@ -409,19 +410,33 @@
   function renderPanel() {
     if (!panel || !P.bar) return;
     const dg = dbg();
-    let studio = P.paused
+    const paused = !!P.paused;
+    // Text modes: paused/song-end, mic errors, or the sample-rate mismatch
+    // diagnostic; everything else reports as a glyph (wording in the tooltip).
+    let studio = paused
       ? (P.completed ? "Song end — Play or Practice resumes." : "Paused — Play/Practice or Space resumes.")
-      : (P.msgHold && performance.now() < P.msgHoldUntil)
-        ? P.msgHold
-        : (statusText(P.state) || P.err);
+      : (P.err || "");
     // 44.1/48 kHz suspicion: when the mic track reports a rate that differs
     // from the analyser context's, that mismatch would show up as a fixed
-    // ±148.7¢ in the cents readout — say so, it is a measurement, displayed.
-    if (P.mic && !TEST && P.mic.trackRate && P.mic.trackRate !== P.mic.sr) {
-      studio += " · mic " + (P.mic.trackRate / 1000).toFixed(1) + "kHz → ctx " +
-        (P.mic.sr / 1000).toFixed(1) + "kHz";
+    // ±148.7¢ in the cents readout — say so, it is a measurement.
+    const diag = (!paused && P.mic && !TEST && P.mic.trackRate && P.mic.trackRate !== P.mic.sr)
+      ? "mic " + (P.mic.trackRate / 1000).toFixed(1) + "kHz → ctx " +
+        (P.mic.sr / 1000).toFixed(1) + "kHz"
+      : "";
+    const held = !paused && P.msgHold && performance.now() < P.msgHoldUntil;
+    const glyph = (!paused && !studio)
+      ? (held ? STATE_GLYPHS.await : STATE_GLYPHS[P.state] || null)
+      : null;
+    if (glyph) {
+      els.status.textContent = glyph.sym;
+      els.status.style.color = glyph.col === "zone" ? zoneHex() : (glyph.col || "");
+      els.status.title = glyphTip(glyph) + (diag ? " — " + diag : "");
+    } else {
+      els.status.textContent = studio + (diag ? (studio ? " · " : "") + diag : "");
+      els.status.style.color = "";
+      els.status.title = "";
     }
-    els.status.textContent = studio;
+    els.status.classList.toggle("prac-glyph", !!glyph);
     if (P.bar) {
       // The tuner names the CURRENT target: the chain's frontier zone —
       // "zone 2/3" means the note shown is the one you must be on now.
@@ -445,12 +460,6 @@
         els.fill.style.background = (P.state === "fill" && barFilled(P.bar) > 0) || P.state === "hit"
           ? zoneHex() : (barFilled(P.bar) > 0 ? "var(--accent)" : "transparent");
       }
-      // No numeric readouts (percent/seconds live on the fill bar itself);
-      // chains keep only the zone counter, since the section order matters.
-      els.fillval.textContent = P.bar.zones.length > 1
-        ? "zone " + ((P.zonesNear < 0 ? 0 : P.zonesNear) + 1) + "/" + P.bar.zones.length
-        : "";
-      els.fillval.classList.toggle("prac-warn", P.state === "fill" && barFilled(P.bar) <= 0 && P.rms > dg.rmsGate);
     }
   }
 
@@ -826,8 +835,9 @@
     // notes must not force silence between them. Such bars FLOW straight
     // into "ready": an in-tune sounding note arms the frontier immediately.
     P.state = fresh ? "await" : "ready";
-    if (fresh) holdMsg(); // the fresh-attack instruction must stay readable
-    else { P.msgHold = ""; P.msgHoldUntil = 0; } // no stale text rides along
+    // No pinned restart announcement at session start / manual anchors: the
+    // brief await→ready transition reports itself; only a WIPE pins (below).
+    P.msgHold = ""; P.msgHoldUntil = 0;
     P.gapAcc = 0;
     P.transientLeft = 0;
     P.hzSm = 0;

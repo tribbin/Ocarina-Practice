@@ -987,11 +987,16 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 }
 .prac-row1 { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .prac-note { font-size: 26px; font-weight: 750; letter-spacing: .01em; }
-.prac-cents { font-size: 13px; font-variant-numeric: tabular-nums; opacity: .85; }
 .prac-status { flex: 1 1 0; min-width: 0; font-size: 12.5px; opacity: .9;
   line-height: 1.45; min-height: 2.9em; }
-.prac-fillval { font-size: 11px; font-variant-numeric: tabular-nums; opacity: .75;
-  white-space: nowrap; flex: 0 0 auto; }
+/* Engine-state glyph (Ready ● / Hold ● / restart ⟳ / rest ‖): a large dot on
+   the right of the row (always empty otherwise), vertically centered against
+   the note label — baseline-aligned small dots read like a dotted-note mark. */
+.prac-status.prac-glyph {
+  font-size: 26px; line-height: 1;
+  align-self: center; text-align: right; align-items: baseline;
+  transition: color .15s linear;
+}
 .prac-scale {
   position: relative; height: 10px; border-radius: 6px;
   background: linear-gradient(90deg, rgba(255,255,255,.16) 0 12%, rgba(255,255,255,.10) 12% 88%, rgba(255,255,255,.16) 88%);
@@ -1020,13 +1025,13 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 .prac-panel[hidden] { display: none; }
 .prac-panel button.ghost { background: transparent; color: var(--paper); border-color: rgba(255,255,255,.35); }
 .prac-panel button.ghost:hover { background: rgba(255,255,255,.12); }
-.prac-fillval.prac-warn { color: #e8a07a; opacity: 1; font-weight: 700; }
 #tabPanel.focus .prac-panel {
   top: 92px; width: min(460px, 92vw);
   padding: 14px 18px 16px; gap: 10px;
 }
 #tabPanel.focus .prac-note { font-size: 34px; }
 #tabPanel.focus .prac-status { font-size: 14px; }
+#tabPanel.focus .prac-status.prac-glyph { font-size: 36px; }
 #tabPanel.focus .prac-track { height: 16px; }
 /* undo the zen blanket `#tabPanel.focus > *` (position:relative, z-index:1):
    same specificity, later rule, so it keeps the fixed anchor + elevation */
