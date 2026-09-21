@@ -850,7 +850,12 @@
   function tick() {
     if (!P.active || P.paused) return;
     const now = performance.now();
-    const dt = Math.min(50, now - (P.last || now));
+    // dt is credited wall time, clamped ONLY against timer backlogs (a
+    // throttled/backgrounded tab would otherwise credit a whole silence as
+    // one burst). The ceiling must sit ABOVE the tick period: clamping at
+    // 50 ms with ticks at 66 ms accrued ~0.76× real time, which silently
+    // consumed the 25% travel budget of every hold.
+    const dt = Math.max(0, Math.min(TICK_MS + 34, now - (P.last || now)));
     P.last = now;
     const dg = dbg();
 
