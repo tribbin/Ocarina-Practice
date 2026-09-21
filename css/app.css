@@ -446,6 +446,12 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
   .wrap { max-width: none; padding: 0; }
   .panel { border: 0; padding: 0; margin: 0; }
   .sheet { gap: 2.5mm 0; }
+  /* Same centered-block sizing with the print card slot (32mm card + 3mm
+     margin); #sheet outranks the base rule that lands later in the file. */
+  #sheet:not(.scroll):not(.live) {
+    width: max(round(down, 100%, 35mm), min(100%, 35mm));
+    margin-inline: auto;
+  }
   .card, .rest,
   .sheet.scroll .card,
   .sheet.scroll .card.rest,
@@ -520,6 +526,7 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
    alone at a page bottom with its section's cards on the next page. */
 .sheet .sec-head {
   font-size: 12px;
+  padding-left: 0; /* flush with the (centered) grid's left edge */
   page-break-after: avoid; break-after: avoid;
 }
 
@@ -617,7 +624,7 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
   cursor: pointer;
 }
 .check-lab input { margin: 0; }
-h2#title { margin: 8px 0 10px; font-size: 18px; }
+h2#title { margin: 8px 0 10px; font-size: 18px; text-align: center; }
 
 .lib-dd { position: relative; }
 .lib-dd-wrap { position: relative; }
@@ -672,6 +679,17 @@ h2#title { margin: 8px 0 10px; font-size: 18px; }
 
 .sheet-wrap { width: 100%; }
 .sheet { display: flex; flex-wrap: wrap; gap: 18px 0; align-items: stretch; }
+/* Center the card grid as ONE aligned block: the sheet is sized down to a
+   whole number of card slots (fixed 240px card + 28px trailing margin =
+   268px per card), so full rows fill it exactly, every row keeps the same
+   left edge, and .sec-head names align with the grid's left side. The max()
+   guard falls back to full width when less than one slot fits (tiny phones),
+   where round(down, ...) would floor to 0. round() is recent CSS; without it
+   the sheet just stays the old full-width left-aligned block. */
+.sheet:not(.scroll):not(.live) {
+  width: max(round(down, 100%, 268px), min(100%, 268px));
+  margin-inline: auto;
+}
 .sheet.live { justify-content: center; gap: 0; }
 .sheet.live .card.live {
   flex: 0 1 420px; width: min(420px, 100%); min-width: 220px; max-width: 420px;
@@ -730,6 +748,13 @@ body.zen-fallback #tabPanel {
 body.zen-fallback #tabPanel .sheet-wrap { flex: 1 1 auto; display: flex; min-height: 0; }
 #tabPanel:fullscreen .sheet,
 body.zen-fallback #tabPanel .sheet { align-content: flex-start; width: 100%; }
+/* ...but the plain grid keeps its centered-block sizing in fullscreen too
+   (the 100% width above would otherwise force rows back to left-aligned). */
+#tabPanel:fullscreen .sheet:not(.scroll):not(.live),
+body.zen-fallback #tabPanel .sheet:not(.scroll):not(.live) {
+  width: max(round(down, 100%, 268px), min(100%, 268px));
+  margin-inline: auto;
+}
 #tabPanel:fullscreen .sheet.scroll,
 body.zen-fallback #tabPanel .sheet.scroll { align-items: center; }
 
