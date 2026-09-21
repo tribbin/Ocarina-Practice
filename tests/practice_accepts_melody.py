@@ -44,13 +44,27 @@ HEADLESS = "--headed" not in sys.argv
 
 CASES = [
     dict(name="C major scale — strict play-output schedule",
-         query="", mode="schedule"),
-    dict(name="Song of Storms ( alto C) — chain zones, player model",
-         query="inst=stein-double-alto-c&song=song-of-storms-alto", mode="zones"),
+         query="", mode="schedule", src=None),
+    dict(name="Ties · dots · staccato · rests · triplets · inline tempo — strict",
+         query="", mode="schedule",
+         src=( "# T · ties dots staccato rests triplets tempo\n"
+               "# tempo 120\n"
+               "E5/1 -/1 D5/2t E5/2t F5/2t\n"
+               "C6/4! D6/4! E6/2 r/4 F6/1\n"
+               "# tempo 90\n"
+               "A5/2. -/2 G5/1")),
+    dict(name="Dense triplet-16ths + tie chains — player model",
+         query="", mode="zones",
+         src=( "# T · dense triplets\n"
+               "E5/16t F5/16t G5/16t A5/16t G5/16t F5/16t\n"
+               "E5/8 -/8 D5/2 -/4 r/4 E5/2.")),
+    dict(name="Song of Storms (Double Alto C) — chain songs, player model",
+         query="inst=stein-double-alto-c&song=song-of-storms-alto", mode="zones", src=None),
 ]
 
 SCHEDULE_DRIVER = """
-() => new Promise(resolve => {
+SRC => new Promise(resolve => {
+  if (SRC) { document.getElementById("src").value = SRC; render(); }
   const toks = parse(document.getElementById("src").value);
   if (toks.some(t => t.type === "note" && t.slide)) { resolve({ skip: "has ~ slides" }); return; }
   let q = quarterSec();
@@ -94,7 +108,8 @@ SCHEDULE_DRIVER = """
 """
 
 ZONES_DRIVER = """
-() => new Promise(resolve => {
+SRC => new Promise(resolve => {
+  if (SRC) { document.getElementById("src").value = SRC; render(); }
   // Player model: silence when the engine demands a re-attack ("await"),
   // otherwise sound the pitch the tuner currently demands.
   OCA_PRACTICE.start();
@@ -159,7 +174,7 @@ def main():
                       f"\n   feeding mic frames in real time — no audio, no"
                       f" window; this takes ~15-45 s per case…", flush=True)
                 t_case = time.monotonic()
-                result = page.evaluate(driver)
+                result = page.evaluate(driver, case.get("src") or "")
                 print(f"   done in {time.monotonic() - t_case:.1f} s"
                       f"\n   " + repr(result), flush=True)
                 page.close()
