@@ -185,6 +185,13 @@ html[data-theme="oot"] .mode-seg {
   background: rgba(6, 36, 6, 0.6);
   border-color: rgba(255, 255, 255, 0.35);
 }
+/* Bar lines between fingering cards paint with --ink, which the theme turns
+   near-black #082808 — invisible on the dark green glass panels. White keeps
+   them as legible as the white-on-grass chrome; accent bar lines (.has-note)
+   stay accent-tinted via their higher-specificity rule. */
+html[data-theme="oot"] .tab-bar::before {
+  background: #fff;
+}
 html[data-theme="oot"] textarea#src,
 html[data-theme="oot"] #inputBlock textarea#src {
   background: #0a3a0a;
