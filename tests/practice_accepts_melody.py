@@ -168,7 +168,14 @@ def main():
                 page.on("pageerror", lambda e, errs=errs: errs.append(str(e)))
                 page.goto(f"{base}?practiceTest=1" +
                           (("&" + case["query"]) if case["query"] else ""))
-                page.wait_for_function("typeof OCA_PRACTICE !== 'undefined' && !!OCA_PRACTICE")
+                # Wait for the app's REAL readiness, not just the practice
+                # module: OCA_PRACTICE exists at script-parse time, but
+                # window.NOTES (fingerings the schedule driver needs) is
+                # installed asynchronously by boot() after its JSON fetches —
+                # racing it in CI's cold cache threw early evals.
+                page.wait_for_function(
+                    "typeof OCA_PRACTICE !== 'undefined' && !!OCA_PRACTICE"
+                    " && window.NOTES && window.NOTES.length")
                 driver = SCHEDULE_DRIVER if case["mode"] == "schedule" else ZONES_DRIVER
                 print(f"\n== {case['name']}"
                       f"\n   feeding mic frames in real time — no audio, no"
