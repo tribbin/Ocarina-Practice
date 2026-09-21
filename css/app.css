@@ -1118,6 +1118,21 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 /* Collapsible section: the top-left chevron folds the body away */
 .block.collapsed > :not(.box-head) { display: none; }
 .block.collapsed .collapse-btn { transform: rotate(-90deg); }
+/* Section collapse chevron, drawn in CSS: the ▾ character is a plain
+   triangle like the play buttons. Expanded = points down, collapsed =
+   right (the button's own -90° rotation carries the shape along).
+   A fixed square face keeps the chevron at equal distances from all
+   edges (including the left). */
+.collapse-btn {
+  width: 30px; height: 30px; padding: 0; flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.collapse-btn::before {
+  content: ""; display: inline-block; width: .5em; height: .5em;
+  border-left: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  margin-top: -0.16em; /* the rotated L hangs low — lift to center */
+}
 /* Collapsed, the box-head IS the block: round its bottom corners too, so
    they don't poke past the block's rounded border at the bottom. */
 .block.collapsed > .box-head { border-radius: 7px 7px 7px 7px; }
