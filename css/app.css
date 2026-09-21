@@ -993,6 +993,7 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 .prac-scale {
   position: relative; height: 10px; border-radius: 6px;
   background: linear-gradient(90deg, rgba(255,255,255,.16) 0 12%, rgba(255,255,255,.10) 12% 88%, rgba(255,255,255,.16) 88%);
+  transition: opacity .18s linear;
 }
 .prac-zone {
   position: absolute; top: 0; bottom: 0; border-radius: 6px;
@@ -1004,6 +1005,10 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
   transform: translateX(-50%);
   transition: left .08s linear;
 }
+/* Unregistered input (silence / room noise): the whole tuning bar stays out
+   of the picture and fades back in the moment the mic registers a pitch —
+   the in/out itself is the registered/not-registered feedback. */
+.prac-scale.prac-idle { opacity: 0; }
 .prac-track {
   position: relative; height: 12px; border-radius: 7px;
   background: rgba(255,255,255,.13); overflow: hidden;

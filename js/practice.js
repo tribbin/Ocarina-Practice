@@ -58,6 +58,7 @@
     transientLeft: 0,   // ms of onset-grace remaining
     restLeft: 0,        // ms left of a rest
     hz: 0, hzSm: 0, rms: 0, cents: 0,
+    signal: false,      // the frame registered a pitch (locked Hz above the noise floor)
     mic: null,          // { stream, source, analyser, buf, sr }
     micTimer: 0,        // deferred getUserMedia kickoff (see startPractice)
     interval: 0, last: 0,
@@ -394,10 +395,16 @@
       // "zone 2/3" means the note shown is the one you must be on now.
       const nm = (P.bar.names && P.zonesNear >= 0 ? P.bar.names[P.zonesNear] : P.bar.names ? P.bar.names[0] : P.bar.chainId);
       els.note.textContent = String(nm).replace(/^([A-G])s(\d)$/, "$1#$2");
-      // needle
-      const c = Math.max(needleLo, Math.min(needleHi, P.cents));
+      // needle: parked center with no reading when nothing is registered —
+      // silence or room noise is not a pitch, and the 999 sentinel clamped
+      // to the right edge read as a pegged-high sharp note
+      const c = P.signal ? Math.max(needleLo, Math.min(needleHi, P.cents)) : 0;
       els.mark.style.left = (50 + (c / needleHi) * 50) + "%";
-      els.cents.textContent = Math.abs(P.cents) > 300 ? "—" : (P.cents > 0 ? "+" : "") + P.cents.toFixed(0) + "\u00A2";
+      // The tuning bar itself is the registered/unregistered feedback: it
+      // only shows while the mic registers a pitch above the noise floor.
+      els.scale.classList.toggle("prac-idle", !P.signal);
+      els.cents.textContent = (!P.signal || Math.abs(P.cents) > 300)
+        ? "—" : (P.cents > 0 ? "+" : "") + P.cents.toFixed(0) + "\u00A2";
       const zw = Math.min(100, (dg.tuneCents / needleHi) * 50);
       els.zone.style.left = (50 - zw) + "%";
       els.zone.style.width = (zw * 2) + "%";
@@ -627,6 +634,11 @@
     // capture chain does shows up in the cents delta, displayed live.
     if (P.hz && (P.hz < MIN_HZ * 0.6 || P.hz > MAX_HZ * 1.3)) P.hz = 0;
     P.hzSm = P.rms > 0 ? (P.hzSm && P.hz ? P.hzSm * (1 - 0.55) + P.hz * 0.55 : P.hz) : 0;
+    // A REGISTERED reading requires the frame to be WELL above the noise
+    // floor AND a locked pitch: silence or room noise is not a note, and the
+    // tuner must show no reading (needle parked center, dimmed) instead of
+    // pinning against a side on the centsOf() 999 "no reading" sentinel.
+    P.signal = P.hzSm > 0 && P.rms >= dbg().rmsGate;
     const zones = P.bar ? P.bar.zones : [];
     let best = 999;
     zones.forEach((z, k) => {
