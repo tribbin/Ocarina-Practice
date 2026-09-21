@@ -1140,6 +1140,8 @@ function isFullscreen() {
 }
 
 function enterZen() {
+  // Opening Zen stops any in-flight hover pulse right here (see spawnZenWave).
+  stopZenWaves();
   const panel = document.getElementById("tabPanel");
   if (!panel) return;
   if (!isLiveTab()) { zenPrevMode = displayMode; setDisplayMode("single"); }
@@ -1184,6 +1186,33 @@ function exitZen() {
 
 function toggleZen() {
   if (isFullscreen()) exitZen(); else enterZen();
+}
+
+// Zen hit-pulse: on hovering the ◎ Zen button, one white ring rolls outward
+// and dissolves (css: .zen-wave). A real DOM element, NOT a button pseudo: it
+// must paint ABOVE the input/play/piano panel, which the OOT theme stacks at
+// z 2 while the tab panel sits at z 1 — nothing inside the panel can ever
+// out-paint that. Real fullscreen paints only the fullscreen element's
+// subtree, so the wave remounts INSIDE #tabPanel there; otherwise <body>
+// tops every panel. The ring keeps flying after unhover; opening Zen stops it.
+function spawnZenWave() {
+  const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+  const host = fsEl || document.body;
+  const btn = document.getElementById("zen");
+  if (!btn) return;
+  const r = btn.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  // Re-entering hover while a pulse is still flying ADDS a new one on top —
+  // existing waves always finish their own swell undisturbed.
+  const w = document.createElement("div");
+  w.className = "zen-wave";
+  w.style.left = (r.left + r.width / 2) + "px";
+  w.style.top = (r.top + r.height / 2) + "px";
+  w.addEventListener("animationend", () => w.remove());
+  host.appendChild(w);
+}
+function stopZenWaves() {
+  document.querySelectorAll(".zen-wave").forEach(x => x.remove());
 }
 
 // Shareable link for the current view: `?inst=<ocarina id>&song=<library id>
@@ -1252,7 +1281,16 @@ function wireZen() {
   const panel = document.getElementById("tabPanel");
   if (!panel) return;
   window.onZenChange = null;
-  if (btn) btn.onclick = () => toggleZen();
+  if (btn) {
+    btn.onclick = () => toggleZen();
+    // Hit-pulse: one on every hover entry (continues after unhover; opening
+    // Zen stops it in enterZen). Keyboard focus pulses too, but only real
+    // keyboard focus (:focus-visible) — a click's focus must not fire one.
+    btn.addEventListener("pointerenter", spawnZenWave);
+    btn.addEventListener("focus", () => {
+      if (btn.matches(":focus-visible")) spawnZenWave();
+    });
+  }
   const sync = () => {
     if (!isFullscreen() && zenPrevMode) {
       const m = zenPrevMode; zenPrevMode = null; setDisplayMode(m);

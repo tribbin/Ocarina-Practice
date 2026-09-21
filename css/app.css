@@ -627,18 +627,43 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
 .seg-btn.on { background: var(--ink); color: var(--paper); }
 
 /* Zen mode call-to-action — the marquee action: one step larger than the
-   surrounding buttons, crisp inner highlight, gentle lift on hover. */
+   surrounding buttons, crisp inner highlight. */
 .zen-btn {
   background: var(--accent); color: #fff; border: 0;
   border-radius: 8px; padding: 10px 22px;
   font: 700 14.5px/1 inherit; cursor: pointer;
   box-shadow: 0 1px 0 rgba(0,0,0,.15), inset 0 0 0 1px rgba(255,255,255,.25);
 }
-.zen-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(0,0,0,.22), inset 0 0 0 1px rgba(255,255,255,.25);
+/* Zen button hover: ONE white hit-pulse rolls outward, like striking a tone
+   in Zen (whose halo is also a blurred, true circle on a square element).
+   Built as a real element (.zen-wave, spawned by spawnZenWave in ui.js), not
+   a pseudo: it must paint ABOVE the input/play/piano panel, which the OOT
+   theme stacks at z 2 while the tab panel sits at z 1 — nothing inside the
+   tab panel can ever out-paint that. Real fullscreen paints only the
+   fullscreen element's subtree, so the wave remounts inside #tabPanel there.
+   One pulse per hover entry; it keeps going through unhover and is stopped
+   only when Zen opens. */
+.zen-wave {
+  position: fixed; z-index: 99999;
+  width: 140px; height: 140px;        /* square = perfect circle */
+  margin-left: -70px; margin-top: -70px;
+  border-radius: 50%;
+  background: radial-gradient(circle closest-side at 50% 50%,
+    rgba(255,255,255,0) 52%,
+    rgba(255,255,255,.55) 70%,
+    rgba(255,255,255,0) 94%);
+  filter: blur(7px);
+  box-shadow: 0 0 14px rgba(28, 20, 15, .12); /* visibility on white panels */
+  pointer-events: none;
+  opacity: 0;
+  animation: zen-wave 1s ease-out forwards;
 }
-.zen-btn:active { transform: translateY(0); }
+@keyframes zen-wave {
+  0%   { opacity: 0;   transform: scale(.5); }
+  22%  { opacity: .85; }
+  100% { opacity: 0;   transform: scale(2.8); }
+}
+.zen-btn:active { filter: brightness(.92); }
 
 .check-lab {
   margin: 0; display: flex; align-items: center; gap: 6px;
