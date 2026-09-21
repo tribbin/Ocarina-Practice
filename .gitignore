@@ -1,5 +1,6 @@
 .opencode/
 .grok/
+.venv/
 
 # Work files: recordings, FFT snapshots, tone analysis reports
 research/
