@@ -39,6 +39,10 @@
   const REQUIRED_FRAC = 0.75;  // a zone needs 75% of its share to be done —
                                // the freed quarter is travel time toward the
                                // next note
+  const HOLD_MSG_MS = 1800;    // state feedback that matters (fresh-attack
+                               // instructions) must stay on screen this long:
+                               // the state machine leaves "await" after just
+                               // gapMs (120 ms), which flashed the text by
   const MIN_HZ = 160;
   // Ceiling must cover the highest in-use note plus attack overshoot:
   // C7 (the alto's top note) reads ~2093 Hz — its autocorrelation lag
@@ -59,6 +63,7 @@
     restLeft: 0,        // ms left of a rest
     hz: 0, hzSm: 0, rms: 0, cents: 0,
     signal: false,      // the frame registered a pitch (locked Hz above the noise floor)
+    msgHold: "", msgHoldUntil: 0, // readable-hold override for status feedback
     mic: null,          // { stream, source, analyser, buf, sr }
     micTimer: 0,        // deferred getUserMedia kickoff (see startPractice)
     interval: 0, last: 0,
@@ -190,6 +195,14 @@
     return need > 0 ? Math.max(0, Math.min(1, barFilled(b) / need)) : 0;
   }
   function barDone(b) { return b.segs.every(x => x >= b.segTarget - 1e-6); }
+  // Feedback hold: entering "await" (a fresh bar, or a hold wiped mid-fill)
+  // shows the fresh-attack instruction — but the engine reaches "ready" after
+  // only gapMs of silence, so without a hold the long text flashed by
+  // unreadably. It stays up for HOLD_MSG_MS, or until a hit is armed.
+  function holdMsg() {
+    P.msgHold = statusText("await");
+    P.msgHoldUntil = performance.now() + HOLD_MSG_MS;
+  }
   function statusText(s) {
     switch (s) {
       case "await": return "Fresh attack needed — pause briefly, then hit " + barName();
@@ -381,7 +394,9 @@
     const dg = dbg();
     let studio = P.paused
       ? (P.completed ? "Song end — Play or Practice resumes." : "Paused — Play/Practice or Space resumes.")
-      : (statusText(P.state) || P.err);
+      : (P.msgHold && performance.now() < P.msgHoldUntil)
+        ? P.msgHold
+        : (statusText(P.state) || P.err);
     // 44.1/48 kHz suspicion: when the mic track reports a rate that differs
     // from the analyser context's, that mismatch would show up as a fixed
     // ±148.7¢ in the cents readout — say so, it is a measurement, displayed.
@@ -789,6 +804,7 @@
     }
     P.bar = buildBar(P.tokens, i);
     P.state = "await";
+    holdMsg(); // the fresh-attack instruction must stay readable
     P.gapAcc = 0;
     P.transientLeft = 0;
     P.hzSm = 0;
@@ -843,6 +859,7 @@
         const armErr = Math.abs(centsOf(P.hzSm, b.zones[0]));
         if (P.hzSm > 0 && armErr <= dg.transientCents) {
           P.state = "hit";
+          P.msgHoldUntil = 0; // armed: the held attack message must yield now
           P.transientLeft = dg.transientMs;
           b.segs = b.segs.map(() => 0);
           b.grace = b.grace.map(() => 0);
@@ -895,6 +912,7 @@
             P.dropAcc = 0;
             P.state = "await";
             P.gapAcc = 0;
+            holdMsg(); // wiped hold: the re-attack instruction must be read
           }
         } else if (k < 0) {
           // defensive: sounding but unmappable (should not happen)
