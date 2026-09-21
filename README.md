@@ -25,6 +25,8 @@ Built with plain HTML/CSS/JavaScript — no build step, no dependencies.
 | Durations | `/1` whole · `/2` half · `/4` quarter · `/8` `/16` · `.` dotted (e.g. `/2.`) |
 | Triplets | `t` (e.g. `A4/8t B4/8t C5/8t`) |
 | Title / tempo | `# Song title` · `# tempo 96` (header, or inline to change mid-song) |
+| Sections | `\| [Section]` names a bar (shown on hover / as a header row) |
+| Bar support | `\| [C2]` or `\| ["Section", C2]` — contrabass drone for that bar, Zen playback only |
 
 ## Running it
 

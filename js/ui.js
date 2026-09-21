@@ -1324,6 +1324,10 @@ function wireZen() {
     // same mode — the expressive layer only sounds in Zen.
     if (typeof setReverbEnabled === "function") setReverbEnabled(isFocusMode());
     if (typeof setVibratoEnabled === "function") setVibratoEnabled(isFocusMode());
+    // Same ownership as the reverb: the hidden contrabass-support drones
+    // (|[C2] bar brackets) only sound in Zen playback; leaving Zen cuts any
+    // in-flight drone.
+    if (typeof setBassEnabled === "function") setBassEnabled(isFocusMode());
     if (isFullscreen() && isLiveTab() && !isMelodyPlaying()) stopMelody();
   };
   document.addEventListener("fullscreenchange", sync);

@@ -1,6 +1,6 @@
 function parse(src) {
   const tokens = [];
-  const re = /([A-Ga-g])([#b])?(\d)?(\/\d+\.?t?)?(!)?|(\|)(\[[^\]]*\])?|(r)(\/\d+\.?t?)?|(-)(\/\d+\.?t?)?|(~)|(#[^\n]*)/g;
+  const re = /([A-Ga-g])([#b])?(\d)?(\/\d+\.?t?)?(!)?|(\|)\s*(\[[^\]]*\])?|(r)(\/\d+\.?t?)?|(-)(\/\d+\.?t?)?|(~)|(#[^\n]*)/g;
   let m, lastOct = 4, lastPitch = null, canTie = false, pendingSlide = false;
   // Staccato may be written before or after the duration: normalize
   // "C5!/8" -> "C5/8!" so the /8 always parses (the note regex consumes
@@ -18,9 +18,29 @@ function parse(src) {
     }
     if (m[12]) { if (lastPitch) pendingSlide = true; continue; }
     if (m[6]) {
-      // Bar line, with an optional [description] shown on hover, e.g. |["35th bar from midi"].
+      // Bar line with an optional bracket field, three spoken shapes:
+      //   |[C2]         pitch only — hidden contrabass-support bar (bass only)
+      //   |["Opening",C2]  named section bar that ALSO carries a bass pitch
+      //   |["35th bar from midi"]  plain description (quotes/commas fine)
+      // A pitch token is B[C-G] + optional s + one octave digit, matched on
+      // the LAST comma part; anything else keeps the old desc-only meaning
+      // (so existing texts with commas/quotes never break).
       const bar = { type: "bar" };
-      if (m[7]) bar.desc = m[7].slice(1, -1).replace(/^["']|["']$/g, "");
+      if (m[7]) {
+        const content = m[7].slice(1, -1);
+        const parts = content.split(",");
+        const tail = parts[parts.length - 1].trim();
+        if (/^[A-G]s?[1-8]$/.test(tail)) {
+          bar.bass = tail;
+          if (parts.length > 1) {
+            bar.desc = parts.slice(0, -1).join(",")
+              .trim().replace(/^["']|["']$/g, "");
+          }
+        } else {
+          bar.desc = content.replace(/^["']|["']$/g, "");
+        }
+        if (!bar.desc) delete bar.desc;
+      }
       tokens.push(bar);
       continue;
     }
