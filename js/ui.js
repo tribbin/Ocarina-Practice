@@ -999,6 +999,9 @@ function syncFocusMode() {
       scrollFocusStripTo(liveIdx >= 0 ? liveIdx : firstSoundIdx(toks));
     }
     if (typeof perfRelocate === "function") perfRelocate();
+    // Re-seat the practice tuner for the new layout (body ↔ #tabPanel) and
+    // re-clamp its dragged position into the viewport.
+    if (typeof practiceRelocatePanel === "function") practiceRelocatePanel();
 }
 
 function updateTransportUI() {

@@ -202,6 +202,10 @@
 
   // ------------------------------------------------------------------ UI
   let panel = null, els = {};
+  // The fixed tuner's containing-block offset, shared by the drag handler and
+  // the viewport re-clamp: 0 when the viewport IS the containing block, else
+  // the anchor ancestor's origin — always measured, never assumed.
+  let cbx = 0, cby = 0;
   function buildPanel() {
     if (panel || typeof document === "undefined") return panel;
     panel = document.createElement("div");
@@ -227,15 +231,12 @@
     // clicking any token re-anchors the practice. The panel is a pure tuner
     // display (draggable by its face).
     makeDraggable(panel);
-    // Inside #tabPanel in both layouts: it must be visible while the
-    // zen fullscreen is active (body-level content would be painted over).
-    const host = document.getElementById("tabPanel") || document.body;
-    host.appendChild(panel);
+    panelHost().appendChild(panel);
     return panel;
   }
 
   function makeDraggable(p) {
-    let sx = 0, sy = 0, ox = 0, oy = 0, cbx = 0, cby = 0, dragging = false;
+    let sx = 0, sy = 0, ox = 0, oy = 0, dragging = false;
     // Write a desired VIEWPORT top-left into the panel's left/top: any CSS
     // filter/backdrop-filter ancestor (~oot blurs #tabPanel) or transform
     // turns that ancestor into this fixed panel's containing block, so
@@ -251,8 +252,7 @@
       if (e.button !== 0) return;
       if (e.target.closest("button")) return; // drag the face, not the controls
       const r = p.getBoundingClientRect();
-      // Drop the centering transform; anchor by the panel's top-left corner
-      // (clamped to stay on screen when re-applying after zen relief).
+      // Drop the centering transform; anchor by the panel's top-left corner.
       p.style.transform = "none";
       p.style.left = r.left + "px";
       p.style.top = r.top + "px";
@@ -277,6 +277,50 @@
     const done = () => dragging = false;
     p.addEventListener("pointerup", done);
     p.addEventListener("pointercancel", done);
+  }
+
+  // Where the fixed tuner lives. Its z-index must beat the input/playback
+  // panel — but on the ?oot theme that section is stacked ABOVE #tabPanel
+  // (z 2 vs z 1, so the perf pop can overlay the cards), and a child of
+  // #tabPanel can never rise above it whatever its own z-index says. So the
+  // normal layout hosts the panel on <body>: the root stacking context wins
+  // outright. Zen keeps it INSIDE #tabPanel — body-level content is painted
+  // over by the fullscreen element (and .focus rules size the tuner for zen).
+  function panelHost() {
+    const tab = document.getElementById("tabPanel");
+    if (tab && (tab.classList.contains("focus") ||
+        (typeof isFullscreen === "function" && isFullscreen()))) return tab;
+    return document.body;
+  }
+  // Zen transitions and resizes change the panel's anchoring geometry —
+  // re-seat it and pull a dragged position back into the viewport (a tuner
+  // dragged against the window edge used to end up outside on zen entry).
+  function relocatePanel() {
+    if (!panel) return;
+    const host = panelHost();
+    if (panel.parentElement !== host) host.appendChild(panel);
+    clampPanelToScreen();
+  }
+  // Keep an inline (dragged) left/top inside the window: write the clamped
+  // viewport position, then re-measure the containing block and correct —
+  // the same measured math the drag uses, so it stays correct across the
+  // zen layout changes. Panels never dragged (no inline left/top) keep their
+  // CSS centering; hidden panels are skipped (display:none has no rect).
+  function clampPanelToScreen() {
+    if (!panel || panel.hidden) return;
+    if (!panel.style.left || !panel.style.top) return;
+    const w = panel.offsetWidth, h = panel.offsetHeight;
+    const r = panel.getBoundingClientRect();
+    const x = Math.max(4, Math.min(window.innerWidth - w - 4, r.left));
+    const y = Math.max(4, Math.min(window.innerHeight - h - 4, r.top));
+    if (x === r.left && y === r.top) return; // already in view
+    panel.style.left = x + "px";
+    panel.style.top = y + "px";
+    const r2 = panel.getBoundingClientRect();
+    cbx = r2.left - x;
+    cby = r2.top - y;
+    panel.style.left = (x - cbx) + "px";
+    panel.style.top = (y - cby) + "px";
   }
 
   function zoneHex() {
@@ -1006,6 +1050,7 @@
   function openPanel() {
     buildPanel();
     panel.hidden = false;
+    clampPanelToScreen(); // zen may have taken over while the tuner was hidden
   }
 
   function syncTransportAny() {
@@ -1044,8 +1089,12 @@
     posIdx: () => P.idx,
     from: practiceFrom, pauseToggle: practicePauseToggle,
     start: startPractice, stop: stopPractice,
+    relocate: relocatePanel,
     status: () => panel && els.status ? panel.querySelector(".prac-status").textContent : "",
   };
+
+  // Window resizes can strand a dragged tuner outside the view; pull it back.
+  window.addEventListener("resize", relocatePanel);
 
   // ?micopen=1 — diagnostic/probe mode: acquire the capture device ONCE at
   // boot (over silence, before any melody) and keep it for the whole page
@@ -1071,3 +1120,6 @@ function practiceInvalidate() {
 }
 function isPracticePaused() { return !!(window.OCA_PRACTICE && OCA_PRACTICE.paused()); }
 function practiceToggle() { if (window.OCA_PRACTICE) OCA_PRACTICE.pauseToggle(); }
+// ui.js calls this on every zen/focus transition (syncFocusMode) and after
+// zen/layout changes: re-seat the tuner in its host panel and re-clamp it.
+function practiceRelocatePanel() { if (window.OCA_PRACTICE) OCA_PRACTICE.relocate(); }
