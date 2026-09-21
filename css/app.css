@@ -334,8 +334,12 @@ button.tiny { padding: 4px 8px; font-size: 12px; }
 .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
 .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
 .sheet { display: flex; flex-wrap: wrap; gap: 18px 0; align-items: stretch; }
+/* Fixed width, no flex-grow: grow distributes free space per flex line, so a
+   short last row grows its fewer cards wider than the full rows above (up to
+   the old 280px cap) and the columns stop lining up. A fixed width keeps every
+   card identical on every row; scroll/live/print set their own sizes. */
 .card {
-  flex: 1 1 240px; width: 240px; min-width: 240px; max-width: 280px;
+  flex: 0 0 auto; width: 240px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
   overflow: hidden; page-break-inside: avoid; break-inside: avoid;
 }
