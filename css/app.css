@@ -753,11 +753,38 @@ h2#title { margin: 8px 0 10px; font-size: 18px; text-align: center; }
 .card.live.is-rest .nm {
   color: var(--rest-ink);
 }
-.sheet.scroll { flex-wrap: nowrap; overflow: visible; padding: 8px 16px 12px; }
+/* Scroll band. 30px of top padding is the flip-up zone where section names
+   ride (see .sheet.scroll .tab-bar.has-note::after): the horizontally
+   scrolling sheet-wrap computes overflow-y to auto, so anything above the
+   sheet box would clip — the names must live INSIDE the sheet's own box. */
+.sheet.scroll { flex-wrap: nowrap; overflow: visible; padding: 30px 16px 12px; }
 .sheet-wrap:has(.scroll) {
   overflow-x: auto; padding: 8px 0;
+  /* Center (don't stretch) the sheet inside the fullscreen flex wrap too —
+     kept here because the ID-level fullscreen rule would outrank any plain
+     class rule; the real fullscreen case is also declared below. */
+  align-items: center;
 }
 .sheet.scroll .card { flex: 0 0 260px; width: 260px; }
+/* Scroll-band bars span exactly the card's vertical extent and rise together
+   through the flip-up zone: EVERY bar line starts at the flip-up zone's inner
+   edge (-25px, one shared line top, 5px below the sheet edge), matching the
+   named bars — plain bars read identically tall to titled ones. A named bar
+   (has-note) additionally paints its section title at that same height: the
+   ::after dot, repurposed via content: attr(title), LEFT-ALIGNED WITH the
+   first card after the bar — the zero-width bar adjoins that card's left
+   edge, so left: 0 is the card edge — with equal 5px breathing room above
+   and below the label in the 30px flip-up zone. */
+.sheet.scroll .tab-bar::before { top: -25px; bottom: 0; }
+.sheet.scroll .tab-bar.has-note::after {
+  content: attr(title);
+  position: absolute; left: 0; top: -25px;
+  width: auto; height: auto; margin: 0; padding: 0 12px 0 0;
+  border-radius: 0; background: none;
+  font-size: 12px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; white-space: nowrap; line-height: 20px;
+  color: var(--clay-dark);
+}
 .card.now { box-shadow: 0 0 0 3px var(--ink); }
 .key.now { box-shadow: inset 0 0 0 3px var(--key-now-ring); background: var(--key-now); }
 
@@ -793,6 +820,14 @@ body.zen-fallback #tabPanel {
 }
 #tabPanel:fullscreen .sheet-wrap,
 body.zen-fallback #tabPanel .sheet-wrap { flex: 1 1 auto; display: flex; min-height: 0; }
+/* In fullscreen the wrap is a flex row: center (don't stretch) the scroll
+   sheet, or the sheet fills the panel and the cards float centered inside a
+   line that is taller than they are — then bar lines can never meet the
+   cards' top/bottom edge. (Normal view's wrap is a block, no stretch.) */
+#tabPanel:fullscreen .sheet-wrap:has(.scroll),
+body.zen-fallback #tabPanel .sheet-wrap:has(.scroll) {
+  align-items: center;
+}
 #tabPanel:fullscreen .sheet,
 body.zen-fallback #tabPanel .sheet { align-content: flex-start; width: 100%; }
 /* ...but the plain grid keeps its centered-block sizing in fullscreen too
