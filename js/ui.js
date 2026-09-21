@@ -303,6 +303,9 @@ function updateLiveTab(tokens, idx) {
   fillLiveSheet(sheet, tokens, i);
   const next = sheet.querySelector(".card.live");
   if (next) next.classList.add("now");
+  // The card just rebuilt — an integrated practice tuner must move into it
+  // immediately (renderPanel's safety net would otherwise be a tick late).
+  if (typeof practiceRelocatePanel === "function") practiceRelocatePanel();
 }
 
 function updateRangeWarning(outOf) {

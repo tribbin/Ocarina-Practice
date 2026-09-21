@@ -281,6 +281,7 @@
     };
     p.addEventListener("pointerdown", e => {
       if (e.button !== 0) return;
+      if (p.classList.contains("in-card")) return; // integrated: part of the card, not draggable
       if (e.target.closest("button")) return; // drag the face, not the controls
       const r = p.getBoundingClientRect();
       // Drop the centering transform; anchor by the panel's top-left corner.
@@ -310,26 +311,40 @@
     p.addEventListener("pointercancel", done);
   }
 
-  // Where the fixed tuner lives. Its z-index must beat the input/playback
-  // panel — but on the ?oot theme that section is stacked ABOVE #tabPanel
-  // (z 2 vs z 1, so the perf pop can overlay the cards), and a child of
-  // #tabPanel can never rise above it whatever its own z-index says. So the
-  // normal layout hosts the panel on <body>: the root stacking context wins
-  // outright. Zen keeps it INSIDE #tabPanel — body-level content is painted
-  // over by the fullscreen element (and .focus rules size the tuner for zen).
+  // Where the fixed tuner lives. In single-card layouts (Live view / zen) it
+  // is integrated INTO the live fingering card as the card's bottom strip —
+  // no own face, the card's chamber background showing; the note label is
+  // the card's own. Grid/scroll keep the floating overlay, whose host choice
+  // still matters on the ?oot theme: the input/playback section is stacked
+  // ABOVE #tabPanel (z 2 vs z 1, so the perf pop can overlay the cards) and
+  // a child of #tabPanel can never rise above it — so the overlay hosts on
+  // <body> (root stacking context wins outright) except during zen, where it
+  // must stay INSIDE #tabPanel (body-level content is painted over by the
+  // fullscreen element).
   function panelHost() {
     const tab = document.getElementById("tabPanel");
     if (tab && (tab.classList.contains("focus") ||
         (typeof isFullscreen === "function" && isFullscreen()))) return tab;
     return document.body;
   }
-  // Zen transitions and resizes change the panel's anchoring geometry —
-  // re-seat it and pull a dragged position back into the viewport (a tuner
-  // dragged against the window edge used to end up outside on zen entry).
+  // Seat the tuner for the current layout. The live card REBUILDS whenever
+  // the pitch changes, so this runs not just on zen transitions (ui.js
+  // syncFocusMode) but on every card rebuild (ui.js updateLiveTab) and from
+  // renderPanel as a safety net.
   function relocatePanel() {
     if (!panel) return;
-    const host = panelHost();
-    if (panel.parentElement !== host) host.appendChild(panel);
+    const live = typeof isLiveTab === "function" && isLiveTab();
+    const card = live ? document.querySelector(".card.live") : null;
+    const meta = card ? card.querySelector(".meta") : null;
+    const inCard = !!card;
+    panel.classList.toggle("in-card", inCard);
+    const host = (inCard && meta) ? meta : panelHost();
+    if (panel.parentElement !== host) {
+      // between the note letter and the duration symbol (meta children are
+      // nm then dur; space-between would otherwise center the dur)
+      const dur = host.querySelector(":scope > .dur");
+      if (dur) host.insertBefore(panel, dur); else host.appendChild(panel);
+    }
     clampPanelToScreen();
   }
   // Keep an inline (dragged) left/top inside the window: write the clamped
@@ -339,6 +354,7 @@
   // CSS centering; hidden panels are skipped (display:none has no rect).
   function clampPanelToScreen() {
     if (!panel || panel.hidden) return;
+    if (panel.classList.contains("in-card")) return; // static card strip: no inline geometry
     if (!panel.style.left || !panel.style.top) return;
     const w = panel.offsetWidth, h = panel.offsetHeight;
     const r = panel.getBoundingClientRect();
@@ -368,6 +384,12 @@
   // Single-note bars keep one slice; returns true when slice mode was used.
   function fillSlices(el, bar) {
     const n = bar.zones.length;
+    // Slice-mode cell color: white-translucent on the integrated (chamber)
+    // tuner, black-translucent on cream cards — the empty cells took the
+    // card's chamber tint over as a white wash mid-song and only looked
+    // right there; now the white face is there from the first slice.
+    const cellBg = (el === els.fill && panel.classList.contains("in-card"))
+      ? "rgba(255,255,255,.22)" : "rgba(0,0,0,.25)";
     if (n > 1) {
       if (el._slices !== n) {
         el._slices = n;
@@ -378,7 +400,7 @@
         el.style.background = "transparent";
         for (let k = 0; k < n; k++) {
           const cell = document.createElement("div");
-          cell.style.cssText = "flex:1 1 0;position:relative;background:rgba(0,0,0,.25);border-radius:2px;overflow:hidden;height:100%";
+          cell.style.cssText = "flex:1 1 0;position:relative;overflow:hidden;height:100%;background:" + cellBg;
           const inner = document.createElement("div");
           inner.style.cssText = "position:absolute;left:0;top:0;bottom:0;width:0%;transition:width .1s linear";
           cell.appendChild(inner);
@@ -391,7 +413,9 @@
         const frac = need > 0 ? Math.max(0, Math.min(1, seg / need)) : 0;
         const inner = cell.firstChild;
         inner.style.width = (frac * 100) + "%";
-        inner.style.background = zoneHexFor(bar.names[k]);
+        inner.style.background = (el === els.fill && panel.classList.contains("in-card"))
+          ? "currentColor"
+          : zoneHexFor(bar.names[k]);
         inner.style.opacity = need > 0 && seg >= need ? "1" : ".8";
       });
       return true;
@@ -409,12 +433,20 @@
   }
   function renderPanel() {
     if (!panel || !P.bar) return;
+    // safety net: a card rebuild (pitch change) can orphan the integrated
+    // tuner; entering zen swaps the card wholesale, while an old session
+    // can leave the panel inside a DETACHED former card (still holding a
+    // .meta card parent). Require the live CONNECTED meta, else re-seat.
+    if (panel.classList.contains("in-card") &&
+        !(panel.parentElement && panel.parentElement.isConnected &&
+          panel.parentElement.classList.contains("meta")))
+      relocatePanel();
     const dg = dbg();
     const paused = !!P.paused;
     // Text modes: paused/song-end, mic errors, or the sample-rate mismatch
     // diagnostic; everything else reports as a glyph (wording in the tooltip).
     let studio = paused
-      ? (P.completed ? "Song end — Play or Practice resumes." : "Paused — Play/Practice or Space resumes.")
+      ? (P.completed ? "Song end — Play or Practice resumes." : "")
       : (P.err || "");
     // 44.1/48 kHz suspicion: when the mic track reports a rate that differs
     // from the analyser context's, that mismatch would show up as a fixed
@@ -437,6 +469,9 @@
       els.status.title = "";
     }
     els.status.classList.toggle("prac-glyph", !!glyph);
+    // a wipe without its glyph (integrated tuner) still needs the signal:
+    // the empty hold rail takes the restart tint while the pin lasts
+    els.track.classList.toggle("prac-restart", held);
     if (P.bar) {
       // The tuner names the CURRENT target: the chain's frontier zone —
       // "zone 2/3" means the note shown is the one you must be on now.
@@ -453,12 +488,15 @@
       const zw = Math.min(100, (dg.tuneCents / needleHi) * 50);
       els.zone.style.left = (50 - zw) + "%";
       els.zone.style.width = (zw * 2) + "%";
-      // fill
+      // fill: on the integrated (chamber) tuner the bar runs in currentColor
+      // — a chamber-colored bar on a chamber-colored band is invisible
+      const inCard = panel.classList.contains("in-card");
       const pct = barFrac(P.bar) * 100;
       if (!fillSlices(els.fill, P.bar)) {
         els.fill.style.width = pct + "%";
-        els.fill.style.background = (P.state === "fill" && barFilled(P.bar) > 0) || P.state === "hit"
-          ? zoneHex() : (barFilled(P.bar) > 0 ? "var(--accent)" : "transparent");
+        els.fill.style.background = inCard ? "currentColor"
+          : ((P.state === "fill" && barFilled(P.bar) > 0) || P.state === "hit"
+            ? zoneHex() : (barFilled(P.bar) > 0 ? "var(--accent)" : "transparent"));
       }
     }
   }
@@ -468,7 +506,11 @@
   const posRel = new Set();  // elements we granted .prac-pos-rel
   function updateFillOverlays() {
     if (!P.active) { clearOverlays(); return; }
-    const targets = ["#tokens", "#focusTokens", "#sheet"].map(s => document.querySelector(s)).filter(Boolean);
+    // The integrated tuner lives on the live card itself — a second progress
+    // bar under the card would duplicate it; overlay the strips only.
+    const targets = ["#tokens", "#focusTokens"]
+      .concat(panel.classList.contains("in-card") ? [] : ["#sheet"])
+      .map(s => document.querySelector(s)).filter(Boolean);
     const dg = dbg();
     const pct = P.bar ? barFrac(P.bar) : 0;
     const live = new Set();
@@ -1078,6 +1120,12 @@
 
   function stopPractice() {
     P.active = false; P.paused = false; P.completed = false; P.bar = null;
+    // Leave the card's meta band immediately: the parked/hidden tuner must
+    // not keep the symmetric grid layout (or its plate) in the live view.
+    if (panel && panel.classList.contains("in-card")) {
+      panel.classList.remove("in-card");
+      panelHost().appendChild(panel); // floating host; next engage re-seats
+    }
     if (P.interval) { clearInterval(P.interval); P.interval = 0; }
     if (P.micTimer) { clearTimeout(P.micTimer); P.micTimer = 0; } // never open mic for a closed session
     if (P.mic && P.mic.connected) {
@@ -1102,12 +1150,18 @@
     P.paused = !P.paused;
     P.last = performance.now();
     // Disengaged (paused) = neutral: the tuner never shows while practice is
-    // not running.
+    // not running. Paused in the card band must ALSO leave the band — the
+    // empty middle column would otherwise pull the note symbols inward.
     if (panel) panel.hidden = P.paused;
+    if (P.paused && panel && panel.classList.contains("in-card")) {
+      panel.classList.remove("in-card");
+      panelHost().appendChild(panel);
+    }
     zenGlowOff(); // pause must not leave the halo animating on its own
     // Resuming while parked at the song end: wrap to the first note (a fresh
     // pass), regardless of the Loop setting.
     if (!P.paused && P.idx >= P.tokens.length) enterIdx(nextPitchedIdx(0), true);
+    if (!P.paused) relocatePanel(); // re-seat into the band (or overlay host)
     renderPanel();
     syncTransportAny();
   }
@@ -1122,6 +1176,7 @@
   function openPanel() {
     buildPanel();
     panel.hidden = false;
+    relocatePanel(); // seat for the CURRENT layout before any tick seats it
     clampPanelToScreen(); // zen may have taken over while the tuner was hidden
   }
 

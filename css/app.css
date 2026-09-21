@@ -1024,6 +1024,45 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 .prac-fill { height: 100%; width: 0%; border-radius: 7px; background: var(--ch1); transition: width .1s linear; }
 /* author display beats the UA [hidden] rule — hiding must actually hide */
 .prac-panel[hidden] { display: none; }
+/* Integrated tuner: the live card's meta band hosts the tuner BETWEEN the
+   note letter and the duration symbol — the card's own nm shows the note,
+   the chamber background is the meta's own. The strip is a center flex
+   child: two stacked bars scaled between the text columns; the state glyph
+   rides to their right (order 3, just before the dur symbol). The floating
+   overlay remains for grid/scroll layouts. */
+.prac-panel.in-card,
+#tabPanel.focus .prac-panel.in-card { /* beats the zen overlay tuning (top/width/padding) */
+  position: static; inset: auto; transform: none;
+  width: auto; z-index: auto; flex: 1 1 auto; min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(44px, 1fr) auto;
+  gap: 3px 7px; align-items: center;
+  padding: 0; margin-inline: 8px; /* breathing room from nm and the dur symbol */
+  border: 0; border-radius: 0; box-shadow: none;
+  color: inherit; background: none;
+}
+.prac-panel.in-card .prac-row1 { display: contents; }
+.prac-panel.in-card .prac-note { display: none; }
+.prac-panel.in-card .prac-status { display: none; } /* no glyph in the meta band */
+.prac-panel.in-card .prac-scale { grid-column: 1; grid-row: 1; }
+.prac-panel.in-card .prac-track { grid-column: 1; grid-row: 2; }
+/* the in-card display rules would beat [hidden] (the zen seat rule carries
+   an ID, which outranks any class selector) — hiding must actually hide */
+.prac-panel.in-card[hidden],
+#tabPanel.focus .prac-panel.in-card[hidden] { display: none; }
+.prac-panel.in-card .prac-mark { background: currentColor; } /* chamber: white; plain meta: ink */
+/* Symmetric band: with the tuner seated, the meta becomes a 3-column grid
+   with EQUAL side columns, so the note letter and the duration symbol keep
+   identical geometry and the bars sit on the band's center line (reverts
+   when the tuner dis-seats). */
+.card.live:has(.prac-panel.in-card) .meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(96px, 3fr) minmax(0, 1fr);
+  align-items: center;
+}
+/* Wipe signal without the glyph: the empty hold rail takes the restart tint
+   while the pin lasts (HOLD_MSG_MS). */
+.prac-panel.in-card .prac-track.prac-restart { background: rgba(232,160,122,.5); }
 .prac-panel button.ghost { background: transparent; color: var(--paper); border-color: rgba(255,255,255,.35); }
 .prac-panel button.ghost:hover { background: rgba(255,255,255,.12); }
 #tabPanel.focus .prac-panel {
