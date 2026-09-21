@@ -558,6 +558,10 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
 .loop-lab input { margin: 0; }
 .tab-heading { margin: 0 0 8px; }
 .tab-tools { margin: 0 0 10px; justify-content: flex-start; }
+/* Push the right-hand tool cluster (Full screen onward) to the panel's right
+   edge; the auto margin collapses to 0 when the row is tight, so spacing stays
+   an even 8px gap both when pushed apart and when wrapped/narrow. */
+.tab-tools #fullscreen { margin-left: auto; }
 
 /* Display-mode segmented control */
 .mode-seg {
