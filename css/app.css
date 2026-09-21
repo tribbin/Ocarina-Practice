@@ -854,14 +854,25 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 }
 #tabPanel.focus .focus-btn.play { background: var(--zen-btn); }
 #tabPanel.focus .focus-btn.play.is-playing { background: var(--good); }
-.focus-btn.play:not(.is-playing) { padding-left: 7px; padding-bottom: 4px; }
+/* Transport glyphs are inline SVG in currentColor: the ▶/⏸/⏹ characters are
+   emoji-default and phones painted them in the color emoji font (orange),
+   ignoring the button color. Owning the shapes means exact geometry and
+   centering: play idle → triangle (optically nudged right); running → the
+   pause bars (the .is-playing class flips which svg shows). */
+.focus-btn > svg { display: none; width: .85em; height: .85em; fill: currentColor; }
+#focusPlay:not(.is-playing) svg.g-play { display: block; transform: translateX(-.03em); }
+#focusPlay.is-playing svg.g-pause { display: block; }
+#focusStop svg.g-stop { display: block; }
 
 /* Loop toggle in the transport row */
 #tabPanel.focus .focus-btn.loop {
-  font-size: 28px;
+  font-size: 31px;
   background: rgba(255,255,255,.14); color: var(--paper);
   border: 1px solid rgba(255,255,255,.5);
 }
+/* practice glyph: ~half the play button's icon width, so the mode symbols
+   read alike */
+#tabPanel.focus .focus-btn#practiceFocusBtn { font-size: 50px; }
 .focus-btn.loop.on { background: var(--good); color: var(--paper); border-color: var(--good); }
 #tabPanel.focus .focus-btn.loop.on { background: var(--good); color: #fff; border-color: var(--good); }
 

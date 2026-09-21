@@ -1564,7 +1564,7 @@ function playMelody(fromIdx) {
   if (audioCtx.state === "suspended") audioCtx.resume();
   melodyPlaying = true;
   const btn = document.getElementById("playMel");
-  if (btn) btn.textContent = "Stop";
+  if (btn) btn.textContent = "Pause";
   syncTransport();
   resetMelodyBuses(audioCtx); // fresh bus generation for the upcoming voices
   scheduleMelody(audioCtx.currentTime + 0.05);
@@ -1592,7 +1592,7 @@ function resumeMelody() {
   if (audioCtx.state === "suspended") audioCtx.resume();
   melodyPlaying = true;
   const btn = document.getElementById("playMel");
-  if (btn) btn.textContent = "Stop";
+  if (btn) btn.textContent = "Pause";
   syncTransport();
   resetMelodyBuses(audioCtx); // fresh bus generation for the upcoming voices
   scheduleMelody(audioCtx.currentTime + 0.05);

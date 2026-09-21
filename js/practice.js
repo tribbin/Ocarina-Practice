@@ -338,8 +338,14 @@
   // renderPanel as a safety net.
   function relocatePanel() {
     if (!panel) return;
-    const live = typeof isLiveTab === "function" && isLiveTab();
-    const card = live ? document.querySelector(".card.live") : null;
+    // Sitting in the card band is a practice-mode decision: only while the
+    // engine RUNS. A paused/stopped tuner must stay parked on the overlay
+    // host — an invisible panel in the band would keep the symmetric grid
+    // alive and pull the note symbols toward the center.
+    const seated = typeof isPracticeActive === "function" && isPracticeActive() &&
+      !(typeof isPracticePaused === "function" && isPracticePaused()) &&
+      typeof isLiveTab === "function" && isLiveTab();
+    const card = seated ? document.querySelector(".card.live") : null;
     const meta = card ? card.querySelector(".meta") : null;
     const inCard = !!card;
     panel.classList.toggle("in-card", inCard);
@@ -1168,15 +1174,12 @@
     // not running. Paused in the card band must ALSO leave the band — the
     // empty middle column would otherwise pull the note symbols inward.
     if (panel) panel.hidden = P.paused;
-    if (P.paused && panel && panel.classList.contains("in-card")) {
-      panel.classList.remove("in-card");
-      panelHost().appendChild(panel);
-    }
     zenGlowOff(); // pause must not leave the halo animating on its own
     // Resuming while parked at the song end: wrap to the first note (a fresh
     // pass), regardless of the Loop setting.
     if (!P.paused && P.idx >= P.tokens.length) enterIdx(nextPitchedIdx(0), true);
-    if (!P.paused) relocatePanel(); // re-seat into the band (or overlay host)
+    // pause parks the tuner on the (hidden) overlay host; resume re-seats it
+    relocatePanel();
     renderPanel();
     syncTransportAny();
   }

@@ -1025,7 +1025,10 @@ function updateTransportUI() {
   if (ft) ft.classList.toggle("dial-off", tempoOff);
   const main = document.getElementById("playMel");
   if (main) {
-    main.textContent = playing ? "Stop" : "Play";
+    // The button PAUSES (resume on the next click) — say so; a real stop is
+    // the transport's ⏹ (zen) or a song/library change. "Stop" read like
+    // losing the position, which it never did.
+    main.textContent = playing ? "Pause" : "Play";
     // Neutral (idle/paused) is outline — never the black filled look.
     main.classList.toggle("on", playing);
   }
@@ -1037,9 +1040,9 @@ function updateTransportUI() {
   });
   const fp = document.getElementById("focusPlay");
   if (fp) {
-    // text-only glyphs: the ⏸/▶ characters are emoji-default and phones
-    // paint them in the color emoji font (they ignored the button's color)
-    fp.textContent = playing ? "\u2016" : "\u25BA";
+    // The transport glyphs are inline SVG (index.html): the class flip alone
+    // switches play ↔ pause. Never write textContent here — it would wipe
+    // the svg children.
     fp.classList.toggle("is-playing", playing);
   }
 }

@@ -114,12 +114,17 @@
     <div class="focus-strip noprint" id="focusStrip">
       <div class="tokens focus-tokens" id="focusTokens"></div>
     </div>
-    <div class="focus-bar noprint" id="focusBar">
+      <div class="focus-bar noprint" id="focusBar">
       <div class="focus-transport">
         <button type="button" class="focus-btn loop" id="focusLoop" title="Loop" aria-label="Loop" aria-pressed="false">↻</button>
-        <button type="button" class="focus-btn play" id="focusPlay" title="Play / Pause" aria-label="Play or pause">►</button>
+        <button type="button" class="focus-btn play" id="focusPlay" title="Play / Pause" aria-label="Play or pause">
+          <svg class="g-play" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7.4 4.4 L20.2 12 L7.4 19.6 Z" stroke-linejoin="round"/></svg>
+          <svg class="g-pause" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4.6" y="5" width="5.2" height="14" rx="2.1"/><rect x="14.2" y="5" width="5.2" height="14" rx="2.1"/></svg>
+        </button>
         <button type="button" class="focus-btn" id="practiceFocusBtn" title="Practice mode: the song advances when you hit each note in tune" aria-label="Practice mode" aria-pressed="false">♪</button>
-        <button type="button" class="focus-btn" id="focusStop" title="Stop" aria-label="Stop">■</button>
+        <button type="button" class="focus-btn" id="focusStop" title="Stop" aria-label="Stop">
+          <svg class="g-stop" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4" y="4" width="16" height="16" rx="2.6"/></svg>
+        </button>
       </div>
       <div class="focus-settings">
         <label class="focus-tempo" id="focusTempoLab">
