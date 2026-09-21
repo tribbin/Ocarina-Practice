@@ -209,6 +209,16 @@ html[data-theme="oot"] kbd {
   color: #fff;
   border-color: rgba(255, 255, 255, 0.3);
 }
+/* Debug-panel test-note pills: the shared rule pairs --clay-dark (pale green
+   here) with --paper (near-white) — unreadable in OOT — and its hover pairs
+   --clay (dark green) with --ink (near-black). Pin readable pairs instead. */
+html[data-theme="oot"] #dbgPanel .dbg-note {
+  color: #12380d;
+}
+html[data-theme="oot"] #dbgPanel .dbg-note:hover {
+  background: #12500e;
+  color: #fff;
+}
 header.app {
   background: var(--ink); color: var(--paper);
   padding: 14px 20px; display: flex; align-items: baseline; gap: 14px;
