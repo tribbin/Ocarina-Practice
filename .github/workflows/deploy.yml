@@ -40,6 +40,12 @@ jobs:
     needs: practice-tests
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    # deploy-pages@v4 requires an explicit deployment environment — this is
+    # the authorized Pages deployment the API asks for ("Missing environment"
+    # without it).
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     concurrency: pages
     steps:
       - uses: actions/checkout@v4
@@ -53,7 +59,5 @@ jobs:
           cp *.json *.svg _pages/
           cp hyrule.jpg _pages/
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: _pages
-      - uses: actions/deploy-pages@v4
+      - id: deployment
+        uses: actions/deploy-pages@v4
