@@ -1185,7 +1185,28 @@ function exitZen() {
 }
 
 function toggleZen() {
-  if (isFullscreen()) exitZen(); else enterZen();
+  if (isFullscreen()) {
+    // Already fullscreen but NOT on the zen view (plain Full screen with
+    // grid/scroll, or the plain no-API fallback): convert to Zen IN PLACE —
+    // keep the fullscreen session, just switch to the single ocarina view.
+    // The old behavior called exitZen(), so fullscreen grid/scroll could
+    // never reach the zen screen: it merely dropped back to the normal page.
+    // Zen focus view re-enabled below; the focus class comes from
+    // syncFocusMode (single mode + fullscreen => focus). Exiting stays a
+    // toggle: if somehow invoked while already in the zen view, tear down.
+    stopZenWaves();
+    if (!isLiveTab()) {
+      zenPrevMode = displayMode;
+      setDisplayMode("single");
+      // Nothing changes for the fullscreen machinery, so fullscreenchange
+      // never fires — nudge the sync manually (reverb, vibrato, transport).
+      if (window.onZenChange) window.onZenChange();
+    } else {
+      exitZen();
+    }
+  } else {
+    enterZen();
+  }
 }
 
 // Zen hit-pulse: on hovering the ◎ Zen button, one white ring rolls outward
