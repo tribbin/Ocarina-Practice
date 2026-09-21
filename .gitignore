@@ -1,5 +1,5 @@
-# Opencode agent config/skills (local tooling)
 .opencode/
+.grok/
 
 # Work files: recordings, FFT snapshots, tone analysis reports
 research/

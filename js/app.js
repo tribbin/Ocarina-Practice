@@ -143,6 +143,9 @@ function fillInstrumentSelect(selectedId) {
 
 async function switchInstrument(inst) {
   await loadInstrument(inst);
+  // The ocarina swap may invalidate the workout targets: end any practice
+  // session so the next engagement starts fresh on the new instrument.
+  if (typeof practiceInvalidate === "function") try { practiceInvalidate(); } catch (e) {}
   buildKB();
   if (typeof fillLibrary === "function") fillLibrary();
   else if (typeof syncLibraryMenu === "function") syncLibraryMenu();

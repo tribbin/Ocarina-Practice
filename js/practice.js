@@ -1042,5 +1042,16 @@
 
 // Convenience globals used by ui.js hooks (guarded by typeof at call sites)
 function isPracticeActive() { return !!(window.OCA_PRACTICE && OCA_PRACTICE.active()); }
+
+// A running or parked session is only valid for the song it started on: its
+// tokens, reading-line position and tuner targets are a snapshot of that
+// melody. When the melody is replaced (library pick, ocarina swap, text edit,
+// file load), the session must end — otherwise it keeps demanding the old
+// song's pitches on top of the new sheet, and pressing the Practice button
+// just RESUMES that stale session instead of starting fresh (new song's first
+// note then "never registers" / the tuner reads it hard off-target).
+function practiceInvalidate() {
+  if (window.OCA_PRACTICE && OCA_PRACTICE.active()) OCA_PRACTICE.stop();
+}
 function isPracticePaused() { return !!(window.OCA_PRACTICE && OCA_PRACTICE.paused()); }
 function practiceToggle() { if (window.OCA_PRACTICE) OCA_PRACTICE.pauseToggle(); }

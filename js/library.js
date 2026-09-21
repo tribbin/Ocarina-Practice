@@ -299,6 +299,10 @@ function applySongTick(v) {
 function loadLibraryItem(id) {
   if (typeof stopMelody === "function") stopMelody();
   if (typeof resetLiveTab === "function") resetLiveTab();
+  // A different song invalidates any practice session (see practiceInvalidate
+  // in js/practice.js): stop it so the next Practice press starts fresh on
+  // this song rather than resuming the replaced song's stale tuner targets.
+  if (typeof practiceInvalidate === "function") try { practiceInvalidate(); } catch (e) {}
   // The song's tempo lives in its text (withPlayHeaders writes the header);
   // the relative playback speed stays at the user's dial between songs.
   let tempo = 100;
@@ -479,6 +483,9 @@ function wireLibrary() {
       sw = sw != null ? sw : swingFromText(text);
       if (sw != null) applySwing(sw);
       clearLibrarySelection();
+      // The loaded file replaces the melody: a parked/running practice
+      // session belongs to the previous song (see practiceInvalidate).
+      if (typeof practiceInvalidate === "function") try { practiceInvalidate(); } catch (e) {}
       render();
     };
     reader.readAsText(f);

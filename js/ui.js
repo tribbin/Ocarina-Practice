@@ -886,9 +886,15 @@ function wireUi() {
     document.getElementById("src").value = "";
     clearLibrarySelection();
     resetLiveTab();
+    if (typeof practiceInvalidate === "function") try { practiceInvalidate(); } catch (e) {}
     render();
   };
-  document.getElementById("src").addEventListener("input", render);
+  document.getElementById("src").addEventListener("input", () => {
+    // Typed edits replace the melody the session was built from — end it so
+    // the next Practice press starts fresh on the edited song.
+    if (typeof practiceInvalidate === "function") try { practiceInvalidate(); } catch (e) {}
+    render();
+  });
   const big = document.getElementById("bigSmall");
   if (big) big.onclick = () => {
     const on = big.getAttribute("aria-pressed") !== "true";
