@@ -1312,6 +1312,9 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 #dbgPanel.open { display: block; }
 #dbgPanel .dbg-head {
   display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;
+  /* The header is the drag handle: grab cursor, no text selection, and
+     touch-action none so touch-dragging isn't hijacked by scrolling. */
+  cursor: move; user-select: none; -webkit-user-select: none; touch-action: none;
 }
 #dbgPanel .dbg-head b {
   font-size: 13px; letter-spacing: .08em; color: var(--clay);

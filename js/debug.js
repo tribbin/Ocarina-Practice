@@ -32,11 +32,14 @@
     { t: "Wave — pitch-keyed timbre", wave: 1, r: [
       // Global scales on the interpolated anchor curves (V_ANCHORS in
       // audio.js): every note rebuilds its wave from the pitch-keyed
-      // profile, so these brighten/darken the whole range at once.
-      ["h2Mul", "H2 scale (all notes)", 0, 3, 0.05],
-      ["h3Mul", "H3 scale (all notes)", 0, 3, 0.05],
-      ["h4Mul", "H4 scale (all notes)", 0, 3, 0.05],
-      ["h5Mul", "H5 scale (all notes)", 0, 3, 0.05],
+      // profile, so these brighten/darken the whole range at once. The
+      // partials are calibrated TINY re H1 (~−40..−60 dB, near-sine tone),
+      // so the sweep headroom goes to 30× — a plain 3× max is barely
+      // audible; auditioning real timbre shifts needs the big gun.
+      ["h2Mul", "H2 scale (all notes)", 0, 30, 0.25],
+      ["h3Mul", "H3 scale (all notes)", 0, 30, 0.25],
+      ["h4Mul", "H4 scale (all notes)", 0, 30, 0.25],
+      ["h5Mul", "H5 scale (all notes)", 0, 30, 0.25],
     ]},
     { t: "Measured-curve shape", r: [
       ["hardAmt", "Hard-blow drift", 0, 2, 0.05],
@@ -135,6 +138,79 @@
       '<span class="dbg-tip">applies to newly played notes \u00b7 auto-saved \u00b7 dbl-click a label to reset one value</span>' +
     '</div>';
   document.body.appendChild(panel);
+
+  // ---- Draggable panel: grab the header, drop anywhere, remember it ----
+  // Pointer-based so touch works too. A dragged position is inline left/top
+  // (with right:auto cleared), which outranks both the body default
+  // (top/right 10px) and the zen reposition (top 76px right 10px) — so the
+  // dragged spot survives the move into #tabPanel for zen and back out.
+  var POS_KEY = "oco-debug-pos";
+  function clampPos(x, y) {
+    var w = panel.offsetWidth || 350;
+    return {
+      // Keep ≥60px horizontally / 40px vertically reachable on any screen.
+      x: Math.max(60 - w, Math.min(x, window.innerWidth - 60)),
+      y: Math.max(0, Math.min(y, window.innerHeight - 40))
+    };
+  }
+  function applyPos(x, y) {
+    var c = clampPos(x, y);
+    panel.style.left = c.x + "px";
+    panel.style.top = c.y + "px";
+    panel.style.right = "auto";
+  }
+  function savePos() {
+    try {
+      localStorage.setItem(POS_KEY, JSON.stringify({
+        x: parseInt(panel.style.left, 10), y: parseInt(panel.style.top, 10)
+      }));
+    } catch (e) {}
+  }
+  function resetPos() {
+    panel.style.left = ""; panel.style.top = ""; panel.style.right = "";
+    try { localStorage.removeItem(POS_KEY); } catch (e) {}
+  }
+  try {
+    var savedPos = JSON.parse(localStorage.getItem(POS_KEY) || "null");
+    if (savedPos && isFinite(savedPos.x) && isFinite(savedPos.y)) applyPos(savedPos.x, savedPos.y);
+  } catch (e) {}
+  window.addEventListener("resize", function () {
+    // A resized viewport must never strand the panel out of reach.
+    if (panel.style.left !== "") {
+      applyPos(parseInt(panel.style.left, 10), parseInt(panel.style.top, 10));
+    }
+  });
+  (function wireDrag() {
+    var head = panel.querySelector(".dbg-head");
+    if (!head) return;
+    var drag = null;
+    head.addEventListener("pointerdown", function (e) {
+      if (e.target.closest(".dbg-x")) return; // hide button stays a button
+      var r = panel.getBoundingClientRect();
+      drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, moved: false, r: r };
+      try { head.setPointerCapture(e.pointerId); } catch (e2) {}
+      panel.style.userSelect = "none";
+    });
+    head.addEventListener("pointermove", function (e) {
+      if (!drag) return;
+      drag.moved = true;
+      applyPos(e.clientX - drag.dx, e.clientY - drag.dy);
+    });
+    head.addEventListener("pointerup", function () {
+      if (drag && drag.moved) savePos();
+      drag = null;
+      panel.style.userSelect = "";
+    });
+    head.addEventListener("pointercancel", function () {
+      drag = null;
+      panel.style.userSelect = "";
+    });
+    // Double-click (not on ✕) returns the panel to its stylesheet position
+    // wherever it is — table center-right by default, below the ✕ in Zen.
+    head.addEventListener("dblclick", function (e) {
+      if (!e.target.closest(".dbg-x")) resetPos();
+    });
+  })();
 
   function playId(id, dur) {
     if (typeof playNote === "function") playNote(id, dur);
@@ -428,18 +504,32 @@
   // While anything is fullscreen we live INSIDE the fullscreen element
   // (always #tabPanel, the only fullscreen target in this app); on exit we
   // return to <body>. Relocation keeps all wiring (append, not recreate).
+  // The CSS fallback (no Fullscreen API: iPhone Safari, refused ?zen=1
+  // requests, ?nofs=1) paints body.zen-fallback #tabPanel fixed over the
+  // whole viewport TOO — but fires NO fullscreenchange event. Without
+  // relocating there, the body-level panel (z 90, top-right corner) is not
+  // only invisible under the fallback view (z 9999): after the ✕ appears it
+  // would still sit in the panel's hit area and nothing could exit Zen. So
+  // observe the body class itself — the relocation is idempotent either way.
   var debugPanelBody = document.body;
   function zenRelocate() {
     if (!panel || !panel.parentElement) return;
     var fsEl = document.fullscreenElement || document.webkitFullscreenElement;
-    if (fsEl && panel.parentElement !== fsEl) {
+    var fallback = document.body.classList.contains("zen-fallback");
+    var target = fsEl || (fallback ? document.getElementById("tabPanel") : null);
+    if (target && panel.parentElement !== target) {
       debugPanelBody = panel.parentElement;
-      fsEl.appendChild(panel);
-    } else if (!fsEl && panel.parentElement !== debugPanelBody) {
+      target.appendChild(panel);
+    } else if (!target && panel.parentElement !== debugPanelBody) {
       debugPanelBody.appendChild(panel);
     }
   }
   document.addEventListener("fullscreenchange", zenRelocate);
   document.addEventListener("webkitfullscreenchange", zenRelocate);
+  if (window.MutationObserver) {
+    new MutationObserver(zenRelocate).observe(document.body, {
+      attributes: true, attributeFilter: ["class"]
+    });
+  }
   if (document.fullscreenElement || document.webkitFullscreenElement) zenRelocate();
 })();
