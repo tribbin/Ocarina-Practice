@@ -100,7 +100,7 @@
     return 440 * Math.pow(2, (semi[m[1]] + (+m[2] + 1) * 12 - 69) / 12);
   }
   function gridBeats(t) {
-    if (!t || t.type === "bar" || t.type === "tempo") return 0;
+    if (!t || t.type === "bar" || t.type === "tempo" || t.type === "bass") return 0;
     return t.beats || ((4 / (t.dur || 4)) * (t.dotted ? 1.5 : 1) * (t.triplet ? 2 / 3 : 1));
   }
   function centsOf(hz, target) {
@@ -114,7 +114,7 @@
     // first non bar/tempo token at or after i (the junction check for ~)
     for (let k = i; k < tokens.length; k++) {
       const t = tokens[k];
-      if (t.type === "bar" || t.type === "tempo") continue;
+      if (t.type === "bar" || t.type === "tempo" || t.type === "bass") continue;
       return k;
     }
     return -1;
@@ -127,7 +127,7 @@
     let end = from;
     for (let k = from + 1; k < tokens.length; k++) {
       const t = tokens[k];
-      if (t.type === "bar" || t.type === "tempo") continue;
+      if (t.type === "bar" || t.type === "tempo" || t.type === "bass") continue;
       if (t.type === "tie" && NOTES.includes(t.id) && t.id === id) { end = k; continue; }
       break;
     }
@@ -170,7 +170,7 @@
     const { end, zones, names, zoneIdx, slide } = absorbHops(tokens, i, chainId);
     let beats = 0;
     for (let k = i; k <= end; k++) {
-      if (tokens[k].type === "bar" || tokens[k].type === "tempo") continue;
+      if (tokens[k].type === "bar" || tokens[k].type === "tempo" || tokens[k].type === "bass") continue;
       beats += gridBeats(tokens[k]);
     }
     // Staccato: practice half the note's normal duration (melody is leading).
@@ -186,7 +186,7 @@
       const to = k + 1 < zoneIdx.length ? zoneIdx[k + 1] - 1 : end;
       let zb = 0;
       for (let j = from; j <= to; j++) {
-        if (tokens[j].type === "bar" || tokens[j].type === "tempo") continue;
+        if (tokens[j].type === "bar" || tokens[j].type === "tempo" || tokens[j].type === "bass") continue;
         zb += gridBeats(tokens[j]);
       }
       return zb * P.quarter * (stac ? 0.5 : 1);
@@ -884,7 +884,7 @@
     const t = P.tokens[i];
     if (!t) { P.state = "done"; return; }
     if (t.type === "tempo") { P.quarter = quarterSecFor(t.bpm); enterIdx(i + 1, fresh); return; }
-    if (t.type === "bar") { enterIdx(i + 1, fresh); return; }
+    if (t.type === "bar" || t.type === "bass") { enterIdx(i + 1, fresh); return; }
     if (t.type === "rest") {
       P.state = "rest";
       P.msgHoldUntil = 0; // no stale feedback may ride across a rest
@@ -936,7 +936,7 @@
 
     // auto-pass tokens
     if (t.type === "tempo") { P.quarter = quarterSecFor(t.bpm); advance(); return; }
-    if (t.type === "bar") { advance(); return; }
+    if (t.type === "bar" || t.type === "bass") { advance(); return; }
     if (t.type === "rest") {
       P.state = "rest";
       P.restLeft -= dt;

@@ -1,6 +1,6 @@
 function parse(src) {
   const tokens = [];
-  const re = /([A-Ga-g])([#b])?(\d)?(\/\d+\.?t?)?(!)?|(\|)(\[[^\]]*\])?|(r)(\/\d+\.?t?)?|(-)(\/\d+\.?t?)?|(~)|(#[^\n]*)/g;
+  const re = /([A-Ga-g])([#b])?(\d)?(\/\d+\.?t?)?(!)?|(\|)\s*(\[[^\]]*\])?|(r)(\/\d+\.?t?)?|(-)(\/\d+\.?t?)?|(~)|(#[^\n]*)|(\[[^\]]*\])/g;
   let m, lastOct = 4, lastPitch = null, canTie = false, pendingSlide = false;
   // Staccato may be written before or after the duration: normalize
   // "C5!/8" -> "C5/8!" so the /8 always parses (the note regex consumes
@@ -16,11 +16,55 @@ function parse(src) {
       if (tc && tokens.length) tokens.push({ type: "tempo", bpm: +tc[1] });
       continue;
     }
+    if (m[14]) {
+      // Bracket marker NOT welded to a bar line: anywhere between bars it is
+      // a hidden support note. Content is the same grammar a bar bracket
+      // accepts ("C2", "C2/4.", "~F/4", "-/2", '"Name",C2/2'); a content
+      // without a pitch tokenizes to nothing.
+      const c = bracketContent(m[14].slice(1, -1));
+      if (c) {
+        const tok = { type: "bass" };
+        if (c.ext != null) {
+          tok.ext = c.ext; // [-/2]: extends the pending support's ring
+        } else {
+          tok.id = c.bass;
+          tok.dur = c.dur;
+          tok.dotted = c.dotted;
+          tok.triplet = c.triplet;
+          tok.beats = c.beats;
+          if (c.name) tok.desc = c.name; // hidden, but round-trips for tests
+          if (c.glide) tok.slide = true; // [~F/4]: slides from the last support
+        }
+        tokens.push(tok);
+      }
+      continue;
+    }
     if (m[12]) { if (lastPitch) pendingSlide = true; continue; }
     if (m[6]) {
-      // Bar line, with an optional [description] shown on hover, e.g. |["35th bar from midi"].
+      // Bar line with an optional bracket field, three spoken shapes:
+      //   |[C2]            hidden support note for this bar
+      //   |["Opening",C2]  named section bar that ALSO carries a support note
+      //   |["35th bar from midi"]  plain description (quotes/commas fine)
+      //   With a duration the support sounds that long instead of the whole
+      //   measure: |["Opening",C2/2] / |[C2/4.]
       const bar = { type: "bar" };
-      if (m[7]) bar.desc = m[7].slice(1, -1).replace(/^["']|["']$/g, "");
+      if (m[7]) {
+        const c = bracketContent(m[7].slice(1, -1));
+        if (c && c.bass) {
+          bar.bass = c.bass;
+          bar.beats = c.beats;
+          if (c.glide) bar.slide = true;
+          if (c.name) bar.desc = c.name;
+        } else if (c && c.ext != null) {
+          // `| [-/1]` opens a measure: that bracket is NOT bar content — it is
+          // a continuation of the PREVIOUS measure's support ring. Emit it as
+          // its own marker token (the bar branch would otherwise swallow it).
+          tokens.push({ type: "bass", ext: c.ext });
+        } else {
+          bar.desc = m[7].slice(1, -1).replace(/^["']|["']$/g, "");
+        }
+        if (!bar.desc) delete bar.desc;
+      }
       tokens.push(bar);
       continue;
     }
@@ -87,6 +131,69 @@ function parseDur(spec) {
   // Triplet = three in the space of two, so each note is 2/3 of its value.
   const beats = (4 / dur) * (dotted ? 1.5 : 1) * (triplet ? 2 / 3 : 1);
   return { dur, dotted, triplet, beats };
+}
+
+// Shared bracket-field grammar for bar brackets (|[C2]) and inline markers
+// ([C2]): the LAST comma part is either
+//   a pitch with optional duration  — C2, C2/4. (no staccato: a drone ring is
+//                                     just a length; triplets allowed),
+//   a glide into a pitch            — ~F/4 or ~F/2.B (slides from the
+//                                     previous support note's pitch),
+//   an extension                    — -/2 extends the pending support's ring
+//                                     by that many beats (bare - with no
+//                                     length means nothing).
+// Anything else is not a support note: callers fall back to desc-only and
+// silent-skip respectively, so old descriptions never break.
+function bracketContent(content) {
+  const parts = String(content).split(",");
+  const tail = parts[parts.length - 1].trim();
+  const meta = parts.length > 1
+    ? parts.slice(0, -1).join(",").trim().replace(/^["']|["']$/g, "")
+    : null;
+  // Extension: dash + optional duration.
+  const ext = tail.match(/^-(\/\d+\.?t?)?$/);
+  if (ext) {
+    if (!ext[1]) return null; // bare [-]: no length, not a support note
+    return { ext: parseDur(ext[1]).beats };
+  }
+  // Glide: ~ Pitch with optional duration.
+  const gl = tail.match(/^~\s*([A-G]s?[1-8])(.*)$/);
+  if (gl) {
+    const rest = gl[2].trim();
+    let pd = null;
+    if (rest) {
+      if (!/^\/\d+\.?t?$/.test(rest)) return null; // junk tail → not a support note
+      pd = parseDur(rest);
+    }
+    const out = {
+      bass: gl[1],
+      dur: pd ? pd.dur : null,
+      dotted: pd ? pd.dotted : false,
+      triplet: pd ? pd.triplet : false,
+      beats: pd ? pd.beats : null, // null = ring until the next bar (default)
+      glide: true,
+    };
+    if (meta) out.name = meta;
+    return out;
+  }
+  // Plain pitch with optional duration.
+  const pm = tail.match(/^([A-G]s?[1-8])(.*)$/);
+  if (!pm) return null;
+  const rest = pm[2].trim();
+  let pd = null;
+  if (rest) {
+    if (!/^\/\d+\.?t?$/.test(rest)) return null; // junk tail → not a support note
+    pd = parseDur(rest);
+  }
+  const out = {
+    bass: pm[1],
+    dur: pd ? pd.dur : null,
+    dotted: pd ? pd.dotted : false,
+    triplet: pd ? pd.triplet : false,
+    beats: pd ? pd.beats : null,
+  };
+  if (meta) out.name = meta;
+  return out;
 }
 
 function durLabel(d, dotted, triplet) {

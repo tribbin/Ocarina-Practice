@@ -297,7 +297,6 @@ button.tiny { padding: 4px 8px; font-size: 12px; }
 .toggle-btn.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .err { color: var(--accent); font-size: 13px; }
 .err:empty { display: none; }
-.err.has-oor { font-weight: 700; }
 .range-warn {
   display: flex; align-items: center; gap: 10px;
   background: var(--warn-bg); color: var(--warn-ink);

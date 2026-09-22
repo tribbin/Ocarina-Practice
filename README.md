@@ -25,6 +25,10 @@ Built with plain HTML/CSS/JavaScript — no build step, no dependencies.
 | Durations | `/1` whole · `/2` half · `/4` quarter · `/8` `/16` · `.` dotted (e.g. `/2.`) |
 | Triplets | `t` (e.g. `A4/8t B4/8t C5/8t`) |
 | Title / tempo | `# Song title` · `# tempo 96` (header, or inline to change mid-song) |
+| Sections | `\| [Section]` names a bar (shown on hover / as a header row) |
+| Bar support | `\| [C2]` or `\| ["Section", C2]` — modelled-note drone for that bar, Zen playback only |
+| Inline support | `[C2]` (rings to the next bar) or `[C2/4.]` (its own length) — starts with the next rest/note after the previous note chain, Zen playback only |
+| Support extensions | `[-/2]` extends the running support's ring by that length (`[C2/2] [-/2]` = one 4-beat voice, like a tie chain); `[~F2/4]` glides in from the running chain's pitch |
 
 ## Running it
 

@@ -33,6 +33,14 @@
       ]
     },
     {
+      "id": "ico-contrabass-11-c",
+      "type": "Contrabass 11-hole C",
+      "version": "Imperial City",
+      "range": "B2–F4",
+      "fingerings": "fingerings-contrabass.json",
+      "svg": "ocarina-template-contrabass-11.svg"
+    },
+    {
       "id": "mock-double-test",
       "type": "Double Bass C",
       "version": "(dummy)",

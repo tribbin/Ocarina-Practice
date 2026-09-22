@@ -94,7 +94,7 @@ function combinedDurLabel(tokens, idx) {
   if (single) return single;
   const parts = [durLabel(tokens[idx].dur, tokens[idx].dotted, tokens[idx].triplet)];
   for (let i = idx + 1; i < tokens.length; i++) {
-    if (tokens[i].type === "bar") continue;
+    if (tokens[i].type === "bar" || tokens[i].type === "bass") continue;
     if (tokens[i].type === "tie") parts.push(durLabel(tokens[i].dur, tokens[i].dotted, tokens[i].triplet));
     else break;
   }
@@ -112,22 +112,23 @@ function rangeLabel() {
 function tallyTokens(tokens) {
   const problems = [];
   let notes = 0, outOf = 0, switches = 0, prevCh = null;
-  const rng = rangeLabel();
   tokens.forEach(t => {
-    if (t.type === "bar" || t.type === "rest" || t.type === "tempo") return;
+    if (t.type === "bar" || t.type === "rest" || t.type === "tempo" || t.type === "bass") return;
     if (t.type === "tie") {
+      // A tie after an out-of-range pitch is ITSELF out of range (that's how
+      // "A6/2 -/4" reads on an alto C): the sheet draws it as a marked oor tie
+      // card, so count it in the same bucket instead of shouting "(nothing to
+      // continue)" — the tie did have something to continue; it just can't
+      // sound. The !t.id arm stays as unreachable-by-parser safety net.
+      if (t.id && !NOTES.includes(t.id) && isOutOfRange(t.id)) { outOf++; return; }
       if (!t.id || !NOTES.includes(t.id)) problems.push((t.raw || "-") + " (nothing to continue)");
       return;
     }
     if (!NOTES.includes(t.id)) {
-      const rc = rangeCheck(t.id);
-      if (rc === "below") {
-        problems.push(pretty(t.id) + " is below this ocarina (range " + rng + ")");
-      } else if (rc === "above") {
-        problems.push(pretty(t.id) + " is above this ocarina (range " + rng + ")");
-      } else {
-        problems.push((t.raw || t.id) + " is not a playable note");
-      }
+      // Out-of-range notes are NOT listed here: the tablature section already
+      // surfaces them loudly (range-warn banner + the marked cards), so
+      // echoing every one into the input panel's error line just stacks
+      // redundant text. #err stays for genuine input problems only.
       outOf++;
       return;
     }
@@ -175,6 +176,7 @@ function appendNoteCard(sheet, t, i) {
 function fillFullSheet(sheet, tokens, sectioned = true) {
   sheet.classList.remove("live");
   tokens.forEach((t, i) => {
+    if (t.type === "bass") return; // hidden support marker
     if (t.type === "bar") {
       // A named bar OPENS a section: in row layouts (grid + print) its name
       // gets a full-width .sec-head row and the measure line is dropped — the
@@ -279,8 +281,8 @@ function fillLiveSheet(sheet, tokens, idx) {
   sheet.classList.remove("scroll");
   sheet.classList.add("live");
   let i = idx;
-  if (i == null || i < 0 || !tokens[i] || tokens[i].type === "bar") i = firstSoundIdx(tokens);
-  if (!tokens.length || i < 0 || !tokens[i] || tokens[i].type === "bar") return;
+  if (i == null || i < 0 || !tokens[i] || tokens[i].type === "bar" || tokens[i].type === "bass") i = firstSoundIdx(tokens);
+  if (!tokens.length || i < 0 || !tokens[i] || tokens[i].type === "bar" || tokens[i].type === "bass") return;
   const card = document.createElement("div");
   const t = tokens[i];
   const liveCh = t.id && NOTES.includes(t.id) && CHAMBER[t.id];
@@ -377,8 +379,9 @@ function render() {
       fillFullSheet(sheet, tokens, !isScrollMode());
     }
     updateRangeWarning(outOf);
+    // Out-of-range info lives in the tablature section (banner + marked
+    // cards) — #err carries only genuine input problems, so no has-oor magic.
     err.textContent = problems.join(" · ");
-    err.classList.toggle("has-oor", outOf > 0);
     document.getElementById("stats").textContent =
       notes ? `${notes} notes · ${switches} chamber switch${switches===1?"":"es"}` : "Type or click a melody.";
     if (typeof syncFocusMode === "function") syncFocusMode();
@@ -548,6 +551,7 @@ function atBarStart(toks, i) {
   while (k >= 0) {
     const t = toks[k];
     if (t.type === "bar" || t.type === "tempo") { sawBreak = true; k--; }
+    else if (t.type === "bass") k--; // hidden marker: transparent, no break
     else break;
   }
   return sawBreak || i === 0;
@@ -559,7 +563,7 @@ function nextCardIdx(toks, i) {
   for (let k = i + 1; k < toks.length; k++) {
     const t = toks[k];
     if (t.type === "note" || t.type === "tie" || t.type === "rest") return k;
-    if (t.type !== "bar" && t.type !== "tempo") break;
+    if (t.type !== "bar" && t.type !== "tempo" && t.type !== "bass") break;
   }
   return -1;
 }
@@ -615,6 +619,7 @@ function hoverPreview(i, t) {
 }
 
 function buildTokenEl(t, i) {
+  if (t.type === "bass") return null; // hidden support marker
   const el = document.createElement("span");
   el.dataset.i = String(i);
   el.style.cursor = "pointer";
@@ -699,7 +704,8 @@ function drawTokenStrip(box, tokens, sectioned) {
       h.textContent = t.desc;
       box.appendChild(h);
     }
-    box.appendChild(buildTokenEl(t, i));
+    const el = buildTokenEl(t, i);
+    if (el) box.appendChild(el);
   });
 }
 
@@ -755,9 +761,10 @@ function buildKB() {
   kb.innerHTML = "";
   const whites = ["C","D","E","F","G","A","B"];
   const blackAfter = {C:"Cs", D:"Ds", F:"Fs", G:"Gs", A:"As"};
-  // Octaves 3-7: the full bass range (A3-G6) plus the alto's top octave
-  // (C7 lives in octave 7); room to spare for a future soprano.
-  for (const oct of [3, 4, 5, 6, 7]) {
+  // Octaves 2-7: the contrabass range (B2-F4) through the bass (A3-G6) and
+  // alto top (C7 lives in octave 7); keys outside an instrument's range
+  // render dimmed, so the extra bottom octave costs nothing unless it's used.
+  for (const oct of [2, 3, 4, 5, 6, 7]) {
     const col = document.createElement("div"); col.className = "oct";
     for (const w of whites) {
       const cell = document.createElement("div"); cell.className = "pkey";
@@ -1324,6 +1331,10 @@ function wireZen() {
     // same mode — the expressive layer only sounds in Zen.
     if (typeof setReverbEnabled === "function") setReverbEnabled(isFocusMode());
     if (typeof setVibratoEnabled === "function") setVibratoEnabled(isFocusMode());
+    // Same ownership as the reverb: the hidden contrabass-support drones
+    // (|[C2] bar brackets) only sound in Zen playback; leaving Zen cuts any
+    // in-flight drone.
+    if (typeof setBassEnabled === "function") setBassEnabled(isFocusMode());
     if (isFullscreen() && isLiveTab() && !isMelodyPlaying()) stopMelody();
   };
   document.addEventListener("fullscreenchange", sync);

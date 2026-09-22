@@ -31,3 +31,5 @@ jobs:
           playwright install --with-deps chromium
       - name: Run practice acceptance tests
         run: python tests/practice_accepts_melody.py
+      - name: Run support-bracket tests
+        run: python tests/support_accepts_brackets.py
