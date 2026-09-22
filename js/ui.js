@@ -654,6 +654,46 @@ function tokenFocusPreview(i, t) {
   highlightToken(i, t.id);
 }
 
+// Touch has no hover: HOLD-to-hear rides the same dwell as the mouse/arrow
+// path (hoverPreview's HOVER_HEAR_MS). A quick tap keeps the native click's
+// meaning (play from here); the click is swallowed only after a COMPLETED
+// hold, so the listen it already produced must not also start the transport.
+// Drift (finger sliding = scroll intent) cancels like a mouseleave.
+let touchHoldHeard = false;
+function wireTokenTouch(el, i, t) {
+  let origin = null;
+  const calm = () => {
+    hushTokenHover();
+    if (!isMelodyPlaying()) clearHighlight();
+  };
+  el.addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 1) return; // pinch = zoom, not a dwell
+    origin = null;
+    hoverPreview(i, t);
+    // The dwell must actually have armed (quiet windows / running melody /
+    // practice mode make the preview a no-op — then we own no gesture).
+    if (hoverVoiceToken === t && hoverVoiceTimer) {
+      origin = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+  });
+  el.addEventListener("touchmove", (e) => {
+    if (!origin) return;
+    const p = e.touches[0];
+    if (Math.hypot(p.clientX - origin.x, p.clientY - origin.y) > 12) {
+      origin = null;
+      calm(); // drift = scroll intent
+    }
+  });
+  const lift = () => {
+    if (!origin) return;
+    origin = null;
+    if (hoverVoiceTimer) calm(); // released before the dwell: silent cancel
+    else touchHoldHeard = true;  // the preview already spoke; swallow the tap
+  };
+  el.addEventListener("touchend", lift);
+  el.addEventListener("touchcancel", () => { origin = null; calm(); });
+}
+
 // Roving tab stop for a token strip: one tab stop per strip (a song strip can
 // hold hundreds of tokens — tabbing through all of them is unusable).
 let tokAnchor = {};
@@ -724,6 +764,7 @@ function buildTokenEl(t, i) {
         hushTokenHover();
         if (!isMelodyPlaying()) clearHighlight();
       });
+      wireTokenTouch(el, i, t);
       el.addEventListener("focus", () => tokenFocusPreview(i, t));
       el.addEventListener("blur", () => {
         hushTokenHover();
@@ -768,6 +809,7 @@ function buildTokenEl(t, i) {
       hushTokenHover();
       if (!isMelodyPlaying()) clearHighlight();
     });
+    wireTokenTouch(el, i, t);
     el.addEventListener("focus", () => tokenFocusPreview(i, t));
     el.addEventListener("blur", () => {
       hushTokenHover();
@@ -777,6 +819,7 @@ function buildTokenEl(t, i) {
   // While practicing, the same click re-anchors the practice from this token
   // instead of starting normal playback.
   el.addEventListener("click", e => {
+    if (touchHoldHeard) { touchHoldHeard = false; return; }
     e.preventDefault(); unlockAudio();
     if (typeof isPracticeActive === "function" && isPracticeActive()) {
       if (window.OCA_PRACTICE) OCA_PRACTICE.from(i);

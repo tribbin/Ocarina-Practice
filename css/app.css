@@ -478,6 +478,9 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
   height: 44px; padding: 0 14px; border-radius: 10px; color: #fff;
   font-weight: 700; font-size: 18px; line-height: 1; white-space: nowrap;
   cursor: default; user-select: none;
+  /* hold-to-listen target: a planted finger must not raise text selection
+     or the iOS-style callout mid-dwell */
+  -webkit-user-select: none; -webkit-touch-callout: none;
   box-shadow: 0 1px 0 rgba(0,0,0,.12);
 }
 .tok .td { font-size: 24px; line-height: 1; font-weight: 500; font-family: "Noto Music","Noto Sans Symbols 2","Segoe UI Symbol",serif; opacity: .95; }

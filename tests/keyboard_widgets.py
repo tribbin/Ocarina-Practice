@@ -193,6 +193,66 @@ MODESEG = """
 """
 
 
+TOUCH = """
+async () => {
+  // Expand the playback block (display:none strips cannot receive anything).
+  const block = document.getElementById('playback');
+  if (block && block.classList.contains('collapsed')) {
+    const btn = block.querySelector('.collapse-btn').click ? block.querySelector('.collapse-btn') : null;
+    if (btn) btn.click();
+  }
+  const rest = (ms) => new Promise(r => setTimeout(r, ms));
+  const strip = document.getElementById('tokens');
+  const toks = [...strip.querySelectorAll('.tok[role="button"]')];
+  const out = { tokenCount: toks.length };
+  if (toks.length < 3) return out;
+  if (typeof stopMelody === 'function') { try { stopMelody(); } catch (e) {} }
+  await rest(600); // settle the 400 ms quiet-window out
+  // Count preview notes like the mouse-dwell probe does (playNote wrapper):
+  // voices may outlive their note, but calls are exact.
+  const realPn = window.playNote;
+  const pn = [];
+  window.playNote = (...a) => { pn.push(String(a[0])); return realPn(...a); };
+  const touch = (el) => new TouchEvent('touchstart', { bubbles: true, cancelable: true,
+    touches: [new Touch({ identifier: 1, target: el, clientX: 5, clientY: 5 })] });
+  const drift = (el) => new TouchEvent('touchmove', { bubbles: true, cancelable: true,
+    touches: [new Touch({ identifier: 1, target: el, clientX: 400, clientY: 500 })] });
+  const lift = (el) => new TouchEvent('touchend', { bubbles: true,
+    touches: [], changedTouches: [new Touch({ identifier: 1, target: el, clientX: 5, clientY: 5 })] });
+  // HOLD: touch down and stay planted — after the 260 ms dwell exactly one
+  // preview audition must have fired; nothing may fire immediately.
+  toks[1].dispatchEvent(touch(toks[1]));
+  out.pnImmed = pn.length;
+  await rest(450);
+  out.pnAfterHold = pn.length;
+  // Release AFTER the sound, then the tap the browser would fire next: the
+  // swallow must eat it — long-press listened, it must not ALSO start the
+  // transport (no new preview call; isMelodyPlaying stays false).
+  toks[1].dispatchEvent(lift(toks[1]));
+  toks[1].click();
+  out.playedAfterHoldRelease = window.isMelodyPlaying();
+  out.pnAfterHoldRelease = pn.length;
+  // QUICK TAP: land and lift fast — the dwell cancels silently and the
+  // chip's native click keeps its meaning: play from that token.
+  toks[2].dispatchEvent(touch(toks[2]));
+  await rest(40);
+  toks[2].dispatchEvent(lift(toks[2]));
+  toks[2].click();
+  out.playedAfterTap = window.isMelodyPlaying();
+  out.pnAfterTap = pn.length;
+  // DRIFT: touch down AND slide — scroll intent must cancel the dwell.
+  const n0 = pn.length;
+  toks[2].dispatchEvent(touch(toks[2]));
+  toks[2].dispatchEvent(drift(toks[2]));
+  await rest(420);
+  out.driftSilent = pn.length === n0;
+  window.playNote = realPn;
+  if (typeof stopMelody === 'function') { try { stopMelody(); } catch (e) {} }
+  return out;
+}
+"""
+
+
 def main():
     failures = []
     httpd, port = start_server()
@@ -343,6 +403,35 @@ def main():
                         f"roving tab stop (click {m['checkedAfterClick']}, "
                         f"tab {m['tabAfterClick']})")
 
+            # --- touch hold-to-hear on chips ---
+            tc = page.evaluate(TOUCH)
+            if tc["tokenCount"] >= 3:
+                if tc["pnImmed"] != 0:
+                    failures.append(
+                        "touch: touching a chip must not audition "
+                        "immediately — the dwell delay rules touch too")
+                if tc["pnAfterHold"] != 1:
+                    failures.append(
+                        f"touch: holding a chip for the dwell must audition "
+                        f"it exactly once, got {tc['pnAfterHold']} playNote "
+                        f"calls")
+                if tc["playedAfterHoldRelease"] is True:
+                    failures.append(
+                        "touch: releasing after a completed hold-listen must "
+                        "swallow the click — it must not start the transport")
+                if tc["pnAfterHoldRelease"] != tc["pnAfterHold"]:
+                    failures.append(
+                        "touch: the swallowed click after a hold-listen must "
+                        "not audition again")
+                if tc["playedAfterTap"] is not True:
+                    failures.append(
+                        "touch: a quick tap keeps native semantics — play "
+                        "from the touched chip")
+                if tc.get("driftSilent") is False:
+                    failures.append(
+                        "touch: drifting off the chip must cancel the dwell "
+                        "(scroll intent), no audition")
+
             if errs:
                 failures.append(f"page errors {errs}")
             browser.close()
@@ -354,7 +443,8 @@ def main():
             print("  - " + f)
         return 1
     print("\nPASS: piano keys and token chips are keyboard citizens; Space is "
-          "exclusively the global Pause/Continue shortcut.")
+          "exclusively the global Pause/Continue shortcut; chips hold-to-hear "
+          "on touch with the same dwell (tap stays play-from-here).")
     return 0
 
 
