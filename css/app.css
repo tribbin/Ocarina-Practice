@@ -242,7 +242,7 @@ header.app {
 }
 header.app h1 { font-size: 18px; margin: 0; font-weight: 650; letter-spacing: .02em; white-space: nowrap; }
 header.app span { opacity: .7; font-size: 13px; }
-.inst-picker { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.inst-picker { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .inst-sel {
   background: rgba(255,255,255,.08); color: var(--paper);
   border: 1px solid rgba(255,255,255,.28); border-radius: 6px;
@@ -250,6 +250,18 @@ header.app span { opacity: .7; font-size: 13px; }
 }
 .inst-sel:hover { background: rgba(255,255,255,.16); }
 .inst-sel option { color: var(--ink); background: var(--paper); }
+.theme-toggle {
+  background: rgba(255,255,255,.05);
+  color: var(--paper);
+  border: 1px solid rgba(255,255,255,.28);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font: 12px/1.2 inherit;
+  white-space: nowrap;
+}
+.theme-toggle:hover {
+  background: rgba(255,255,255,.12);
+}
 .wrap { max-width: 1440px; margin: 0 auto; padding: 16px 22px 80px; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 0 0 14px; }
 /* The square box-head sits flush at the block's top: round its own corners so

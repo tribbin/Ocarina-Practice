@@ -115,10 +115,46 @@ function themeFromQuery() {
   return queryHas("oot") ? "oot" : "";
 }
 
+function storedThemeName() {
+  try {
+    return localStorage.getItem("ocarina-theme") || "";
+  } catch (e) {
+    return "";
+  }
+}
+
+function setStoredThemeName(name) {
+  try {
+    if (name) localStorage.setItem("ocarina-theme", name);
+    else localStorage.removeItem("ocarina-theme");
+  } catch (e) {}
+}
+
+function syncThemeButton() {
+  const btn = document.getElementById("themeToggle");
+  if (!btn) return;
+  const active = (document.documentElement.getAttribute("data-theme") || "") === "oot";
+  btn.textContent = active ? "Theme: Hyrule Field" : "Theme: Standard";
+  btn.setAttribute("aria-pressed", String(active));
+  btn.title = active ? "Switch to Standard theme" : "Switch to Hyrule Field theme";
+}
+
 function applyTheme(name) {
   const html = document.documentElement;
-  if (name) html.setAttribute("data-theme", name);
+  const normalized = name === "oot" ? "oot" : "";
+  if (normalized) html.setAttribute("data-theme", normalized);
   else html.removeAttribute("data-theme");
+  setStoredThemeName(normalized);
+  syncThemeButton();
+}
+
+function wireThemeToggle() {
+  const btn = document.getElementById("themeToggle");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    const active = (document.documentElement.getAttribute("data-theme") || "") === "oot";
+    applyTheme(active ? "" : "oot");
+  });
 }
 
 function instLabel(inst) {
@@ -163,7 +199,7 @@ function wireInstrumentPicker() {
 
 async function boot() {
   try {
-    applyTheme(themeFromQuery());
+    applyTheme(themeFromQuery() || storedThemeName());
     const [manifest, songs, cssText] = await Promise.all([
       loadJson("instruments.json"),
       loadJson("songs.json"),
@@ -178,6 +214,7 @@ async function boot() {
     await loadInstrument(chosen);
     fillInstrumentSelect(chosen.id);
     wireInstrumentPicker();
+    wireThemeToggle();
     initBuiltin(songs);
     wireLibrary();
     wireUi();
