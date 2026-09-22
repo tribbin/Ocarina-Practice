@@ -1620,7 +1620,7 @@ function buildPerfWidget() {
   perfBtn.setAttribute("aria-haspopup", "true");
   perfBtn.setAttribute("aria-expanded", "false");
   perfBtn.innerHTML = '<span class="perf-ico" aria-hidden="true">∿</span>' +
-    '<span class="perf-name">Audio Performance</span>' +
+    '<span class="perf-name">Audio<br>Performance</span>' +
     '<span class="perf-hr" id="perfHr">—</span>';
   perfBtn.addEventListener("click", e => {
     e.stopPropagation();
@@ -1729,7 +1729,9 @@ function perfUpdateBadge(s) {
   let txt = "—";
   if (s.ok && s.peak > 1e-5) {
     const db = -20 * Math.log10(s.peak); // headroom to 0 dBFS
-    txt = db.toFixed(1) + " dB";
+    // Level convention, not headroom: the button reads "-6.0 dB" (the perf
+    // window carries the headroom context; the lone number should not lie).
+    txt = "-" + db.toFixed(1) + " dB";
     cls = db >= 6 ? "perf-ok" : db >= 3 ? "perf-warn" : "perf-bad";
   } else if (s.ok) txt = "idle";
   else txt = "no ctx";

@@ -441,6 +441,8 @@ svg.ocarina { width: 100%; height: auto; display: block; background: var(--oca-b
 .hole { fill: rgba(255,255,255,0.18); stroke: #5a3a28; stroke-width: 3; }
 .hole.on { fill: rgba(20,10,6,0.78); stroke: #1a0c08; }
 .hole.tune { fill: none; stroke: #b89a80; stroke-width: 2; stroke-dasharray: 4 3; }
+/* The piano head mirrors the other two: the centered sub-section title. */
+#pianoBlock > .box-head { justify-content: center; }
 kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1px solid var(--line); border-bottom-width: 2px; padding: 0 4px; border-radius: 3px; }
 @media print {
   header.app, .noprint, .tab-tools, #stats, .focus-exit { display: none !important; }
@@ -1163,9 +1165,11 @@ html[data-theme="oot"] .t-btn {
 .perf-btn { display: inline-flex; align-items: center; gap: 7px; }
 .perf-btn .perf-ico { font-size: 15px; line-height: 1; }
 .perf-hr { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--muted); }
-/* The button carries its name plus the live readout; keep the readout quiet
-   next to the name. */
-.perf-name { font-size: 13px; }
+/* The button carries its name stacked on two lines (the header has vertical
+   room for it) plus the live readout; keep the readout quiet next to it. */
+.perf-name {
+  font-size: 12px; line-height: 1.1; text-align: center; font-weight: 600;
+}
 .perf-btn .perf-hr { color: var(--paper); opacity: .75; }
 .perf-hr.perf-ok { color: var(--good); }
 .perf-hr.perf-warn { color: #a15c00; }
