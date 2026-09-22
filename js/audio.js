@@ -1689,7 +1689,8 @@ function playTickAt(when, bag) {
   } catch (e) {}
 }
 
-function isMelodyPlaying() { return melodyPlaying; }function isMelodyPaused() { return melodyPaused; }
+function isMelodyPlaying() { return melodyPlaying; }
+function isMelodyPaused() { return melodyPaused; }
 
 function stopMelody() {
   melodyPlaying = false;
