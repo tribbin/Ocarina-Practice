@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Ocarina tab maker and practice companion: type notes, get fingerings, play back through a synthesized ocarina, and practice with microphone feedback." />
+<meta name="theme-color" content="#f6efe6" />
+<link rel="icon" type="image/svg+xml" href="favicon.svg" />
 <title>Ocarina Practice</title>
 <script>
 (function () {
@@ -23,13 +26,14 @@
 </header>
 <div class="wrap">
   <section class="panel noprint">
-    <div class="block" id="inputBlock">
+    <div class="block collapsed" id="inputBlock">
       <div class="box-head">
-        <button class="ghost collapse-btn" type="button" aria-expanded="true" title="Collapse" aria-label="Collapse"></button>
-        <span class="box-title">INPUT</span>
-        <span class="box-sub">(type notes here)</span>
-        <div class="tempo-lab lib-dd" id="libDd">
-          <span>Library</span>
+        <div class="head-left">
+          <button class="ghost collapse-btn" type="button" aria-expanded="false" title="Expand" aria-label="Expand input block"></button>
+          <button class="ghost" type="button" id="clear" title="Empty the input field">Clear</button>
+        </div>
+        <div class="lib-dd" id="libDd">
+          <span class="head-label">Song Library</span>
           <div class="lib-dd-wrap">
             <button type="button" class="lib-dd-btn" id="libDdBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="libDdMenu">
               <span id="libDdText"></span>
@@ -39,12 +43,17 @@
           </div>
           <select id="scale" hidden tabindex="-1" aria-hidden="true"></select>
         </div>
-        <button class="ghost" type="button" id="libSave">Save to library</button>
-        <button class="ghost" type="button" id="libRemove">Remove</button>
-        <button class="ghost" type="button" id="diskSave">Save file</button>
-        <button class="ghost" type="button" id="diskLoad">Load file</button>
-        <input type="file" id="diskFile" accept=".txt,.json,text/plain,application/json" hidden>
-        <button class="ghost" type="button" id="clear">Clear</button>
+        <div class="lib-pairs">
+          <div class="lib-pair">
+            <button class="ghost" type="button" id="libSave">Save to Library</button>
+            <button class="ghost" type="button" id="libRemove">Remove from Library</button>
+          </div>
+          <div class="lib-pair">
+            <button class="ghost" type="button" id="diskSave">Save File</button>
+            <button class="ghost" type="button" id="diskLoad">Load File</button>
+          </div>
+          <input type="file" id="diskFile" accept=".txt,.json,text/plain,application/json" hidden>
+        </div>
       </div>
       <textarea id="src" spellcheck="false" placeholder="C4 D4 E4 F4 G4 A4 B4 C5">A3 B3 C4 D4 E4 F4 G4 A4 B4 C5 D5 E5 F5 G5 A5 B5 C6 D6 E6 F6 G6</textarea>
       <p class="hint input-legend">
@@ -52,37 +61,57 @@
         · tie <kbd>-</kbd> · slide <kbd>~</kbd> (e.g. <kbd>F4 ~ A4</kbd>) · staccato <kbd>!</kbd> (e.g. <kbd>C4!</kbd>) · duration <kbd>/1</kbd> whole <kbd>/2</kbd> half <kbd>/2.</kbd> dotted half <kbd>/4</kbd> quarter <kbd>/8</kbd> <kbd>/16</kbd> · triplet <kbd>t</kbd> (e.g. <kbd>A4/8t B4/8t C5/8t</kbd>) · bar note <kbd>|["…"]</kbd> (hover)
       </p>
     </div>
-    <div class="block" id="playback">
+    <div class="block collapsed" id="playback">
       <div class="box-head">
-        <button class="ghost collapse-btn" type="button" aria-expanded="true" title="Collapse" aria-label="Collapse"></button>
-        <button type="button" id="playMel" class="toggle-btn">Play</button>
-        <button type="button" id="practiceBtn" class="toggle-btn" title="Practice mode: the song advances when you hit each note in tune through the microphone" aria-pressed="false">Practice</button>
-        <label class="box-sub loop-lab">
-          <input type="checkbox" id="loopMel"> Loop
-        </label>
-        <label class="box-sub loop-lab">
-          <input type="checkbox" id="tickMel" checked> Tick
-        </label>
-        <label class="box-sub loop-lab" title="Cheaper synth voice + fewer visuals — avoids audio crackling on slower devices (not quieter)">
-          <input type="checkbox" id="liteMel"> Lite
-        </label>
-        <span class="box-sub">(click a note to play from there)</span>
+        <div class="head-left">
+          <button class="ghost collapse-btn" type="button" aria-expanded="false" title="Expand" aria-label="Expand playback block"></button>
+          <!-- Loop is controlled by the transport's round ↻ button; the hidden
+               carrier keeps loopOn()/syncLoopUI()'s single shared state. -->
+          <input type="checkbox" id="loopMel" hidden>
+          <!-- Lite is toggled in the perf screen; this hidden carrier keeps the
+               shared state the perf switch / glitch toast read and persist. -->
+          <input type="checkbox" id="liteMel" hidden>
+          <!-- The Audio Performance button (relocated here by the JS) sits
+               first; the playback tick rides to its right as a plain button. -->
+          <div class="head-perf-col" id="headPerfCol">
+            <button class="ghost" type="button" id="tickBtn" aria-pressed="true" title="Metronome tick during playback">Play tick at bars</button>
+          </div>
+        </div>
+        <!-- Library save/load round-trips the tick flag through this hidden
+             carrier (audio tickEnabled / library.ts headers read .checked). -->
+        <input type="checkbox" id="tickMel" checked hidden>
+        <div class="t-wrap noprint">
+          <span class="head-label">Playback Control</span>
+          <div class="bar-tools noprint" id="barTools" role="group" aria-label="Transport">
+            <button type="button" class="t-btn loop" id="mirrorLoop" title="Loop" aria-label="Loop" aria-pressed="false">↻</button>
+            <button type="button" class="t-btn play" id="mirrorPlay" title="Play / Pause" aria-label="Play or pause">
+              <svg class="g-play" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7.4 4.4 L20.2 12 L7.4 19.6 Z" stroke-linejoin="round"/></svg>
+              <svg class="g-pause" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4.6" y="5" width="5.2" height="14" rx="2.1"/><rect x="14.2" y="5" width="5.2" height="14" rx="2.1"/></svg>
+            </button>
+            <button type="button" class="t-btn practice" id="mirrorPractice" title="Practice mode: the song advances when you hit each note in tune" aria-label="Practice mode" aria-pressed="false">♪</button>
+            <button type="button" class="t-btn stop" id="mirrorStop" title="Stop" aria-label="Stop">
+              <svg class="g-stop" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4" y="4" width="16" height="16" rx="2.6"/></svg>
+            </button>
+          </div>
+        </div>
         <div class="tempo-lab">
-          <span class="tempo-grp" id="tempoGrp">
-            Tempo
+          <label class="dial-row" id="tempoGrp" for="tempo">
+            <span>Tempo</span>
             <input type="range" id="tempo" min="10" max="100" value="100" title="Playback speed relative to the song's own tempo (10%–100%)">
-            <span id="tempoVal">100</span>%
-          </span>
-          Swing
-          <input type="range" id="swing" min="0" max="100" value="0">
-          <span id="swingVal">0</span>%
+            <span class="dial-val"><span id="tempoVal">100</span>%</span>
+          </label>
+          <label class="dial-row" for="swing">
+            <span>Swing</span>
+            <input type="range" id="swing" min="0" max="100" value="0">
+            <span class="dial-val"><span id="swingVal">0</span>%</span>
+          </label>
         </div>
       </div>
       <div class="tokens" id="tokens"></div>
     </div>
     <div class="block" id="pianoBlock">
-      <div class="box-head">
-        <span class="box-title">PIANO</span>
+      <div class="box-head piano-head">
+        <span class="head-label">Piano</span>
       </div>
       <div class="kb" id="kb"></div>
       <div class="click-help">left-click = hear · right-click = add
@@ -93,24 +122,34 @@
   </section>
 
   <section class="panel" id="tabPanel">
+    <h2 id="title" class="head-label"></h2>
+    <button class="icon-btn fs-corner noprint" id="fullscreen" type="button" aria-label="Full screen" title="Full screen">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/></svg>
+    </button>
+    <div class="zen-row noprint">
+      <button class="zen-btn" type="button" id="zen" title="Distraction-free practice (full screen)">◎ Zen mode</button>
+    </div>
     <div class="row tab-tools">
       <div class="tools-left">
-        <div class="mode-seg" id="modeSeg" role="radiogroup" aria-label="Display mode">
-          <button type="button" class="seg-btn" data-mode="grid" role="radio" aria-checked="true">Grid</button>
-          <button type="button" class="seg-btn" data-mode="scroll" role="radio" aria-checked="false">Scroll</button>
-          <button type="button" class="seg-btn" data-mode="single" role="radio" aria-checked="false">Single</button>
-        </div>
-        <button class="ghost" type="button" id="fullscreen">Full screen</button>
         <button type="button" class="toggle-btn" id="bigSmall" aria-pressed="false">Enlarge small holes</button>
       </div>
-      <button class="zen-btn" type="button" id="zen" title="Distraction-free practice (full screen)">◎ Zen mode</button>
+      <div class="mode-seg" id="modeSeg" role="radiogroup" aria-label="Display mode">
+        <button type="button" class="seg-btn" data-mode="grid" role="radio" aria-checked="true" tabindex="0">Grid</button>
+        <button type="button" class="seg-btn" data-mode="scroll" role="radio" aria-checked="false" tabindex="-1">Scroll</button>
+        <button type="button" class="seg-btn" data-mode="single" role="radio" aria-checked="false" tabindex="-1">Single</button>
+      </div>
       <div class="tools-right">
-        <button class="ghost" type="button" id="shareZen" title="Copy a link that opens this ocarina and song straight in Zen mode">Share zen link</button>
-        <button class="ghost" type="button" id="print">Print</button>
-        <button class="ghost" type="button" id="download">Download tabs</button>
+        <button class="icon-btn" type="button" id="shareZen" title="Copy a link that opens this ocarina and song straight in Zen mode" aria-label="Share zen link">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M15 3h6v6M21 3l-9 9"/></svg>
+        </button>
+        <button class="icon-btn" type="button" id="print" title="Print" aria-label="Print">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/></svg>
+        </button>
+        <button class="icon-btn" type="button" id="download" title="Download tabs" aria-label="Download tabs">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        </button>
       </div>
     </div>
-    <h2 id="title"></h2>
     <div class="sheet-wrap"><div class="sheet" id="sheet"></div></div>
     <p class="hint" id="stats"></p>
     <button type="button" class="focus-exit" id="focusExit" title="Exit full screen" aria-label="Exit full screen">✕</button>

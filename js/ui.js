@@ -1,7 +1,6 @@
 let APP_CSS = "";
 let lastTokens = [];
 let liveIdx = -1;
-let lastHoverNoteAt = 0;
 let displayMode = "grid"; // "grid" | "scroll" | "single"
 let zenPrevMode = null;
 
@@ -25,6 +24,9 @@ function updateModeButtons() {
     const on = b.dataset.mode === displayMode;
     b.classList.toggle("on", on);
     b.setAttribute("aria-checked", on ? "true" : "false");
+    // Radiogroup roving tabindex: only the checked mode is a tab stop;
+    // arrows carry the rest (see the keydown wiring on the segment below).
+    b.setAttribute("tabindex", on ? "0" : "-1");
   });
 }
 
@@ -177,6 +179,10 @@ function fillFullSheet(sheet, tokens, sectioned = true) {
   sheet.classList.remove("live");
   tokens.forEach((t, i) => {
     if (t.type === "bass") return; // hidden support marker
+    // Junk chips belong to the token strip and the reading strip only: a
+    // chart card would sit between fingering cards and wreck the grid's
+    // rhythm (the card path highlights tolerate a missing data-i anyway).
+    if (t.type === "bad") return;
     if (t.type === "bar") {
       // A named bar OPENS a section: in row layouts (grid + print) its name
       // gets a full-width .sec-head row and the measure line is dropped — the
@@ -359,7 +365,6 @@ function render() {
     const src = document.getElementById("src").value;
     fitInput();
     document.getElementById("title").textContent = titleFromText(src);
-    fitInput();
     const typedSwing = swingFromText(src);
     applySwing(typedSwing != null ? typedSwing : 0);
     const tokens = parse(src);
@@ -604,18 +609,130 @@ function clearHighlight() {
   document.querySelectorAll(".tok.now, .card.now, .rest.now, .key.now").forEach(el => el.classList.remove("now"));
 }
 
+// Hover/arrow preview: the HIGHLIGHT is immediate; the note is deliberately
+// DELAYED — it only sounds after pointer/arrow settles on the token for
+// HOVER_HEAR_MS. Grazing the strip while moving across the screen (or
+// sweeping arrow keys through the melody) must not machine-gun notes;
+// resting on one is the deliberate "listen" (matching hover/arrow equally).
+// Both inputs go through this one scheduler: a newer preview cancels the
+// pending one, so only the token you settle on is heard.
+const HOVER_HEAR_MS = 260;
+let hoverVoiceTimer = 0, hoverVoiceToken = null;
+
+function hushTokenHover() {
+  if (hoverVoiceTimer) { clearTimeout(hoverVoiceTimer); hoverVoiceTimer = 0; }
+  hoverVoiceToken = null;
+}
+
 function hoverPreview(i, t) {
   if (isMelodyPlaying() || hoverQuietUntil > Date.now()) return;
   // Practicing owns the glow and the sounds: token hovers would inject
   // playback-mode pulses over the fill-driven halo.
   if (typeof isPracticeActive === "function" && isPracticeActive()) return;
   highlightToken(i, t.id);
-  unlockAudio();
-  if (!audioCtx || audioCtx.state !== "running") return;
-  const now = Date.now();
-  if (now - lastHoverNoteAt < 70) return;
-  lastHoverNoteAt = now;
-  playNote(t.id, Math.min(tokenSeconds(t), 0.5));
+  // Same token already dwelling — don't re-arm, that would defeat the delay.
+  if (hoverVoiceTimer && hoverVoiceToken === t) return;
+  hushTokenHover();
+  hoverVoiceToken = t;
+  hoverVoiceTimer = setTimeout(() => {
+    hoverVoiceTimer = 0;
+    // Re-check at fire time: the melody may have started, or a redraw
+    // began a new quiet window while the pointer rested here.
+    if (isMelodyPlaying() || hoverQuietUntil > Date.now()) { hushTokenHover(); return; }
+    if (typeof isPracticeActive === "function" && isPracticeActive()) return;
+    unlockAudio();
+    if (!audioCtx || audioCtx.state !== "running") return;
+    playNote(t.id, Math.min(tokenSeconds(t), 0.5));
+  }, HOVER_HEAR_MS);
+}
+
+// Similarly to hover — silent: keyboard focus must not make noise; Enter on
+// the token is the deliberate "make noise" path.
+function tokenFocusPreview(i, t) {
+  if (isMelodyPlaying()) return;
+  if (typeof isPracticeActive === "function" && isPracticeActive()) return;
+  highlightToken(i, t.id);
+}
+
+// Touch has no hover: HOLD-to-hear rides the same dwell as the mouse/arrow
+// path (hoverPreview's HOVER_HEAR_MS). A quick tap keeps the native click's
+// meaning (play from here); the click is swallowed only after a COMPLETED
+// hold, so the listen it already produced must not also start the transport.
+// Drift (finger sliding = scroll intent) cancels like a mouseleave.
+let touchHoldHeard = false;
+function wireTokenTouch(el, i, t) {
+  let origin = null;
+  const calm = () => {
+    hushTokenHover();
+    if (!isMelodyPlaying()) clearHighlight();
+  };
+  el.addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 1) return; // pinch = zoom, not a dwell
+    origin = null;
+    hoverPreview(i, t);
+    // The dwell must actually have armed (quiet windows / running melody /
+    // practice mode make the preview a no-op — then we own no gesture).
+    if (hoverVoiceToken === t && hoverVoiceTimer) {
+      origin = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+  });
+  el.addEventListener("touchmove", (e) => {
+    if (!origin) return;
+    const p = e.touches[0];
+    if (Math.hypot(p.clientX - origin.x, p.clientY - origin.y) > 12) {
+      origin = null;
+      calm(); // drift = scroll intent
+    }
+  });
+  const lift = () => {
+    if (!origin) return;
+    origin = null;
+    if (hoverVoiceTimer) calm(); // released before the dwell: silent cancel
+    else touchHoldHeard = true;  // the preview already spoke; swallow the tap
+  };
+  el.addEventListener("touchend", lift);
+  el.addEventListener("touchcancel", () => { origin = null; calm(); });
+}
+
+// Roving tab stop for a token strip: one tab stop per strip (a song strip can
+// hold hundreds of tokens — tabbing through all of them is unusable).
+let tokAnchor = {};
+function tokAnchorSet(box, i) {
+  tokAnchor[box.id] = i;
+  [...box.querySelectorAll('.tok[role="button"]')].forEach(el =>
+    el.tabIndex = +el.dataset.i === i ? 0 : -1);
+}
+
+function wireTokenKeydown(el, box) {
+  el.addEventListener("keydown", e => {
+    // Enter only: Space belongs to the global play/pause shortcut
+    // (wireSpacebar) — locally intercepting both made Space produce a
+    // click-pause mash: a short faint note.
+    if (e.key === "Enter") {
+      e.preventDefault();
+      hushTokenHover();       // committing to playback: no pending preview
+      el.click();             // "play from here" (or practice re-anchor)
+      return;
+    }
+    const toks = [...box.querySelectorAll('.tok[role="button"]')];
+    const i = toks.indexOf(el);
+    if (i < 0) return;
+    let n = null;
+    if (e.key === "ArrowRight") n = (i + 1) % toks.length;
+    else if (e.key === "ArrowLeft") n = (i - 1 + toks.length) % toks.length;
+    else if (e.key === "Home") n = 0;
+    else if (e.key === "End") n = toks.length - 1;
+    if (n == null || !toks[n]) return;
+    e.preventDefault();
+    tokAnchorSet(box, +toks[n].dataset.i);
+    toks[n].focus();
+    // Arrow-walk mirrors hovering: passing over the melody hears it only
+    // when you settle. The dwell scheduler inside hoverPreview cancels the
+    // previous token's pending note, so sweeping arrows stays silent.
+    const t = lastTokens && lastTokens[+toks[n].dataset.i];
+    if (t && (t.type === "note" || t.type === "tie") && t.id && NOTES.includes(t.id))
+      hoverPreview(+toks[n].dataset.i, t);
+  });
 }
 
 function buildTokenEl(t, i) {
@@ -623,7 +740,7 @@ function buildTokenEl(t, i) {
   const el = document.createElement("span");
   el.dataset.i = String(i);
   el.style.cursor = "pointer";
-  el.title = "click = play from here";
+  el.title = "click or Enter = play from here";
   if (t.type === "bar") {
     el.className = "tok bar";
     el.textContent = "|";
@@ -644,6 +761,13 @@ function buildTokenEl(t, i) {
       el.innerHTML = `– <span class="td">${durLabel(t.dur, t.dotted, t.triplet)}</span>`;
       el.addEventListener("mouseenter", () => hoverPreview(i, t));
       el.addEventListener("mouseleave", () => {
+        hushTokenHover();
+        if (!isMelodyPlaying()) clearHighlight();
+      });
+      wireTokenTouch(el, i, t);
+      el.addEventListener("focus", () => tokenFocusPreview(i, t));
+      el.addEventListener("blur", () => {
+        hushTokenHover();
         if (!isMelodyPlaying()) clearHighlight();
       });
     } else if (isOutOfRange(t.id)) {
@@ -656,6 +780,11 @@ function buildTokenEl(t, i) {
       el.className = "tok bad";
       el.textContent = t.raw || "-";
     }
+  } else if (t.type === "bad") {
+    // Junk the grammar surfaced: show raw text + what to do about it.
+    el.className = "tok bad";
+    el.textContent = t.raw || "?";
+    el.title = "not part of the melody notation — fix or remove it";
   } else if (!NOTES.includes(t.id)) {
     const rc = rangeCheck(t.id);
     if (rc === "below" || rc === "above") {
@@ -677,22 +806,43 @@ function buildTokenEl(t, i) {
     if (t.staccato) el.classList.add("staccato");
     el.addEventListener("mouseenter", () => hoverPreview(i, t));
     el.addEventListener("mouseleave", () => {
+      hushTokenHover();
+      if (!isMelodyPlaying()) clearHighlight();
+    });
+    wireTokenTouch(el, i, t);
+    el.addEventListener("focus", () => tokenFocusPreview(i, t));
+    el.addEventListener("blur", () => {
+      hushTokenHover();
       if (!isMelodyPlaying()) clearHighlight();
     });
   }
   // While practicing, the same click re-anchors the practice from this token
   // instead of starting normal playback.
   el.addEventListener("click", e => {
+    if (touchHoldHeard) { touchHoldHeard = false; return; }
     e.preventDefault(); unlockAudio();
     if (typeof isPracticeActive === "function" && isPracticeActive()) {
       if (window.OCA_PRACTICE) OCA_PRACTICE.from(i);
     } else playMelody(i);
   });
+  // Keyboard operability: every activatable token is role=button. Unparseable
+  // ("bad") tokens carry no action, so they stay plain text for AT too.
+  if (!el.classList.contains("bad")) {
+    el.tabIndex = -1;                        // roving anchor assigned in drawTokenStrip
+    el.setAttribute("role", "button");
+    const nm = t.id && NOTES.includes(t.id) ? pretty(t.id) : "";
+    el.setAttribute("aria-label", nm ? "Play from " + nm : "Play from here");
+  }
   return el;
 }
 
 function drawTokenStrip(box, tokens, sectioned) {
   if (!box) return;
+  // Was a token in this strip focused before the rebuild? Editing usually
+  // rebuilds while the textarea holds focus, but keyboard navigation can
+  // leave focus here when a redraw arrives (e.g. instrument swap).
+  const prevFocusI = box.contains(document.activeElement) && document.activeElement.dataset
+    ? document.activeElement.dataset.i : null;
   box.innerHTML = "";
   tokens.forEach((t, i) => {
     // Playback strip (sectioned): a named bar starts a new section — put its
@@ -705,8 +855,29 @@ function drawTokenStrip(box, tokens, sectioned) {
       box.appendChild(h);
     }
     const el = buildTokenEl(t, i);
-    if (el) box.appendChild(el);
+    if (el) {
+      box.appendChild(el);
+      if (el.hasAttribute("role")) wireTokenKeydown(el, box);
+    }
   });
+  // Roving anchor: restore the previous anchor index when sane, else the
+  // first activatable token; return focus to the token that had it.
+  let anchor = tokAnchor[box.id];
+  const roles = [...box.querySelectorAll('.tok[role="button"]')];
+  let anchorEl = anchor != null
+    ? roles.find(el => +el.dataset.i === anchor)
+    : null;
+  if (!anchorEl) anchorEl = roles[0] || null;
+  if (anchorEl) {
+    anchor = +anchorEl.dataset.i;
+    tokAnchorSet(box, anchor);
+  }
+  let refocus = null;
+  if (prevFocusI != null) {
+    const again = [...box.querySelectorAll('.tok')].find(el => el.dataset.i === prevFocusI);
+    if (again && again.hasAttribute("role")) refocus = again;
+  }
+  if (refocus) refocus.focus();
 }
 
 function drawTokens(tokens) {
@@ -756,9 +927,54 @@ function pianoNotePreview(id) {
   sheet.appendChild(card);
 }
 
+// Piano keyboard: keyboard-operable like the rest of the UI. Keys are
+// role=button with a roving tabindex (one tab stop for the whole keyboard).
+// Left/Right step chromatically, Up/Down move an octave, Home/End jump to the
+// ends; Enter auditions the focused key and Space stays the global
+// pause/continue shortcut. Clicking keeps the roving anchor on the pressed
+// key, so arrows continue from where the mouse left off.
+function kbRoving(kb, active) {
+  [...kb.querySelectorAll(".key[data-note]")].forEach(k =>
+    k.tabIndex = k === active ? 0 : -1);
+}
+
+function kbWire(kb) {
+  if (!kb.dataset.kbWired) {
+    kb.dataset.kbWired = "1";
+    kb.addEventListener("keydown", e => {
+      const el = e.target;
+      if (!el.classList || !el.classList.contains("key") || !el.dataset.note) return;
+      if (e.key === "Enter") {
+        e.preventDefault();
+        el.click();           // reuses the mouse handler (audition + preview)
+        return;
+      }
+      const keys = [...kb.querySelectorAll(".key[data-note]")];
+      const i = keys.indexOf(el);
+      if (i < 0) return;
+      let n = null;
+      if (e.key === "ArrowRight") n = (i + 1) % keys.length;
+      else if (e.key === "ArrowLeft") n = (i - 1 + keys.length) % keys.length;
+      else if (e.key === "ArrowUp") n = (i + 12) % keys.length;
+      else if (e.key === "ArrowDown") n = (i - 12 + keys.length) % keys.length;
+      else if (e.key === "Home") n = 0;
+      else if (e.key === "End") n = keys.length - 1;
+      if (n == null || !keys[n]) return;
+      e.preventDefault();     // navigation must not scroll the page
+      kbRoving(kb, keys[n]);
+      keys[n].focus();
+      // No audition on mere navigation — Enter is the loud path. Space falls
+      // through to the global pause/continue shortcut on purpose.
+    });
+  }
+  kb.setAttribute("role", "group");
+  kb.setAttribute("aria-label", "Piano keyboard");
+}
+
 function buildKB() {
   const kb = document.getElementById("kb");
   kb.innerHTML = "";
+  kbWire(kb);
   const whites = ["C","D","E","F","G","A","B"];
   const blackAfter = {C:"Cs", D:"Ds", F:"Fs", G:"Gs", A:"As"};
   // Octaves 2-7: the contrabass range (B2-F4) through the bass (A3-G6) and
@@ -772,10 +988,13 @@ function buildKB() {
       const k = document.createElement("div"); k.className = "key";
       if (NOTES.includes(id)) {
         k.dataset.note = id;
+        k.tabIndex = -1;                       // roving anchor picked after build
+        k.setAttribute("role", "button");
+        k.setAttribute("aria-label", "Hear " + pretty(id));
         k.title = id + " — click hear, right-click add";
         k.innerHTML = `<span class="n">${w}${oct===4?"":oct}</span>`;
-        k.onclick = () => { playNote(id); pianoNotePreview(id); };
-        k.oncontextmenu = e => { e.preventDefault(); playNote(id); addNote(id); pianoNotePreview(id); };
+        k.onclick = () => { kbRoving(kb, k); playNote(id); pianoNotePreview(id); };
+        k.oncontextmenu = e => { e.preventDefault(); kbRoving(kb, k); playNote(id); addNote(id); pianoNotePreview(id); };
       } else {
         k.style.opacity = .25;
       }
@@ -790,9 +1009,12 @@ function buildKB() {
         const b = document.createElement("div"); b.className = "key black";
         if (NOTES.includes(sid)) {
           b.dataset.note = sid;
+          b.tabIndex = -1;
+          b.setAttribute("role", "button");
+          b.setAttribute("aria-label", "Hear " + pretty(sid));
           b.title = sid + " — click hear, right-click add";
-          b.onclick = () => { playNote(sid); pianoNotePreview(sid); };
-          b.oncontextmenu = e => { e.preventDefault(); playNote(sid); addNote(sid); pianoNotePreview(sid); };
+          b.onclick = () => { kbRoving(kb, b); playNote(sid); pianoNotePreview(sid); };
+          b.oncontextmenu = e => { e.preventDefault(); kbRoving(kb, b); playNote(sid); addNote(sid); pianoNotePreview(sid); };
         } else {
           b.style.opacity = .2;
         }
@@ -802,6 +1024,8 @@ function buildKB() {
     }
     kb.appendChild(col);
   }
+  const first = kb.querySelector(".key[data-note]");
+  if (first) first.tabIndex = 0;
 }
 
 function pageCss() {
@@ -853,11 +1077,38 @@ function persistPlayHeaders() {
 }
 
 function wireUi() {
-  document.getElementById("playMel").onclick = transportEngagePlay;
   const pracBtn = document.getElementById("practiceBtn");
   if (pracBtn) pracBtn.onclick = transportEngagePractice;
+  // The tick button toggles the shared hidden carrier; the pressed look
+  // always mirrors it (library loads write the carrier directly).
+  const tickBtn = document.getElementById("tickBtn");
+  const tickCb = document.getElementById("tickMel");
+  const syncTickBtn = () => {
+    if (tickBtn && tickCb) {
+      const on = tickCb.checked;
+      tickBtn.setAttribute("aria-pressed", on ? "true" : "false");
+      // The engaged look is the toggle vocabulary (black fills, paper text).
+      tickBtn.classList.toggle("on", on);
+    }
+  };
+  if (tickBtn && tickCb) {
+    tickBtn.onclick = () => { tickCb.checked = !tickCb.checked; syncTickBtn(); };
+    tickCb.addEventListener("change", syncTickBtn);
+    syncTickBtn();
+  }
   const pracFocusBtn = document.getElementById("practiceFocusBtn");
   if (pracFocusBtn) pracFocusBtn.onclick = transportEngagePractice;
+  // The normal-mode mirror of the zen transport (same four controls in the
+  // same order, same state colors, panel-sized) gets the exact semantics of
+  // its zen twin: engage stores, Stop fully resets, Loop flips the checkbox.
+  document.getElementById("mirrorPlay").onclick = () => { unlockAudio(); transportEngagePlay(); };
+  document.getElementById("mirrorStop").onclick = transportStopAll;
+  document.getElementById("mirrorPractice").onclick = transportEngagePractice;
+  document.getElementById("mirrorLoop").onclick = () => {
+    const cb = document.getElementById("loopMel");
+    if (cb) cb.checked = !cb.checked;
+    syncLoopUI();
+  };
   const liteCb = document.getElementById("liteMel");
   if (liteCb) {
     try { if (localStorage.getItem("oco-lite") === "1") liteCb.checked = true; } catch (e) {}
@@ -905,7 +1156,8 @@ function wireUi() {
     a.href = URL.createObjectURL(blob);
     a.download = tabsFileStem() + ".html";
     a.click();
-    URL.revokeObjectURL(a.href);
+    // Same-tick revoke can abort downloads in some engines; drain later.
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   };
   document.getElementById("clear").onclick = () => {
     document.getElementById("src").value = "";
@@ -930,6 +1182,25 @@ function wireUi() {
   document.querySelectorAll("#modeSeg .seg-btn").forEach(b => {
     b.onclick = () => setDisplayMode(b.dataset.mode);
   });
+  {
+    // Radiogroup arrow behaviour: arrows move focus AND selection, wrapping
+    // at the ends; Enter/Space stay native-button (Space is the global
+    // pause/continue shortcut and must not re-select here).
+    const segBtns = [...document.querySelectorAll("#modeSeg .seg-btn")];
+    const segMove = (from, dir) => {
+      const to = (from + dir + segBtns.length) % segBtns.length;
+      setDisplayMode(segBtns[to].dataset.mode);
+      segBtns[to].focus();
+    };
+    segBtns.forEach((b, i) => {
+      b.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); segMove(i, +1); }
+        else if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); segMove(i, -1); }
+        else if (e.key === "Home") { e.preventDefault(); segMove(i, -i); }
+        else if (e.key === "End") { e.preventDefault(); segMove(i, segBtns.length - 1 - i); }
+      });
+    });
+  }
   updateModeButtons();
   const fsBtn = document.getElementById("fullscreen");
   if (fsBtn) fsBtn.onclick = () => {
@@ -969,14 +1240,7 @@ function wireFocusControls() {
   const lp = document.getElementById("focusLoop");
   const ex = document.getElementById("focusExit");
   if (pp) pp.onclick = () => { unlockAudio(); transportEngagePlay(); };
-  if (st) st.onclick = () => {
-    // Full reset of whichever mode owns the transport.
-    if (typeof isPracticeActive === "function" && isPracticeActive() && window.OCA_PRACTICE) {
-      OCA_PRACTICE.stop();
-      return;
-    }
-    stopMelody();
-  };
+  if (st) st.onclick = transportStopAll;
   if (lp) lp.onclick = () => {
     const cb = document.getElementById("loopMel");
     if (cb) cb.checked = !cb.checked;
@@ -997,13 +1261,25 @@ function wireFocusControls() {
   syncLoopUI();
 }
 
+// Full transport reset (zen Stop and the normal-mode mirror Stop): practice
+// owns it while engaged, otherwise the melody stops.
+function transportStopAll() {
+  if (typeof isPracticeActive === "function" && isPracticeActive() && window.OCA_PRACTICE) {
+    OCA_PRACTICE.stop();
+    return;
+  }
+  stopMelody();
+}
+
 function syncLoopUI() {
   const cb = document.getElementById("loopMel");
-  const lp = document.getElementById("focusLoop");
-  if (!lp) return;
-  const on = !!(cb && cb.checked);
-  lp.classList.toggle("on", on);
-  lp.setAttribute("aria-pressed", on ? "true" : "false");
+  for (const id of ["focusLoop", "mirrorLoop"]) {
+    const lp = document.getElementById(id);
+    if (!lp) continue;
+    const on = !!(cb && cb.checked);
+    lp.classList.toggle("on", on);
+    lp.setAttribute("aria-pressed", on ? "true" : "false");
+  }
 }
 
 function isFocusMode() {
@@ -1045,28 +1321,20 @@ function updateTransportUI() {
   if (tg) tg.classList.toggle("dial-off", tempoOff);
   const ft = document.getElementById("focusTempoLab");
   if (ft) ft.classList.toggle("dial-off", tempoOff);
-  const main = document.getElementById("playMel");
-  if (main) {
-    // The button PAUSES (resume on the next click) — say so; a real stop is
-    // the transport's ⏹ (zen) or a song/library change. "Stop" read like
-    // losing the position, which it never did.
-    main.textContent = playing ? "Pause" : "Play";
-    // Neutral (idle/paused) is outline — never the black filled look.
-    main.classList.toggle("on", playing);
-  }
-  ["practiceBtn", "practiceFocusBtn"].forEach(id => {
+  ["practiceBtn", "practiceFocusBtn", "mirrorPractice"].forEach(id => {
     const b = document.getElementById(id);
     if (!b) return;
     b.classList.toggle("on", pracRuns);
     b.setAttribute("aria-pressed", pracRuns ? "true" : "false");
   });
-  const fp = document.getElementById("focusPlay");
-  if (fp) {
+  ["focusPlay", "mirrorPlay"].forEach(id => {
+    const fp = document.getElementById(id);
+    if (!fp) return;
     // The transport glyphs are inline SVG (index.html): the class flip alone
     // switches play ↔ pause. Never write textContent here — it would wipe
     // the svg children.
     fp.classList.toggle("is-playing", playing);
-  }
+  });
 }
 
 // The two transports engage / swap / disengage symmetrically:
@@ -1120,8 +1388,9 @@ function wireSpacebar() {
     unlockAudio();
     if (typeof isPracticeActive === "function" && isPracticeActive()) practiceToggle();
     else if (isFocusMode()) togglePlayPause();
-    else if (typeof isMelodyPaused === "function" && isMelodyPaused()) resumeMelody();
-    else playMelody();
+    // Space = Pause/Continue, matching the Play/Pause button everywhere (it
+    // used to go through playMelody() and hard-STOPPED a running melody).
+    else transportEngagePlay();
   });
 }
 
@@ -1324,7 +1593,12 @@ function wireZen() {
       const m = zenPrevMode; zenPrevMode = null; setDisplayMode(m);
     }
     const fsBtn = document.getElementById("fullscreen");
-    if (fsBtn) fsBtn.textContent = isFullscreen() ? "Exit full screen" : "Full screen";
+    // The corner button stays a glyph; only its tooltip/label swap sides.
+    if (fsBtn) {
+      const on = isFullscreen();
+      fsBtn.title = on ? "Exit full screen" : "Full screen";
+      fsBtn.setAttribute("aria-label", fsBtn.title);
+    }
     syncFocusMode();
     // Reverb belongs to zen/focus mode, not to any fullscreen: plain full
     // screen with grid/scroll stays dry. Vibrato/tremolo is owned by the
@@ -1367,8 +1641,10 @@ function buildPerfWidget() {
   perfBtn.title = "Audio performance — headroom, limiter, stalls";
   perfBtn.setAttribute("aria-haspopup", "true");
   perfBtn.setAttribute("aria-expanded", "false");
-  perfBtn.innerHTML = '<span class="perf-ico" aria-hidden="true">∿</span>' +
-    '<span class="perf-hr" id="perfHr">perf</span>';
+  // Glyph-only button (both views): the name lives in the tooltip and the
+  // aria-label; the two-line label crowded the head.
+  perfBtn.setAttribute("aria-label", "Audio performance: headroom, limiter, stalls");
+  perfBtn.innerHTML = '<span class="perf-ico" aria-hidden="true">∿</span>';
   perfBtn.addEventListener("click", e => {
     e.stopPropagation();
     perfOpen = !perfOpen;
@@ -1463,25 +1739,9 @@ function perfTick() {
   if (!perfOpen) return;
   clampPerfPop();
   const s = (typeof audioPerfSnapshot === "function") ? audioPerfSnapshot() : { ok: false };
-  perfUpdateBadge(s);
   const now = performance.now();
   if (now - perfLastRows > 180) { perfLastRows = now; perfUpdateRows(s); }
   perfRaf = requestAnimationFrame(perfTick);
-}
-
-function perfUpdateBadge(s) {
-  const hr = document.getElementById("perfHr");
-  if (!hr || !perfBtn) return;
-  let cls = "";
-  let txt = "—";
-  if (s.ok && s.peak > 1e-5) {
-    const db = -20 * Math.log10(s.peak); // headroom to 0 dBFS
-    txt = db.toFixed(1) + " dB";
-    cls = db >= 6 ? "perf-ok" : db >= 3 ? "perf-warn" : "perf-bad";
-  } else if (s.ok) txt = "idle";
-  else txt = "no ctx";
-  hr.textContent = txt;
-  hr.className = "perf-hr " + cls;
 }
 
 function perfUpdateRows(s) {
@@ -1544,8 +1804,16 @@ function perfRelocate() {
   const panel = document.getElementById("tabPanel");
   const head = document.querySelector("#playback .box-head");
   const zen = !!(panel && panel.classList.contains("focus"));
-  const target = zen ? panel : head;
-  if (target && perfWrap.parentElement !== target) target.appendChild(perfWrap);
+  if (zen) {
+    // The pop is position:fixed in Zen — DOM order irrelevant, just park it.
+    if (perfWrap.parentElement !== panel) panel.appendChild(perfWrap);
+    return;
+  }
+  // Head seat: stacked above the tick toggle in the left cluster's column.
+  const col = head && head.querySelector(".head-perf-col");
+  if (col && perfWrap.parentElement !== col) {
+    col.insertBefore(perfWrap, col.firstChild);
+  }
 }
 
 // Collapsible section bodies: INPUT / PLAYBACK have a top-left chevron in

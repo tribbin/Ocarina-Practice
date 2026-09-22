@@ -59,7 +59,9 @@ function ocarinaSVG(covered, chamber) {
     }
     return clone.outerHTML;
   } catch (e) {
-    return "<div>" + String(e) + "</div>";
+    const d = document.createElement("div");
+    d.textContent = String(e); // error text must never become live markup
+    return d.innerHTML;
   }
 }
 
@@ -94,6 +96,9 @@ function enlargeSmallHoles(svg) {
     let maxR = Math.max(h.r * 1.7, 2.2);
     for (const o of holes) {
       if (o.el === h.el) continue;
+      // dist >= |dx|, so |dx| alone already floored: if |dx| - o.r - GAP
+      // can't undercut maxR this pair can never bind — skip the hypot.
+      if (Math.abs(h.x - o.x) - o.r - GAP >= maxR) continue;
       const dist = Math.hypot(h.x - o.x, h.y - o.y);
       const allowed = dist - o.r - GAP;
       if (allowed < maxR) maxR = allowed;

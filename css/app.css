@@ -95,7 +95,7 @@ html[data-theme="oot"] body::before {
   inset: -4px;
   z-index: 0;
   pointer-events: none;
-  background: url("../hyrule.jpg") center / cover no-repeat;
+  background: url("../hyrule.webp") center / cover no-repeat;
   filter: blur(2px);
 }
 html[data-theme="oot"] .wrap {
@@ -236,13 +236,20 @@ html[data-theme="oot"] #dbgPanel .dbg-note:hover {
 }
 header.app {
   background: var(--ink); color: var(--paper);
-  padding: 14px 20px; display: flex; align-items: baseline; gap: 4px 14px;
-  flex-wrap: wrap;
+  padding: 14px 20px;
+  /* The ocarina picker centers over the whole sticky bar, like the section
+     headers do: equal side columns on both sides of the centered pick. */
+  display: grid; grid-template-columns: 1fr auto 1fr;
+  align-items: baseline; gap: 4px 14px;
   position: sticky; top: 0; z-index: 5;
 }
 header.app h1 { font-size: 18px; margin: 0; font-weight: 650; letter-spacing: .02em; white-space: nowrap; }
 header.app span { opacity: .7; font-size: 13px; }
-.inst-picker { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.inst-picker { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; justify-self: center; }
+@media (max-width: 760px) {
+  header.app { display: flex; flex-wrap: wrap; }
+  .inst-picker { margin-inline: auto; }
+}
 .inst-sel {
   background: rgba(255,255,255,.08); color: var(--paper);
   border: 1px solid rgba(255,255,255,.28); border-radius: 6px;
@@ -297,6 +304,9 @@ button.tiny { padding: 4px 8px; font-size: 12px; }
 .toggle-btn.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .err { color: var(--accent); font-size: 13px; }
 .err:empty { display: none; }
+/* OoT: the accent's dark red disappears on the grass — errors need the same
+   bright salmon the bad-chip scribbles wear. */
+html[data-theme="oot"] .err { color: #ff9d80; }
 .range-warn {
   display: flex; align-items: center; gap: 10px;
   background: var(--warn-bg); color: var(--warn-ink);
@@ -339,7 +349,7 @@ button.tiny { padding: 4px 8px; font-size: 12px; }
 .key.black .n { color: #ddd; bottom: 2px; }
 .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
 .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
-.sheet { display: flex; flex-wrap: wrap; gap: 18px 0; align-items: stretch; }
+.sheet { display: flex; flex-wrap: wrap; gap: 18px 28px; align-items: stretch; }
 /* Fixed width, no flex-grow: grow distributes free space per flex line, so a
    short last row grows its fewer cards wider than the full rows above (up to
    the old 280px cap) and the columns stop lining up. A fixed width keeps every
@@ -374,16 +384,21 @@ button.tiny { padding: 4px 8px; font-size: 12px; }
   color: #fff;
 }
 .badge { font-size: 10px; font-weight: 700; letter-spacing: .06em; padding: 2px 6px; border-radius: 99px; color: #fff; }
-.card, .rest { margin-right: 28px; }
 .tab-bar {
   flex: 0 0 0; width: 0; position: relative; align-self: stretch;
-  margin: 0; background: none; overflow: visible;
+  /* Bars ride the column gap: the left negative margin cancels the flex gap
+     BEFORE the zero-width line, so a bar costs exactly the one gap it sits
+     in — rows keep the card rhythm (no extra width, no early wrap) and the
+     line paints centered in that gap. */
+  margin: 0 0 0 -28px;
+  background: none; overflow: visible;
 }
 .tab-bar::before {
   content: ""; position: absolute; top: 10px; bottom: 10px; width: 3px;
-  left: -15.5px; background: var(--ink); border-radius: 2px;
+  left: 12.5px; /* mid-gap (the bar rides the 28px column gap) */
+  background: var(--ink); border-radius: 2px;
 }
-.tab-bar + .tab-bar::before { left: -11px; width: 2px; }
+.tab-bar + .tab-bar::before { left: 18px; width: 2px; }
 /* A bar line carrying a hover description gets an accent tint + a dotted cue. */
 .tab-bar.has-note::before { background: var(--accent, #b5651d); }
 .tab-bar.has-note::after {
@@ -431,24 +446,24 @@ svg.ocarina { width: 100%; height: auto; display: block; background: var(--oca-b
 .hole { fill: rgba(255,255,255,0.18); stroke: #5a3a28; stroke-width: 3; }
 .hole.on { fill: rgba(20,10,6,0.78); stroke: #1a0c08; }
 .hole.tune { fill: none; stroke: #b89a80; stroke-width: 2; stroke-dasharray: 4 3; }
-.thumb { fill: #f0d4b8; stroke: #5a3a28; stroke-width: 1.6; }
-.thumb.on { fill: #2a1a12; }
-.voicing { fill: none; stroke: #5a3a28; stroke-width: 1.4; }
-.bodyfill { fill: #d2b08a; stroke: #6b4a32; stroke-width: 2.2; }
-footer.hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
+/* The piano head mirrors the other two: the centered sub-section title. */
+#pianoBlock > .box-head { justify-content: center; }
 kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1px solid var(--line); border-bottom-width: 2px; padding: 0 4px; border-radius: 3px; }
 @media print {
-  header.app, .noprint, footer.hint, .tab-tools, #stats, .focus-exit { display: none !important; }
+  header.app, .noprint, .tab-tools, #stats, .focus-exit { display: none !important; }
   html[data-theme="oot"], html[data-theme="oot"] body,
   body { background: #fff !important; background-image: none !important; }
   html[data-theme="oot"] body::before { display: none !important; }
   .wrap { max-width: none; padding: 0; }
   .panel { border: 0; padding: 0; margin: 0; }
-  .sheet { gap: 2.5mm 0; }
+  .sheet { gap: 2.5mm 3mm; }
+  .tab-bar { margin: 0 0 0 -3mm; }
+  .tab-bar::before { left: 5px; }
   /* Same centered-block sizing with the print card slot (32mm card + 3mm
      margin); #sheet outranks the base rule that lands later in the file. */
   #sheet:not(.scroll):not(.live) {
-    width: max(round(down, 100%, 35mm), min(100%, 35mm));
+    width: 100%; /* plain fallback: engines without round() drop the next line */
+    width: max(calc(round(down, 100%, 35mm) - 3mm), min(100%, 32mm));
     margin-inline: auto;
   }
   .card, .rest,
@@ -460,7 +475,6 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
     min-width: 32mm;
     max-width: 32mm;
     min-height: 0;
-    margin-right: 3mm;
   }
   .card .meta { padding: 1.5mm 2mm 1.8mm; }
   .card .nm { font-size: 11px; }
@@ -476,18 +490,15 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
 }
 
 .click-help { margin: 0 0 0 10px; font-size: 12px; color: var(--muted); line-height: 1.35; }
-.melody-field {
-  border: 1px solid var(--line); border-radius: 8px; background: var(--paper); padding: 0 0 8px;
-}
-.melody-field textarea#src {
-  border: 0; background: transparent; margin: 0; border-radius: 8px 8px 0 0;
-}
 .tokens { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 4px 10px 6px; min-height: 36px; }
 .tok {
   display: inline-flex; align-items: center; gap: 8px;
   height: 44px; padding: 0 14px; border-radius: 10px; color: #fff;
   font-weight: 700; font-size: 18px; line-height: 1; white-space: nowrap;
   cursor: default; user-select: none;
+  /* hold-to-listen target: a planted finger must not raise text selection
+     or the iOS-style callout mid-dwell */
+  -webkit-user-select: none; -webkit-touch-callout: none;
   box-shadow: 0 1px 0 rgba(0,0,0,.12);
 }
 .tok .td { font-size: 24px; line-height: 1; font-weight: 500; font-family: "Noto Music","Noto Sans Symbols 2","Segoe UI Symbol",serif; opacity: .95; }
@@ -496,7 +507,21 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
 .tok.ch3 { background: var(--ch3); }
 .tok.bar { background: var(--token-neutral); color: var(--ink); font-weight: 600; height: 44px; width: auto; flex: none; min-height: 44px; }
 .tok.pause { background: var(--token-pause); }
-.tok.bad { background: var(--accent); }
+/* Junk spans the grammar cannot consume: a token-shaped pill (tan, like the
+   bar chips — same var in both themes) carrying the raw junk text with a
+   spell-check style wavy scribble. The first take used a bare transparent
+   chip (not readable/especially OoT) and an earlier one an opaque accent box
+   (illegible on the grass): pill + scribble reads like a real token. */
+.tok.bad {
+  background: var(--token-neutral);
+  color: var(--ink);
+  text-decoration-line: underline;
+  text-decoration-style: wavy;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  text-decoration-skip-ink: none;
+  text-decoration-color: var(--accent);
+}
 .tok.oor {
   background: #fff; color: var(--accent);
   border: 1.5px solid var(--accent);
@@ -553,9 +578,19 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
 .box-title { font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--clay-dark); }
 .box-sub { font-size: 12px; color: var(--muted); }
 .tempo-lab {
-  margin-left: auto; display: flex; align-items: center; gap: 8px;
+  margin-left: auto;
   font-size: 13px; font-weight: 600; color: var(--ink);
+  display: flex; flex-direction: column; gap: 4px;
 }
+/* Each dial is its own 3-column line: [title | slider | value]. Every row
+   shares the same tracks, so the two sliders command exactly over each
+   other (the title column is fixed too, so the slider edges cannot drift). */
+.dial-row {
+  display: grid;
+  grid-template-columns: 48px 90px max-content;
+  align-items: center; gap: 8px;
+}
+.dial-row > span:first-child { justify-self: end; }
 .tempo-lab input[type=range] { width: 90px; }
 #inputBlock textarea#src {
   width: 100%; min-height: 74px; resize: vertical; border: 0;
@@ -583,32 +618,74 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
   background: var(--panel); color: var(--ink);
 }
 
-.tempo-lab.lib-dd { gap: 6px; }
 .loop-lab {
   display: flex; align-items: center; gap: 6px; cursor: pointer; margin: 0;
 }
 .loop-lab input { margin: 0; }
-.tab-heading { margin: 0 0 8px; }
-/* Three-zone tool row: left cluster (view controls) at the left edge, right
-   cluster at the right edge, Zen mode exactly centered. Both side columns are
-   equal 1fr, so the middle column's center is the panel's centerline — where
-   h2#title also centers: button and title line up pixel-for-pixel. */
+/* Library file actions pair into two-button stacks: each stack is a grid so
+   both buttons stretch to the same column width — labels align perfectly. */
+.lib-pair {
+  display: grid; gap: 4px; align-self: start;
+}
+.lib-pair > button { width: 100%; }
+/* The playback tick button wears the toggle vocabulary when engaged. */
+#tickBtn.on {
+  background: var(--ink); color: var(--paper); border-color: var(--ink);
+}
+/* Removing from the library destroys data: the destructive accent clothes
+   it (OoT wears the theme's bright salmon). */
+#libRemove {
+  color: var(--accent); border-color: var(--accent);
+}
+#libRemove:hover { background: rgba(139, 61, 47, 0.08); }
+html[data-theme="oot"] #libRemove {
+  color: #ff9d80; border-color: rgba(255, 157, 128, 0.5);
+}
+/* Clear empties the input field itself — meaningless while the field is
+   folded away, so it follows the block's collapsed state. */
+#inputBlock.collapsed .box-head #clear { display: none; }
+/* Tool rows under the song title: Zen mode alone on its centered line, the
+   plain buttons row BELOW it. The buttons row rides the same centered-block
+   width math as the card grid (equal 268px slots minus one gap), so its
+   left edge sits over the left cards and its right edge over the right
+   cards; on screens narrower than the row it clamps to the panel and wraps. */
+.zen-row { display: flex; justify-content: center; margin: 0 0 10px; }
 .tab-tools {
   margin: 0 0 10px;
+  width: max(calc(round(down, 100%, 268px) - 28px), 640px);
+  max-width: 100%;
+  margin-inline: auto;
+  /* The display-mode segment rides the exact centerline of the row (whose
+     ends already line up with the card grid); view toggles lead on the left,
+     export actions trail on the right. */
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
+  gap: 8px; flex-wrap: wrap;
 }
 .tab-tools .tools-left,
 .tab-tools .tools-right {
   display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0;
 }
 .tab-tools .tools-right { justify-content: flex-end; }
-/* Narrow rows: release the exact centering and let the three zones wrap as
-   blocks (Zen stays its own block in the flow). */
+/* Symbol-only action buttons: same ghost outline, one crisp stroke glyph. */
+.icon-btn {
+  width: 40px; height: 34px; padding: 0; border-radius: 7px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.icon-btn > svg {
+  width: 18px; height: 18px; fill: none; stroke: currentColor;
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+/* Fullscreen as the window-corner control of the tablature section. */
+#tabPanel { position: relative; }
+.fs-corner {
+  position: absolute; top: 10px; right: 12px; z-index: 50;
+}
 @media (max-width: 1000px) {
-  .tab-tools { display: flex; flex-wrap: wrap; gap: 8px; }
-  .zen-btn { justify-self: auto; }
+  /* Narrow: release the exact centerline, wrap the zones as blocks. */
+  .tab-tools { display: flex; }
+  .tab-tools .mode-seg { grid-column: auto; grid-row: auto; margin-inline: auto; }
 }
 
 /* Display-mode segmented control */
@@ -670,19 +747,50 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
   cursor: pointer;
 }
 .check-lab input { margin: 0; }
-h2#title { margin: 8px 0 10px; font-size: 18px; text-align: center; }
+/* The song title IS the fingering-charts section title: it leads the whole
+   panel above the tool row, wearing the sub-section vocabulary one step up
+   in size. */
+h2#title {
+  font-size: 22px; margin: 0 0 10px; text-align: center;
+}
 
-.lib-dd { position: relative; }
+/* Library cluster in the input head: the Song Library title sits on top, the
+   song dropdown below it — centered over the whole header exactly like the
+   playback head's center column (same 1fr-auto-1fr recipe below). */
+.lib-dd {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+}
+#inputBlock > .box-head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center; gap: 12px;
+}
+#inputBlock > .box-head .lib-dd { justify-self: center; }
+.lib-pairs {
+  display: flex; gap: 10px; justify-self: end;
+}
+@media (max-width: 760px) {
+  #inputBlock > .box-head { display: flex; flex-wrap: wrap; }
+  .lib-dd { margin-inline: auto; }
+  .lib-pairs { margin-inline: auto; }
+}
 .lib-dd-wrap { position: relative; }
 .lib-dd-btn {
   background: var(--panel) !important; color: var(--ink) !important;
   border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px;
   font: 13px/1.3 inherit; display: inline-flex; align-items: center; gap: 10px;
-  min-width: 10.5em; justify-content: space-between;
+  /* Roomy: the open menu spans the button exactly, so the drop-down reads
+     as centered under the selected song. */
+  min-width: 20em; position: relative;
 }
-.lib-dd-caret { font-size: 10px; opacity: .65; }
+/* The selected song centers in its own track; the caret anchors the right
+   edge without shifting the text off center. */
+#libDdText { flex: 1; text-align: center; }
+#libDdText.placeholder { color: var(--muted); font-weight: 400; }
+.lib-dd-caret { position: absolute; right: 8px; font-size: 10px; opacity: .65; }
 .lib-dd-menu {
-  position: absolute; top: calc(100% + 4px); right: 0; left: auto; z-index: 40;
+  position: absolute; top: calc(100% + 4px); right: 0; left: 0; z-index: 40;
   min-width: max(100%, 13rem); max-width: min(18rem, calc(100vw - 24px));
   max-height: 280px; overflow: auto;
   background: var(--panel); color: var(--ink); border: 1px solid var(--line);
@@ -724,16 +832,19 @@ h2#title { margin: 8px 0 10px; font-size: 18px; text-align: center; }
 .ch-leg i.c3 { background: var(--ch3); }
 
 .sheet-wrap { width: 100%; }
-.sheet { display: flex; flex-wrap: wrap; gap: 18px 0; align-items: stretch; }
+.sheet { display: flex; flex-wrap: wrap; gap: 18px 28px; align-items: stretch; }
 /* Center the card grid as ONE aligned block: the sheet is sized down to a
    whole number of card slots (fixed 240px card + 28px trailing margin =
    268px per card), so full rows fill it exactly, every row keeps the same
    left edge, and .sec-head names align with the grid's left side. The max()
    guard falls back to full width when less than one slot fits (tiny phones),
-   where round(down, ...) would floor to 0. round() is recent CSS; without it
-   the sheet just stays the old full-width left-aligned block. */
+   where round(down, ...) would floor to 0. The plain width above is the
+   fallback for engines without round() (they drop the second width line):
+   the old full-width left-aligned block, kept implicit-proof even if other
+   rules ever set a width on this same selector. */
 .sheet:not(.scroll):not(.live) {
-  width: max(round(down, 100%, 268px), min(100%, 268px));
+  width: 100%; /* round()-less fallback */
+  width: max(calc(round(down, 100%, 268px) - 28px), min(100%, 240px));
   margin-inline: auto;
 }
 .sheet.live { justify-content: center; gap: 0; }
@@ -777,7 +888,10 @@ h2#title { margin: 8px 0 10px; font-size: 18px; text-align: center; }
 .sheet.scroll .tab-bar::before { top: -25px; bottom: 0; }
 .sheet.scroll .tab-bar.has-note::after {
   content: attr(title);
-  position: absolute; left: 0; top: -25px;
+  /* The zero-width bar rides one 28px column-gap LEFT of the card it leads
+     (see .tab-bar's negative margin) — re-align the title with the card's
+     left edge. */
+  position: absolute; left: 28px; top: -25px;
   width: auto; height: auto; margin: 0; padding: 0 12px 0 0;
   border-radius: 0; background: none;
   font-size: 12px; font-weight: 700; letter-spacing: .08em;
@@ -833,7 +947,8 @@ body.zen-fallback #tabPanel .sheet { align-content: flex-start; width: 100%; }
    (the 100% width above would otherwise force rows back to left-aligned). */
 #tabPanel:fullscreen .sheet:not(.scroll):not(.live),
 body.zen-fallback #tabPanel .sheet:not(.scroll):not(.live) {
-  width: max(round(down, 100%, 268px), min(100%, 268px));
+  width: 100%; /* round()-less fallback */
+  width: max(calc(round(down, 100%, 268px) - 28px), min(100%, 240px));
   margin-inline: auto;
 }
 #tabPanel:fullscreen .sheet.scroll,
@@ -903,16 +1018,6 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
   will-change: opacity, transform;
 }
 #tabPanel.focus > * { position: relative; z-index: 1; }
-@media (prefers-reduced-motion: reduce) {
-  /* Motion is off at the OS level: skip the animated scale swell (the only
-     real movement) but keep the full opacity bloom — the halo still rises and
-     fades with each note, just without growing/drifting across the screen. */
-  #tabPanel.focus::before {
-    display: block;
-    transform: none;
-    transition: opacity var(--glow-fade, 1.6s) ease-out;
-  }
-}
 
 /* Small screens: the piano must squeeze inside the viewport instead of
    pushing keys past it (28 white keys + flexible flex widths), and shrink its
@@ -926,8 +1031,9 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
   #pianoBlock .kb { padding: 8px 8px 4px; }
 }
 
-#tabPanel.focus .tab-heading,
 #tabPanel.focus .tab-tools,
+#tabPanel.focus .zen-row,
+#tabPanel.focus .fs-corner,
 #tabPanel.focus #stats { display: none !important; }
 
 #tabPanel.focus h2#title {
@@ -1022,6 +1128,78 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 .focus-btn.loop.on { background: var(--good); color: var(--paper); border-color: var(--good); }
 #tabPanel.focus .focus-btn.loop.on { background: var(--good); color: #fff; border-color: var(--good); }
 
+/* Normal-mode mirror of the zen transport: same four controls in the same
+   order and with the same STATE colors (running = --good green, engaged
+   practice = --ch2, loop on = --good). The resting look is the inactive
+   vocabulary (ghost outline) — black stays reserved for "activated" — and
+   the row floats centered over the WHOLE header (static flow fallback on
+   tight screens). */
+/* Sub-section titles that live inside a header row (Song Library in the
+   input head, Playback Control over the transport rounds): important but
+   compact, with a short accent rule under the words — the shared look both
+   headers wear. */
+.head-label {
+  font-size: 13px; font-weight: 800; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--clay-dark); line-height: 1.2;
+}
+.head-label::after {
+  content: ""; display: block; height: 2px; width: 2.4em;
+  margin: 4px auto 0; background: var(--accent); border-radius: 1px;
+}
+
+#playback > .box-head { position: relative; }
+/* Playback Control + its round buttons sit in the CENTER column of a
+   1fr-auto-1fr grid: both side columns are equal, so the bundle's midline
+   really is the header's midline — while the header itself grows to contain
+   it (no more poking past the section edges like an absolute float did). */
+#playback > .box-head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center; gap: 12px;
+}
+.head-left { display: flex; align-items: center; gap: 10px; }
+/* The perf button's left cluster: glyph-only Audio Performance, the playback
+   tick button riding to its right. */
+.head-perf-col {
+  display: flex; flex-direction: row; align-items: center; gap: 10px;
+}
+.t-wrap {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+#playback .tempo-lab { justify-self: end; }
+@media (max-width: 760px) {
+  #playback > .box-head { display: flex; flex-wrap: wrap; }
+  .t-wrap { margin-inline: auto; }
+  #barTools { flex-wrap: wrap; }
+}
+#barTools {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.t-btn {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: transparent; color: var(--ink); border: 1px solid var(--line);
+  font-size: 18px; line-height: 1; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.t-btn:hover { filter: brightness(1.12); }
+.t-btn.play { width: 56px; height: 56px; font-size: 26px; }
+.t-btn.practice { width: 56px; height: 56px; font-size: 30px; }
+.t-btn.play.is-playing { background: var(--good); color: var(--paper); border-color: var(--good); }
+.t-btn.practice.on { background: var(--ch2); color: var(--paper); border-color: var(--ch2); }
+.t-btn.loop.on { background: var(--good); color: var(--paper); border-color: var(--good); }
+.t-btn.play, .t-btn.practice, .t-btn.stop { box-shadow: 0 1px 0 rgba(0,0,0,.06); }
+/* OoT theme: inactive round glyphs join the other buttons' white-ink look
+   (ghost vocabulary); active states keep their own colors underneath. */
+html[data-theme="oot"] .t-btn {
+  color: #fff; border-color: rgba(255, 255, 255, 0.45);
+}
+/* SVG transport glyphs (same shapes as zen): play idle → triangle, running
+   → pause bars; Stop always its square. */
+.t-btn > svg { display: none; width: .85em; height: .85em; fill: currentColor; }
+#mirrorPlay:not(.is-playing) svg.g-play { display: block; transform: translateX(-.03em); }
+#mirrorPlay.is-playing svg.g-pause { display: block; }
+#mirrorStop svg.g-stop { display: block; }
+
 /* Exit button: fixed top-right, fades in on mouse move */
 .focus-exit { display: none; }
 #tabPanel.focus .focus-exit {
@@ -1037,12 +1215,13 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 
 /* Performance / headroom dropdown */
 .perf-dd { position: relative; display: inline-flex; }
-.perf-btn { display: inline-flex; align-items: center; gap: 7px; }
-.perf-btn .perf-ico { font-size: 15px; line-height: 1; }
+.perf-btn {
+  width: 40px; height: 40px; border-radius: 50%; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.perf-btn .perf-ico { font-size: 19px; line-height: 1; }
 .perf-hr { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--muted); }
-.perf-hr.perf-ok { color: var(--good); }
-.perf-hr.perf-warn { color: #a15c00; }
-.perf-hr.perf-bad { color: var(--accent); }
+.perf-hr { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--muted); }
 .perf-pop {
   position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%);
   z-index: 70; width: 340px; max-width: 92vw;
@@ -1290,7 +1469,7 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 /* The playback-only dials dim while practice owns the transport — opacity
    only: no layout change (the zen bar must not jump), ghosted and inert. */
 .tempo-grp, .focus-tempo { transition: opacity .2s linear; }
-.tempo-grp.dial-off, .focus-tempo.dial-off { opacity: .18; pointer-events: none; }
+.dial-row.dial-off, .focus-tempo.dial-off { opacity: .18; pointer-events: none; }
 #tabPanel.focus .focus-tempo,
 #tabPanel.focus .focus-tempo span,
 #tabPanel.focus .focus-tempo label { color: var(--paper); }
@@ -1429,3 +1608,30 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 .lib-dialog-row button.lib-dialog-ok { background: var(--accent); border-color: var(--accent); color: var(--paper); }
 .lib-dialog-row button:hover { filter: brightness(1.05); }
 @media print { .lib-dialog { display: none !important; } }
+
+/* OS-level motion gate, kept at file end so none of the animation rules
+   above can win a later-position tie against it. */
+@media (prefers-reduced-motion: reduce) {
+  #tabPanel.focus::before {
+    /* Skip the animated scale swell (the only real movement) but keep the
+       full opacity bloom — the halo still rises and fades with each note. */
+    display: block;
+    transform: none;
+    transition: opacity var(--glow-fade, 1.6s) ease-out;
+  }
+  /* Every other decorative motion: pulses die (the banner's left band and
+     the alert's colour still mark them), the wave keeps an opacity-only fade
+     without sweeping across the screen, and the focus-token swell freezes
+     (ring highlight and box-shadow stay). */
+  .range-warn { animation: none; }
+  .zen-wave { animation: zen-wave-reduce 1s ease-out forwards; }
+  .perf-btn.alerted,
+  #tabPanel.focus .perf-btn.alerted { animation: none; }
+  #tabPanel.focus .focus-tokens .tok { transition: none; }
+  #tabPanel.focus .focus-tokens .tok.now { transform: none; }
+  @keyframes zen-wave-reduce {
+    0%   { opacity: 0; }
+    22%  { opacity: .85; }
+    100% { opacity: 0; }
+  }
+}

@@ -176,6 +176,21 @@ TONE_PROBE = """
 """
 
 
+TPL_PROBE = """
+() => ({
+  tpl: currentTemplatePath(), id: currentSongId(), title: currentSongTitle(),
+})
+"""
+
+TYPED = """
+(title) => {
+  const ta = document.getElementById('src');
+  ta.value = '# ' + title + '\\n\\nC4 D4 E4';
+  ta.dispatchEvent(new Event('input', { bubbles: true }));
+}
+"""
+
+
 def close(got, want, tol=1e-9):
     return isinstance(got, (int, float)) and isinstance(want, (int, float)) \
         and abs(got - want) <= tol
@@ -258,6 +273,52 @@ def main():
                 if not r["genericParity"]:
                     failures.append("parity: uninstalling must restore the generic "
                                     "profile bit-for-bit (incl. en === null)")
+            page.close()
+            # 3 — per-song ocarina template selection (svgWhen): the manifest
+            # rule must fire by song id (the shipped entry selected in the
+            # dropdown) AND by matching song title (a hand-typed Saria's Song
+            # body), and stay on the generic template for other titles.
+            print("== per-song ocarina template (svgWhen)", flush=True)
+            page = browser.new_page()
+            errs = []
+            page.on("pageerror", lambda e: errs.append(str(e)))
+            # 3 — per-song ocarina template selection (svgWhen): on the
+            # 12-hole Alto C the plain sarias-song body is out of range (so
+            # the dropdown stays empty — a stem-id match there can only be a
+            # linker/zen link case), making the in-range alto variant the
+            # id-path probe (its id carries the stem as prefix). The rule
+            # must ALSO fire by matching song title (hand-typed Saria's Song)
+            # and stay on the generic template for other titles.
+            print("== per-song ocarina template (svgWhen)", flush=True)
+            page = browser.new_page()
+            errs = []
+            page.on("pageerror", lambda e: errs.append(str(e)))
+            page.goto(base + "?inst=oot-alto-c-12&song=sarias-song-alto&oot")
+            page.wait_for_function(BOOT_WAIT)
+            byId = page.evaluate(TPL_PROBE)
+            page.goto(base + "?inst=oot-alto-c-12&oot")
+            page.wait_for_function(BOOT_WAIT)
+            page.evaluate(TYPED, "Saria's Song")
+            byTitle = page.evaluate(TPL_PROBE)
+            page.evaluate(TYPED, "Zelda's Lullaby")
+            byOtherTitle = page.evaluate(TPL_PROBE)
+            if errs:
+                failures.append(f"svgWhen: page errors {errs}")
+            if not str(byId.get("tpl") or "").endswith(
+                    "ocarina-template-saria.svg"):
+                failures.append(
+                    "svgWhen: song id sarias-song-alto (stem sarias-song) "
+                    f"must select the saria template, got {byId!r}")
+            if not str(byTitle.get("tpl") or "").endswith(
+                    "ocarina-template-saria.svg"):
+                failures.append(
+                    "svgWhen: a typed Saria's Song body must also select the "
+                    f"saria template, got {byTitle!r}")
+            if not str(byOtherTitle.get("tpl") or "").endswith(
+                    "ocarina-template.svg"):
+                failures.append(
+                    "svgWhen: an unrelated title must keep the generic "
+                    f"template, got {byOtherTitle!r}")
             page.close()
             browser.close()
     finally:

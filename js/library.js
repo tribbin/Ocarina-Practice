@@ -10,16 +10,47 @@ function initBuiltin(songs) {
 }
 
 function userLib() {
-  try { return JSON.parse(localStorage.getItem(LIB_KEY) || "{}") || {}; }
-  catch (e) { return {}; }
+  let raw = null;
+  try { raw = localStorage.getItem(LIB_KEY); } catch (e) { raw = null; }
+  if (!raw) return {};
+  let parsed = null;
+  try { parsed = JSON.parse(raw); } catch (e) { parsed = null; }
+  if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+  // Corrupt or non-object content: keep the evidence (backed up once) and
+  // reset the key so the next real save isn't reading from a poisoned value —
+  // otherwise a save would silently overwrite the broken state and the data
+  // is lost for good.
+  try {
+    localStorage.setItem(LIB_KEY + ".corrupt-" + Date.now(), raw);
+    localStorage.setItem(LIB_KEY, "{}");
+  } catch (e) {}
+  return {};
 }
 
+// Returns true when the write landed; false means storage refused it (quota
+// exceeded, private mode…) and callers must surface that instead of letting
+// the save quietly do nothing.
 function setUserLib(obj) {
-  localStorage.setItem(LIB_KEY, JSON.stringify(obj));
+  try { localStorage.setItem(LIB_KEY, JSON.stringify(obj)); return true; }
+  catch (e) { return false; }
 }
 
 function slugName(name) {
-  return "u-" + String(name).trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || ("song-" + Date.now());
+  // Punctuation-only or junk names slugify to "" and would all share one id
+  // ("u-"); give those a timestamped id instead.
+  const base = String(name).trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return base ? "u-" + base : "song-" + Date.now();
+}
+
+// Re-saving the exact same display name is a deliberate overwrite; any other
+// id collision (e.g. punctuation-differing names that slugify identically)
+// gets a -2, -3, … suffix instead of silently replacing the stored song.
+function uniqueUserId(lib, name) {
+  const base = slugName(name);
+  let id = base;
+  let n = 1;
+  while (lib[id] && lib[id].name !== name) id = base + "-" + (++n);
+  return id;
 }
 
 // Full melody text for a library id (built-in or user), or "" if unknown.
@@ -45,7 +76,7 @@ function showHiddenSongs() {
 }
 
 function setShowHidden(v) {
-  localStorage.setItem(SHOW_HIDDEN_KEY, v ? "1" : "0");
+  try { localStorage.setItem(SHOW_HIDDEN_KEY, v ? "1" : "0"); } catch (e) {}
 }
 
 function fillLibrary(selectId) {
@@ -84,7 +115,7 @@ function fillLibrary(selectId) {
   // dropdown cannot keep pointing at a song that is currently hidden.
   if (cur && [...sel.options].some(o => o.value === cur)) sel.value = cur;
   else sel.selectedIndex = -1;
-  syncLibraryMenu();
+  syncLibraryMenu(cur);
 }
 
 function clearLibrarySelection() {
@@ -134,14 +165,25 @@ function pickLibrary(id) {
   syncLibraryMenu();
 }
 
-function syncLibraryMenu() {
+function syncLibraryMenu(holdId) {
   const sel = document.getElementById("scale");
   const menu = document.getElementById("libDdMenu");
   const text = document.getElementById("libDdText");
   if (!sel || !menu || !text) return;
   const cur = sel.value;
   const chosen = sel.options[sel.selectedIndex];
-  text.textContent = chosen ? chosen.textContent : "";
+  let label = chosen ? chosen.textContent : "";
+  // A song can drop out of the filtered list (out of range / hidden) while
+  // still being the song loaded in the editor: the label must keep saying so
+  // instead of collapsing flat. Genuinely different content (Clear / typed)
+  // shows the placeholder.
+  if (!label && holdId) {
+    const item = BUILTIN[holdId]
+      || (typeof userLib === "function" ? userLib()[holdId] : null);
+    if (item) label = item.name || holdId;
+  }
+  text.textContent = label || "No song selected";
+  text.classList.toggle("placeholder", !label);
   menu.innerHTML = "";
   for (const node of sel.children) {
     if (node.tagName === "OPTGROUP") {
@@ -293,7 +335,10 @@ function applySwing(n) {
 function applySongTick(v) {
   if (v == null) return;
   const cb = document.getElementById("tickMel");
-  if (cb) cb.checked = !!v;
+  if (cb) {
+    cb.checked = !!v;
+    cb.dispatchEvent(new Event("change")); // the tick button mirrors the carrier
+  }
 }
 
 function loadLibraryItem(id) {
@@ -424,14 +469,21 @@ function wireLibrary() {
     if (!name) return;
     const named = name;
     const lib = userLib();
-    const id = slugName(named);
+    const id = uniqueUserId(lib, named);
     const tempo = songTempo();
     const swing = currentSwing();
     const tickEl = document.getElementById("tickMel");
     const next = withPlayHeaders(body, named, tempo, swing);
     ta.value = next;
     lib[id] = { name: named, body: next, tempo, swing, tick: tickEl ? tickEl.checked : undefined };
-    setUserLib(lib);
+    const saved = setUserLib(lib);
+    if (!saved) {
+      // The text (possibly with the added headers) stays in the editor, so
+      // nothing is lost — only the library filing refused.
+      libToast("Could not save to the library — browser storage is full or blocked.");
+      render();
+      return;
+    }
     fillLibrary(id);
     render();
     // The range rule may file the song as hidden for THIS ocarina: say so,
@@ -450,7 +502,10 @@ function wireLibrary() {
     if (!lib[id]) return;
     if (!(await libConfirm("Remove \"" + (lib[id].name || id) + "\" from this browser?"))) return;
     delete lib[id];
-    setUserLib(lib);
+    if (!setUserLib(lib)) {
+      libToast("Could not remove — browser storage is full or blocked.");
+      return;
+    }
     fillLibrary("major");
     loadLibraryItem("major");
   };
@@ -462,7 +517,10 @@ function wireLibrary() {
     a.href = URL.createObjectURL(blob);
     a.download = name + ".txt";
     a.click();
-    URL.revokeObjectURL(a.href);
+    // Defer the revoke (drain later): revoking in the same tick as the click
+    // historically aborts the download in some engines (blob mapping torn
+    // down before the downloader attaches). Same pattern as debug.js export.
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   };
   document.getElementById("diskLoad").onclick = () => document.getElementById("diskFile").click();
   document.getElementById("diskFile").onchange = e => {

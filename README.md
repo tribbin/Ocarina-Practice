@@ -18,7 +18,7 @@ Built with plain HTML/CSS/JavaScript — no build step, no dependencies.
 
 | | |
 |---|---|
-| Notes | `C4` `D4` … `C#4`/`Db4` |
+| Notes | `C4` `D4` … `C#4`/`Db4`/`Cs4` |
 | Bars / rests | `\|` / `r` |
 | Ties / slides | `-` / `~` (e.g. `F4 ~ A4`) |
 | Staccato | `!` (e.g. `C4!`) |
@@ -39,5 +39,15 @@ python -m http.server 8000
 ```
 
 then open `http://localhost:8000`. Deploying as a static site (e.g. GitHub Pages) works as-is.
+
+Visiting without parameters opens the Hyrule Field look with the 12-hole Alto C and Song of Storms loaded; URL parameters steer things per link: `?plain` (classic light theme), `?inst=<ocarina id>` and `?song=<library id>` (in shared links), `?zen=1` (straight into Zen practice).
+
+## Accepted by design
+
+Page-lifetime costs the app carries deliberately (all reviewed and kept — closing the
+tab frees everything): the audio watchdog keeps its tiny interval for as long as the
+page lives, the reverb bus keeps a silent anchor oscillator running (it produces no
+sound), and the debug panel's waveform preview cache grows as you tweak — never
+shrinks, but only while you are actively tweaking in the debug panel.
 
 Extending it: songs live in `songs.json`; each ocarina lives in its own folder `instruments/<id>/` (fingerings, body template, optional `tone.json` with fitted per-chamber sound anchors — see `instruments/README.md`). New instruments and songs can be added without touching code.

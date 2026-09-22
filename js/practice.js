@@ -1206,7 +1206,17 @@
   window.OCA_PRACTICE = {
     // state getters (debug/tests)
     active: () => P.active, paused: () => P.paused, idx: () => P.idx,
-    state: () => P.state, fillPct: () => P.bar ? Math.max(0, Math.min(1, barFilled(P.bar) / (P.bar.targetSec * 1000))) : 0,
+    state: () => P.state,
+    // Two fill meanings, both valid — pick per question:
+    //   fillPct   — note-time fraction: 1.0 when the bar's full notated
+    //               duration has elapsed (the timing metric; tests probing
+    //               the "release floor at full length" use this).
+    //   creditPct — practice-credit progress: 1.0 exactly when every zone
+    //               holds its required 75% credit (the normal pass; the bar
+    //               UI's fill). Deliberately NOT equal to fillPct: the bar
+    //               completes (and releases) at 0.75 of note time BY DESIGN.
+    fillPct: () => P.bar ? Math.max(0, Math.min(1, barFilled(P.bar) / (P.bar.targetSec * 1000))) : 0,
+    creditPct: () => P.bar ? barFrac(P.bar) : 0,
     targetSec: () => P.bar ? P.bar.targetSec : 0,
     seq: () => P.tokens.map(t => t.id || t.type).join(" "),
     barInfo: () => P.bar && { start: P.bar.startIdx, end: P.bar.endIdx, zones: P.bar.zones, names: P.bar.names, sec: P.bar.targetSec, chain: P.bar.zones.length > 1, slide: P.bar.slide, stac: P.bar.stac },

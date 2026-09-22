@@ -33,5 +33,23 @@ jobs:
         run: python tests/practice_accepts_melody.py
       - name: Run support-bracket tests
         run: python tests/support_accepts_brackets.py
+      - name: Run parser edge-case tests
+        run: python tests/parse_edges.py
+      - name: Run render-behavior pin
+        run: python tests/render_pin.py
+      - name: Run shipped-songs acceptance
+        run: python tests/shipped_songs.py
+      - name: Run voice error visibility test
+        run: python tests/voice_error_visibility.py
+      - name: Run keyboard widget tests
+        run: python tests/keyboard_widgets.py
+      - name: Run reduced-motion gate tests
+        run: python tests/reduced_motion.py
+      - name: Run bad-chip style tests
+        run: python tests/bad_chip_style.py
+      - name: Run library hardening tests
+        run: python tests/library_hardening.py
+      - name: Run instrument switch race test
+        run: python tests/instrument_switch_race.py
       - name: Run instrument layout tests
         run: python tests/instruments_load.py

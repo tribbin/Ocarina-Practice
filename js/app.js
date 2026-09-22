@@ -1,7 +1,28 @@
-window.onerror = function(m, s, l) {
-  const e = document.getElementById("err");
-  if (e) e.textContent = m + " @" + l;
+// Global error net: uncaught window errors and unhandled promise rejections
+// land in #err as appended lines — the messages render()/boot() put there
+// must survive (both sides write the same node, so overwriting here would
+// wipe theirs and overwrite-by-them would drop a crash report).
+function reportGlobalError(label, detail, error) {
+  const el = document.getElementById("err");
+  if (!el) return;
+  const line = document.createElement("div");
+  let text = label + ": " + (detail || "unknown error");
+  if (error && error.stack) {
+    // The stack's 2nd line names the throw site (1st repeats the message).
+    const frame = String(error.stack).split("\n")[1];
+    if (frame) text += " — " + frame.trim();
+  }
+  line.textContent = text;
+  el.appendChild(line);
+}
+window.onerror = function(m, s, l, c, error) {
+  reportGlobalError("window error", (m || "unknown") + " @" + (s || "?") + ":" + l, error);
 };
+window.addEventListener("unhandledrejection", (ev) => {
+  const r = ev.reason;
+  reportGlobalError("unhandled rejection",
+                    r instanceof Error ? r.message : String(r), r instanceof Error ? r : null);
+});
 
 function installFingerings(fing) {
   window.FING = fing;
@@ -29,6 +50,11 @@ async function loadJson(path) {
 const TPL_CACHE = {};
 let installedTplPath = "";
 let tplSyncing = null;
+// Instrument-load generation: each loadInstrument bumps it, and only the run
+// belonging to the newest switch may install. Without this, a slow older
+// fetch resolves LAST and overwrites the newer instrument's fingerings and
+// template (rapid dropdown swaps ended on the wrong ocarina).
+let instLoadGen = 0;
 
 function currentSongId() {
   const sel = document.getElementById("scale");
@@ -41,10 +67,10 @@ function currentSongTitle() {
   return String(titleFromText(ta.value) || "").trim();
 }
 
-function songMatchesStem(stem, id, title) {
+function songMatchesStem(stem, id, title, titleRe) {
   if (!stem) return true;
   if (id === stem || (id && id.startsWith(stem + "-"))) return true;
-  if (stem === "sarias-song" && /^saria'?s song$/i.test(title)) return true;
+  if (titleRe && titleRe.test(title)) return true;
   return false;
 }
 
@@ -56,7 +82,15 @@ function currentTemplatePath() {
   const title = currentSongTitle();
   for (const rule of (inst.svgWhen || [])) {
     if (rule.theme && rule.theme !== theme) continue;
-    if (rule.song && !songMatchesStem(rule.song, id, title)) continue;
+    // A rule may match by song id, origin stem, or — via songTitle — by the
+    // song's title text (each rule owns its own title condition).
+    if (rule.songTitle) {
+      let titleRe = null;
+      try { titleRe = new RegExp(rule.songTitle, "i"); }
+      catch (e) { continue; } // broken manifest entry: skip, never crash render
+      if (rule.song && !songMatchesStem(rule.song, id, title, titleRe)) continue;
+      if (!rule.song && !titleRe.test(title)) continue;
+    } else if (rule.song && !songMatchesStem(rule.song, id, title)) continue;
     if (rule.svg) return rule.svg;
   }
   return inst.svg;
@@ -85,10 +119,12 @@ function ensureOcarinaTemplate() {
 }
 
 async function loadInstrument(inst) {
+  const gen = ++instLoadGen;
   const [fing, svgText] = await Promise.all([
     loadJson(inst.fingerings),
     loadText(inst.svg)
   ]);
+  if (gen !== instLoadGen) return false;   // superseded by a newer switch
   installFingerings(fing);
   installOcarinaTemplate(svgText);
   installedTplPath = inst.svg;
@@ -125,7 +161,9 @@ function queryHas(name) {
 }
 
 function themeFromQuery() {
-  return queryHas("oot") ? "oot" : "";
+  // The Hyrule backdrop IS the app's home look now; `?plain` opts out to the
+  // classic light theme (`?oot` stays honored for old shared links).
+  return queryHas("plain") ? "" : "oot";
 }
 
 function applyTheme(name) {
@@ -155,7 +193,8 @@ function fillInstrumentSelect(selectedId) {
 }
 
 async function switchInstrument(inst) {
-  await loadInstrument(inst);
+  const installed = await loadInstrument(inst);
+  if (installed === false) return;   // a newer switch superseded this one
   // The ocarina swap may invalidate the workout targets: end any practice
   // session so the next engagement starts fresh on the new instrument.
   if (typeof practiceInvalidate === "function") try { practiceInvalidate(); } catch (e) {}
@@ -203,8 +242,11 @@ async function boot() {
       fillLibrary(songParam);
       loadLibraryItem(songParam);
     } else {
-      fillLibrary("major");
-      loadLibraryItem("major");
+      // First visit territory: the Alto C's own Song of Storms is the home
+      // song; fall back to the major scale if the id is ever missing.
+      const home = BUILTIN["song-of-storms-alto"] ? "song-of-storms-alto" : "major";
+      fillLibrary(home);
+      loadLibraryItem(home);
     }
     if (queryHas("zen")) enterZenFromLink();
   } catch (err) {
