@@ -283,11 +283,16 @@ const perf = {
 let perfAnalyser = null;
 let perfComps = [];   // the buses' DynamicsCompressors, for .reduction reads
 let perfAlertListener = null;
+let perfBeatListener = null;
 let perfLastAlert = -15000; // ms; first alert is never throttled
 
 // The UI registers a callback (ui.js: perfAlert) that gets called when a
 // glitch is suspected — it pulses the perf button and proposes Lite mode.
 function setPerfAlertListener(fn) { perfAlertListener = fn; }
+
+// A cadence hook onto the watchdog: the perf button's headroom readout
+// refreshes from here regardless of whether its pop is open.
+function setPerfBeatListener(fn) { perfBeatListener = fn; }
 
 function raisePerfAlert() {
   if (!perfAlertListener) return;
@@ -321,6 +326,7 @@ function getPerfTap(ctx) {
 // Watchdog: the audio clock normally tracks (even slightly leads) the wall
 // clock while streaming; a large deficit means the audio thread starved.
 setInterval(() => {
+  if (perfBeatListener) { try { perfBeatListener(); } catch (e) {} }
   if (!audioCtx || audioCtx.state !== "running") { perf.wallBase = null; return; }
   const wall = performance.now() / 1000, clock = audioCtx.currentTime;
   if (perf.wallBase != null) {

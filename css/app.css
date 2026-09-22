@@ -236,13 +236,20 @@ html[data-theme="oot"] #dbgPanel .dbg-note:hover {
 }
 header.app {
   background: var(--ink); color: var(--paper);
-  padding: 14px 20px; display: flex; align-items: baseline; gap: 4px 14px;
-  flex-wrap: wrap;
+  padding: 14px 20px;
+  /* The ocarina picker centers over the whole sticky bar, like the section
+     headers do: equal side columns on both sides of the centered pick. */
+  display: grid; grid-template-columns: 1fr auto 1fr;
+  align-items: baseline; gap: 4px 14px;
   position: sticky; top: 0; z-index: 5;
 }
 header.app h1 { font-size: 18px; margin: 0; font-weight: 650; letter-spacing: .02em; white-space: nowrap; }
 header.app span { opacity: .7; font-size: 13px; }
-.inst-picker { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.inst-picker { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; justify-self: center; }
+@media (max-width: 760px) {
+  header.app { display: flex; flex-wrap: wrap; }
+  .inst-picker { margin-inline: auto; }
+}
 .inst-sel {
   background: rgba(255,255,255,.08); color: var(--paper);
   border: 1px solid rgba(255,255,255,.28); border-radius: 6px;
@@ -1156,9 +1163,18 @@ html[data-theme="oot"] .t-btn {
 .perf-btn { display: inline-flex; align-items: center; gap: 7px; }
 .perf-btn .perf-ico { font-size: 15px; line-height: 1; }
 .perf-hr { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--muted); }
+/* The button carries its name plus the live readout; keep the readout quiet
+   next to the name. */
+.perf-name { font-size: 13px; }
+.perf-btn .perf-hr { color: var(--paper); opacity: .75; }
 .perf-hr.perf-ok { color: var(--good); }
 .perf-hr.perf-warn { color: #a15c00; }
 .perf-hr.perf-bad { color: var(--accent); }
+/* OoT: the meter sits on dark grass — darkened green/amber/brown vanish. */
+html[data-theme="oot"] .perf-btn .perf-hr { color: #eaf6e2; opacity: .9; }
+html[data-theme="oot"] .perf-hr.perf-ok { color: #9be38f; opacity: 1; }
+html[data-theme="oot"] .perf-hr.perf-warn { color: #ffd582; opacity: 1; }
+html[data-theme="oot"] .perf-hr.perf-bad { color: #ff9d80; opacity: 1; }
 .perf-pop {
   position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%);
   z-index: 70; width: 340px; max-width: 92vw;

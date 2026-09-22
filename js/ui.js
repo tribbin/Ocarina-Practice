@@ -1620,7 +1620,8 @@ function buildPerfWidget() {
   perfBtn.setAttribute("aria-haspopup", "true");
   perfBtn.setAttribute("aria-expanded", "false");
   perfBtn.innerHTML = '<span class="perf-ico" aria-hidden="true">∿</span>' +
-    '<span class="perf-hr" id="perfHr">perf</span>';
+    '<span class="perf-name">Audio Performance</span>' +
+    '<span class="perf-hr" id="perfHr">—</span>';
   perfBtn.addEventListener("click", e => {
     e.stopPropagation();
     perfOpen = !perfOpen;
@@ -1839,6 +1840,13 @@ let perfToast = null, perfToastTimer = 0;
 
 function wirePerfAlerts() {
   if (typeof setPerfAlertListener === "function") setPerfAlertListener(perfAlert);
+  if (typeof setPerfBeatListener === "function") setPerfBeatListener(() => {
+    // The headroom badge ticks with the audio watchdog even while the pop is
+    // closed — a dB readout that only refreshed when clicked was inert.
+    if (perfOpen || !perfBtn) return; // pop open: the rAF loop renders fully
+    perfUpdateBadge((typeof audioPerfSnapshot === "function")
+      ? audioPerfSnapshot() : null);
+  });
 }
 
 function perfAlert() {
