@@ -95,7 +95,7 @@ html[data-theme="oot"] body::before {
   inset: -4px;
   z-index: 0;
   pointer-events: none;
-  background: url("../hyrule.jpg") center / cover no-repeat;
+  background: url("../hyrule.webp") center / cover no-repeat;
   filter: blur(2px);
 }
 html[data-theme="oot"] .wrap {
