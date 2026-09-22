@@ -35,5 +35,7 @@ jobs:
         run: python tests/support_accepts_brackets.py
       - name: Run library hardening tests
         run: python tests/library_hardening.py
+      - name: Run instrument switch race test
+        run: python tests/instrument_switch_race.py
       - name: Run instrument layout tests
         run: python tests/instruments_load.py

@@ -29,6 +29,11 @@ async function loadJson(path) {
 const TPL_CACHE = {};
 let installedTplPath = "";
 let tplSyncing = null;
+// Instrument-load generation: each loadInstrument bumps it, and only the run
+// belonging to the newest switch may install. Without this, a slow older
+// fetch resolves LAST and overwrites the newer instrument's fingerings and
+// template (rapid dropdown swaps ended on the wrong ocarina).
+let instLoadGen = 0;
 
 function currentSongId() {
   const sel = document.getElementById("scale");
@@ -85,10 +90,12 @@ function ensureOcarinaTemplate() {
 }
 
 async function loadInstrument(inst) {
+  const gen = ++instLoadGen;
   const [fing, svgText] = await Promise.all([
     loadJson(inst.fingerings),
     loadText(inst.svg)
   ]);
+  if (gen !== instLoadGen) return false;   // superseded by a newer switch
   installFingerings(fing);
   installOcarinaTemplate(svgText);
   installedTplPath = inst.svg;
@@ -155,7 +162,8 @@ function fillInstrumentSelect(selectedId) {
 }
 
 async function switchInstrument(inst) {
-  await loadInstrument(inst);
+  const installed = await loadInstrument(inst);
+  if (installed === false) return;   // a newer switch superseded this one
   // The ocarina swap may invalidate the workout targets: end any practice
   // session so the next engagement starts fresh on the new instrument.
   if (typeof practiceInvalidate === "function") try { practiceInvalidate(); } catch (e) {}
