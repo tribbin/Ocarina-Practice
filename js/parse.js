@@ -1,6 +1,6 @@
 function parse(src) {
   const tokens = [];
-  const re = /([A-Ga-g])([#b])?(\d)?(\/\d+\.?t?)?(!)?|(\|)\s*(\[[^\]]*\])?|(r)(\/\d+\.?t?)?|(-)(\/\d+\.?t?)?|(~)|(#[^\n]*)/g;
+  const re = /([A-Ga-g])([#b])?(\d)?(\/\d+\.?t?)?(!)?|(\|)\s*(\[[^\]]*\])?|(r)(\/\d+\.?t?)?|(-)(\/\d+\.?t?)?|(~)|(#[^\n]*)|(\[[^\]]*\])/g;
   let m, lastOct = 4, lastPitch = null, canTie = false, pendingSlide = false;
   // Staccato may be written before or after the duration: normalize
   // "C5!/8" -> "C5/8!" so the /8 always parses (the note regex consumes
@@ -16,28 +16,35 @@ function parse(src) {
       if (tc && tokens.length) tokens.push({ type: "tempo", bpm: +tc[1] });
       continue;
     }
+    if (m[14]) {
+      // Bracket marker NOT welded to a bar line: anywhere between bars it is
+      // a hidden support note. Content is the same grammar a bar bracket
+      // accepts ("C2", "C2/4.", '"Name",C2/2'); a name-less speaker is
+      // meaningless here, so a content without a pitch tokenizes to nothing.
+      const c = bracketContent(m[14].slice(1, -1));
+      if (c && c.bass) {
+        tokens.push({ type: "bass", id: c.bass, dur: c.dur, dotted: c.dotted,
+                      triplet: c.triplet, beats: c.beats });
+      }
+      continue;
+    }
     if (m[12]) { if (lastPitch) pendingSlide = true; continue; }
     if (m[6]) {
       // Bar line with an optional bracket field, three spoken shapes:
-      //   |[C2]         pitch only — hidden contrabass-support bar (bass only)
-      //   |["Opening",C2]  named section bar that ALSO carries a bass pitch
+      //   |[C2]            hidden support note for this bar
+      //   |["Opening",C2]  named section bar that ALSO carries a support note
       //   |["35th bar from midi"]  plain description (quotes/commas fine)
-      // A pitch token is B[C-G] + optional s + one octave digit, matched on
-      // the LAST comma part; anything else keeps the old desc-only meaning
-      // (so existing texts with commas/quotes never break).
+      //   With a duration the support sounds that long instead of the whole
+      //   measure: |["Opening",C2/2] / |[C2/4.]
       const bar = { type: "bar" };
       if (m[7]) {
-        const content = m[7].slice(1, -1);
-        const parts = content.split(",");
-        const tail = parts[parts.length - 1].trim();
-        if (/^[A-G]s?[1-8]$/.test(tail)) {
-          bar.bass = tail;
-          if (parts.length > 1) {
-            bar.desc = parts.slice(0, -1).join(",")
-              .trim().replace(/^["']|["']$/g, "");
-          }
+        const c = bracketContent(m[7].slice(1, -1));
+        if (c && c.bass) {
+          bar.bass = c.bass;
+          bar.beats = c.beats;
+          if (c.name) bar.desc = c.name;
         } else {
-          bar.desc = content.replace(/^["']|["']$/g, "");
+          bar.desc = m[7].slice(1, -1).replace(/^["']|["']$/g, "");
         }
         if (!bar.desc) delete bar.desc;
       }
@@ -107,6 +114,37 @@ function parseDur(spec) {
   // Triplet = three in the space of two, so each note is 2/3 of its value.
   const beats = (4 / dur) * (dotted ? 1.5 : 1) * (triplet ? 2 / 3 : 1);
   return { dur, dotted, triplet, beats };
+}
+
+// Shared bracket-field grammar for bar brackets (|[C2]) and inline markers
+// ([C2]): the LAST comma part must be a pitch, optionally with a note
+// duration ("C2/4.", '/2t' — no staccato, a drone ring is just a length).
+// Anything else is not a support note: callers fall back to desc-only and
+// silent-skip respectively, so old descriptions never break.
+function bracketContent(content) {
+  const parts = String(content).split(",");
+  const tail = parts[parts.length - 1].trim();
+  const pm = tail.match(/^([A-G]s?[1-8])(.*)$/);
+  if (!pm) return null;
+  const rest = pm[2].trim();
+  let pd = null;
+  if (rest) {
+    if (!/^\/\d+\.?t?$/.test(rest)) return null; // junk tail → not a support note
+    pd = parseDur(rest);
+  }
+  const out = {
+    bass: pm[1],
+    dur: pd ? pd.dur : null,
+    dotted: pd ? pd.dotted : false,
+    triplet: pd ? pd.triplet : false,
+    beats: pd ? pd.beats : null, // null = ring until the next bar (default)
+  };
+  if (parts.length > 1) {
+    const name = parts.slice(0, -1).join(",")
+      .trim().replace(/^["']|["']$/g, "");
+    if (name) out.name = name;
+  }
+  return out;
 }
 
 function durLabel(d, dotted, triplet) {

@@ -94,7 +94,7 @@ function combinedDurLabel(tokens, idx) {
   if (single) return single;
   const parts = [durLabel(tokens[idx].dur, tokens[idx].dotted, tokens[idx].triplet)];
   for (let i = idx + 1; i < tokens.length; i++) {
-    if (tokens[i].type === "bar") continue;
+    if (tokens[i].type === "bar" || tokens[i].type === "bass") continue;
     if (tokens[i].type === "tie") parts.push(durLabel(tokens[i].dur, tokens[i].dotted, tokens[i].triplet));
     else break;
   }
@@ -113,7 +113,7 @@ function tallyTokens(tokens) {
   const problems = [];
   let notes = 0, outOf = 0, switches = 0, prevCh = null;
   tokens.forEach(t => {
-    if (t.type === "bar" || t.type === "rest" || t.type === "tempo") return;
+    if (t.type === "bar" || t.type === "rest" || t.type === "tempo" || t.type === "bass") return;
     if (t.type === "tie") {
       // A tie after an out-of-range pitch is ITSELF out of range (that's how
       // "A6/2 -/4" reads on an alto C): the sheet draws it as a marked oor tie
@@ -176,6 +176,7 @@ function appendNoteCard(sheet, t, i) {
 function fillFullSheet(sheet, tokens, sectioned = true) {
   sheet.classList.remove("live");
   tokens.forEach((t, i) => {
+    if (t.type === "bass") return; // hidden support marker
     if (t.type === "bar") {
       // A named bar OPENS a section: in row layouts (grid + print) its name
       // gets a full-width .sec-head row and the measure line is dropped — the
@@ -280,8 +281,8 @@ function fillLiveSheet(sheet, tokens, idx) {
   sheet.classList.remove("scroll");
   sheet.classList.add("live");
   let i = idx;
-  if (i == null || i < 0 || !tokens[i] || tokens[i].type === "bar") i = firstSoundIdx(tokens);
-  if (!tokens.length || i < 0 || !tokens[i] || tokens[i].type === "bar") return;
+  if (i == null || i < 0 || !tokens[i] || tokens[i].type === "bar" || tokens[i].type === "bass") i = firstSoundIdx(tokens);
+  if (!tokens.length || i < 0 || !tokens[i] || tokens[i].type === "bar" || tokens[i].type === "bass") return;
   const card = document.createElement("div");
   const t = tokens[i];
   const liveCh = t.id && NOTES.includes(t.id) && CHAMBER[t.id];
@@ -550,6 +551,7 @@ function atBarStart(toks, i) {
   while (k >= 0) {
     const t = toks[k];
     if (t.type === "bar" || t.type === "tempo") { sawBreak = true; k--; }
+    else if (t.type === "bass") k--; // hidden marker: transparent, no break
     else break;
   }
   return sawBreak || i === 0;
@@ -561,7 +563,7 @@ function nextCardIdx(toks, i) {
   for (let k = i + 1; k < toks.length; k++) {
     const t = toks[k];
     if (t.type === "note" || t.type === "tie" || t.type === "rest") return k;
-    if (t.type !== "bar" && t.type !== "tempo") break;
+    if (t.type !== "bar" && t.type !== "tempo" && t.type !== "bass") break;
   }
   return -1;
 }
@@ -617,6 +619,7 @@ function hoverPreview(i, t) {
 }
 
 function buildTokenEl(t, i) {
+  if (t.type === "bass") return null; // hidden support marker
   const el = document.createElement("span");
   el.dataset.i = String(i);
   el.style.cursor = "pointer";
@@ -701,7 +704,8 @@ function drawTokenStrip(box, tokens, sectioned) {
       h.textContent = t.desc;
       box.appendChild(h);
     }
-    box.appendChild(buildTokenEl(t, i));
+    const el = buildTokenEl(t, i);
+    if (el) box.appendChild(el);
   });
 }
 

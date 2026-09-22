@@ -26,7 +26,8 @@ Built with plain HTML/CSS/JavaScript — no build step, no dependencies.
 | Triplets | `t` (e.g. `A4/8t B4/8t C5/8t`) |
 | Title / tempo | `# Song title` · `# tempo 96` (header, or inline to change mid-song) |
 | Sections | `\| [Section]` names a bar (shown on hover / as a header row) |
-| Bar support | `\| [C2]` or `\| ["Section", C2]` — contrabass drone for that bar, Zen playback only |
+| Bar support | `\| [C2]` or `\| ["Section", C2]` — modelled-note drone for that bar, Zen playback only |
+| Inline support | `[C2]` (rings to the next bar) or `[C2/4.]` (its own length) — starts with the next rest/note after the previous note chain, Zen playback only |
 
 ## Running it
 

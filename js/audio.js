@@ -92,9 +92,6 @@ const AUDIO_DEFAULTS = {
   // artifact, so comparisons below use ratios, never absolute level.
   masterLevel: 0.40,
   reverbWet: 0.20,
-  // Hidden contrabass-support bars (|[C2] / |["Name",C2], Zen playback only):
-  // plateau level of the low drone, relative to the full voice's own plateau.
-  bassLevel: 0.35,
   // Practice-mode tuner gates (js/practice.js): in-tune zone (cents), onset
   // transient grace (wider cents for the first N ms of an attack), the
   // silence needed before a hit counts as a fresh articulation, how fast the
@@ -113,7 +110,7 @@ const AUDIO_DEBUG = Object.assign({}, AUDIO_DEFAULTS);
 window.OCA_DEBUG = {
   params: AUDIO_DEBUG,
   defaults: AUDIO_DEFAULTS,
-  invalidateWave() { ocWaveCache = null; bassWaveCache = null; },
+  invalidateWave() { ocWaveCache = null; },
   // Live audit helper: the full derived voice profile for a note id.
   profile(id) { return voiceProfileFor(id, freqOf(id)); },
   // DEBUG panel "Induce lag": fakes audio-clock starvation. Seeds what
@@ -156,14 +153,14 @@ function tempoSpeed() {
 }
 
 function tokenGridBeats(tok) {
-  if (!tok || tok.type === "bar" || tok.type === "tempo") return 0;
+  if (!tok || tok.type === "bar" || tok.type === "tempo" || tok.type === "bass") return 0;
   return tok.beats || ((4 / (tok.dur || 4)) * (tok.dotted ? 1.5 : 1));
 }
 
 function soundingGridBeats(tokens, idx) {
   let p = tokenGridBeats(tokens[idx]);
   for (let i = idx + 1; i < tokens.length; i++) {
-    if (tokens[i].type === "bar" || tokens[i].type === "tempo") continue;
+    if (tokens[i].type === "bar" || tokens[i].type === "tempo" || tokens[i].type === "bass") continue;
     if (tokens[i].type === "tie") p += tokenGridBeats(tokens[i]);
     else break;
   }
@@ -173,7 +170,7 @@ function soundingGridBeats(tokens, idx) {
 function lastHoldIndex(tokens, idx) {
   let last = idx;
   for (let i = idx + 1; i < tokens.length; i++) {
-    if (tokens[i].type === "bar" || tokens[i].type === "tempo") continue;
+    if (tokens[i].type === "bar" || tokens[i].type === "tempo" || tokens[i].type === "bass") continue;
     if (tokens[i].type === "tie") last = i;
     else break;
   }
@@ -189,6 +186,7 @@ function lastHoldIndex(tokens, idx) {
 function barHasNote(tokens, idx) {
   for (let i = idx; i < tokens.length; i++) {
     if (tokens[i].type === "bar") return false;
+    if (tokens[i].type === "bass") continue; // hidden support marker: transparent
     if (tokens[i].type === "note") return true;
     if (tokens[i].type === "tie" && NOTES.includes(tokens[i].id)) return true;
   }
@@ -817,57 +815,13 @@ function cutLive() {
 }
 
 // ---------------------------------------------------------------------------
-// Hidden contrabass support (|[C2] / |["Name",C2] bar brackets): one long,
-// low, soft supporting tone per bar — Zen PLAYBACK only (never practice, it
-// would deafen the tuner; cut when focus mode turns off mid-playback).
-// The Imperial City 11-hole contrabass in C spans B2-F4 (123-350 Hz), 1.5-2
-// octaves under the app's alto anchor points, so the timbre is THAT measured
-// alto profile extrapolated down: each V_ANCHORS curve continues its 220→523
-// Hz slope below 220 instead of the melody path's ±1.5-octave clamp.
+// Hidden support notes (|[C2], |["Name",C2], [C2/4.] anywhere between bars):
+// each bracket plays ONE long, low supporting note with the modelled
+// instrument's own voice — playNoteAt, so it sounds exactly like playing the
+// note, chorus / reverb / wind layers included. Zen PLAYBACK only (never
+// practice, it would deafen the tuner); leaving Zen mid-note cuts the voices
+// via setBassEnabled(false) — see playSupportAt before scheduleMelody.
 // ---------------------------------------------------------------------------
-
-// Slope continuation of an anchor curve for f below its first key point.
-function vInterpBass(pts, f) {
-  const [f0, v0] = pts[0], [f1, v1] = pts[1];
-  // At most 3 octaves of extrapolation, then flat — breadths beyond ~28 Hz
-  // are physically meaningless for a vessel anyway.
-  const t = Math.max(-3, Math.min(0, Math.log2(f / f0) / Math.log2(f1 / f0)));
-  return v0 + (v1 - v0) * t;
-}
-
-// One bar's drone profile, derived live (same retune-mid-session contract).
-function bassProfileFor(freq) {
-  return {
-    h: [1,
-        vInterpBass(V_ANCHORS.h2, freq),
-        vInterpBass(V_ANCHORS.h3, freq),
-        vInterpBass(V_ANCHORS.h4, freq),
-        vInterpBass(V_ANCHORS.h5, freq)],
-    // The alto's measured plateau curve kept falling toward the bottom
-    // (~-2 dB/octave): the big chamber is rounder, not louder, in simulation.
-    levelLin: db2lin(vInterpBass(V_ANCHORS.levelDb, freq)),
-  };
-}
-
-// Bass waves keyed by the (smoothly changing) harmonic vector, like the
-// melody's cache; wholesale-invalidated by the same debug panel call.
-let bassWaveCache = null;
-function getBassWave(ctx, vp) {
-  const k = vp.h.join(",");
-  if (bassWaveCache && bassWaveCache._ctx === ctx) {
-    const hit = bassWaveCache.get(k);
-    if (hit) return hit;
-  } else {
-    bassWaveCache = new Map();
-    bassWaveCache._ctx = ctx;
-  }
-  const w = ctx.createPeriodicWave(
-    new Float32Array([0].concat(vp.h)),
-    new Float32Array([0, 0, 0, 0, 0, 0])
-  );
-  bassWaveCache.set(k, w);
-  return w;
-}
 
 // Live handles for the "leave Zen mid-playback" cut: every scheduled support
 // voice lands here (and in the melody bag, so pause/stop/loop cover it too).
@@ -877,67 +831,6 @@ function setBassEnabled(on) {
   if (audioCtx) markSystemSound(audioCtx.currentTime + 0.35);
   bassBag.forEach(n => { try { (n.fade || n.stop)(); } catch (e) {} });
   bassBag = [];
-}
-
-function playBassAt(id, when, dur, bag) {
-  try {
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === "suspended") audioCtx.resume();
-    const ctx = audioCtx;
-    const f = freqOf(id);
-    let t0 = when == null ? ctx.currentTime : when;
-    if (t0 < ctx.currentTime + 0.015) t0 = ctx.currentTime + 0.015;
-    dur = Math.min(Math.max(0.5, dur), 30); // safety against pathological measures
-    const bp = bassProfileFor(f);
-    // Soft "big chamber" envelope: ~120 ms swell in (vs the melody's 20-35 ms
-    // attack), a slow 0.3 s hand-off at the bar's end. Short measures shrink
-    // the shape so the tone still breathes.
-    const att = Math.min(0.12, dur * 0.3);
-    const rel = Math.min(0.3, dur * 0.35);
-    const M = AUDIO_DEBUG.masterLevel * AUDIO_DEBUG.bassLevel * bp.levelLin;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.linearRampToValueAtTime(M, t0 + att);
-    g.gain.setValueAtTime(M, t0 + dur - rel);
-    g.gain.linearRampToValueAtTime(0.0001, t0 + dur);
-    // One cheap breath LFO (±3%, ~2.3 Hz) keeps a long drone alive in the ear
-    // — the same slow wobble physics the melody voice models, just gentler.
-    const lfo = ctx.createOscillator();
-    lfo.frequency.value = 2.3;
-    const lfoG = ctx.createGain();
-    lfoG.gain.value = M * 0.03;
-    lfo.connect(lfoG); lfoG.connect(g.gain);
-    const lp = ctx.createBiquadFilter();
-    lp.type = "lowpass";
-    lp.frequency.value = Math.min(2.8 * f, 650); // very dark: contrabass softness
-    lp.Q.value = 0.8;
-    const osc = ctx.createOscillator();
-    osc.setPeriodicWave(getBassWave(ctx, bp));
-    osc.frequency.setValueAtTime(f, t0);
-    osc.connect(lp); lp.connect(g);
-    g.connect(isMelodyBag(bag) ? getMelodyCutBus(ctx, getLiteBus(ctx)) : getLiteBus(ctx));
-    osc.start(t0); lfo.start(t0);
-    osc.stop(t0 + dur + 0.05); lfo.stop(t0 + dur + 0.05);
-    // Site-made sound the whole time the drone rings (tuner deafness — yes
-    // even though practice never has bass, the deafness ledger stays honest).
-    markSystemSound(t0 + dur + 0.1);
-    const voice = {
-      until: t0 + dur + 0.1,
-      stop() { try { osc.stop(); lfo.stop(); } catch (e) {} },
-      kill() { g.disconnect(); },
-      fade() {
-        const now = ctx.currentTime;
-        try {
-          g.gain.cancelScheduledValues(now);
-          g.gain.setValueAtTime(Math.max(0.0001, g.gain.value || M), now);
-          g.gain.linearRampToValueAtTime(0.0001, now + 0.25);
-          osc.stop(now + 0.3); lfo.stop(now + 0.3);
-        } catch (e) {}
-      }
-    };
-    bassBag.push(voice);
-    if (bag) bag.push(voice); // pause/stop/loop share the melody bag's decay
-  } catch (e) {}
 }
 
 
@@ -1751,9 +1644,10 @@ function rewindMelody() {
 const SCHED_AHEAD = 0.3;  // schedule this far ahead of the audio clock (s)
 const SCHED_TICK = 0.05;  // how often the scheduler wakes up (s)
 
-// Seconds a bar's support-drone spans: grid time from the bar's first token
-// until the NEXT bar line (an inline tempo change rebalances the tail via
-// its own quarter; an end-of-song measure drones to the very last token).
+// Seconds a support note spans when its bracket carried no duration: grid
+// time from the pivot to the NEXT bar line (an inline tempo change rebalances
+// the tail via its own quarter; an end-of-song measure drones to the last
+// token). Bass markers are zero-time and thus naturally transparent here.
 function bassSpanSec(startIdx) {
   let beats = 0, q = melodyQuarter;
   for (let i = startIdx; i < melodyTokens.length; i++) {
@@ -1765,33 +1659,79 @@ function bassSpanSec(startIdx) {
   return Math.max(0.5, beats * q / tempoSpeed());
 }
 
+// The support voice IS the modelled instrument voice (playNoteAt), so it
+// inherits chorus, reverb, wind/edge layers and the same tuning as playing
+// the note on the selected ocarinaZen playback only — the scheduler gates it.
+// playNoteAt only pushes into the bag it is given, so a small dual forwarder
+// lands the same voice in the melody bag (pause/stop/loop decay) AND the
+// bass bag (setBassEnabled cuts it when focus mode turns off mid-playback).
+function playSupportAt(id, when, durSec) {
+  const base = melodyBag.length;
+  playNoteAt(id, when, durSec, {
+    push(v) { melodyBag.push(v); bassBag.push(v); }
+  });
+  return melodyBag.slice(base); // the voice handle(s) this support created
+}
+
 function scheduleMelody(when) {
   if (!melodyPlaying) return;
   // First call after (re)start seeds the clock from the passed absolute time.
   if (when != null) melodyNextTime = when;
   pruneBag(melodyBag);
-  // A bar bracket |[C2] / |["Name",C2] parks its pitch here until the bar's
-  // first token comes due; consecutive bar lines let the last pitched one win.
+  // Support brackets (|[C2], |["Name",C2], [C2/4.] anywhere between bars)
+  // park here until the pivot event fires them: the FIRST rest or note that
+  // follows the previous note-chain — ties do not fire, they belong to the
+  // chain. Durationless markers ring until the next bar (bassSpanSec);
+  // durationed ones ring exactly their own length.
   let pendingBass = null;
+  // The handle(s) of the LAST open-ended (until-bar) support voice, so a new
+  // open-ended one can retire it instead of stacking two endless drones.
+  let openSupport = null;
+
+  function firePending(when) {
+    if (!pendingBass) return;
+    const p = pendingBass;
+    pendingBass = null;
+    if (!(typeof isFocusMode === "function") || !isFocusMode()) return;
+    if (typeof isPracticeActive === "function" && isPracticeActive()) return;
+    // Checked at fire time, not once at start: a practice switch later in the
+    // song must never schedule further support notes.
+    const dur = p.beats != null
+      ? p.beats * melodyQuarter / tempoSpeed()
+      : bassSpanSec(melodyIdx);
+    // A new open-ended support retires the previous open-ended one (their
+    // default spans overlap otherwise); bounded supports never cut anyone.
+    if (p.beats == null && openSupport) openSupport.forEach(v => { try { (v.fade || v.stop)(); } catch (e) {} });
+    const voices = playSupportAt(p.id, when, dur);
+    if (p.beats == null) openSupport = voices;
+  }
 
   while (melodyNextTime < audioCtx.currentTime + SCHED_AHEAD) {
     let atBar = (melodyIdx === melodyFrom);
-    // Consume bar lines (zero time) and inline tempo changes. A "tempo" token
-    // switches the sec-per-quarter used from this point forward.
+    // Consume bar lines (zero time), inline tempo changes and hidden support
+    // markers. A "tempo" token switches the sec-per-quarter used from this
+    // point forward; brackets park their pitch for the pivot to fire.
     while (melodyIdx < melodyTokens.length &&
-           (melodyTokens[melodyIdx].type === "bar" || melodyTokens[melodyIdx].type === "tempo")) {
-      if (melodyTokens[melodyIdx].type === "tempo") melodyQuarter = quarterSecFor(melodyTokens[melodyIdx].bpm);
-      else { atBar = true; pendingBass = melodyTokens[melodyIdx].bass || pendingBass; }
+           (melodyTokens[melodyIdx].type === "bar" || melodyTokens[melodyIdx].type === "tempo" ||
+            melodyTokens[melodyIdx].type === "bass")) {
+      const zt = melodyTokens[melodyIdx];
+      if (zt.type === "tempo") melodyQuarter = quarterSecFor(zt.bpm);
+      else if (zt.type === "bar") { atBar = true; if (zt.bass) pendingBass = { id: zt.bass, beats: zt.beats }; }
+      else pendingBass = { id: zt.id, beats: zt.beats };
       melodyIdx++;
     }
     if (melodyIdx >= melodyTokens.length) {
       if (document.getElementById("loopMel") && document.getElementById("loopMel").checked) {
         melodyIdx = 0;
         melodyQuarter = quarterSec(); // reset to the header tempo at loop start
+        openSupport = null; // a new loop: the previous drone must not leak in
         while (melodyIdx < melodyTokens.length &&
-               (melodyTokens[melodyIdx].type === "bar" || melodyTokens[melodyIdx].type === "tempo")) {
-          if (melodyTokens[melodyIdx].type === "tempo") melodyQuarter = quarterSecFor(melodyTokens[melodyIdx].bpm);
-          else pendingBass = melodyTokens[melodyIdx].bass || pendingBass;
+               (melodyTokens[melodyIdx].type === "bar" || melodyTokens[melodyIdx].type === "tempo" ||
+                melodyTokens[melodyIdx].type === "bass")) {
+          const zt = melodyTokens[melodyIdx];
+          if (zt.type === "tempo") melodyQuarter = quarterSecFor(zt.bpm);
+          else if (zt.type === "bar") { atBar = true; if (zt.bass) pendingBass = { id: zt.bass, beats: zt.beats }; }
+          else pendingBass = { id: zt.id, beats: zt.beats };
           melodyIdx++;
         }
         if (melodyIdx >= melodyTokens.length) { stopMelody(); return; }
@@ -1799,6 +1739,8 @@ function scheduleMelody(when) {
         melodyHoldUntil = -1;
         atBar = true;
       } else {
+        // Support bracket trailing past the last note: give it its one ring.
+        firePending(Math.max(melodyNextTime, audioCtx.currentTime + 0.02));
         // No loop: stop once the last scheduled note's time has passed;
         // otherwise keep the scheduler ticking so it can finish it.
         if (melodyNextTime <= audioCtx.currentTime) { stopMelody(); return; }
@@ -1811,19 +1753,10 @@ function scheduleMelody(when) {
     // collapses into instant steps (attack skipped → click; see playNoteAt).
     const noteWhen = Math.max(melodyNextTime, audioCtx.currentTime + 0.02);
     if (atBar && tickEnabled() && barHasNote(melodyTokens, melodyIdx)) playTickAt(noteWhen, melodyBag);
-    // Hidden contrabass support: when the bar comes due, park one long low
-    // tone across its measure. Playback-in-Zen only — practice never plays
-    // the melody (its transport stops it first), and leaving Zen mid-note is
-    // covered by setBassEnabled(false) from the focus-mode ownership sync.
-    // Checked per SCHED_DUE bar, not once at start: a practice/TAB switch
-    // that happens later must not schedule further drones.
-    if (pendingBass &&
-        typeof isFocusMode === "function" && typeof isPracticeActive === "function" &&
-        isFocusMode() && !isPracticeActive()) {
-      playBassAt(pendingBass, noteWhen, bassSpanSec(melodyIdx), melodyBag);
-      pendingBass = null;
-    }
     const tok = melodyTokens[melodyIdx];
+    // Pivot: a rest or a fresh note onset (ties stay part of the previous
+    // chain) is the moment a parked support note begins its ring.
+    if (pendingBass && (tok.type === "note" || tok.type === "rest")) firePending(noteWhen);
     const step = Math.max(0.001, swungBeats(tok, melodyPos) * melodyQuarter /
                   tempoSpeed()); // tempo dial: % of the song's own speed (live — mid-song slider moves apply to upcoming notes)
     melodyPos += tokenGridBeats(tok);
