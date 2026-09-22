@@ -448,6 +448,7 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
   /* Same centered-block sizing with the print card slot (32mm card + 3mm
      margin); #sheet outranks the base rule that lands later in the file. */
   #sheet:not(.scroll):not(.live) {
+    width: 100%; /* plain fallback: engines without round() drop the next line */
     width: max(round(down, 100%, 35mm), min(100%, 35mm));
     margin-inline: auto;
   }
@@ -744,9 +745,12 @@ h2#title { margin: 8px 0 10px; font-size: 18px; text-align: center; }
    268px per card), so full rows fill it exactly, every row keeps the same
    left edge, and .sec-head names align with the grid's left side. The max()
    guard falls back to full width when less than one slot fits (tiny phones),
-   where round(down, ...) would floor to 0. round() is recent CSS; without it
-   the sheet just stays the old full-width left-aligned block. */
+   where round(down, ...) would floor to 0. The plain width above is the
+   fallback for engines without round() (they drop the second width line):
+   the old full-width left-aligned block, kept implicit-proof even if other
+   rules ever set a width on this same selector. */
 .sheet:not(.scroll):not(.live) {
+  width: 100%; /* round()-less fallback */
   width: max(round(down, 100%, 268px), min(100%, 268px));
   margin-inline: auto;
 }
@@ -847,6 +851,7 @@ body.zen-fallback #tabPanel .sheet { align-content: flex-start; width: 100%; }
    (the 100% width above would otherwise force rows back to left-aligned). */
 #tabPanel:fullscreen .sheet:not(.scroll):not(.live),
 body.zen-fallback #tabPanel .sheet:not(.scroll):not(.live) {
+  width: 100%; /* round()-less fallback */
   width: max(round(down, 100%, 268px), min(100%, 268px));
   margin-inline: auto;
 }

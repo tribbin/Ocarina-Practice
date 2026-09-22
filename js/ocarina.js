@@ -59,7 +59,9 @@ function ocarinaSVG(covered, chamber) {
     }
     return clone.outerHTML;
   } catch (e) {
-    return "<div>" + String(e) + "</div>";
+    const d = document.createElement("div");
+    d.textContent = String(e); // error text must never become live markup
+    return d.innerHTML;
   }
 }
 
