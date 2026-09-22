@@ -617,12 +617,51 @@ function hoverPreview(i, t) {
   playNote(t.id, Math.min(tokenSeconds(t), 0.5));
 }
 
+// Same visual preview as hover, but silent: keyboard focus must not make
+// noise — Enter/Space on the token is the deliberate "make noise" path.
+function tokenFocusPreview(i, t) {
+  if (isMelodyPlaying()) return;
+  if (typeof isPracticeActive === "function" && isPracticeActive()) return;
+  highlightToken(i, t.id);
+}
+
+// Roving tab stop for a token strip: one tab stop per strip (a song strip can
+// hold hundreds of tokens — tabbing through all of them is unusable).
+let tokAnchor = {};
+function tokAnchorSet(box, i) {
+  tokAnchor[box.id] = i;
+  [...box.querySelectorAll('.tok[role="button"]')].forEach(el =>
+    el.tabIndex = +el.dataset.i === i ? 0 : -1);
+}
+
+function wireTokenKeydown(el, box) {
+  el.addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      el.click();             // "play from here" (or practice re-anchor)
+      return;
+    }
+    const toks = [...box.querySelectorAll('.tok[role="button"]')];
+    const i = toks.indexOf(el);
+    if (i < 0) return;
+    let n = null;
+    if (e.key === "ArrowRight") n = (i + 1) % toks.length;
+    else if (e.key === "ArrowLeft") n = (i - 1 + toks.length) % toks.length;
+    else if (e.key === "Home") n = 0;
+    else if (e.key === "End") n = toks.length - 1;
+    if (n == null || !toks[n]) return;
+    e.preventDefault();
+    tokAnchorSet(box, +toks[n].dataset.i);
+    toks[n].focus();
+  });
+}
+
 function buildTokenEl(t, i) {
   if (t.type === "bass") return null; // hidden support marker
   const el = document.createElement("span");
   el.dataset.i = String(i);
   el.style.cursor = "pointer";
-  el.title = "click = play from here";
+  el.title = "click or Enter = play from here";
   if (t.type === "bar") {
     el.className = "tok bar";
     el.textContent = "|";
@@ -643,6 +682,10 @@ function buildTokenEl(t, i) {
       el.innerHTML = `– <span class="td">${durLabel(t.dur, t.dotted, t.triplet)}</span>`;
       el.addEventListener("mouseenter", () => hoverPreview(i, t));
       el.addEventListener("mouseleave", () => {
+        if (!isMelodyPlaying()) clearHighlight();
+      });
+      el.addEventListener("focus", () => tokenFocusPreview(i, t));
+      el.addEventListener("blur", () => {
         if (!isMelodyPlaying()) clearHighlight();
       });
     } else if (isOutOfRange(t.id)) {
@@ -678,6 +721,10 @@ function buildTokenEl(t, i) {
     el.addEventListener("mouseleave", () => {
       if (!isMelodyPlaying()) clearHighlight();
     });
+    el.addEventListener("focus", () => tokenFocusPreview(i, t));
+    el.addEventListener("blur", () => {
+      if (!isMelodyPlaying()) clearHighlight();
+    });
   }
   // While practicing, the same click re-anchors the practice from this token
   // instead of starting normal playback.
@@ -687,11 +734,24 @@ function buildTokenEl(t, i) {
       if (window.OCA_PRACTICE) OCA_PRACTICE.from(i);
     } else playMelody(i);
   });
+  // Keyboard operability: every activatable token is role=button. Unparseable
+  // ("bad") tokens carry no action, so they stay plain text for AT too.
+  if (!el.classList.contains("bad")) {
+    el.tabIndex = -1;                        // roving anchor assigned in drawTokenStrip
+    el.setAttribute("role", "button");
+    const nm = t.id && NOTES.includes(t.id) ? pretty(t.id) : "";
+    el.setAttribute("aria-label", nm ? "Play from " + nm : "Play from here");
+  }
   return el;
 }
 
 function drawTokenStrip(box, tokens, sectioned) {
   if (!box) return;
+  // Was a token in this strip focused before the rebuild? Editing usually
+  // rebuilds while the textarea holds focus, but keyboard navigation can
+  // leave focus here when a redraw arrives (e.g. instrument swap).
+  const prevFocusI = box.contains(document.activeElement) && document.activeElement.dataset
+    ? document.activeElement.dataset.i : null;
   box.innerHTML = "";
   tokens.forEach((t, i) => {
     // Playback strip (sectioned): a named bar starts a new section — put its
@@ -704,8 +764,29 @@ function drawTokenStrip(box, tokens, sectioned) {
       box.appendChild(h);
     }
     const el = buildTokenEl(t, i);
-    if (el) box.appendChild(el);
+    if (el) {
+      box.appendChild(el);
+      if (el.hasAttribute("role")) wireTokenKeydown(el, box);
+    }
   });
+  // Roving anchor: restore the previous anchor index when sane, else the
+  // first activatable token; return focus to the token that had it.
+  let anchor = tokAnchor[box.id];
+  const roles = [...box.querySelectorAll('.tok[role="button"]')];
+  let anchorEl = anchor != null
+    ? roles.find(el => +el.dataset.i === anchor)
+    : null;
+  if (!anchorEl) anchorEl = roles[0] || null;
+  if (anchorEl) {
+    anchor = +anchorEl.dataset.i;
+    tokAnchorSet(box, anchor);
+  }
+  let refocus = null;
+  if (prevFocusI != null) {
+    const again = [...box.querySelectorAll('.tok')].find(el => el.dataset.i === prevFocusI);
+    if (again && again.hasAttribute("role")) refocus = again;
+  }
+  if (refocus) refocus.focus();
 }
 
 function drawTokens(tokens) {
@@ -755,9 +836,52 @@ function pianoNotePreview(id) {
   sheet.appendChild(card);
 }
 
+// Piano keyboard: keyboard-operable like the rest of the UI. Keys are
+// role=button with a roving tabindex (one tab stop for the whole keyboard).
+// Left/Right step chromatically, Up/Down move an octave, Home/End jump to the
+// ends; Enter/Space audition the focused key. Clicking keeps the roving
+// anchor on the pressed key, so arrows continue from where the mouse left off.
+function kbRoving(kb, active) {
+  [...kb.querySelectorAll(".key[data-note]")].forEach(k =>
+    k.tabIndex = k === active ? 0 : -1);
+}
+
+function kbWire(kb) {
+  if (!kb.dataset.kbWired) {
+    kb.dataset.kbWired = "1";
+    kb.addEventListener("keydown", e => {
+      const el = e.target;
+      if (!el.classList || !el.classList.contains("key") || !el.dataset.note) return;
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        el.click();           // reuses the mouse handler (audition + preview)
+        return;
+      }
+      const keys = [...kb.querySelectorAll(".key[data-note]")];
+      const i = keys.indexOf(el);
+      if (i < 0) return;
+      let n = null;
+      if (e.key === "ArrowRight") n = (i + 1) % keys.length;
+      else if (e.key === "ArrowLeft") n = (i - 1 + keys.length) % keys.length;
+      else if (e.key === "ArrowUp") n = (i + 12) % keys.length;
+      else if (e.key === "ArrowDown") n = (i - 12 + keys.length) % keys.length;
+      else if (e.key === "Home") n = 0;
+      else if (e.key === "End") n = keys.length - 1;
+      if (n == null || !keys[n]) return;
+      e.preventDefault();     // navigation must not scroll the page
+      kbRoving(kb, keys[n]);
+      keys[n].focus();
+      // No audition on mere navigation — Enter/Space is the loud path.
+    });
+  }
+  kb.setAttribute("role", "group");
+  kb.setAttribute("aria-label", "Piano keyboard");
+}
+
 function buildKB() {
   const kb = document.getElementById("kb");
   kb.innerHTML = "";
+  kbWire(kb);
   const whites = ["C","D","E","F","G","A","B"];
   const blackAfter = {C:"Cs", D:"Ds", F:"Fs", G:"Gs", A:"As"};
   // Octaves 2-7: the contrabass range (B2-F4) through the bass (A3-G6) and
@@ -771,10 +895,13 @@ function buildKB() {
       const k = document.createElement("div"); k.className = "key";
       if (NOTES.includes(id)) {
         k.dataset.note = id;
+        k.tabIndex = -1;                       // roving anchor picked after build
+        k.setAttribute("role", "button");
+        k.setAttribute("aria-label", "Hear " + pretty(id));
         k.title = id + " — click hear, right-click add";
         k.innerHTML = `<span class="n">${w}${oct===4?"":oct}</span>`;
-        k.onclick = () => { playNote(id); pianoNotePreview(id); };
-        k.oncontextmenu = e => { e.preventDefault(); playNote(id); addNote(id); pianoNotePreview(id); };
+        k.onclick = () => { kbRoving(kb, k); playNote(id); pianoNotePreview(id); };
+        k.oncontextmenu = e => { e.preventDefault(); kbRoving(kb, k); playNote(id); addNote(id); pianoNotePreview(id); };
       } else {
         k.style.opacity = .25;
       }
@@ -789,9 +916,12 @@ function buildKB() {
         const b = document.createElement("div"); b.className = "key black";
         if (NOTES.includes(sid)) {
           b.dataset.note = sid;
+          b.tabIndex = -1;
+          b.setAttribute("role", "button");
+          b.setAttribute("aria-label", "Hear " + pretty(sid));
           b.title = sid + " — click hear, right-click add";
-          b.onclick = () => { playNote(sid); pianoNotePreview(sid); };
-          b.oncontextmenu = e => { e.preventDefault(); playNote(sid); addNote(sid); pianoNotePreview(sid); };
+          b.onclick = () => { kbRoving(kb, b); playNote(sid); pianoNotePreview(sid); };
+          b.oncontextmenu = e => { e.preventDefault(); kbRoving(kb, b); playNote(sid); addNote(sid); pianoNotePreview(sid); };
         } else {
           b.style.opacity = .2;
         }
@@ -801,6 +931,8 @@ function buildKB() {
     }
     kb.appendChild(col);
   }
+  const first = kb.querySelector(".key[data-note]");
+  if (first) first.tabIndex = 0;
 }
 
 function pageCss() {

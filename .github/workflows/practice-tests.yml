@@ -35,6 +35,8 @@ jobs:
         run: python tests/support_accepts_brackets.py
       - name: Run voice error visibility test
         run: python tests/voice_error_visibility.py
+      - name: Run keyboard widget tests
+        run: python tests/keyboard_widgets.py
       - name: Run library hardening tests
         run: python tests/library_hardening.py
       - name: Run instrument switch race test
