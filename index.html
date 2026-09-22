@@ -65,15 +65,19 @@
       <div class="box-head">
         <div class="head-left">
           <button class="ghost collapse-btn" type="button" aria-expanded="false" title="Expand" aria-label="Expand playback block"></button>
-          <label class="box-sub loop-lab">
-            <input type="checkbox" id="tickMel" checked> Tick
-          </label>
           <!-- Loop is controlled by the transport's round ↻ button; the hidden
                carrier keeps loopOn()/syncLoopUI()'s single shared state. -->
           <input type="checkbox" id="loopMel" hidden>
           <!-- Lite is toggled in the perf screen; this hidden carrier keeps the
                shared state the perf switch / glitch toast read and persist. -->
           <input type="checkbox" id="liteMel" hidden>
+          <!-- The Audio Performance button (relocated here by the JS) and the
+               tick toggle stack in this column. -->
+          <div class="head-perf-col" id="headPerfCol">
+            <label class="box-sub loop-lab" title="Metronome tick during playback">
+              <input type="checkbox" id="tickMel" checked> Play tick at bars
+            </label>
+          </div>
         </div>
         <div class="t-wrap noprint">
           <span class="head-label">Playback Control</span>

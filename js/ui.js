@@ -1620,8 +1620,7 @@ function buildPerfWidget() {
   perfBtn.setAttribute("aria-haspopup", "true");
   perfBtn.setAttribute("aria-expanded", "false");
   perfBtn.innerHTML = '<span class="perf-ico" aria-hidden="true">∿</span>' +
-    '<span class="perf-name">Audio<br>Performance</span>' +
-    '<span class="perf-hr" id="perfHr">—</span>';
+    '<span class="perf-name">Audio<br>Performance</span>';
   perfBtn.addEventListener("click", e => {
     e.stopPropagation();
     perfOpen = !perfOpen;
@@ -1716,27 +1715,9 @@ function perfTick() {
   if (!perfOpen) return;
   clampPerfPop();
   const s = (typeof audioPerfSnapshot === "function") ? audioPerfSnapshot() : { ok: false };
-  perfUpdateBadge(s);
   const now = performance.now();
   if (now - perfLastRows > 180) { perfLastRows = now; perfUpdateRows(s); }
   perfRaf = requestAnimationFrame(perfTick);
-}
-
-function perfUpdateBadge(s) {
-  const hr = document.getElementById("perfHr");
-  if (!hr || !perfBtn) return;
-  let cls = "";
-  let txt = "—";
-  if (s.ok && s.peak > 1e-5) {
-    const db = -20 * Math.log10(s.peak); // headroom to 0 dBFS
-    // Level convention, not headroom: the button reads "-6.0 dB" (the perf
-    // window carries the headroom context; the lone number should not lie).
-    txt = "-" + db.toFixed(1) + " dB";
-    cls = db >= 6 ? "perf-ok" : db >= 3 ? "perf-warn" : "perf-bad";
-  } else if (s.ok) txt = "idle";
-  else txt = "no ctx";
-  hr.textContent = txt;
-  hr.className = "perf-hr " + cls;
 }
 
 function perfUpdateRows(s) {
@@ -1799,17 +1780,15 @@ function perfRelocate() {
   const panel = document.getElementById("tabPanel");
   const head = document.querySelector("#playback .box-head");
   const zen = !!(panel && panel.classList.contains("focus"));
-  const target = zen ? panel : head;
-  if (!target || perfWrap.parentElement === target) return;
-  // Head seat: second from the left, right after the collapse chevron —
-  // which itself lives inside the .head-left cluster, so the insert anchors
-  // on the chevron's OWN parent. In Zen the widget is appended as-is: its
-  // pop is position:fixed and ignores DOM order.
-  const collapse = zen ? null : target.querySelector(".collapse-btn");
-  if (collapse && collapse.parentElement) {
-    collapse.parentElement.insertBefore(perfWrap, collapse.nextSibling);
-  } else {
-    target.appendChild(perfWrap);
+  if (zen) {
+    // The pop is position:fixed in Zen — DOM order irrelevant, just park it.
+    if (perfWrap.parentElement !== panel) panel.appendChild(perfWrap);
+    return;
+  }
+  // Head seat: stacked above the tick toggle in the left cluster's column.
+  const col = head && head.querySelector(".head-perf-col");
+  if (col && perfWrap.parentElement !== col) {
+    col.insertBefore(perfWrap, col.firstChild);
   }
 }
 
@@ -1842,13 +1821,6 @@ let perfToast = null, perfToastTimer = 0;
 
 function wirePerfAlerts() {
   if (typeof setPerfAlertListener === "function") setPerfAlertListener(perfAlert);
-  if (typeof setPerfBeatListener === "function") setPerfBeatListener(() => {
-    // The headroom badge ticks with the audio watchdog even while the pop is
-    // closed — a dB readout that only refreshed when clicked was inert.
-    if (perfOpen || !perfBtn) return; // pop open: the rAF loop renders fully
-    perfUpdateBadge((typeof audioPerfSnapshot === "function")
-      ? audioPerfSnapshot() : null);
-  });
 }
 
 function perfAlert() {
