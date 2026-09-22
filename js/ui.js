@@ -1083,7 +1083,8 @@ function wireUi() {
     a.href = URL.createObjectURL(blob);
     a.download = tabsFileStem() + ".html";
     a.click();
-    URL.revokeObjectURL(a.href);
+    // Same-tick revoke can abort downloads in some engines; drain later.
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   };
   document.getElementById("clear").onclick = () => {
     document.getElementById("src").value = "";

@@ -503,7 +503,10 @@ function wireLibrary() {
     a.href = URL.createObjectURL(blob);
     a.download = name + ".txt";
     a.click();
-    URL.revokeObjectURL(a.href);
+    // Defer the revoke (drain later): revoking in the same tick as the click
+    // historically aborts the download in some engines (blob mapping torn
+    // down before the downloader attaches). Same pattern as debug.js export.
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   };
   document.getElementById("diskLoad").onclick = () => document.getElementById("diskFile").click();
   document.getElementById("diskFile").onchange = e => {
