@@ -496,7 +496,21 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
 .tok.ch3 { background: var(--ch3); }
 .tok.bar { background: var(--token-neutral); color: var(--ink); font-weight: 600; height: 44px; width: auto; flex: none; min-height: 44px; }
 .tok.pause { background: var(--token-pause); }
-.tok.bad { background: var(--accent); }
+/* Junk spans the grammar cannot consume: a token-shaped pill (tan, like the
+   bar chips — same var in both themes) carrying the raw junk text with a
+   spell-check style wavy scribble. The first take used a bare transparent
+   chip (not readable/especially OoT) and an earlier one an opaque accent box
+   (illegible on the grass): pill + scribble reads like a real token. */
+.tok.bad {
+  background: var(--token-neutral);
+  color: var(--ink);
+  text-decoration-line: underline;
+  text-decoration-style: wavy;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  text-decoration-skip-ink: none;
+  text-decoration-color: var(--accent);
+}
 .tok.oor {
   background: #fff; color: var(--accent);
   border: 1.5px solid var(--accent);

@@ -176,6 +176,10 @@ function fillFullSheet(sheet, tokens, sectioned = true) {
   sheet.classList.remove("live");
   tokens.forEach((t, i) => {
     if (t.type === "bass") return; // hidden support marker
+    // Junk chips belong to the token strip and the reading strip only: a
+    // chart card would sit between fingering cards and wreck the grid's
+    // rhythm (the card path highlights tolerate a missing data-i anyway).
+    if (t.type === "bad") return;
     if (t.type === "bar") {
       // A named bar OPENS a section: in row layouts (grid + print) its name
       // gets a full-width .sec-head row and the measure line is dropped — the
@@ -732,6 +736,11 @@ function buildTokenEl(t, i) {
       el.className = "tok bad";
       el.textContent = t.raw || "-";
     }
+  } else if (t.type === "bad") {
+    // Junk the grammar surfaced: show raw text + what to do about it.
+    el.className = "tok bad";
+    el.textContent = t.raw || "?";
+    el.title = "not part of the melody notation — fix or remove it";
   } else if (!NOTES.includes(t.id)) {
     const rc = rangeCheck(t.id);
     if (rc === "below" || rc === "above") {
