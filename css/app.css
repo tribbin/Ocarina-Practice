@@ -1048,7 +1048,7 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
    headers wear. */
 .head-label {
   font-size: 13px; font-weight: 800; letter-spacing: .1em;
-  text-transform: uppercase; color: var(--ink); line-height: 1.2;
+  text-transform: uppercase; color: var(--clay-dark); line-height: 1.2;
 }
 .head-label::after {
   content: ""; display: block; height: 2px; width: 2.4em;
@@ -1056,15 +1056,23 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 }
 
 #playback > .box-head { position: relative; }
-/* Playback Control + its round buttons float together, exactly centered
-   over the whole header; on tight screens the bundle drops into the flow. */
+/* Playback Control + its round buttons sit in the CENTER column of a
+   1fr-auto-1fr grid: both side columns are equal, so the bundle's midline
+   really is the header's midline — while the header itself grows to contain
+   it (no more poking past the section edges like an absolute float did). */
+#playback > .box-head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center; gap: 12px;
+}
+.head-left { display: flex; align-items: center; gap: 10px; }
 .t-wrap {
-  position: absolute; left: 50%; top: 50%;
-  transform: translate(-50%, -50%);
   display: flex; flex-direction: column; align-items: center; gap: 2px;
 }
+#playback .tempo-lab { justify-self: end; }
 @media (max-width: 760px) {
-  .t-wrap { position: static; transform: none; margin-inline: auto; }
+  #playback > .box-head { display: flex; flex-wrap: wrap; }
+  .t-wrap { margin-inline: auto; }
   #barTools { flex-wrap: wrap; }
 }
 #barTools {

@@ -1797,12 +1797,16 @@ function perfRelocate() {
   const head = document.querySelector("#playback .box-head");
   const zen = !!(panel && panel.classList.contains("focus"));
   const target = zen ? panel : head;
-  if (target && perfWrap.parentElement !== target) {
-    // Second place, left of the toggles: directly after the collapse
-    // chevron — the head's leftmost item but one.
-    const collapse = target.querySelector(".collapse-btn");
-    if (collapse) target.insertBefore(perfWrap, collapse.nextSibling);
-    else target.insertBefore(perfWrap, target.firstChild);
+  if (!target || perfWrap.parentElement === target) return;
+  // Head seat: second from the left, right after the collapse chevron —
+  // which itself lives inside the .head-left cluster, so the insert anchors
+  // on the chevron's OWN parent. In Zen the widget is appended as-is: its
+  // pop is position:fixed and ignores DOM order.
+  const collapse = zen ? null : target.querySelector(".collapse-btn");
+  if (collapse && collapse.parentElement) {
+    collapse.parentElement.insertBefore(perfWrap, collapse.nextSibling);
+  } else {
+    target.appendChild(perfWrap);
   }
 }
 

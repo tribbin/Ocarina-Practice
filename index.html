@@ -55,16 +55,18 @@
     </div>
     <div class="block collapsed" id="playback">
       <div class="box-head">
-        <button class="ghost collapse-btn" type="button" aria-expanded="false" title="Expand" aria-label="Expand playback block"></button>
-        <label class="box-sub loop-lab">
-          <input type="checkbox" id="tickMel" checked> Tick
-        </label>
-        <!-- Loop is controlled by the transport's round ↻ button; the hidden
-             carrier keeps loopOn()/syncLoopUI()'s single shared state. -->
-        <input type="checkbox" id="loopMel" hidden>
-        <!-- Lite is toggled in the perf screen; this hidden carrier keeps the
-             shared state the perf switch / glitch toast read and persist. -->
-        <input type="checkbox" id="liteMel" hidden>
+        <div class="head-left">
+          <button class="ghost collapse-btn" type="button" aria-expanded="false" title="Expand" aria-label="Expand playback block"></button>
+          <label class="box-sub loop-lab">
+            <input type="checkbox" id="tickMel" checked> Tick
+          </label>
+          <!-- Loop is controlled by the transport's round ↻ button; the hidden
+               carrier keeps loopOn()/syncLoopUI()'s single shared state. -->
+          <input type="checkbox" id="loopMel" hidden>
+          <!-- Lite is toggled in the perf screen; this hidden carrier keeps the
+               shared state the perf switch / glitch toast read and persist. -->
+          <input type="checkbox" id="liteMel" hidden>
+        </div>
         <div class="t-wrap noprint">
           <span class="head-label">Playback Control</span>
           <div class="bar-tools noprint" id="barTools" role="group" aria-label="Transport">
