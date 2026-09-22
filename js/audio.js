@@ -113,6 +113,9 @@ window.OCA_DEBUG = {
   invalidateWave() { ocWaveCache = null; },
   // Live audit helper: the full derived voice profile for a note id.
   profile(id) { return voiceProfileFor(id, freqOf(id)); },
+  // The installed per-ocarina tone model (instruments/<id>/tone.json) —
+  // null when the instrument has no fitted chambers yet (generic model).
+  toneModel() { return TONE_MODEL; },
   // DEBUG panel "Induce lag": fakes audio-clock starvation. Seeds what
   // raisePerfAlert needs (a running ctx + one alive voice, the button click
   // itself is the user gesture), then loads the lag budget; the next
@@ -717,9 +720,95 @@ function vInterp(pts, f) {
 }
 const db2lin = db => Math.pow(10, db / 20);
 
-// Everything a single note's voice needs, derived live from AUDIO_DEBUG +
-// V_ANCHORS + the note's chamber data (never cached — the debug panel must
-// be able to retune mid-session).
+// ---------------------------------------------------------------------------
+// PER-OCARINA TONE MODEL — instruments/<id>/tone.json: fitted per-chamber
+// anchors (3 recorded notes per chamber: near-low / middle / near-top on the
+// real ocarina). Rows carry the pitch-keyed voice tables (harmonics, level,
+// wander/wobble, wind bands, attack) plus the chamber's envelope constants
+// (chiff / overtone bloom / edge whistle). Ocarinas without data keep the
+// baked-in V_ANCHORS extrapolation below — byte-identical to the pre-tone
+// behaviour. Recording protocol and the schema live in instruments/README.md.
+// ---------------------------------------------------------------------------
+let TONE_MODEL = null; // { instrumentId, chambers: [{ ch, rows }] } | null
+
+// Normalizes a tone.json: rows sorted ascending by f0, whole-vector `h`
+// fields (rows may spell "h": [1, h2, h3, h4, h5]) expanded to h2..h5 keys.
+function installToneModel(data, instId) {
+  if (!data || typeof data !== "object" || !data.chambers) { TONE_MODEL = null; return; }
+  const chambers = [];
+  for (const [ch, rows] of Object.entries(data.chambers)) {
+    const rs = (Array.isArray(rows) ? rows : [])
+      .filter(r => r && isFinite(r.f) && +r.f > 0)
+      .map(r => (Array.isArray(r.h) && r.h.length >= 5) ? Object.assign({}, r, {
+        h2: r.h[1], h3: r.h[2], h4: r.h[3], h5: r.h[4]
+      }) : r);
+    rs.sort((a, b) => (+a.f) - (+b.f));
+    if (rs.length) chambers.push({ ch: String(ch), rows: rs });
+  }
+  TONE_MODEL = chambers.length
+    ? { instrumentId: instId || null, globalOb: data.global || {}, chambers }
+    : null;
+}
+
+function toneRowsForChamber(ch) {
+  if (!TONE_MODEL || ch == null) return null;
+  const key = String(ch);
+  for (const c of TONE_MODEL.chambers) if (c.ch === key) return c.rows;
+  return null;
+}
+
+// One pitch-keyed field of the chamber, interpolated at `freq` in log-f
+// between the fitted anchors (slope-clamped extrapolation at the chamber
+// edges — vInterp's own math). `fallback` may be the generic point-table OR
+// a scalar: a missing field (or chamber) keeps the generic value per field.
+function toneVal(rows, key, fallback, freq) {
+  if (rows) {
+    const pts = [];
+    for (const r of rows) {
+      const v = r[key];
+      if (v == null) continue;
+      pts.push([+r.f, +v]);
+    }
+    if (pts.length === 1) return pts[0][1]; // one measured point: constant
+    if (pts.length > 1) return vInterp(pts, freq);
+  }
+  return Array.isArray(fallback) ? vInterp(fallback, freq) : fallback;
+}
+
+// The fitted envelope constants (one sub-object per anchor row; a chamber-
+// level constant is just repeated across its rows). Each field stands alone:
+// a missing field keeps the generic size/effort heuristic it replaces.
+function toneEnvelopeFor(rows, freq) {
+  const sub = (name, fields) => {
+    const out = {};
+    for (const f of fields) {
+      const pts = [];
+      if (rows) {
+        for (const r of rows) {
+          const v = r[name] && r[name][f];
+          if (v == null) continue;
+          pts.push([+r.f, +v]);
+        }
+        if (pts.length === 1) out[f] = pts[0][1];
+        else if (pts.length > 1) out[f] = vInterp(pts, freq);
+      }
+    }
+    return out;
+  };
+  const g = (TONE_MODEL && TONE_MODEL.globalOb) || {};
+  return {
+    chiff: sub("chiff", ["peak", "len", "startHz", "endHz", "attack"]),
+    ot: sub("ot", ["peak", "dur", "noise"]),
+    edge: sub("edge", ["level", "detune", "spread"]),
+    lpMult: g.lpMult != null ? +g.lpMult : null,
+    lpQ: g.lpQ != null ? +g.lpQ : null,
+  };
+}
+
+// Everything a single note's voice needs, derived live (never cached — the
+// debug panel must be able to retune mid-session): the fitted per-chamber
+// anchors when the instrument's tone.json carries this chamber, else the
+// baked-in V_ANCHORS extrapolation + the chamber-size blow heuristics.
 function voiceProfileFor(id, freq) {
   const art = noteArticulation(id);
   // "Hard blow" drive: air lost through open holes. The larger the chamber
@@ -727,6 +816,30 @@ function voiceProfileFor(id, freq) {
   // sizeF), and hardAmt scales the whole effect.
   const hh = Math.max(0, Math.min(1,
     art.openF * (0.25 + 0.75 * art.sizeF) * AUDIO_DEBUG.hardAmt));
+  const chambers = (typeof CHAMBER !== "undefined" && CHAMBER) ? CHAMBER : null;
+  const rows = toneRowsForChamber(chambers && chambers[id]);
+  if (rows) {
+    // FITTED ocarina: the measured chamber speaks for itself — the generic
+    // hard-blow offsets drop out (the anchors already encode the real blow).
+    return {
+      h: [1,
+          toneVal(rows, "h2", V_ANCHORS.h2, freq) * AUDIO_DEBUG.h2Mul,
+          toneVal(rows, "h3", V_ANCHORS.h3, freq) * AUDIO_DEBUG.h3Mul,
+          toneVal(rows, "h4", V_ANCHORS.h4, freq) * AUDIO_DEBUG.h4Mul,
+          toneVal(rows, "h5", V_ANCHORS.h5, freq) * AUDIO_DEBUG.h5Mul],
+      levelLin: db2lin(toneVal(rows, "levelDb", V_ANCHORS.levelDb, freq) *
+                       AUDIO_DEBUG.levelCurveAmt),
+      windBump: db2lin(toneVal(rows, "noiseLoDb", V_ANCHORS.noiseLoDb, freq) - 2.0) *
+                AUDIO_DEBUG.windAmt,
+      windQ: toneVal(rows, "noiseBumpQ", V_ANCHORS.noiseBumpQ, freq),
+      wanderC: toneVal(rows, "wanderC", V_ANCHORS.wanderC, freq) * AUDIO_DEBUG.wanderAmt,
+      wobDepth: toneVal(rows, "wobPct", V_ANCHORS.wobPct, freq) / 100 * AUDIO_DEBUG.wobbleAmt,
+      wobRate: toneVal(rows, "wobHz", V_ANCHORS.wobHz, freq) * (0.9 + 0.2 * Math.random()),
+      attackF: toneVal(rows, "attackF", V_ANCHORS.attackF, freq),
+      osDb: toneVal(rows, "osDb", 0.8 + 3.2 * hh, freq),
+      en: toneEnvelopeFor(rows, freq),
+    };
+  }
   return {
     // PeriodicWave harmonic amplitudes (real/cosine parts, h1 fixed at 1).
     h: [1,
@@ -750,6 +863,7 @@ function voiceProfileFor(id, freq) {
     // Attack timing stretch + the blow-dependent amplitude overshoot.
     attackF: vInterp(V_ANCHORS.attackF, freq),
     osDb: 0.8 + 3.2 * hh,
+    en: null, // generic model: no measured envelope spec
   };
 }
 
@@ -888,8 +1002,15 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
 
     // Per-note voice profile (pitch-keyed harmonics, chamber-relative
     // loudness, wobble/wind levels, attack shape) — derived live so the
-    // debug panel can retune anything mid-session.
+    // debug panel can retune anything mid-session. `vp.en` carries the
+    // FITTED per-chamber envelope spec (tone.json) when the instrument has
+    // one; every field stands alone, so `x != null` falls back per field to
+    // the generic size/effort heuristics.
     const vp = voiceProfileFor(id, freq);
+    const EN = vp.en || {};
+    const eChiff = EN.chiff, eOt = EN.ot, eEdge = EN.edge;
+    const lpMult = EN.lpMult != null ? EN.lpMult : AUDIO_DEBUG.lpMult;
+    const lpQ = EN.lpQ != null ? EN.lpQ : AUDIO_DEBUG.lpQ;
 
     // LITE VOICE: a minimal 3-node voice (osc → lowpass → gain) for slow
     // devices. Skips the air/edge/wander/chiff/vibrato/overtone layers and
@@ -905,8 +1026,8 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       g.gain.linearRampToValueAtTime(0.0001, t0 + dur + fadeOff);
       const lp2 = ctx.createBiquadFilter();
       lp2.type = "lowpass";
-      lp2.frequency.value = Math.min(AUDIO_DEBUG.lpMax, freq * AUDIO_DEBUG.lpMult);
-      lp2.Q.value = AUDIO_DEBUG.lpQ;
+      lp2.frequency.value = Math.min(AUDIO_DEBUG.lpMax, freq * lpMult);
+      lp2.Q.value = lpQ;
       const osc2 = ctx.createOscillator();
       osc2.setPeriodicWave(getOcarinaWave(ctx, vp));
       if (slideFrom) {
@@ -1037,12 +1158,12 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       // Timbre morphs WITH the glide so the landed note speaks with the same
       // brightness a fresh onset of that pitch would have (down-slides no
       // longer stay stubbornly bright, up-slides no longer start over-bright).
-      lp.frequency.setValueAtTime(Math.min(AUDIO_DEBUG.lpMax, slideFrom * AUDIO_DEBUG.lpMult), t0);
-      lp.frequency.linearRampToValueAtTime(Math.min(AUDIO_DEBUG.lpMax, freq * AUDIO_DEBUG.lpMult), t0 + glide);
+      lp.frequency.setValueAtTime(Math.min(AUDIO_DEBUG.lpMax, slideFrom * lpMult), t0);
+      lp.frequency.linearRampToValueAtTime(Math.min(AUDIO_DEBUG.lpMax, freq * lpMult), t0 + glide);
     } else {
-      lp.frequency.setValueAtTime(Math.min(AUDIO_DEBUG.lpMax, freq * AUDIO_DEBUG.lpMult), t0);
+      lp.frequency.setValueAtTime(Math.min(AUDIO_DEBUG.lpMax, freq * lpMult), t0);
     }
-    lp.Q.value = AUDIO_DEBUG.lpQ;
+    lp.Q.value = lpQ;
     // Tremolo node: vibrato modulates breath pressure, which on a Helmholtz
     // resonator changes pitch AND loudness together (in phase). The tone runs
     // through `trem` so the same LFO can add a small amplitude wobble; its
@@ -1204,12 +1325,12 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       const lpT = ctx.createBiquadFilter();
       lpT.type = "lowpass";
       if (slideFrom) {
-        lpT.frequency.setValueAtTime(Math.min(AUDIO_DEBUG.lpMax, slideFrom * AUDIO_DEBUG.lpMult), t0);
-        lpT.frequency.linearRampToValueAtTime(Math.min(AUDIO_DEBUG.lpMax, freq * AUDIO_DEBUG.lpMult), t0 + glide);
+        lpT.frequency.setValueAtTime(Math.min(AUDIO_DEBUG.lpMax, slideFrom * lpMult), t0);
+        lpT.frequency.linearRampToValueAtTime(Math.min(AUDIO_DEBUG.lpMax, freq * lpMult), t0 + glide);
       } else {
-        lpT.frequency.setValueAtTime(Math.min(AUDIO_DEBUG.lpMax, freq * AUDIO_DEBUG.lpMult), t0);
+        lpT.frequency.setValueAtTime(Math.min(AUDIO_DEBUG.lpMax, freq * lpMult), t0);
       }
-      lpT.Q.value = AUDIO_DEBUG.lpQ;
+      lpT.Q.value = lpQ;
       const tremT = ctx.createGain();
       tremT.gain.value = 1;
       const twinEnv = ctx.createGain();
@@ -1248,10 +1369,13 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // this detuned, FM-wandering partial beats close to the fundamental and is
     // the main reason the top of the range reads as a bowed string, so its
     // level, detune spread and wander all recede toward the top (hiF → 1).
+    // A fitted ocarina carries its own edge measurements per chamber
+    // (hl.edge.level already includes the chamber's own growth).
     const edge = ctx.createOscillator();
     edge.type = "sine";
-    const detune = 1 + AUDIO_DEBUG.edgeDet +
-      Math.random() * AUDIO_DEBUG.edgeDetSpread * (1 - hiF); // tighter to pitch up high
+    const detune = 1 + (eEdge && eEdge.detune != null ? eEdge.detune : AUDIO_DEBUG.edgeDet) +
+      Math.random() * (eEdge && eEdge.spread != null ? eEdge.spread : AUDIO_DEBUG.edgeDetSpread) *
+      (1 - hiF); // tighter to pitch up high
     if (slideFrom) {
       edge.frequency.setValueAtTime(slideFrom * detune, t0);
       edge.frequency.linearRampToValueAtTime(freq * detune, t0 + glide);
@@ -1266,7 +1390,8 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     wanderGain.gain.value = freq * AUDIO_DEBUG.wanderDepth * (1 - AUDIO_DEBUG.wanderFade * hiF);
     wander.connect(wanderGain); wanderGain.connect(edge.frequency);
     const edgeGain = ctx.createGain();
-    const edgeLevel = (AUDIO_DEBUG.edgeBase + reg * reg * AUDIO_DEBUG.edgeReg) *
+    const edgeLevel = (eEdge && eEdge.level != null ? eEdge.level
+                       : AUDIO_DEBUG.edgeBase + reg * reg * AUDIO_DEBUG.edgeReg) *
       (1 - AUDIO_DEBUG.edgeFade * hiF); // recede up high
     edgeGain.gain.setValueAtTime(0.0001, t0);
     edgeGain.gain.linearRampToValueAtTime(edgeLevel, t0 + 0.03);
@@ -1331,6 +1456,8 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // Helmholtz cavity catches the jet. Its color is set by chamber size: big
     // (bass) chambers give a dark, muffled, longer "phh"; small chambers a
     // bright, airy "tss". More open holes = leakier, brighter, breathier.
+    // A measured ocarina replaces the size heuristics with its fitted
+    // per-chamber values (eChiff), each standing alone.
     // A ~ slide note CONTINUES the previous note's breath, so it gets no chiff
     // at all — no tongued burst at onset, no extra burst when the glide lands.
     if (!slideFrom) {
@@ -1339,7 +1466,8 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       // `master` cuts the note. On short notes (fast 16ths) an uncapped chiff is
       // still at high level when master fades at t0+dur → truncation click.
       const chiffLen = Math.min(
-        (AUDIO_DEBUG.chiffBase + chSize * AUDIO_DEBUG.chiffSize) * (0.85 + 0.15 * chOpen),
+        eChiff && eChiff.len != null ? eChiff.len
+          : (AUDIO_DEBUG.chiffBase + chSize * AUDIO_DEBUG.chiffSize) * (0.85 + 0.15 * chOpen),
         relStart - 0.005);
       // Chamber character comes from WHERE the noise energy sits. A big (bass)
       // chamber is a dark, muffled "phh"; a small chamber a bright, airy "tss".
@@ -1347,26 +1475,31 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       // wide spread so the timbres are clearly distinct, sweeping down as the
       // cavity focuses. `bright` spans ~4 octaves between largest & smallest.
       const bright = Math.min(9, Math.pow(2, (1 - chSize) * 3.5 + chOpen * 1.2)); // ~1x (big) → capped ~9x
-      const startHz = Math.min(11000, 900 * bright);   // broad/high at onset
-      const endHz = Math.min(9000, 500 * bright);      // settles, still chamber-colored
+      const startHz = eChiff && eChiff.startHz != null ? Math.min(11000, eChiff.startHz)
+        : Math.min(11000, 900 * bright); // broad/high at onset
+      const endHz = eChiff && eChiff.endHz != null ? Math.min(9000, eChiff.endHz)
+        : Math.min(9000, 500 * bright); // settles, still chamber-colored
       const chiffSrc = ctx.createBufferSource();
       chiffSrc.buffer = getChiffBuffer(ctx);
       const chiffHp = ctx.createBiquadFilter();
       chiffHp.type = "highpass";
-      chiffHp.frequency.value = Math.max(300, 300 * bright * 0.4); // trim low rumble; floor keeps it airy not rumbly
+      chiffHp.frequency.value = Math.max(300, startHz / 7.5); // trim low rumble (the generic path's 120·bright ≡ startHz/7.5); floor keeps it airy not rumbly
       const chiffLp = ctx.createBiquadFilter();
       chiffLp.type = "lowpass";
       chiffLp.Q.value = 0.4; // non-resonant: avoids a chirp/ring on bright high-chamber sweeps
       chiffLp.frequency.setValueAtTime(startHz, t0);
       chiffLp.frequency.exponentialRampToValueAtTime(endHz, t0 + chiffLen * 0.6);
       const chiffGain = ctx.createGain();
-      const chiffPeak = (0.018 - 0.0812 * chSize + 0.1412 * chSize * chSize) * AUDIO_DEBUG.chiffScale; // low strong, mid softest, high modest
+      const chiffPeak = (eChiff && eChiff.peak != null ? eChiff.peak
+        : 0.018 - 0.0812 * chSize + 0.1412 * chSize * chSize) * AUDIO_DEBUG.chiffScale; // low strong, mid softest, high modest
       // Gentle attack, then a sustain-and-decay so the breathy onset lingers as
       // the tone establishes. The tail uses a linear ramp that actually reaches
       // zero (exponential ramps never do) with a small guard before the source
       // stops, avoiding a truncation click that reads as "clipping" on short
       // (high-chamber) bursts.
-      const chAtk = Math.max(0.012, Math.min(0.025, chiffLen * 0.3)); // softer attack, min 12ms
+      const chAtk = Math.max(0.012, Math.min(0.025,
+        eChiff && eChiff.attack != null ? Math.min(eChiff.attack, chiffLen)
+        : chiffLen * 0.3)); // softer attack, min 12ms
       chiffGain.gain.setValueAtTime(0.0001, t0);
       chiffGain.gain.linearRampToValueAtTime(chiffPeak, t0 + chAtk);
       chiffGain.gain.linearRampToValueAtTime(chiffPeak * 0.85, t0 + chiffLen * 0.5);
@@ -1385,13 +1518,16 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // fundamental blooms in; bigger/breathier attacks (more effort) let it
     // speak a touch longer and louder. A ~ slide note fires its bloom (softer)
     // when the glide lands, so the arrived tone matches a fresh onset's color.
+    // A measured ocarina's fitted bloom (eOt) replaces the effort heuristics.
     const otF = freq * 2;
     const otOff = slideFrom ? glide : 0;
     const otRoom = relStart - otOff - 0.005;
     if (otF < ctx.sampleRate * 0.45 && (!slideFrom || otRoom > 0.03)) { // guard against aliasing on the very top notes
       const otDur = Math.max(slideFrom ? 0.03 : 0.04,
-        Math.min(otRoom, AUDIO_DEBUG.otDurMax + AUDIO_DEBUG.otDurEffort * effort)); // recorded-scale bloom
-      const otPeak = (AUDIO_DEBUG.otBase + AUDIO_DEBUG.otEffort * effort) * (slideFrom ? 0.85 : 1); // toned down from the audibility test
+        Math.min(otRoom, eOt && eOt.dur != null ? eOt.dur
+          : AUDIO_DEBUG.otDurMax + AUDIO_DEBUG.otDurEffort * effort)); // recorded-scale bloom
+      const otPeak = (eOt && eOt.peak != null ? eOt.peak
+        : AUDIO_DEBUG.otBase + AUDIO_DEBUG.otEffort * effort) * (slideFrom ? 0.85 : 1); // toned down from the audibility test
       // Shared onset envelope: fast in, exponential collapse (the mode "loses").
       const otGain = ctx.createGain();
       otGain.gain.setValueAtTime(0.0001, t0 + otOff);
@@ -1414,7 +1550,8 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       const otNoise = ctx.createBufferSource();
       otNoise.buffer = getChiffBuffer(ctx);
       const otNoiseGain = ctx.createGain();
-      otNoiseGain.gain.value = AUDIO_DEBUG.otNoise; // quiet: just a breathy edge on the overtone
+      otNoiseGain.gain.value = eOt && eOt.noise != null ? eOt.noise
+        : AUDIO_DEBUG.otNoise; // quiet: just a breathy edge on the overtone
       otNoise.connect(otBp); otBp.connect(otNoiseGain); otNoiseGain.connect(otGain);
       otNoise.start(t0 + otOff); otNoise.stop(t0 + otOff + otDur + 0.02);
 

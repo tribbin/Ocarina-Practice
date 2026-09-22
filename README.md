@@ -40,4 +40,4 @@ python -m http.server 8000
 
 then open `http://localhost:8000`. Deploying as a static site (e.g. GitHub Pages) works as-is.
 
-Extending it: songs live in `songs.json`, and each instrument's fingerings and template in `fingerings*.json` / `ocarina-template*.svg` — new instruments and songs can be added without touching code.
+Extending it: songs live in `songs.json`; each ocarina lives in its own folder `instruments/<id>/` (fingerings, body template, optional `tone.json` with fitted per-chamber sound anchors — see `instruments/README.md`). New instruments and songs can be added without touching code.

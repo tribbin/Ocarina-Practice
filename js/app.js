@@ -95,6 +95,19 @@ async function loadInstrument(inst) {
   TPL_CACHE[inst.svg] = Promise.resolve(svgText);
   window.CURRENT_INSTRUMENT = inst;
   await ensureOcarinaTemplate();
+  // Per-ocarina tone model (instruments/<id>/tone.json — fitted per-chamber
+  // anchors, see instruments/README.md). A 404 is normal: the ocarina has no
+  // recordings yet and keeps the baked-in generic model. installToneModel
+  // resets on failure so a stale model never leaks across instrument swaps;
+  // the CURRENT_INSTRUMENT check keeps a slower old fetch from clobbering a
+  // newer instrument's install.
+  if (typeof installToneModel !== "function") return;
+  try {
+    const tone = inst.tone ? await loadJson(inst.tone) : null;
+    if (window.CURRENT_INSTRUMENT === inst) installToneModel(tone, inst.id);
+  } catch (e) {
+    if (window.CURRENT_INSTRUMENT === inst) installToneModel(null, inst.id);
+  }
 }
 
 // Visual themes live as `data-theme` on <html>. Chamber colors are not part of

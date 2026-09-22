@@ -6,29 +6,31 @@
       "type": "Triple Bass C",
       "version": "Imperial City Oak Leaf",
       "range": "A3–G6",
-      "fingerings": "fingerings.json",
-      "svg": "ocarina-template.svg"
+      "fingerings": "instruments/ico-oak-leaf-bass-c-triple/fingerings.json",
+      "svg": "instruments/ico-oak-leaf-bass-c-triple/ocarina-template.svg"
     },
     {
       "id": "stein-double-alto-c",
       "type": "Double Alto C",
       "version": "Focalink Stein",
       "range": "A4–C7",
-      "fingerings": "fingerings-alto.json",
-      "svg": "ocarina-template-alto.svg"
+      "fingerings": "instruments/stein-double-alto-c/fingerings.json",
+      "svg": "instruments/stein-double-alto-c/ocarina-template.svg",
+      "tone": "instruments/stein-double-alto-c/tone.json"
     },
     {
       "id": "oot-alto-c-12",
       "type": "Alto C 12-hole",
       "version": "Ocarina of Time",
       "range": "A4–F6",
-      "fingerings": "fingerings-alto-12.json",
-      "svg": "ocarina-template-alto-12.svg",
+      "fingerings": "instruments/oot-alto-c-12/fingerings.json",
+      "svg": "instruments/oot-alto-c-12/ocarina-template.svg",
+      "tone": "instruments/oot-alto-c-12/tone.json",
       "svgWhen": [
         {
           "theme": "oot",
           "song": "sarias-song",
-          "svg": "ocarina-template-alto-12-saria.svg"
+          "svg": "instruments/oot-alto-c-12/ocarina-template-saria.svg"
         }
       ]
     },
@@ -37,16 +39,17 @@
       "type": "Contrabass 11-hole C",
       "version": "Imperial City",
       "range": "B2–F4",
-      "fingerings": "fingerings-contrabass.json",
-      "svg": "ocarina-template-contrabass-11.svg"
+      "fingerings": "instruments/ico-contrabass-11-c/fingerings.json",
+      "svg": "instruments/ico-contrabass-11-c/ocarina-template.svg",
+      "tone": "instruments/ico-contrabass-11-c/tone.json"
     },
     {
-      "id": "mock-double-test",
+      "id": "dummy-bass-c-double",
       "type": "Double Bass C",
       "version": "(dummy)",
       "range": "A3–C6",
-      "fingerings": "fingerings-mock.json",
-      "svg": "ocarina-template.svg"
+      "fingerings": "instruments/dummy-bass-c-double/fingerings.json",
+      "svg": "instruments/ico-oak-leaf-bass-c-triple/ocarina-template.svg"
     }
   ]
 }
