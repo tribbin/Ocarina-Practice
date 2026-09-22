@@ -922,16 +922,6 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
   will-change: opacity, transform;
 }
 #tabPanel.focus > * { position: relative; z-index: 1; }
-@media (prefers-reduced-motion: reduce) {
-  /* Motion is off at the OS level: skip the animated scale swell (the only
-     real movement) but keep the full opacity bloom — the halo still rises and
-     fades with each note, just without growing/drifting across the screen. */
-  #tabPanel.focus::before {
-    display: block;
-    transform: none;
-    transition: opacity var(--glow-fade, 1.6s) ease-out;
-  }
-}
 
 /* Small screens: the piano must squeeze inside the viewport instead of
    pushing keys past it (28 white keys + flexible flex widths), and shrink its
@@ -1448,3 +1438,30 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 .lib-dialog-row button.lib-dialog-ok { background: var(--accent); border-color: var(--accent); color: var(--paper); }
 .lib-dialog-row button:hover { filter: brightness(1.05); }
 @media print { .lib-dialog { display: none !important; } }
+
+/* OS-level motion gate, kept at file end so none of the animation rules
+   above can win a later-position tie against it. */
+@media (prefers-reduced-motion: reduce) {
+  #tabPanel.focus::before {
+    /* Skip the animated scale swell (the only real movement) but keep the
+       full opacity bloom — the halo still rises and fades with each note. */
+    display: block;
+    transform: none;
+    transition: opacity var(--glow-fade, 1.6s) ease-out;
+  }
+  /* Every other decorative motion: pulses die (the banner's left band and
+     the alert's colour still mark them), the wave keeps an opacity-only fade
+     without sweeping across the screen, and the focus-token swell freezes
+     (ring highlight and box-shadow stay). */
+  .range-warn { animation: none; }
+  .zen-wave { animation: zen-wave-reduce 1s ease-out forwards; }
+  .perf-btn.alerted,
+  #tabPanel.focus .perf-btn.alerted { animation: none; }
+  #tabPanel.focus .focus-tokens .tok { transition: none; }
+  #tabPanel.focus .focus-tokens .tok.now { transform: none; }
+  @keyframes zen-wave-reduce {
+    0%   { opacity: 0; }
+    22%  { opacity: .85; }
+    100% { opacity: 0; }
+  }
+}
