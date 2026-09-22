@@ -40,4 +40,12 @@ python -m http.server 8000
 
 then open `http://localhost:8000`. Deploying as a static site (e.g. GitHub Pages) works as-is.
 
+## Accepted by design
+
+Page-lifetime costs the app carries deliberately (all reviewed and kept — closing the
+tab frees everything): the audio watchdog keeps its tiny interval for as long as the
+page lives, the reverb bus keeps a silent anchor oscillator running (it produces no
+sound), and the debug panel's waveform preview cache grows as you tweak — never
+shrinks, but only while you are actively tweaking in the debug panel.
+
 Extending it: songs live in `songs.json`; each ocarina lives in its own folder `instruments/<id>/` (fingerings, body template, optional `tone.json` with fitted per-chamber sound anchors — see `instruments/README.md`). New instruments and songs can be added without touching code.
