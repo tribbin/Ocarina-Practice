@@ -1552,6 +1552,8 @@ function stopMelody() {
   melodyPaused = false;
   pendingBass = null; // parked support markers die with the transport
   openSupport = null;
+  lastSupportId = null;
+  lastSupportEnd = 0;
   if (audioCtx) markSystemSound(melodyStopAt(audioCtx)); // sources stop past the bus decay
   melodyBag.forEach(n => { try { (n.fade || n.stop)(); } catch (e) {} });
   melodyBag = [];
@@ -1650,9 +1652,14 @@ const SCHED_TICK = 0.05;  // how often the scheduler wakes up (s)
 // scheduler returns between ticks whenever the lookahead window is full, and
 // markers parked across such a batch boundary MUST survive — per-call locals
 // silently dropped them).
-let pendingBass = null;   // { id, beats(null=until next bar), ext, slideFrom }
+let pendingBass = null;   // { id, beats(null=until next bar), ext, slideFrom, startAt }
 let lastSupportId = null; // last support pitch that actually fired
+let lastSupportEnd = 0;   // audio-clock time that ring is scheduled to end
 let openSupport = null;   // voice handle(s) of the last open-ended ring
+// A continuation [-/N] starts this much BEFORE the previous ring's release
+// begins, so the two voices crossfade (the release itself runs ~0.18 s):
+// sounded as one long held tone instead of separate notes.
+const SUPPORT_HANDOFF_LEAD = 0.15;
 
 // Seconds a support note spans when its bracket carried no duration: grid
 // time from the pivot to the NEXT bar line (an inline tempo change rebalances
@@ -1702,10 +1709,17 @@ function scheduleMelody(when) {
     // Every pending ring can carry accumulated [-/N] extensions.
     const dur = base + (p.ext || 0) * melodyQuarter / tempoSpeed();
     // A new open-ended support retires the previous open-ended one (their
-    // default spans overlap otherwise); bounded supports never cut anyone.
-    if (p.beats == null && openSupport) openSupport.forEach(v => { try { (v.fade || v.stop)(); } catch (e) {} });
-    const voices = playSupportAt(p.id, when, dur, p.slideFrom);
+    // default spans overlap otherwise), and a hand-off (startAt) takes over
+    // the previous sustained drone — it must not keep ringing through the
+    // glide. Plain bounded supports never cut anyone.
+    if ((p.beats == null || p.startAt != null) && openSupport)
+      openSupport.forEach(v => { try { (v.fade || v.stop)(); } catch (e) {} });
+    // Continuations [−/N] with nothing pending carry their own start time:
+    // the previous ring's end minus the hand-off lead (never in the past).
+    const t0 = p.startAt != null ? Math.max(p.startAt, audioCtx.currentTime + 0.02) : when;
+    const voices = playSupportAt(p.id, t0, dur, p.slideFrom);
     lastSupportId = p.id;
+    lastSupportEnd = t0 + dur;
     if (p.beats == null) openSupport = voices;
   }
 
@@ -1722,18 +1736,32 @@ function scheduleMelody(when) {
       else if (zt.type === "bar") {
         atBar = true;
         if (zt.bass) pendingBass = zt.slide
-          ? { id: zt.bass, beats: zt.beats, slideFrom: lastSupportId }
+          ? { id: zt.bass, beats: zt.beats, slideFrom: lastSupportId,
+              startAt: pendingBass || !lastSupportId ? null
+                : Math.max(0, lastSupportEnd - SUPPORT_HANDOFF_LEAD) }
           : { id: zt.bass, beats: zt.beats };
       } else if (zt.ext != null) {
-        // [-/N]: extend the pending ring; with nothing pending, re-ring the
-        // last support's pitch for that long at the next pivot.
+        // [-/N]: extend the pending ring; with nothing pending, CONTINUE the
+        // last support from exactly where its scheduled ring ends (crossfaded
+        // by SUPPORT_HANDOFF_LEAD) — never waiting for the next melody pivot,
+        // which may sit beats after the ring already released.
         if (pendingBass) pendingBass.ext = (pendingBass.ext || 0) + zt.ext;
-        else if (lastSupportId) pendingBass = { id: lastSupportId, beats: zt.ext, ext: 0 };
+        else if (lastSupportId) {
+          pendingBass = { id: lastSupportId, beats: zt.ext, ext: 0,
+                          startAt: Math.max(0, lastSupportEnd - SUPPORT_HANDOFF_LEAD) };
+          firePending(audioCtx.currentTime + 0.02); // startAt is absolute: fire NOW
+        }
       } else if (zt.slide) {
-        // Slide anchor: an unfired pending support is still "the previous
-        // support note" textually — glide from its pitch (playNoteAt ramps).
+        // [~F/N]: glide into a new support pitch. With a pending (unfired)
+        // bracket its pitch is the anchor — the sweep starts from the
+        // notated pitch at the next pivot. With nothing pending the glide
+        // HANDS OFF where the last ring ends (crossfaded, like [−/N]): a
+        // sustained drone audibly bends to the new pitch instead of
+        // re-attacking at whatever melody pivot comes next.
         pendingBass = { id: zt.id, beats: zt.beats,
-                        slideFrom: (pendingBass && pendingBass.id) || lastSupportId };
+                        slideFrom: (pendingBass && pendingBass.id) || lastSupportId,
+                        startAt: pendingBass || !lastSupportId ? null
+                          : Math.max(0, lastSupportEnd - SUPPORT_HANDOFF_LEAD) };
       } else {
         pendingBass = { id: zt.id, beats: zt.beats };
       }
@@ -1752,14 +1780,22 @@ function scheduleMelody(when) {
           else if (zt.type === "bar") {
             atBar = true;
             if (zt.bass) pendingBass = zt.slide
-              ? { id: zt.bass, beats: zt.beats, slideFrom: lastSupportId }
+              ? { id: zt.bass, beats: zt.beats, slideFrom: lastSupportId,
+                  startAt: pendingBass || !lastSupportId ? null
+                    : Math.max(0, lastSupportEnd - SUPPORT_HANDOFF_LEAD) }
               : { id: zt.bass, beats: zt.beats };
           } else if (zt.ext != null) {
             if (pendingBass) pendingBass.ext = (pendingBass.ext || 0) + zt.ext;
-            else if (lastSupportId) pendingBass = { id: lastSupportId, beats: zt.ext, ext: 0 };
+            else if (lastSupportId) {
+              pendingBass = { id: lastSupportId, beats: zt.ext, ext: 0,
+                              startAt: Math.max(0, lastSupportEnd - SUPPORT_HANDOFF_LEAD) };
+              firePending(audioCtx.currentTime + 0.02); // startAt is absolute: fire NOW
+            }
           } else if (zt.slide) {
             pendingBass = { id: zt.id, beats: zt.beats,
-                            slideFrom: (pendingBass && pendingBass.id) || lastSupportId };
+                            slideFrom: (pendingBass && pendingBass.id) || lastSupportId,
+                            startAt: pendingBass || !lastSupportId ? null
+                              : Math.max(0, lastSupportEnd - SUPPORT_HANDOFF_LEAD) };
           } else {
             pendingBass = { id: zt.id, beats: zt.beats };
           }

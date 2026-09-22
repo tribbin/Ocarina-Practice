@@ -32,6 +32,7 @@ function parse(src) {
           tok.dotted = c.dotted;
           tok.triplet = c.triplet;
           tok.beats = c.beats;
+          if (c.name) tok.desc = c.name; // hidden, but round-trips for tests
           if (c.glide) tok.slide = true; // [~F/4]: slides from the last support
         }
         tokens.push(tok);
@@ -55,7 +56,10 @@ function parse(src) {
           if (c.glide) bar.slide = true;
           if (c.name) bar.desc = c.name;
         } else if (c && c.ext != null) {
-          // An extension bracket has nothing to extend on a bar line: hide it.
+          // `| [-/1]` opens a measure: that bracket is NOT bar content — it is
+          // a continuation of the PREVIOUS measure's support ring. Emit it as
+          // its own marker token (the bar branch would otherwise swallow it).
+          tokens.push({ type: "bass", ext: c.ext });
         } else {
           bar.desc = m[7].slice(1, -1).replace(/^["']|["']$/g, "");
         }
