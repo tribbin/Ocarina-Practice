@@ -533,11 +533,18 @@ function setVibratoEnabled(on) {
 function unlockAudio() {
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === "suspended") audioCtx.resume();
+    if (audioCtx.state === "suspended") {
+      // resume() rejects outside a user gesture (autoplay policy); hovers
+      // must not stack rejected-promise errors in the console.
+      const p = audioCtx.resume();
+      if (p && p.catch) p.catch(() => {});
+    }
   } catch (e) {}
 }
 
-["pointerdown","pointerover","keydown","touchstart"].forEach(ev =>
+// Real user activations only. pointerover used to be in the list "to warm up"
+// but is not a gesture on Safari/Firefox — its resume() only ever rejected.
+["pointerdown","keydown","touchstart"].forEach(ev =>
   document.addEventListener(ev, unlockAudio, {passive:true})
 );
 
