@@ -1082,6 +1082,17 @@ function wireUi() {
   if (pracBtn) pracBtn.onclick = transportEngagePractice;
   const pracFocusBtn = document.getElementById("practiceFocusBtn");
   if (pracFocusBtn) pracFocusBtn.onclick = transportEngagePractice;
+  // The normal-mode mirror of the zen transport (same four controls in the
+  // same order, same state colors, panel-sized) gets the exact semantics of
+  // its zen twin: engage stores, Stop fully resets, Loop flips the checkbox.
+  document.getElementById("mirrorPlay").onclick = () => { unlockAudio(); transportEngagePlay(); };
+  document.getElementById("mirrorStop").onclick = transportStopAll;
+  document.getElementById("mirrorPractice").onclick = transportEngagePractice;
+  document.getElementById("mirrorLoop").onclick = () => {
+    const cb = document.getElementById("loopMel");
+    if (cb) cb.checked = !cb.checked;
+    syncLoopUI();
+  };
   const liteCb = document.getElementById("liteMel");
   if (liteCb) {
     try { if (localStorage.getItem("oco-lite") === "1") liteCb.checked = true; } catch (e) {}
@@ -1213,14 +1224,7 @@ function wireFocusControls() {
   const lp = document.getElementById("focusLoop");
   const ex = document.getElementById("focusExit");
   if (pp) pp.onclick = () => { unlockAudio(); transportEngagePlay(); };
-  if (st) st.onclick = () => {
-    // Full reset of whichever mode owns the transport.
-    if (typeof isPracticeActive === "function" && isPracticeActive() && window.OCA_PRACTICE) {
-      OCA_PRACTICE.stop();
-      return;
-    }
-    stopMelody();
-  };
+  if (st) st.onclick = transportStopAll;
   if (lp) lp.onclick = () => {
     const cb = document.getElementById("loopMel");
     if (cb) cb.checked = !cb.checked;
@@ -1241,13 +1245,25 @@ function wireFocusControls() {
   syncLoopUI();
 }
 
+// Full transport reset (zen Stop and the normal-mode mirror Stop): practice
+// owns it while engaged, otherwise the melody stops.
+function transportStopAll() {
+  if (typeof isPracticeActive === "function" && isPracticeActive() && window.OCA_PRACTICE) {
+    OCA_PRACTICE.stop();
+    return;
+  }
+  stopMelody();
+}
+
 function syncLoopUI() {
   const cb = document.getElementById("loopMel");
-  const lp = document.getElementById("focusLoop");
-  if (!lp) return;
-  const on = !!(cb && cb.checked);
-  lp.classList.toggle("on", on);
-  lp.setAttribute("aria-pressed", on ? "true" : "false");
+  for (const id of ["focusLoop", "mirrorLoop"]) {
+    const lp = document.getElementById(id);
+    if (!lp) continue;
+    const on = !!(cb && cb.checked);
+    lp.classList.toggle("on", on);
+    lp.setAttribute("aria-pressed", on ? "true" : "false");
+  }
 }
 
 function isFocusMode() {
@@ -1298,19 +1314,20 @@ function updateTransportUI() {
     // Neutral (idle/paused) is outline — never the black filled look.
     main.classList.toggle("on", playing);
   }
-  ["practiceBtn", "practiceFocusBtn"].forEach(id => {
+  ["practiceBtn", "practiceFocusBtn", "mirrorPractice"].forEach(id => {
     const b = document.getElementById(id);
     if (!b) return;
     b.classList.toggle("on", pracRuns);
     b.setAttribute("aria-pressed", pracRuns ? "true" : "false");
   });
-  const fp = document.getElementById("focusPlay");
-  if (fp) {
+  ["focusPlay", "mirrorPlay"].forEach(id => {
+    const fp = document.getElementById(id);
+    if (!fp) return;
     // The transport glyphs are inline SVG (index.html): the class flip alone
     // switches play ↔ pause. Never write textContent here — it would wipe
     // the svg children.
     fp.classList.toggle("is-playing", playing);
-  }
+  });
 }
 
 // The two transports engage / swap / disengage symmetrically:

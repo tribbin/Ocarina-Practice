@@ -253,6 +253,50 @@ async () => {
 """
 
 
+TRANSPORT = """
+() => {
+  // The normal-mode mirror of the zen transport: four controls, same order
+  // as zen (Loop, Play, Practice, Stop), inside #playback.
+  const tools = document.getElementById('barTools');
+  const out = { present: !!tools, ids: [], labels: 0,
+                playToggle: null, stopResets: null, practiceEngages: null,
+                loopToggles: null, isPlayingClass: null };
+  if (!tools) return out;
+  const btns = [...tools.querySelectorAll('button')];
+  out.ids = btns.map(b => b.id);
+  out.labels = btns.filter(b => (b.getAttribute('aria-label') || '').length > 2).length;
+  const play = document.getElementById('mirrorPlay');
+  const stop = document.getElementById('mirrorStop');
+  const prac = document.getElementById('mirrorPractice');
+  const loop = document.getElementById('mirrorLoop');
+  const loopCb = document.getElementById('loopMel');
+  if (typeof stopMelody === 'function') { try { stopMelody(); } catch (e) {} }
+  loopCb.checked = false;
+  // Play engages the transport; the button flips to the running look.
+  play.click();
+  out.playToggle = window.isMelodyPlaying();
+  out.isPlayingClass = play.classList.contains('is-playing');
+  // Stop is a full reset of whichever mode owns the transport.
+  stop.click();
+  out.stopResets = !window.isMelodyPlaying();
+  // Practice engages (aria-pressed mirrors the state), stop resets it too.
+  prac.click();
+  out.practiceEngages = !!window.OCA_PRACTICE && window.OCA_PRACTICE.active();
+  const pressed = prac.getAttribute('aria-pressed') === 'true';
+  out.practicePressed = pressed;
+  stop.click();
+  out.practiceReleased = !window.OCA_PRACTICE.active();
+  // Loop mirrors the checkbox.
+  const before = loopCb.checked;
+  loop.click();
+  out.loopToggles = loopCb.checked === !before
+    && loop.classList.contains('on') === !before;
+  if (!loopCb.checked) loop.click(); // restore
+  return out;
+}
+"""
+
+
 def main():
     failures = []
     httpd, port = start_server()
@@ -431,6 +475,42 @@ def main():
                     failures.append(
                         "touch: drifting off the chip must cancel the dwell "
                         "(scroll intent), no audition")
+
+            # --- normal-mode transport mirror ---
+            tb = page.evaluate(TRANSPORT)
+            if tb["present"]:
+                if tb["ids"] != ["mirrorLoop", "mirrorPlay", "mirrorPractice",
+                                 "mirrorStop"]:
+                    failures.append(
+                        f"transport: mirror must carry zen's four controls "
+                        f"in order, got {tb['ids']}")
+                if tb["labels"] != 4:
+                    failures.append(
+                        f"transport: every mirror button needs an "
+                        f"aria-label, got {tb['labels']}/4")
+                if tb["playToggle"] is not True or not tb["isPlayingClass"]:
+                    failures.append(
+                        "transport: the mirror Play must engage playback and "
+                        "flip to the running look (is-playing)")
+                if tb["stopResets"] is not True:
+                    failures.append(
+                        "transport: the mirror Stop must fully reset playback")
+                if tb["practiceEngages"] is not True or \
+                        not tb.get("practicePressed"):
+                    failures.append(
+                        "transport: the mirror Practice must engage practice "
+                        "and mirror its pressed state")
+                if tb["practiceReleased"] is not True:
+                    failures.append(
+                        "transport: the mirror Stop must reset practice too")
+                if tb["loopToggles"] is not True:
+                    failures.append(
+                        "transport: the mirror Loop must toggle the loop "
+                        "checkbox and its own pressed look")
+            else:
+                failures.append(
+                    "transport: normal mode lacks the mirrored transport row "
+                    "(#barTools)")
 
             if errs:
                 failures.append(f"page errors {errs}")

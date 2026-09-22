@@ -1021,6 +1021,31 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 .focus-btn.loop.on { background: var(--good); color: var(--paper); border-color: var(--good); }
 #tabPanel.focus .focus-btn.loop.on { background: var(--good); color: #fff; border-color: var(--good); }
 
+/* Normal-mode mirror of the zen transport: same four controls in the same
+   order and with the same state colors (running = --good green, engaged
+   practice = --ch2, loop on = --good), sized for the panel round-buttons
+   the normal mode's ink/paper vocabulary. */
+#barTools { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 0 2px; }
+.t-btn {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--ink); color: var(--paper); border: 0;
+  font-size: 18px; line-height: 1; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.t-btn:hover { filter: brightness(1.12); }
+.t-btn.play { width: 56px; height: 56px; font-size: 26px; }
+.t-btn.practice { font-size: 30px; }
+.t-btn.play.is-playing { background: var(--good); }
+.t-btn.practice.on { background: var(--ch2); }
+.t-btn.loop { background: transparent; color: var(--ink); border: 1px solid var(--ink); }
+.t-btn.loop.on { background: var(--good); color: var(--paper); border-color: var(--good); }
+/* SVG transport glyphs (same shapes as zen): play idle → triangle, running
+   → pause bars; Stop always its square. */
+.t-btn > svg { display: none; width: .85em; height: .85em; fill: currentColor; }
+#mirrorPlay:not(.is-playing) svg.g-play { display: block; transform: translateX(-.03em); }
+#mirrorPlay.is-playing svg.g-pause { display: block; }
+#mirrorStop svg.g-stop { display: block; }
+
 /* Exit button: fixed top-right, fades in on mouse move */
 .focus-exit { display: none; }
 #tabPanel.focus .focus-exit {
