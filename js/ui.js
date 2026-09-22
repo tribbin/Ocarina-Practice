@@ -24,6 +24,9 @@ function updateModeButtons() {
     const on = b.dataset.mode === displayMode;
     b.classList.toggle("on", on);
     b.setAttribute("aria-checked", on ? "true" : "false");
+    // Radiogroup roving tabindex: only the checked mode is a tab stop;
+    // arrows carry the rest (see the keydown wiring on the segment below).
+    b.setAttribute("tabindex", on ? "0" : "-1");
   });
 }
 
@@ -1109,6 +1112,25 @@ function wireUi() {
   document.querySelectorAll("#modeSeg .seg-btn").forEach(b => {
     b.onclick = () => setDisplayMode(b.dataset.mode);
   });
+  {
+    // Radiogroup arrow behaviour: arrows move focus AND selection, wrapping
+    // at the ends; Enter/Space stay native-button (Space is the global
+    // pause/continue shortcut and must not re-select here).
+    const segBtns = [...document.querySelectorAll("#modeSeg .seg-btn")];
+    const segMove = (from, dir) => {
+      const to = (from + dir + segBtns.length) % segBtns.length;
+      setDisplayMode(segBtns[to].dataset.mode);
+      segBtns[to].focus();
+    };
+    segBtns.forEach((b, i) => {
+      b.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); segMove(i, +1); }
+        else if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); segMove(i, -1); }
+        else if (e.key === "Home") { e.preventDefault(); segMove(i, -i); }
+        else if (e.key === "End") { e.preventDefault(); segMove(i, segBtns.length - 1 - i); }
+      });
+    });
+  }
   updateModeButtons();
   const fsBtn = document.getElementById("fullscreen");
   if (fsBtn) fsBtn.onclick = () => {
