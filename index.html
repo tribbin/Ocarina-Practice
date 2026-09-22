@@ -29,10 +29,8 @@
     <div class="block collapsed" id="inputBlock">
       <div class="box-head">
         <button class="ghost collapse-btn" type="button" aria-expanded="false" title="Expand" aria-label="Expand input block"></button>
-        <span class="box-title">INPUT</span>
-        <span class="box-sub">(type notes here)</span>
         <div class="lib-dd" id="libDd">
-          <span>Library</span>
+          <span class="head-label">Song Library</span>
           <div class="lib-dd-wrap">
             <button type="button" class="lib-dd-btn" id="libDdBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="libDdMenu">
               <span id="libDdText"></span>
@@ -67,16 +65,19 @@
         <!-- Lite is toggled in the perf screen; this hidden carrier keeps the
              shared state the perf switch / glitch toast read and persist. -->
         <input type="checkbox" id="liteMel" hidden>
-        <div class="bar-tools noprint" id="barTools" role="group" aria-label="Transport">
-          <button type="button" class="t-btn loop" id="mirrorLoop" title="Loop" aria-label="Loop" aria-pressed="false">↻</button>
-          <button type="button" class="t-btn play" id="mirrorPlay" title="Play / Pause" aria-label="Play or pause">
-            <svg class="g-play" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7.4 4.4 L20.2 12 L7.4 19.6 Z" stroke-linejoin="round"/></svg>
-            <svg class="g-pause" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4.6" y="5" width="5.2" height="14" rx="2.1"/><rect x="14.2" y="5" width="5.2" height="14" rx="2.1"/></svg>
-          </button>
-          <button type="button" class="t-btn practice" id="mirrorPractice" title="Practice mode: the song advances when you hit each note in tune" aria-label="Practice mode" aria-pressed="false">♪</button>
-          <button type="button" class="t-btn stop" id="mirrorStop" title="Stop" aria-label="Stop">
-            <svg class="g-stop" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4" y="4" width="16" height="16" rx="2.6"/></svg>
-          </button>
+        <div class="t-wrap noprint">
+          <span class="head-label">Playback Control</span>
+          <div class="bar-tools noprint" id="barTools" role="group" aria-label="Transport">
+            <button type="button" class="t-btn loop" id="mirrorLoop" title="Loop" aria-label="Loop" aria-pressed="false">↻</button>
+            <button type="button" class="t-btn play" id="mirrorPlay" title="Play / Pause" aria-label="Play or pause">
+              <svg class="g-play" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7.4 4.4 L20.2 12 L7.4 19.6 Z" stroke-linejoin="round"/></svg>
+              <svg class="g-pause" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4.6" y="5" width="5.2" height="14" rx="2.1"/><rect x="14.2" y="5" width="5.2" height="14" rx="2.1"/></svg>
+            </button>
+            <button type="button" class="t-btn practice" id="mirrorPractice" title="Practice mode: the song advances when you hit each note in tune" aria-label="Practice mode" aria-pressed="false">♪</button>
+            <button type="button" class="t-btn stop" id="mirrorStop" title="Stop" aria-label="Stop">
+              <svg class="g-stop" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4" y="4" width="16" height="16" rx="2.6"/></svg>
+            </button>
+          </div>
         </div>
         <div class="tempo-lab">
           <label class="dial-row" id="tempoGrp" for="tempo">
@@ -92,8 +93,6 @@
         </div>
       </div>
       <div class="tokens" id="tokens"></div>
-    </div>
-    <div class="block" id="pianoBlock">
     </div>
     <div class="block" id="pianoBlock">
       <div class="box-head">

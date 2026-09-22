@@ -687,17 +687,12 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
 .check-lab input { margin: 0; }
 h2#title { margin: 8px 0 10px; font-size: 18px; text-align: center; }
 
-/* Library cluster in the input head: the title sits on top, the song
-   dropdown below it — both centered on their shared midline (it no longer
-   borrows the Tempo dial's column styling, which misaligned the title). */
+/* Library cluster in the input head: the Song Library title sits on top, the
+   song dropdown below it — both centered on their shared midline. */
 .lib-dd {
   position: relative;
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
   margin-left: auto;
-}
-.lib-dd > span:first-child {
-  font-size: 11px; font-weight: 700; letter-spacing: .08em;
-  text-transform: uppercase; color: var(--clay-dark);
 }
 .lib-dd-wrap { position: relative; }
 .lib-dd-btn {
@@ -1047,14 +1042,33 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
    vocabulary (ghost outline) — black stays reserved for "activated" — and
    the row floats centered over the WHOLE header (static flow fallback on
    tight screens). */
+/* Sub-section titles that live inside a header row (Song Library in the
+   input head, Playback Control over the transport rounds): important but
+   compact, with a short accent rule under the words — the shared look both
+   headers wear. */
+.head-label {
+  font-size: 13px; font-weight: 800; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ink); line-height: 1.2;
+}
+.head-label::after {
+  content: ""; display: block; height: 2px; width: 2.4em;
+  margin: 4px auto 0; background: var(--accent); border-radius: 1px;
+}
+
 #playback > .box-head { position: relative; }
-#barTools {
-  display: flex; align-items: center; justify-content: center; gap: 10px;
+/* Playback Control + its round buttons float together, exactly centered
+   over the whole header; on tight screens the bundle drops into the flow. */
+.t-wrap {
   position: absolute; left: 50%; top: 50%;
   transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
 }
 @media (max-width: 760px) {
-  #barTools { position: static; transform: none; margin-inline: auto; flex-wrap: wrap; }
+  .t-wrap { position: static; transform: none; margin-inline: auto; }
+  #barTools { flex-wrap: wrap; }
+}
+#barTools {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
 }
 .t-btn {
   width: 44px; height: 44px; border-radius: 50%;
@@ -1069,6 +1083,11 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 .t-btn.practice.on { background: var(--ch2); color: var(--paper); border-color: var(--ch2); }
 .t-btn.loop.on { background: var(--good); color: var(--paper); border-color: var(--good); }
 .t-btn.play, .t-btn.practice, .t-btn.stop { box-shadow: 0 1px 0 rgba(0,0,0,.06); }
+/* OoT theme: inactive round glyphs join the other buttons' white-ink look
+   (ghost vocabulary); active states keep their own colors underneath. */
+html[data-theme="oot"] .t-btn {
+  color: #fff; border-color: rgba(255, 255, 255, 0.45);
+}
 /* SVG transport glyphs (same shapes as zen): play idle → triangle, running
    → pause bars; Stop always its square. */
 .t-btn > svg { display: none; width: .85em; height: .85em; fill: currentColor; }
