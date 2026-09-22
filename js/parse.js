@@ -1,6 +1,6 @@
 function parse(src) {
   const tokens = [];
-  const re = /([A-Ga-g])([#b])?(\d)?(\/\d+\.?t?)?(!)?|(\|)\s*(\[[^\]]*\])?|(r)(\/\d+\.?t?)?|(-)(\/\d+\.?t?)?|(~)|(#[^\n]*)|(\[[^\]]*\])/g;
+  const re = /([A-Ga-g])([#b])?(\d)?(?!\d)(\/\d+\.?t?)?(!)?|(\|)\s*(\[[^\]]*\])?|(r)(\/\d+\.?t?)?|(-)(\/\d+\.?t?)?|(~)|(#[^\n]*)|(\[[^\]]*\])/g;
   let m, lastOct = 4, lastPitch = null, canTie = false, pendingSlide = false;
   // Staccato may be written before or after the duration: normalize
   // "C5!/8" -> "C5/8!" so the /8 always parses (the note regex consumes
@@ -14,6 +14,13 @@ function parse(src) {
       // comments are ignored.
       const tc = m[13].match(/^#\s*tempo\s+(\d+)/i);
       if (tc && tokens.length) tokens.push({ type: "tempo", bpm: +tc[1] });
+      if (tc) {
+        // "# tempo N" written mid-line must NOT swallow the rest of the line
+        // (the comment match runs to \n). Rewind the scanner to just past
+        // the tempo number so trailing notes/tempo survive; every other
+        // comment keeps its whole-line swallow.
+        re.lastIndex -= (m[13].length - tc[0].length);
+      }
       continue;
     }
     if (m[14]) {

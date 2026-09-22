@@ -33,6 +33,8 @@ jobs:
         run: python tests/practice_accepts_melody.py
       - name: Run support-bracket tests
         run: python tests/support_accepts_brackets.py
+      - name: Run parser edge-case tests
+        run: python tests/parse_edges.py
       - name: Run voice error visibility test
         run: python tests/voice_error_visibility.py
       - name: Run keyboard widget tests
