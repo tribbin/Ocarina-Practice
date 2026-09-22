@@ -258,10 +258,14 @@ TRANSPORT = """
   // The normal-mode mirror of the zen transport: four controls, same order
   // as zen (Loop, Play, Practice, Stop), inside #playback.
   const tools = document.getElementById('barTools');
-  const out = { present: !!tools, ids: [], labels: 0,
+  const out = { present: !!tools, ids: [], labels: 0, squaresGone: null,
                 playToggle: null, stopResets: null, practiceEngages: null,
                 loopToggles: null, isPlayingClass: null };
   if (!tools) return out;
+  // The old text Play/Practice buttons must be gone — the round mirror
+  // replaced them in the header.
+  out.squaresGone = !document.getElementById('playMel')
+                    && !document.getElementById('practiceBtn');
   const btns = [...tools.querySelectorAll('button')];
   out.ids = btns.map(b => b.id);
   out.labels = btns.filter(b => (b.getAttribute('aria-label') || '').length > 2).length;
@@ -479,6 +483,10 @@ def main():
             # --- normal-mode transport mirror ---
             tb = page.evaluate(TRANSPORT)
             if tb["present"]:
+                if tb["squaresGone"] is not True:
+                    failures.append(
+                        "transport: the old text Play/Practice buttons must "
+                        "be gone (the round mirror replaced them)")
                 if tb["ids"] != ["mirrorLoop", "mirrorPlay", "mirrorPractice",
                                  "mirrorStop"]:
                     failures.append(

@@ -58,8 +58,17 @@
     <div class="block collapsed" id="playback">
       <div class="box-head">
         <button class="ghost collapse-btn" type="button" aria-expanded="false" title="Expand" aria-label="Expand playback block"></button>
-        <button type="button" id="playMel" class="toggle-btn">Play</button>
-        <button type="button" id="practiceBtn" class="toggle-btn" title="Practice mode: the song advances when you hit each note in tune through the microphone" aria-pressed="false">Practice</button>
+        <div class="bar-tools noprint" id="barTools" role="group" aria-label="Transport">
+          <button type="button" class="t-btn loop" id="mirrorLoop" title="Loop" aria-label="Loop" aria-pressed="false">↻</button>
+          <button type="button" class="t-btn play" id="mirrorPlay" title="Play / Pause" aria-label="Play or pause">
+            <svg class="g-play" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7.4 4.4 L20.2 12 L7.4 19.6 Z" stroke-linejoin="round"/></svg>
+            <svg class="g-pause" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4.6" y="5" width="5.2" height="14" rx="2.1"/><rect x="14.2" y="5" width="5.2" height="14" rx="2.1"/></svg>
+          </button>
+          <button type="button" class="t-btn practice" id="mirrorPractice" title="Practice mode: the song advances when you hit each note in tune" aria-label="Practice mode" aria-pressed="false">♪</button>
+          <button type="button" class="t-btn stop" id="mirrorStop" title="Stop" aria-label="Stop">
+            <svg class="g-stop" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4" y="4" width="16" height="16" rx="2.6"/></svg>
+          </button>
+        </div>
         <label class="box-sub loop-lab">
           <input type="checkbox" id="loopMel"> Loop
         </label>
@@ -69,7 +78,6 @@
         <label class="box-sub loop-lab" title="Cheaper synth voice + fewer visuals — avoids audio crackling on slower devices (not quieter)">
           <input type="checkbox" id="liteMel"> Lite
         </label>
-        <span class="box-sub">(click a note to play from there · ←/→ or hover = hear)</span>
         <div class="tempo-lab">
           <span class="tempo-grp" id="tempoGrp">
             Tempo
@@ -81,18 +89,9 @@
           <span id="swingVal">0</span>%
         </div>
       </div>
-      <div class="bar-tools noprint" id="barTools" role="group" aria-label="Transport">
-        <button type="button" class="t-btn loop" id="mirrorLoop" title="Loop" aria-label="Loop" aria-pressed="false">↻</button>
-        <button type="button" class="t-btn play" id="mirrorPlay" title="Play / Pause" aria-label="Play or pause">
-          <svg class="g-play" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7.4 4.4 L20.2 12 L7.4 19.6 Z" stroke-linejoin="round"/></svg>
-          <svg class="g-pause" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4.6" y="5" width="5.2" height="14" rx="2.1"/><rect x="14.2" y="5" width="5.2" height="14" rx="2.1"/></svg>
-        </button>
-        <button type="button" class="t-btn practice" id="mirrorPractice" title="Practice mode: the song advances when you hit each note in tune" aria-label="Practice mode" aria-pressed="false">♪</button>
-        <button type="button" class="t-btn stop" id="mirrorStop" title="Stop" aria-label="Stop">
-          <svg class="g-stop" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4" y="4" width="16" height="16" rx="2.6"/></svg>
-        </button>
-      </div>
       <div class="tokens" id="tokens"></div>
+    </div>
+    <div class="block" id="pianoBlock">
     </div>
     <div class="block" id="pianoBlock">
       <div class="box-head">

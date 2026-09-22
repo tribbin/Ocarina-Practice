@@ -564,6 +564,9 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
   font-size: 13px; font-weight: 600; color: var(--ink);
 }
 .tempo-lab input[type=range] { width: 90px; }
+/* Tempo rides a nested span (the practice-mode dimming hook) — flatten it to
+   the same flex line Swing uses so its slider and % align identically. */
+.tempo-grp { display: inline-flex; align-items: center; gap: 8px; }
 #inputBlock textarea#src {
   width: 100%; min-height: 74px; resize: vertical; border: 0;
   font: 15px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -1023,9 +1026,10 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 
 /* Normal-mode mirror of the zen transport: same four controls in the same
    order and with the same state colors (running = --good green, engaged
-   practice = --ch2, loop on = --good), sized for the panel round-buttons
-   the normal mode's ink/paper vocabulary. */
-#barTools { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 0 2px; }
+   practice = --ch2, loop on = --good), centered in the playback header —
+   no extra row: the text Play/Practice buttons and the hear-hint left with
+   this dedupe, the round buttons carry the space. */
+#barTools { display: flex; align-items: center; justify-content: center; gap: 10px; margin-inline: auto; }
 .t-btn {
   width: 44px; height: 44px; border-radius: 50%;
   background: var(--ink); color: var(--paper); border: 0;
@@ -1034,7 +1038,7 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 }
 .t-btn:hover { filter: brightness(1.12); }
 .t-btn.play { width: 56px; height: 56px; font-size: 26px; }
-.t-btn.practice { font-size: 30px; }
+.t-btn.practice { width: 56px; height: 56px; font-size: 30px; }
 .t-btn.play.is-playing { background: var(--good); }
 .t-btn.practice.on { background: var(--ch2); }
 .t-btn.loop { background: transparent; color: var(--ink); border: 1px solid var(--ink); }

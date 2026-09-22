@@ -1077,7 +1077,6 @@ function persistPlayHeaders() {
 }
 
 function wireUi() {
-  document.getElementById("playMel").onclick = transportEngagePlay;
   const pracBtn = document.getElementById("practiceBtn");
   if (pracBtn) pracBtn.onclick = transportEngagePractice;
   const pracFocusBtn = document.getElementById("practiceFocusBtn");
@@ -1305,15 +1304,6 @@ function updateTransportUI() {
   if (tg) tg.classList.toggle("dial-off", tempoOff);
   const ft = document.getElementById("focusTempoLab");
   if (ft) ft.classList.toggle("dial-off", tempoOff);
-  const main = document.getElementById("playMel");
-  if (main) {
-    // The button PAUSES (resume on the next click) — say so; a real stop is
-    // the transport's ⏹ (zen) or a song/library change. "Stop" read like
-    // losing the position, which it never did.
-    main.textContent = playing ? "Pause" : "Play";
-    // Neutral (idle/paused) is outline — never the black filled look.
-    main.classList.toggle("on", playing);
-  }
   ["practiceBtn", "practiceFocusBtn", "mirrorPractice"].forEach(id => {
     const b = document.getElementById(id);
     if (!b) return;
