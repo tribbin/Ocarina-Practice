@@ -1550,6 +1550,8 @@ function isMelodyPlaying() { return melodyPlaying; }function isMelodyPaused() { 
 function stopMelody() {
   melodyPlaying = false;
   melodyPaused = false;
+  pendingBass = null; // parked support markers die with the transport
+  openSupport = null;
   if (audioCtx) markSystemSound(melodyStopAt(audioCtx)); // sources stop past the bus decay
   melodyBag.forEach(n => { try { (n.fade || n.stop)(); } catch (e) {} });
   melodyBag = [];
@@ -1644,6 +1646,14 @@ function rewindMelody() {
 const SCHED_AHEAD = 0.3;  // schedule this far ahead of the audio clock (s)
 const SCHED_TICK = 0.05;  // how often the scheduler wakes up (s)
 
+// Support-note walk state (module scope like melodyIdx/melodyNextTime: the
+// scheduler returns between ticks whenever the lookahead window is full, and
+// markers parked across such a batch boundary MUST survive — per-call locals
+// silently dropped them).
+let pendingBass = null;   // { id, beats(null=until next bar), ext, slideFrom }
+let lastSupportId = null; // last support pitch that actually fired
+let openSupport = null;   // voice handle(s) of the last open-ended ring
+
 // Seconds a support note spans when its bracket carried no duration: grid
 // time from the pivot to the NEXT bar line (an inline tempo change rebalances
 // the tail via its own quarter; an end-of-song measure drones to the last
@@ -1665,11 +1675,11 @@ function bassSpanSec(startIdx) {
 // playNoteAt only pushes into the bag it is given, so a small dual forwarder
 // lands the same voice in the melody bag (pause/stop/loop decay) AND the
 // bass bag (setBassEnabled cuts it when focus mode turns off mid-playback).
-function playSupportAt(id, when, durSec) {
+function playSupportAt(id, when, durSec, slideFrom) {
   const base = melodyBag.length;
   playNoteAt(id, when, durSec, {
     push(v) { melodyBag.push(v); bassBag.push(v); }
-  });
+  }, slideFrom || null, false);
   return melodyBag.slice(base); // the voice handle(s) this support created
 }
 
@@ -1678,16 +1688,6 @@ function scheduleMelody(when) {
   // First call after (re)start seeds the clock from the passed absolute time.
   if (when != null) melodyNextTime = when;
   pruneBag(melodyBag);
-  // Support brackets (|[C2], |["Name",C2], [C2/4.] anywhere between bars)
-  // park here until the pivot event fires them: the FIRST rest or note that
-  // follows the previous note-chain — ties do not fire, they belong to the
-  // chain. Durationless markers ring until the next bar (bassSpanSec);
-  // durationed ones ring exactly their own length.
-  let pendingBass = null;
-  // The handle(s) of the LAST open-ended (until-bar) support voice, so a new
-  // open-ended one can retire it instead of stacking two endless drones.
-  let openSupport = null;
-
   function firePending(when) {
     if (!pendingBass) return;
     const p = pendingBass;
@@ -1696,13 +1696,16 @@ function scheduleMelody(when) {
     if (typeof isPracticeActive === "function" && isPracticeActive()) return;
     // Checked at fire time, not once at start: a practice switch later in the
     // song must never schedule further support notes.
-    const dur = p.beats != null
+    const base = p.beats != null
       ? p.beats * melodyQuarter / tempoSpeed()
       : bassSpanSec(melodyIdx);
+    // Every pending ring can carry accumulated [-/N] extensions.
+    const dur = base + (p.ext || 0) * melodyQuarter / tempoSpeed();
     // A new open-ended support retires the previous open-ended one (their
     // default spans overlap otherwise); bounded supports never cut anyone.
     if (p.beats == null && openSupport) openSupport.forEach(v => { try { (v.fade || v.stop)(); } catch (e) {} });
-    const voices = playSupportAt(p.id, when, dur);
+    const voices = playSupportAt(p.id, when, dur, p.slideFrom);
+    lastSupportId = p.id;
     if (p.beats == null) openSupport = voices;
   }
 
@@ -1716,8 +1719,24 @@ function scheduleMelody(when) {
             melodyTokens[melodyIdx].type === "bass")) {
       const zt = melodyTokens[melodyIdx];
       if (zt.type === "tempo") melodyQuarter = quarterSecFor(zt.bpm);
-      else if (zt.type === "bar") { atBar = true; if (zt.bass) pendingBass = { id: zt.bass, beats: zt.beats }; }
-      else pendingBass = { id: zt.id, beats: zt.beats };
+      else if (zt.type === "bar") {
+        atBar = true;
+        if (zt.bass) pendingBass = zt.slide
+          ? { id: zt.bass, beats: zt.beats, slideFrom: lastSupportId }
+          : { id: zt.bass, beats: zt.beats };
+      } else if (zt.ext != null) {
+        // [-/N]: extend the pending ring; with nothing pending, re-ring the
+        // last support's pitch for that long at the next pivot.
+        if (pendingBass) pendingBass.ext = (pendingBass.ext || 0) + zt.ext;
+        else if (lastSupportId) pendingBass = { id: lastSupportId, beats: zt.ext, ext: 0 };
+      } else if (zt.slide) {
+        // Slide anchor: an unfired pending support is still "the previous
+        // support note" textually — glide from its pitch (playNoteAt ramps).
+        pendingBass = { id: zt.id, beats: zt.beats,
+                        slideFrom: (pendingBass && pendingBass.id) || lastSupportId };
+      } else {
+        pendingBass = { id: zt.id, beats: zt.beats };
+      }
       melodyIdx++;
     }
     if (melodyIdx >= melodyTokens.length) {
@@ -1730,8 +1749,20 @@ function scheduleMelody(when) {
                 melodyTokens[melodyIdx].type === "bass")) {
           const zt = melodyTokens[melodyIdx];
           if (zt.type === "tempo") melodyQuarter = quarterSecFor(zt.bpm);
-          else if (zt.type === "bar") { atBar = true; if (zt.bass) pendingBass = { id: zt.bass, beats: zt.beats }; }
-          else pendingBass = { id: zt.id, beats: zt.beats };
+          else if (zt.type === "bar") {
+            atBar = true;
+            if (zt.bass) pendingBass = zt.slide
+              ? { id: zt.bass, beats: zt.beats, slideFrom: lastSupportId }
+              : { id: zt.bass, beats: zt.beats };
+          } else if (zt.ext != null) {
+            if (pendingBass) pendingBass.ext = (pendingBass.ext || 0) + zt.ext;
+            else if (lastSupportId) pendingBass = { id: lastSupportId, beats: zt.ext, ext: 0 };
+          } else if (zt.slide) {
+            pendingBass = { id: zt.id, beats: zt.beats,
+                            slideFrom: (pendingBass && pendingBass.id) || lastSupportId };
+          } else {
+            pendingBass = { id: zt.id, beats: zt.beats };
+          }
           melodyIdx++;
         }
         if (melodyIdx >= melodyTokens.length) { stopMelody(); return; }

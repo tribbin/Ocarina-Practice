@@ -19,12 +19,22 @@ function parse(src) {
     if (m[14]) {
       // Bracket marker NOT welded to a bar line: anywhere between bars it is
       // a hidden support note. Content is the same grammar a bar bracket
-      // accepts ("C2", "C2/4.", '"Name",C2/2'); a name-less speaker is
-      // meaningless here, so a content without a pitch tokenizes to nothing.
+      // accepts ("C2", "C2/4.", "~F/4", "-/2", '"Name",C2/2'); a content
+      // without a pitch tokenizes to nothing.
       const c = bracketContent(m[14].slice(1, -1));
-      if (c && c.bass) {
-        tokens.push({ type: "bass", id: c.bass, dur: c.dur, dotted: c.dotted,
-                      triplet: c.triplet, beats: c.beats });
+      if (c) {
+        const tok = { type: "bass" };
+        if (c.ext != null) {
+          tok.ext = c.ext; // [-/2]: extends the pending support's ring
+        } else {
+          tok.id = c.bass;
+          tok.dur = c.dur;
+          tok.dotted = c.dotted;
+          tok.triplet = c.triplet;
+          tok.beats = c.beats;
+          if (c.glide) tok.slide = true; // [~F/4]: slides from the last support
+        }
+        tokens.push(tok);
       }
       continue;
     }
@@ -42,7 +52,10 @@ function parse(src) {
         if (c && c.bass) {
           bar.bass = c.bass;
           bar.beats = c.beats;
+          if (c.glide) bar.slide = true;
           if (c.name) bar.desc = c.name;
+        } else if (c && c.ext != null) {
+          // An extension bracket has nothing to extend on a bar line: hide it.
         } else {
           bar.desc = m[7].slice(1, -1).replace(/^["']|["']$/g, "");
         }
@@ -117,13 +130,49 @@ function parseDur(spec) {
 }
 
 // Shared bracket-field grammar for bar brackets (|[C2]) and inline markers
-// ([C2]): the LAST comma part must be a pitch, optionally with a note
-// duration ("C2/4.", '/2t' — no staccato, a drone ring is just a length).
+// ([C2]): the LAST comma part is either
+//   a pitch with optional duration  — C2, C2/4. (no staccato: a drone ring is
+//                                     just a length; triplets allowed),
+//   a glide into a pitch            — ~F/4 or ~F/2.B (slides from the
+//                                     previous support note's pitch),
+//   an extension                    — -/2 extends the pending support's ring
+//                                     by that many beats (bare - with no
+//                                     length means nothing).
 // Anything else is not a support note: callers fall back to desc-only and
 // silent-skip respectively, so old descriptions never break.
 function bracketContent(content) {
   const parts = String(content).split(",");
   const tail = parts[parts.length - 1].trim();
+  const meta = parts.length > 1
+    ? parts.slice(0, -1).join(",").trim().replace(/^["']|["']$/g, "")
+    : null;
+  // Extension: dash + optional duration.
+  const ext = tail.match(/^-(\/\d+\.?t?)?$/);
+  if (ext) {
+    if (!ext[1]) return null; // bare [-]: no length, not a support note
+    return { ext: parseDur(ext[1]).beats };
+  }
+  // Glide: ~ Pitch with optional duration.
+  const gl = tail.match(/^~\s*([A-G]s?[1-8])(.*)$/);
+  if (gl) {
+    const rest = gl[2].trim();
+    let pd = null;
+    if (rest) {
+      if (!/^\/\d+\.?t?$/.test(rest)) return null; // junk tail → not a support note
+      pd = parseDur(rest);
+    }
+    const out = {
+      bass: gl[1],
+      dur: pd ? pd.dur : null,
+      dotted: pd ? pd.dotted : false,
+      triplet: pd ? pd.triplet : false,
+      beats: pd ? pd.beats : null, // null = ring until the next bar (default)
+      glide: true,
+    };
+    if (meta) out.name = meta;
+    return out;
+  }
+  // Plain pitch with optional duration.
   const pm = tail.match(/^([A-G]s?[1-8])(.*)$/);
   if (!pm) return null;
   const rest = pm[2].trim();
@@ -137,13 +186,9 @@ function bracketContent(content) {
     dur: pd ? pd.dur : null,
     dotted: pd ? pd.dotted : false,
     triplet: pd ? pd.triplet : false,
-    beats: pd ? pd.beats : null, // null = ring until the next bar (default)
+    beats: pd ? pd.beats : null,
   };
-  if (parts.length > 1) {
-    const name = parts.slice(0, -1).join(",")
-      .trim().replace(/^["']|["']$/g, "");
-    if (name) out.name = name;
-  }
+  if (meta) out.name = meta;
   return out;
 }
 

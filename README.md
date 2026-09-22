@@ -28,6 +28,7 @@ Built with plain HTML/CSS/JavaScript — no build step, no dependencies.
 | Sections | `\| [Section]` names a bar (shown on hover / as a header row) |
 | Bar support | `\| [C2]` or `\| ["Section", C2]` — modelled-note drone for that bar, Zen playback only |
 | Inline support | `[C2]` (rings to the next bar) or `[C2/4.]` (its own length) — starts with the next rest/note after the previous note chain, Zen playback only |
+| Support extensions | `[-/2]` extends the previous support's ring by that length (`[C2/2] [-/2]` = 4 beats); after it has rung it re-rings the same pitch; `[~F2/4]` glides in from the previous support's pitch |
 
 ## Running it
 
