@@ -2,10 +2,13 @@
 # Keyboard accessibility of the two interactive widgets:
 #   - piano keys must be operable from the keyboard: semantics (role=button),
 #     aria-labels, roving tabindex (exactly one tab stop), arrow navigation
-#     between keys, Enter/Space audition a note (a voice appears).
+#     between keys, Enter audits a note.
 #   - token chips in the playback strip must be keyboard-reachable and
 #     activatable: role=button + aria-label, roving tabindex with arrow
-#     navigation, Enter/Space = "play from here" (same as mouse click).
+#     navigation, Enter = "play from here" (same as mouse click).
+#   - Space is NEVER captured locally by either widget: it is the global
+#     Pause/Continue shortcut everywhere (a token/key click on Space used to
+#     mash with the global handler and leak a short faint note).
 #
 #   python3 tests/keyboard_widgets.py      # headless & silent
 
@@ -47,7 +50,8 @@ PIANO = """
   const labelled = keys.filter(k => (k.getAttribute('aria-label') || '').length > 3
                                     && k.getAttribute('role') === 'button');
   const out = { keyCount: keys.length, tabbable: tabbable.length,
-                labelled: labelled.length, afterArrow: null, voiceAfterEnter: null };
+                labelled: labelled.length, afterArrow: null, voiceAfterEnter: null,
+                spacePaused: null, spaceClicked: null, spaceVoices: null };
   if (!keys.length || !tabbable.length) return out;
   // Arrow navigation: from the focused/anchor key, ArrowRight must land on
   // the next data-note key in DOM order.
@@ -59,12 +63,27 @@ PIANO = """
   const all = [...document.querySelectorAll('#kb .key[data-note]')];
   const from = all.indexOf(start), to = all.indexOf(focusedKey);
   out.afterArrow = {from, to};
-  // Enter audits the note: a voice must be built (OCA_DEBUG.liveVoices()).
+  // Enter audits the note: a voice must be built (OCA_DEBUG.liveVoiceCount()).
   const before = window.OCA_DEBUG.liveVoiceCount ? window.OCA_DEBUG.liveVoiceCount() : null;
   focusedKey.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', bubbles: true}));
   out.voiceAfterEnter = window.OCA_DEBUG.liveVoiceCount ? window.OCA_DEBUG.liveVoiceCount() : null;
   out.voiceBefore = before;
   out.curBefore = document.activeElement ? document.activeElement.dataset.note : null;
+  // Space must NOT audition, must NOT click the key: it belongs to the global
+  // play/pause shortcut (pause/continue), consistently everywhere.
+  if (typeof stopMelody === 'function') { try { stopMelody(); } catch (e) {} }
+  if (typeof playMelody === 'function') playMelody(0);
+  let spaceClicked = false;
+  const spy = () => { spaceClicked = true; };
+  focusedKey.addEventListener('click', spy, { once: true, capture: true });
+  const voicesBefore = window.OCA_DEBUG.liveVoiceCount();
+  focusedKey.dispatchEvent(new KeyboardEvent('keydown', {key: ' ', bubbles: true}));
+  out.spaceClicked = spaceClicked;
+  out.spaceVoices = window.OCA_DEBUG.liveVoiceCount();
+  out.spacePaused = typeof isMelodyPaused === 'function' ? isMelodyPaused() : null;
+  out.spacePlaying = typeof isMelodyPlaying === 'function' ? isMelodyPlaying() : null;
+  out.voicesBefore = voicesBefore;
+  if (typeof stopMelody === 'function') { try { stopMelody(); } catch (e) {} }
   return out;
 }
 """
@@ -97,6 +116,14 @@ TOKENS = """
   if (out.playedFromToken && typeof stopMelody === 'function') {
     try { stopMelody(); } catch (e) {}
   }
+  // Space must NOT click the token: the global play/pause shortcut owns it.
+  if (typeof playMelody === 'function') playMelody(0);
+  let spaceClicked = false;
+  target.addEventListener('click', () => { spaceClicked = true; }, { once: true, capture: true });
+  target.dispatchEvent(new KeyboardEvent('keydown', {key: ' ', bubbles: true}));
+  out.spaceClicked = spaceClicked;
+  out.spacePaused = typeof isMelodyPaused === 'function' ? isMelodyPaused() : null;
+  if (typeof stopMelody === 'function') { try { stopMelody(); } catch (e) {} }
   return out;
 }
 """
@@ -144,6 +171,19 @@ def main():
                     f"{k['voiceBefore']} -> {k['voiceAfterEnter']})")
             if k["voiceAfterEnter"] and not k["curBefore"]:
                 failures.append("piano: focus must stay on the pressed key")
+            if k["spaceClicked"]:
+                failures.append(
+                    "piano: Space must not click/audition the key — it is the "
+                    "global pause/continue shortcut")
+            if k["spaceVoices"] != k["voicesBefore"]:
+                failures.append(
+                    f"piano: Space must not build a voice "
+                    f"({k['voicesBefore']} -> {k['spaceVoices']})")
+            if k["spacePaused"] is not True or k["spacePlaying"] is not False:
+                failures.append(
+                    f"piano: Space must toggle to paused via the global "
+                    f"shortcut (paused={k['spacePaused']}, "
+                    f"playing={k['spacePlaying']})")
 
             # --- tokens ---
             t = page.evaluate(TOKENS)
@@ -168,6 +208,14 @@ def main():
                     failures.append(
                         "tokens: Enter must play from that token "
                         "(isMelodyPlaying() stayed false)")
+                if t["spaceClicked"]:
+                    failures.append(
+                        "tokens: Space must not click the token — the global "
+                        "pause/continue shortcut owns Space")
+                if t["spacePaused"] is not True:
+                    failures.append(
+                        f"tokens: Space must pause playback via the global "
+                        f"shortcut (paused={t['spacePaused']})")
 
             if errs:
                 failures.append(f"page errors {errs}")
@@ -179,8 +227,8 @@ def main():
         for f in failures:
             print("  - " + f)
         return 1
-    print("\nPASS: piano keys and token chips are full keyboard citizens "
-          "(semantics, roving tabindex, arrows, Enter/Space activation).")
+    print("\nPASS: piano keys and token chips are keyboard citizens; Space is "
+          "exclusively the global Pause/Continue shortcut.")
     return 0
 
 

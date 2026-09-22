@@ -617,8 +617,8 @@ function hoverPreview(i, t) {
   playNote(t.id, Math.min(tokenSeconds(t), 0.5));
 }
 
-// Same visual preview as hover, but silent: keyboard focus must not make
-// noise — Enter/Space on the token is the deliberate "make noise" path.
+// Similarly to hover — silent: keyboard focus must not make noise; Enter on
+// the token is the deliberate "make noise" path.
 function tokenFocusPreview(i, t) {
   if (isMelodyPlaying()) return;
   if (typeof isPracticeActive === "function" && isPracticeActive()) return;
@@ -636,7 +636,10 @@ function tokAnchorSet(box, i) {
 
 function wireTokenKeydown(el, box) {
   el.addEventListener("keydown", e => {
-    if (e.key === "Enter" || e.key === " ") {
+    // Enter only: Space belongs to the global play/pause shortcut
+    // (wireSpacebar) — locally intercepting both made Space produce a
+    // click-pause mash: a short faint note.
+    if (e.key === "Enter") {
       e.preventDefault();
       el.click();             // "play from here" (or practice re-anchor)
       return;
@@ -839,8 +842,9 @@ function pianoNotePreview(id) {
 // Piano keyboard: keyboard-operable like the rest of the UI. Keys are
 // role=button with a roving tabindex (one tab stop for the whole keyboard).
 // Left/Right step chromatically, Up/Down move an octave, Home/End jump to the
-// ends; Enter/Space audition the focused key. Clicking keeps the roving
-// anchor on the pressed key, so arrows continue from where the mouse left off.
+// ends; Enter auditions the focused key and Space stays the global
+// pause/continue shortcut. Clicking keeps the roving anchor on the pressed
+// key, so arrows continue from where the mouse left off.
 function kbRoving(kb, active) {
   [...kb.querySelectorAll(".key[data-note]")].forEach(k =>
     k.tabIndex = k === active ? 0 : -1);
@@ -852,7 +856,7 @@ function kbWire(kb) {
     kb.addEventListener("keydown", e => {
       const el = e.target;
       if (!el.classList || !el.classList.contains("key") || !el.dataset.note) return;
-      if (e.key === "Enter" || e.key === " ") {
+      if (e.key === "Enter") {
         e.preventDefault();
         el.click();           // reuses the mouse handler (audition + preview)
         return;
@@ -871,7 +875,8 @@ function kbWire(kb) {
       e.preventDefault();     // navigation must not scroll the page
       kbRoving(kb, keys[n]);
       keys[n].focus();
-      // No audition on mere navigation — Enter/Space is the loud path.
+      // No audition on mere navigation — Enter is the loud path. Space falls
+      // through to the global pause/continue shortcut on purpose.
     });
   }
   kb.setAttribute("role", "group");
@@ -1251,8 +1256,9 @@ function wireSpacebar() {
     unlockAudio();
     if (typeof isPracticeActive === "function" && isPracticeActive()) practiceToggle();
     else if (isFocusMode()) togglePlayPause();
-    else if (typeof isMelodyPaused === "function" && isMelodyPaused()) resumeMelody();
-    else playMelody();
+    // Space = Pause/Continue, matching the Play/Pause button everywhere (it
+    // used to go through playMelody() and hard-STOPPED a running melody).
+    else transportEngagePlay();
   });
 }
 
