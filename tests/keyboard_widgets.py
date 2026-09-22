@@ -89,7 +89,7 @@ PIANO = """
 """
 
 TOKENS = """
-() => {
+async () => {
   // The playback block starts collapsed (display:none) — focus cannot land
   // there until it is expanded, exactly as for a human user. Expand first.
   const block = document.getElementById('playback');
@@ -106,11 +106,20 @@ TOKENS = """
     .filter(e => e.classList.contains('tok')).length;
   out.labels = toks.filter(t => (t.getAttribute('aria-label') || '').length > 3).length;
   // Focus the first activatable token, arrow right, Enter.
+  // Arrow-walk mirrors hovering: passing over a playable note must go
+  // through the hover-preview path (stub recordable even in headless,
+  // where the context stays suspended and the audible half stays silent).
+  const hpCalls = [];
+  const realHover = window.hoverPreview;
+  window.hoverPreview = (i, t) => { hpCalls.push({ i, id: t && t.id }); if (realHover) realHover(i, t); };
   toks[0].focus();
   toks[0].dispatchEvent(new KeyboardEvent('keydown', {key: 'ArrowRight', bubbles: true}));
   out.arrow = toks.indexOf(document.activeElement);
   const target = document.activeElement;
   out.arrowNote = target ? (target.getAttribute('aria-label') || '') : null;
+  out.hpCalls = hpCalls;
+  out.hadPreview = target ? target.classList.contains('now') : false;
+  window.hoverPreview = realHover;
   target.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', bubbles: true}));
   out.playedFromToken = window.isMelodyPlaying();
   if (out.playedFromToken && typeof stopMelody === 'function') {
@@ -124,6 +133,29 @@ TOKENS = """
   out.spaceClicked = spaceClicked;
   out.spacePaused = typeof isMelodyPaused === 'function' ? isMelodyPaused() : null;
   if (typeof stopMelody === 'function') { try { stopMelody(); } catch (e) {} }
+  // --- dwell: hover and arrow-walk must DELAY the note, not fire on touch ---
+  out.audio = window.OCA_DEBUG.audioState ? window.OCA_DEBUG.audioState() : null;
+  if (out.audio === 'running') {
+    const realPn = window.playNote;
+    window.__pn = [];
+    window.playNote = (...args) => { window.__pn.push(args[0]); return realPn(...args); };
+    const rest = (ms) => new Promise(r => setTimeout(r, ms));
+    // The gesture click raised the hover quiet-window (hushHovers); settle
+    // it out so the probe measures the dwell delay, not the quiet window.
+    await rest(500);
+    // mouseenter = highlight now, note only after the dwell delay
+    toks[1].dispatchEvent(new MouseEvent('mouseenter'));
+    out.pnImmediate = window.__pn.length;
+    await new Promise(r => setTimeout(r, 450));
+    out.pnAfterDwell = window.__pn.length;
+    out.pnFirstId = window.__pn[0] || null;
+    // graze-and-leave must cancel the pending note (no sound)
+    toks[2].dispatchEvent(new MouseEvent('mouseenter'));
+    toks[2].dispatchEvent(new MouseEvent('mouseleave'));
+    await new Promise(r => setTimeout(r, 400));
+    out.pnAfterSkim = window.__pn.length;
+    window.playNote = realPn;
+  }
   return out;
 }
 """
@@ -143,6 +175,9 @@ def main():
             page.wait_for_function(BOOT_WAIT)
 
             # --- piano ---
+            # Real user gesture FIRST (click on inert space): unlocks the
+            # context so the token-dwell probes can actually audition.
+            page.mouse.click(3, 3)
             k = page.evaluate(PIANO)
             if k["keyCount"] < 15:
                 failures.append(
@@ -204,6 +239,15 @@ def main():
                     failures.append(
                         f"tokens: ArrowRight must move focus to the next "
                         f"token (got index {t['arrow']})")
+                if not t["hadPreview"]:
+                    failures.append(
+                        "tokens: arrowing over a playable note must light it "
+                        "up (focus highlight)")
+                hp = t["hpCalls"] or []
+                if not hp or hp[0]["i"] != 1:
+                    failures.append(
+                        f"tokens: arrowing over a playable note must enter "
+                        f"the hover-preview path (audition), got {hp!r}")
                 if t["playedFromToken"] is not True:
                     failures.append(
                         "tokens: Enter must play from that token "
@@ -216,6 +260,25 @@ def main():
                     failures.append(
                         f"tokens: Space must pause playback via the global "
                         f"shortcut (paused={t['spacePaused']})")
+                if t["audio"] != "running":
+                    failures.append(
+                        f"tokens: audio context must be running after a real "
+                        f"gesture, got {t['audio']!r} (dwell assertions skip)")
+                else:
+                    if t["pnImmediate"] != 0:
+                        failures.append(
+                            "tokens: hovering must NOT fire the note "
+                            "immediately — it must wait out the dwell delay")
+                    if t["pnAfterDwell"] != 1 or \
+                            t["pnFirstId"] != t["arrowNote"].replace("Play from ", ""):
+                        failures.append(
+                            f"tokens: resting on a note must eventually "
+                            f"audition it once, got {t['pnAfterDwell']} calls "
+                            f"(first {t['pnFirstId']!r})")
+                    if t["pnAfterSkim"] != t["pnAfterDwell"]:
+                        failures.append(
+                            "tokens: grazing a token and leaving must cancel "
+                            "the pending note")
 
             if errs:
                 failures.append(f"page errors {errs}")

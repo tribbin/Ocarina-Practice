@@ -1,7 +1,6 @@
 let APP_CSS = "";
 let lastTokens = [];
 let liveIdx = -1;
-let lastHoverNoteAt = 0;
 let displayMode = "grid"; // "grid" | "scroll" | "single"
 let zenPrevMode = null;
 
@@ -603,18 +602,41 @@ function clearHighlight() {
   document.querySelectorAll(".tok.now, .card.now, .rest.now, .key.now").forEach(el => el.classList.remove("now"));
 }
 
+// Hover/arrow preview: the HIGHLIGHT is immediate; the note is deliberately
+// DELAYED — it only sounds after pointer/arrow settles on the token for
+// HOVER_HEAR_MS. Grazing the strip while moving across the screen (or
+// sweeping arrow keys through the melody) must not machine-gun notes;
+// resting on one is the deliberate "listen" (matching hover/arrow equally).
+// Both inputs go through this one scheduler: a newer preview cancels the
+// pending one, so only the token you settle on is heard.
+const HOVER_HEAR_MS = 260;
+let hoverVoiceTimer = 0, hoverVoiceToken = null;
+
+function hushTokenHover() {
+  if (hoverVoiceTimer) { clearTimeout(hoverVoiceTimer); hoverVoiceTimer = 0; }
+  hoverVoiceToken = null;
+}
+
 function hoverPreview(i, t) {
   if (isMelodyPlaying() || hoverQuietUntil > Date.now()) return;
   // Practicing owns the glow and the sounds: token hovers would inject
   // playback-mode pulses over the fill-driven halo.
   if (typeof isPracticeActive === "function" && isPracticeActive()) return;
   highlightToken(i, t.id);
-  unlockAudio();
-  if (!audioCtx || audioCtx.state !== "running") return;
-  const now = Date.now();
-  if (now - lastHoverNoteAt < 70) return;
-  lastHoverNoteAt = now;
-  playNote(t.id, Math.min(tokenSeconds(t), 0.5));
+  // Same token already dwelling — don't re-arm, that would defeat the delay.
+  if (hoverVoiceTimer && hoverVoiceToken === t) return;
+  hushTokenHover();
+  hoverVoiceToken = t;
+  hoverVoiceTimer = setTimeout(() => {
+    hoverVoiceTimer = 0;
+    // Re-check at fire time: the melody may have started, or a redraw
+    // began a new quiet window while the pointer rested here.
+    if (isMelodyPlaying() || hoverQuietUntil > Date.now()) { hushTokenHover(); return; }
+    if (typeof isPracticeActive === "function" && isPracticeActive()) return;
+    unlockAudio();
+    if (!audioCtx || audioCtx.state !== "running") return;
+    playNote(t.id, Math.min(tokenSeconds(t), 0.5));
+  }, HOVER_HEAR_MS);
 }
 
 // Similarly to hover — silent: keyboard focus must not make noise; Enter on
@@ -641,6 +663,7 @@ function wireTokenKeydown(el, box) {
     // click-pause mash: a short faint note.
     if (e.key === "Enter") {
       e.preventDefault();
+      hushTokenHover();       // committing to playback: no pending preview
       el.click();             // "play from here" (or practice re-anchor)
       return;
     }
@@ -656,6 +679,12 @@ function wireTokenKeydown(el, box) {
     e.preventDefault();
     tokAnchorSet(box, +toks[n].dataset.i);
     toks[n].focus();
+    // Arrow-walk mirrors hovering: passing over the melody hears it only
+    // when you settle. The dwell scheduler inside hoverPreview cancels the
+    // previous token's pending note, so sweeping arrows stays silent.
+    const t = lastTokens && lastTokens[+toks[n].dataset.i];
+    if (t && (t.type === "note" || t.type === "tie") && t.id && NOTES.includes(t.id))
+      hoverPreview(+toks[n].dataset.i, t);
   });
 }
 
@@ -685,10 +714,12 @@ function buildTokenEl(t, i) {
       el.innerHTML = `– <span class="td">${durLabel(t.dur, t.dotted, t.triplet)}</span>`;
       el.addEventListener("mouseenter", () => hoverPreview(i, t));
       el.addEventListener("mouseleave", () => {
+        hushTokenHover();
         if (!isMelodyPlaying()) clearHighlight();
       });
       el.addEventListener("focus", () => tokenFocusPreview(i, t));
       el.addEventListener("blur", () => {
+        hushTokenHover();
         if (!isMelodyPlaying()) clearHighlight();
       });
     } else if (isOutOfRange(t.id)) {
@@ -722,10 +753,12 @@ function buildTokenEl(t, i) {
     if (t.staccato) el.classList.add("staccato");
     el.addEventListener("mouseenter", () => hoverPreview(i, t));
     el.addEventListener("mouseleave", () => {
+      hushTokenHover();
       if (!isMelodyPlaying()) clearHighlight();
     });
     el.addEventListener("focus", () => tokenFocusPreview(i, t));
     el.addEventListener("blur", () => {
+      hushTokenHover();
       if (!isMelodyPlaying()) clearHighlight();
     });
   }

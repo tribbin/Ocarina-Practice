@@ -140,6 +140,8 @@ window.OCA_DEBUG = {
   // Alive hover/piano voices right now (debug panel + tests expose how much
   // audio machinery a stray script is building).
   liveVoiceCount() { return countAliveVoices(liveVoices); },
+  // "none" / "suspended" / "running" — the autoplay-policy state of the ctx.
+  audioState() { return audioCtx ? audioCtx.state : "none"; },
   // Live audit helper: the full derived voice profile for a note id.
   profile(id) { return voiceProfileFor(id, freqOf(id)); },
   // The installed per-ocarina tone model (instruments/<id>/tone.json) —
