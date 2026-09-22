@@ -297,6 +297,9 @@ button.tiny { padding: 4px 8px; font-size: 12px; }
 .toggle-btn.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .err { color: var(--accent); font-size: 13px; }
 .err:empty { display: none; }
+/* OoT: the accent's dark red disappears on the grass — errors need the same
+   bright salmon the bad-chip scribbles wear. */
+html[data-theme="oot"] .err { color: #ff9d80; }
 .range-warn {
   display: flex; align-items: center; gap: 10px;
   background: var(--warn-bg); color: var(--warn-ink);
@@ -604,6 +607,15 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
   display: flex; align-items: center; gap: 6px; cursor: pointer; margin: 0;
 }
 .loop-lab input { margin: 0; }
+/* Library file actions pair into two-button stacks: each stack is a grid so
+   both buttons stretch to the same column width — labels align perfectly. */
+.lib-pair {
+  display: grid; gap: 4px; align-self: start;
+}
+.lib-pair > button { width: 100%; }
+/* Clear empties the input field itself — meaningless while the field is
+   folded away, so it follows the block's collapsed state. */
+#inputBlock.collapsed .box-head #clear { display: none; }
 /* Three-zone tool row: left cluster (view controls) at the left edge, right
    cluster at the right edge, Zen mode exactly centered. Both side columns are
    equal 1fr, so the middle column's center is the panel's centerline — where
