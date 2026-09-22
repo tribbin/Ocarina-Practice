@@ -1,7 +1,28 @@
-window.onerror = function(m, s, l) {
-  const e = document.getElementById("err");
-  if (e) e.textContent = m + " @" + l;
+// Global error net: uncaught window errors and unhandled promise rejections
+// land in #err as appended lines — the messages render()/boot() put there
+// must survive (both sides write the same node, so overwriting here would
+// wipe theirs and overwrite-by-them would drop a crash report).
+function reportGlobalError(label, detail, error) {
+  const el = document.getElementById("err");
+  if (!el) return;
+  const line = document.createElement("div");
+  let text = label + ": " + (detail || "unknown error");
+  if (error && error.stack) {
+    // The stack's 2nd line names the throw site (1st repeats the message).
+    const frame = String(error.stack).split("\n")[1];
+    if (frame) text += " — " + frame.trim();
+  }
+  line.textContent = text;
+  el.appendChild(line);
+}
+window.onerror = function(m, s, l, c, error) {
+  reportGlobalError("window error", (m || "unknown") + " @" + (s || "?") + ":" + l, error);
 };
+window.addEventListener("unhandledrejection", (ev) => {
+  const r = ev.reason;
+  reportGlobalError("unhandled rejection",
+                    r instanceof Error ? r.message : String(r), r instanceof Error ? r : null);
+});
 
 function installFingerings(fing) {
   window.FING = fing;

@@ -111,6 +111,46 @@ def main():
 
             if errs:
                 failures.append(f"page errors {errs}")
+
+            # --- global error net: window errors + unhandled rejections
+            # land in #err APPENDED, never clobbering the messages
+            # render()/boot() put there.
+            page2 = browser.new_page()
+            errs2 = []
+            page2.on("pageerror", lambda e: errs2.append(str(e)))
+            page2.goto(base)
+            page2.wait_for_function(BOOT_WAIT)
+            page2.evaluate("() => { const e = document.getElementById('err');"
+                           " e.textContent = 'precious'; }")
+            # Rejection from a timer so evaluate() never awaits it -> truly
+            # unhandled; thrower likewise (a deliberate, expected pageerror).
+            page2.evaluate("setTimeout(() => { Promise.reject"
+                           "(new Error('probe-rejection')); }, 0)")
+            page2.evaluate("setTimeout(() => { throw new Error"
+                           "('probe-window'); }, 0)")
+            page2.wait_for_timeout(300)
+            errText = page2.evaluate(
+                "() => document.getElementById('err').textContent")
+            if "precious" not in errText:
+                failures.append(
+                    "global handlers clobber #err (render/boot messages can "
+                    "be wiped): 'precious' gone, got " + errText[:120])
+            if "probe-rejection" not in errText:
+                failures.append(
+                    "an unhandled promise rejection was not surfaced in "
+                    "#err, got " + errText[:120])
+            if "probe-window" not in errText:
+                failures.append(
+                    "a window.onerror crash was not surfaced in #err, got "
+                    + errText[:120])
+            # The two probe errors ARE the expected pageerror entries.
+            unexpected = [e for e in errs2
+                          if "probe-window" not in e and "probe-rejection"
+                          not in e]
+            if unexpected:
+                failures.append(f"page errors {unexpected}")
+            page2.close()
+
             browser.close()
     finally:
         httpd.shutdown()

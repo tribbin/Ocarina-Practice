@@ -161,6 +161,38 @@ async () => {
 """
 
 
+MODESEG = """
+() => {
+  const btns = [...document.querySelectorAll('#modeSeg .seg-btn')];
+  const out = { count: btns.length,
+                tab0: btns.filter(b => b.getAttribute('tabindex') === '0').length,
+                checkedStart: btns.findIndex(b => b.getAttribute('aria-checked') === 'true'),
+                arrowFocus: null, arrowSel: null,
+                wrapFocus: null, wrapSel: null,
+                tabAfterClick: false, checkedAfterClick: false };
+  if (btns.length < 2) return out;
+  const sel = () => btns.findIndex(b => b.getAttribute('aria-checked') === 'true');
+  // Arrow navigation from the checked radio: focus AND selection move.
+  btns[out.checkedStart >= 0 ? out.checkedStart : 0].focus();
+  btns[0].dispatchEvent(new KeyboardEvent('keydown', {key: 'ArrowRight', bubbles: true}));
+  out.arrowFocus = btns.indexOf(document.activeElement);
+  out.arrowSel = sel();
+  // Wrap around from the last button.
+  btns[btns.length - 1].focus();
+  btns[btns.length - 1].dispatchEvent(new KeyboardEvent('keydown', {key: 'ArrowRight', bubbles: true}));
+  out.wrapFocus = btns.indexOf(document.activeElement);
+  out.wrapSel = sel();
+  // A click reassigns checks; the single tab stop must follow the checked item.
+  btns[1].click();
+  out.tabAfterClick = btns.filter(b => b.getAttribute('tabindex') === '0').length === 1
+    && btns[1].getAttribute('tabindex') === '0';
+  out.checkedAfterClick = sel() === 1;
+  btns[0].click(); // restore default
+  return out;
+}
+"""
+
+
 def main():
     failures = []
     httpd, port = start_server()
@@ -279,6 +311,37 @@ def main():
                         failures.append(
                             "tokens: grazing a token and leaving must cancel "
                             "the pending note")
+
+            # --- mode segment (radiogroup) ---
+            m = page.evaluate(MODESEG)
+            if m["count"] != 3:
+                failures.append(
+                    f"mode segment: expected 3 display-mode radios, got "
+                    f"{m['count']}")
+            else:
+                if m["checkedStart"] != 0:
+                    failures.append(
+                        f"mode segment: display mode must start checked on "
+                        f"the first radio, got index {m['checkedStart']}")
+                if m["tab0"] != 1:
+                    failures.append(
+                        f"mode segment: radiogroup must keep exactly ONE tab "
+                        f"stop (roving tabindex), got {m['tab0']}")
+                if m["arrowFocus"] != 1 or m["arrowSel"] != 1:
+                    failures.append(
+                        f"mode segment: ArrowRight must move focus AND "
+                        f"selection to the next radio "
+                        f"(focus {m['arrowFocus']}, sel {m['arrowSel']})")
+                if m["wrapFocus"] != 0 or m["wrapSel"] != 0:
+                    failures.append(
+                        f"mode segment: ArrowRight from the last radio must "
+                        f"wrap to the first (focus {m['wrapFocus']}, "
+                        f"sel {m['wrapSel']})")
+                if not m["checkedAfterClick"] or not m["tabAfterClick"]:
+                    failures.append(
+                        f"mode segment: clicking must select AND move the "
+                        f"roving tab stop (click {m['checkedAfterClick']}, "
+                        f"tab {m['tabAfterClick']})")
 
             if errs:
                 failures.append(f"page errors {errs}")
