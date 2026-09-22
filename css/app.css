@@ -560,13 +560,20 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
 .box-title { font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--clay-dark); }
 .box-sub { font-size: 12px; color: var(--muted); }
 .tempo-lab {
-  margin-left: auto; display: flex; align-items: center; gap: 8px;
+  margin-left: auto;
   font-size: 13px; font-weight: 600; color: var(--ink);
+  display: flex; flex-direction: column; gap: 4px;
 }
+/* Each dial is its own 3-column line: [title | slider | value]. Every row
+   shares the same tracks, so the two sliders command exactly over each
+   other (the title column is fixed too, so the slider edges cannot drift). */
+.dial-row {
+  display: grid;
+  grid-template-columns: 48px 90px max-content;
+  align-items: center; gap: 8px;
+}
+.dial-row > span:first-child { justify-self: end; }
 .tempo-lab input[type=range] { width: 90px; }
-/* Tempo rides a nested span (the practice-mode dimming hook) — flatten it to
-   the same flex line Swing uses so its slider and % align identically. */
-.tempo-grp { display: inline-flex; align-items: center; gap: 8px; }
 #inputBlock textarea#src {
   width: 100%; min-height: 74px; resize: vertical; border: 0;
   font: 15px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -1025,24 +1032,33 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 #tabPanel.focus .focus-btn.loop.on { background: var(--good); color: #fff; border-color: var(--good); }
 
 /* Normal-mode mirror of the zen transport: same four controls in the same
-   order and with the same state colors (running = --good green, engaged
-   practice = --ch2, loop on = --good), centered in the playback header —
-   no extra row: the text Play/Practice buttons and the hear-hint left with
-   this dedupe, the round buttons carry the space. */
-#barTools { display: flex; align-items: center; justify-content: center; gap: 10px; margin-inline: auto; }
+   order and with the same STATE colors (running = --good green, engaged
+   practice = --ch2, loop on = --good). The resting look is the inactive
+   vocabulary (ghost outline) — black stays reserved for "activated" — and
+   the row floats centered over the WHOLE header (static flow fallback on
+   tight screens). */
+#playback > .box-head { position: relative; }
+#barTools {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+}
+@media (max-width: 760px) {
+  #barTools { position: static; transform: none; margin-inline: auto; flex-wrap: wrap; }
+}
 .t-btn {
   width: 44px; height: 44px; border-radius: 50%;
-  background: var(--ink); color: var(--paper); border: 0;
+  background: transparent; color: var(--ink); border: 1px solid var(--line);
   font-size: 18px; line-height: 1; padding: 0;
   display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
 }
 .t-btn:hover { filter: brightness(1.12); }
 .t-btn.play { width: 56px; height: 56px; font-size: 26px; }
 .t-btn.practice { width: 56px; height: 56px; font-size: 30px; }
-.t-btn.play.is-playing { background: var(--good); }
-.t-btn.practice.on { background: var(--ch2); }
-.t-btn.loop { background: transparent; color: var(--ink); border: 1px solid var(--ink); }
+.t-btn.play.is-playing { background: var(--good); color: var(--paper); border-color: var(--good); }
+.t-btn.practice.on { background: var(--ch2); color: var(--paper); border-color: var(--ch2); }
 .t-btn.loop.on { background: var(--good); color: var(--paper); border-color: var(--good); }
+.t-btn.play, .t-btn.practice, .t-btn.stop { box-shadow: 0 1px 0 rgba(0,0,0,.06); }
 /* SVG transport glyphs (same shapes as zen): play idle → triangle, running
    → pause bars; Stop always its square. */
 .t-btn > svg { display: none; width: .85em; height: .85em; fill: currentColor; }
@@ -1318,7 +1334,7 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 /* The playback-only dials dim while practice owns the transport — opacity
    only: no layout change (the zen bar must not jump), ghosted and inert. */
 .tempo-grp, .focus-tempo { transition: opacity .2s linear; }
-.tempo-grp.dial-off, .focus-tempo.dial-off { opacity: .18; pointer-events: none; }
+.dial-row.dial-off, .focus-tempo.dial-off { opacity: .18; pointer-events: none; }
 #tabPanel.focus .focus-tempo,
 #tabPanel.focus .focus-tempo span,
 #tabPanel.focus .focus-tempo label { color: var(--paper); }
