@@ -1,0 +1,458 @@
+{
+ "instrument": "Dummy Bass C — double, low + middle chambers only",
+ "range": {
+  "low": "A3",
+  "high": "C6"
+ },
+ "system": "Asian linear",
+ "chambers": {
+  "1": {
+   "blow": "blow-ch1",
+   "color": "#8b3d2f"
+  },
+  "2": {
+   "blow": "blow-ch2",
+   "color": "#2f5f73"
+  }
+ },
+ "holes": {
+  "L-index": {
+   "hand": "left",
+   "finger": "index",
+   "chamber": 1
+  },
+  "L-middle-large": {
+   "hand": "left",
+   "finger": "middle",
+   "part": "large",
+   "chamber": 1
+  },
+  "L-middle-small": {
+   "hand": "left",
+   "finger": "middle",
+   "part": "small",
+   "chamber": 1,
+   "small": true
+  },
+  "L-ring": {
+   "hand": "left",
+   "finger": "ring",
+   "chamber": 1
+  },
+  "L-pinky": {
+   "hand": "left",
+   "finger": "pinky",
+   "chamber": 1
+  },
+  "R1-index": {
+   "hand": "right",
+   "finger": "index",
+   "chamber": 1
+  },
+  "R1-middle-small": {
+   "hand": "right",
+   "finger": "middle",
+   "part": "small",
+   "chamber": 1,
+   "small": true
+  },
+  "R1-middle-large": {
+   "hand": "right",
+   "finger": "middle",
+   "part": "large",
+   "chamber": 1
+  },
+  "R1-ring": {
+   "hand": "right",
+   "finger": "ring",
+   "chamber": 1
+  },
+  "R1-pinky": {
+   "hand": "right",
+   "finger": "pinky",
+   "chamber": 1
+  },
+  "thumb": {
+   "hand": "left",
+   "finger": "thumb",
+   "chamber": 1,
+   "active_on_chambers": [
+    1
+   ]
+  },
+  "R2-index-high": {
+   "hand": "right",
+   "finger": "index",
+   "part": "high",
+   "chamber": 2
+  },
+  "R2-index-low": {
+   "hand": "right",
+   "finger": "index",
+   "part": "low",
+   "chamber": 2
+  },
+  "R2-middle-small": {
+   "hand": "right",
+   "finger": "middle",
+   "part": "small",
+   "chamber": 2,
+   "small": true
+  },
+  "R2-middle-large": {
+   "hand": "right",
+   "finger": "middle",
+   "part": "large",
+   "chamber": 2
+  },
+  "R2-ring": {
+   "hand": "right",
+   "finger": "ring",
+   "chamber": 2
+  },
+  "R2-pinky": {
+   "hand": "right",
+   "finger": "pinky",
+   "chamber": 2,
+   "small": true
+  },
+  "R2-tune": {
+   "hand": "right",
+   "finger": null,
+   "chamber": 2,
+   "role": "tuning",
+   "ignored": true
+  }
+ },
+ "notes": [
+  {
+   "id": "A3",
+   "display": "A₃",
+   "chamber": 1,
+   "covered": [
+    "L-index",
+    "L-middle-large",
+    "L-ring",
+    "L-pinky",
+    "R1-index",
+    "R1-middle-large",
+    "R1-ring",
+    "R1-pinky",
+    "thumb",
+    "L-middle-small",
+    "R1-middle-small"
+   ]
+  },
+  {
+   "id": "As3",
+   "display": "A♯₃/B♭₃",
+   "chamber": 1,
+   "covered": [
+    "L-index",
+    "L-middle-large",
+    "L-ring",
+    "L-pinky",
+    "R1-index",
+    "R1-middle-large",
+    "R1-ring",
+    "R1-pinky",
+    "thumb",
+    "L-middle-small"
+   ]
+  },
+  {
+   "id": "B3",
+   "display": "B₃",
+   "chamber": 1,
+   "covered": [
+    "L-index",
+    "L-middle-large",
+    "L-ring",
+    "L-pinky",
+    "R1-index",
+    "R1-middle-large",
+    "R1-ring",
+    "R1-pinky",
+    "thumb",
+    "R1-middle-small"
+   ]
+  },
+  {
+   "id": "C4",
+   "display": "C₄",
+   "chamber": 1,
+   "covered": [
+    "L-index",
+    "L-middle-large",
+    "L-ring",
+    "L-pinky",
+    "R1-index",
+    "R1-middle-large",
+    "R1-ring",
+    "R1-pinky",
+    "thumb"
+   ]
+  },
+  {
+   "id": "Cs4",
+   "display": "C♯₄/D♭₄",
+   "chamber": 1,
+   "covered": [
+    "L-index",
+    "L-middle-large",
+    "L-ring",
+    "L-pinky",
+    "R1-index",
+    "R1-middle-large",
+    "R1-middle-small",
+    "R1-ring",
+    "thumb"
+   ]
+  },
+  {
+   "id": "D4",
+   "display": "D₄",
+   "chamber": 1,
+   "covered": [
+    "L-index",
+    "L-middle-large",
+    "L-ring",
+    "L-pinky",
+    "R1-index",
+    "R1-middle-large",
+    "R1-ring",
+    "thumb"
+   ]
+  },
+  {
+   "id": "Ds4",
+   "display": "D♯₄/E♭₄",
+   "chamber": 1,
+   "covered": [
+    "L-index",
+    "L-middle-large",
+    "L-ring",
+    "L-pinky",
+    "R1-index",
+    "R1-middle-large",
+    "R1-pinky",
+    "thumb"
+   ]
+  },
+  {
+   "id": "E4",
+   "display": "E₄",
+   "chamber": 1,
+   "covered": [
+    "L-index",
+    "L-middle-large",
+    "L-ring",
+    "L-pinky",
+    "R1-index",
+    "R1-middle-large",
+    "thumb"
+   ]
+  },
+  {
+   "id": "F4",
+   "display": "F₄",
+   "chamber": 1,
+   "covered": [
+    "L-index",
+    "L-middle-large",
+    "L-ring",
+    "L-pinky",
+    "R1-index",
+    "thumb"
+   ]
+  },
+  {
+   "id": "Fs4",
+   "display": "F♯₄/G♭₄",
+   "chamber": 1,
+   "covered": [
+    "L-index",
+    "L-middle-large",
+    "L-ring",
+    "L-pinky",
+    "R1-ring",
+    "thumb"
+   ]
+  },
+  {
+   "id": "G4",
+   "display": "G₄",
+   "chamber": 1,
+   "covered": [
+    "L-index",
+    "L-middle-large",
+    "L-ring",
+    "L-pinky",
+    "thumb"
+   ]
+  },
+  {
+   "id": "Gs4",
+   "display": "G♯₄/A♭₄",
+   "chamber": 1,
+   "covered": [
+    "L-index",
+    "L-middle-large",
+    "L-pinky",
+    "R1-ring",
+    "thumb"
+   ]
+  },
+  {
+   "id": "A4",
+   "display": "A₄",
+   "chamber": 1,
+   "covered": [
+    "L-index",
+    "L-middle-large",
+    "L-pinky",
+    "thumb"
+   ]
+  },
+  {
+   "id": "As4",
+   "display": "A♯₄/B♭₄",
+   "chamber": 1,
+   "covered": [
+    "L-index",
+    "L-pinky",
+    "R1-ring",
+    "thumb"
+   ]
+  },
+  {
+   "id": "B4",
+   "display": "B₄",
+   "chamber": 1,
+   "covered": [
+    "L-index",
+    "L-pinky",
+    "thumb"
+   ]
+  },
+  {
+   "id": "C5",
+   "display": "C₅",
+   "chamber": 1,
+   "covered": [
+    "L-pinky",
+    "thumb"
+   ]
+  },
+  {
+   "id": "Cs5",
+   "display": "C♯₅/D♭₅",
+   "chamber": 1,
+   "covered": [
+    "L-pinky",
+    "R1-middle-large",
+    "R1-ring"
+   ]
+  },
+  {
+   "id": "D5",
+   "display": "D₅",
+   "chamber": 1,
+   "covered": [
+    "L-pinky"
+   ]
+  },
+  {
+   "id": "Ds5",
+   "display": "D♯₅/E♭₅",
+   "chamber": 1,
+   "covered": []
+  },
+  {
+   "id": "E5",
+   "display": "E₅",
+   "chamber": 2,
+   "covered": [
+    "R2-pinky",
+    "R2-ring",
+    "R2-middle-large",
+    "R2-index-low",
+    "R2-index-high"
+   ]
+  },
+  {
+   "id": "F5",
+   "display": "F₅",
+   "chamber": 2,
+   "covered": [
+    "R2-ring",
+    "R2-middle-large",
+    "R2-index-low",
+    "R2-index-high"
+   ]
+  },
+  {
+   "id": "Fs5",
+   "display": "F♯₅/G♭₅",
+   "chamber": 2,
+   "covered": [
+    "R2-pinky",
+    "R2-middle-large",
+    "R2-index-low",
+    "R2-index-high"
+   ]
+  },
+  {
+   "id": "G5",
+   "display": "G₅",
+   "chamber": 2,
+   "covered": [
+    "R2-middle-large",
+    "R2-index-low",
+    "R2-index-high"
+   ]
+  },
+  {
+   "id": "Gs5",
+   "display": "G♯₅/A♭₅",
+   "chamber": 2,
+   "covered": [
+    "R2-pinky",
+    "R2-index-low",
+    "R2-index-high"
+   ]
+  },
+  {
+   "id": "A5",
+   "display": "A₅",
+   "chamber": 2,
+   "covered": [
+    "R2-index-low",
+    "R2-index-high"
+   ]
+  },
+  {
+   "id": "As5",
+   "display": "A♯₅/B♭₅",
+   "chamber": 2,
+   "covered": [
+    "R2-index-low",
+    "R2-ring"
+   ]
+  },
+  {
+   "id": "B5",
+   "display": "B₅",
+   "chamber": 2,
+   "covered": [
+    "R2-index-low"
+   ]
+  },
+  {
+   "id": "C6",
+   "display": "C₆",
+   "chamber": 2,
+   "covered": []
+  }
+ ]
+}
