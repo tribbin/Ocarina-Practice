@@ -12,10 +12,11 @@ range and the file paths stay there). Folder contents:
 
 `instruments.json` entries may carry `"tone": "instruments/<id>/tone.json"`.
 A missing file is normal — that ocarina then keeps the baked-in generic model
-(the alto-derived extrapolation in `js/audio.js`), and nobody notices. Only
-instruments that actually have measurements declare the field (until then the
-loader treats a 404 as "no data yet"). If the file exists but is corrupt, the
-loader also falls back — tone data must never break boot.
+(the alto-derived extrapolation in `js/audio.js`), and nobody notices. A
+manifest entry may also declare the field ahead of its measurements (the
+per-chamber tuning work is planned for every ocarina); until the file lands
+the loader treats the 404 as "no data yet". If the file exists but is corrupt,
+the loader also falls back — tone data must never break boot.
 
 tone.json — schema v1 ("tone-fit-v1")
 -------------------------------------
