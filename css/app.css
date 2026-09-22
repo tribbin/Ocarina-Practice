@@ -431,14 +431,9 @@ svg.ocarina { width: 100%; height: auto; display: block; background: var(--oca-b
 .hole { fill: rgba(255,255,255,0.18); stroke: #5a3a28; stroke-width: 3; }
 .hole.on { fill: rgba(20,10,6,0.78); stroke: #1a0c08; }
 .hole.tune { fill: none; stroke: #b89a80; stroke-width: 2; stroke-dasharray: 4 3; }
-.thumb { fill: #f0d4b8; stroke: #5a3a28; stroke-width: 1.6; }
-.thumb.on { fill: #2a1a12; }
-.voicing { fill: none; stroke: #5a3a28; stroke-width: 1.4; }
-.bodyfill { fill: #d2b08a; stroke: #6b4a32; stroke-width: 2.2; }
-footer.hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
 kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1px solid var(--line); border-bottom-width: 2px; padding: 0 4px; border-radius: 3px; }
 @media print {
-  header.app, .noprint, footer.hint, .tab-tools, #stats, .focus-exit { display: none !important; }
+  header.app, .noprint, .tab-tools, #stats, .focus-exit { display: none !important; }
   html[data-theme="oot"], html[data-theme="oot"] body,
   body { background: #fff !important; background-image: none !important; }
   html[data-theme="oot"] body::before { display: none !important; }
@@ -477,12 +472,6 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
 }
 
 .click-help { margin: 0 0 0 10px; font-size: 12px; color: var(--muted); line-height: 1.35; }
-.melody-field {
-  border: 1px solid var(--line); border-radius: 8px; background: var(--paper); padding: 0 0 8px;
-}
-.melody-field textarea#src {
-  border: 0; background: transparent; margin: 0; border-radius: 8px 8px 0 0;
-}
 .tokens { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 4px 10px 6px; min-height: 36px; }
 .tok {
   display: inline-flex; align-items: center; gap: 8px;
@@ -603,7 +592,6 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
   display: flex; align-items: center; gap: 6px; cursor: pointer; margin: 0;
 }
 .loop-lab input { margin: 0; }
-.tab-heading { margin: 0 0 8px; }
 /* Three-zone tool row: left cluster (view controls) at the left edge, right
    cluster at the right edge, Zen mode exactly centered. Both side columns are
    equal 1fr, so the middle column's center is the panel's centerline — where
@@ -935,7 +923,6 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
   #pianoBlock .kb { padding: 8px 8px 4px; }
 }
 
-#tabPanel.focus .tab-heading,
 #tabPanel.focus .tab-tools,
 #tabPanel.focus #stats { display: none !important; }
 
