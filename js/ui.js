@@ -1079,6 +1079,23 @@ function persistPlayHeaders() {
 function wireUi() {
   const pracBtn = document.getElementById("practiceBtn");
   if (pracBtn) pracBtn.onclick = transportEngagePractice;
+  // The tick button toggles the shared hidden carrier; the pressed look
+  // always mirrors it (library loads write the carrier directly).
+  const tickBtn = document.getElementById("tickBtn");
+  const tickCb = document.getElementById("tickMel");
+  const syncTickBtn = () => {
+    if (tickBtn && tickCb) {
+      const on = tickCb.checked;
+      tickBtn.setAttribute("aria-pressed", on ? "true" : "false");
+      // The engaged look is the toggle vocabulary (black fills, paper text).
+      tickBtn.classList.toggle("on", on);
+    }
+  };
+  if (tickBtn && tickCb) {
+    tickBtn.onclick = () => { tickCb.checked = !tickCb.checked; syncTickBtn(); };
+    tickCb.addEventListener("change", syncTickBtn);
+    syncTickBtn();
+  }
   const pracFocusBtn = document.getElementById("practiceFocusBtn");
   if (pracFocusBtn) pracFocusBtn.onclick = transportEngagePractice;
   // The normal-mode mirror of the zen transport (same four controls in the
@@ -1576,7 +1593,12 @@ function wireZen() {
       const m = zenPrevMode; zenPrevMode = null; setDisplayMode(m);
     }
     const fsBtn = document.getElementById("fullscreen");
-    if (fsBtn) fsBtn.textContent = isFullscreen() ? "Exit full screen" : "Full screen";
+    // The corner button stays a glyph; only its tooltip/label swap sides.
+    if (fsBtn) {
+      const on = isFullscreen();
+      fsBtn.title = on ? "Exit full screen" : "Full screen";
+      fsBtn.setAttribute("aria-label", fsBtn.title);
+    }
     syncFocusMode();
     // Reverb belongs to zen/focus mode, not to any fullscreen: plain full
     // screen with grid/scroll stays dry. Vibrato/tremolo is owned by the
@@ -1619,8 +1641,10 @@ function buildPerfWidget() {
   perfBtn.title = "Audio performance — headroom, limiter, stalls";
   perfBtn.setAttribute("aria-haspopup", "true");
   perfBtn.setAttribute("aria-expanded", "false");
-  perfBtn.innerHTML = '<span class="perf-ico" aria-hidden="true">∿</span>' +
-    '<span class="perf-name">Audio<br>Performance</span>';
+  // Glyph-only button (both views): the name lives in the tooltip and the
+  // aria-label; the two-line label crowded the head.
+  perfBtn.setAttribute("aria-label", "Audio performance: headroom, limiter, stalls");
+  perfBtn.innerHTML = '<span class="perf-ico" aria-hidden="true">∿</span>';
   perfBtn.addEventListener("click", e => {
     e.stopPropagation();
     perfOpen = !perfOpen;

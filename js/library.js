@@ -324,7 +324,10 @@ function applySwing(n) {
 function applySongTick(v) {
   if (v == null) return;
   const cb = document.getElementById("tickMel");
-  if (cb) cb.checked = !!v;
+  if (cb) {
+    cb.checked = !!v;
+    cb.dispatchEvent(new Event("change")); // the tick button mirrors the carrier
+  }
 }
 
 function loadLibraryItem(id) {

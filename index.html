@@ -71,14 +71,15 @@
           <!-- Lite is toggled in the perf screen; this hidden carrier keeps the
                shared state the perf switch / glitch toast read and persist. -->
           <input type="checkbox" id="liteMel" hidden>
-          <!-- The Audio Performance button (relocated here by the JS) and the
-               tick toggle stack in this column. -->
+          <!-- The Audio Performance button (relocated here by the JS) sits
+               first; the playback tick rides to its right as a plain button. -->
           <div class="head-perf-col" id="headPerfCol">
-            <label class="box-sub loop-lab" title="Metronome tick during playback">
-              <input type="checkbox" id="tickMel" checked> Play tick at bars
-            </label>
+            <button class="ghost" type="button" id="tickBtn" aria-pressed="true" title="Metronome tick during playback">Play tick at bars</button>
           </div>
         </div>
+        <!-- Library save/load round-trips the tick flag through this hidden
+             carrier (audio tickEnabled / library.ts headers read .checked). -->
+        <input type="checkbox" id="tickMel" checked hidden>
         <div class="t-wrap noprint">
           <span class="head-label">Playback Control</span>
           <div class="bar-tools noprint" id="barTools" role="group" aria-label="Transport">
@@ -121,24 +122,34 @@
   </section>
 
   <section class="panel" id="tabPanel">
+    <h2 id="title" class="head-label"></h2>
+    <button class="icon-btn fs-corner noprint" id="fullscreen" type="button" aria-label="Full screen" title="Full screen">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/></svg>
+    </button>
+    <div class="zen-row noprint">
+      <button class="zen-btn" type="button" id="zen" title="Distraction-free practice (full screen)">◎ Zen mode</button>
+    </div>
     <div class="row tab-tools">
       <div class="tools-left">
-        <div class="mode-seg" id="modeSeg" role="radiogroup" aria-label="Display mode">
-          <button type="button" class="seg-btn" data-mode="grid" role="radio" aria-checked="true" tabindex="0">Grid</button>
-          <button type="button" class="seg-btn" data-mode="scroll" role="radio" aria-checked="false" tabindex="-1">Scroll</button>
-          <button type="button" class="seg-btn" data-mode="single" role="radio" aria-checked="false" tabindex="-1">Single</button>
-        </div>
-        <button class="ghost" type="button" id="fullscreen">Full screen</button>
         <button type="button" class="toggle-btn" id="bigSmall" aria-pressed="false">Enlarge small holes</button>
       </div>
-      <button class="zen-btn" type="button" id="zen" title="Distraction-free practice (full screen)">◎ Zen mode</button>
+      <div class="mode-seg" id="modeSeg" role="radiogroup" aria-label="Display mode">
+        <button type="button" class="seg-btn" data-mode="grid" role="radio" aria-checked="true" tabindex="0">Grid</button>
+        <button type="button" class="seg-btn" data-mode="scroll" role="radio" aria-checked="false" tabindex="-1">Scroll</button>
+        <button type="button" class="seg-btn" data-mode="single" role="radio" aria-checked="false" tabindex="-1">Single</button>
+      </div>
       <div class="tools-right">
-        <button class="ghost" type="button" id="shareZen" title="Copy a link that opens this ocarina and song straight in Zen mode">Share zen link</button>
-        <button class="ghost" type="button" id="print">Print</button>
-        <button class="ghost" type="button" id="download">Download tabs</button>
+        <button class="icon-btn" type="button" id="shareZen" title="Copy a link that opens this ocarina and song straight in Zen mode" aria-label="Share zen link">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M15 3h6v6M21 3l-9 9"/></svg>
+        </button>
+        <button class="icon-btn" type="button" id="print" title="Print" aria-label="Print">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/></svg>
+        </button>
+        <button class="icon-btn" type="button" id="download" title="Download tabs" aria-label="Download tabs">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        </button>
       </div>
     </div>
-    <h2 id="title"></h2>
     <div class="sheet-wrap"><div class="sheet" id="sheet"></div></div>
     <p class="hint" id="stats"></p>
     <button type="button" class="focus-exit" id="focusExit" title="Exit full screen" aria-label="Exit full screen">✕</button>
