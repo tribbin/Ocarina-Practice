@@ -67,10 +67,10 @@ function currentSongTitle() {
   return String(titleFromText(ta.value) || "").trim();
 }
 
-function songMatchesStem(stem, id, title) {
+function songMatchesStem(stem, id, title, titleRe) {
   if (!stem) return true;
   if (id === stem || (id && id.startsWith(stem + "-"))) return true;
-  if (stem === "sarias-song" && /^saria'?s song$/i.test(title)) return true;
+  if (titleRe && titleRe.test(title)) return true;
   return false;
 }
 
@@ -82,7 +82,15 @@ function currentTemplatePath() {
   const title = currentSongTitle();
   for (const rule of (inst.svgWhen || [])) {
     if (rule.theme && rule.theme !== theme) continue;
-    if (rule.song && !songMatchesStem(rule.song, id, title)) continue;
+    // A rule may match by song id, origin stem, or — via songTitle — by the
+    // song's title text (each rule owns its own title condition).
+    if (rule.songTitle) {
+      let titleRe = null;
+      try { titleRe = new RegExp(rule.songTitle, "i"); }
+      catch (e) { continue; } // broken manifest entry: skip, never crash render
+      if (rule.song && !songMatchesStem(rule.song, id, title, titleRe)) continue;
+      if (!rule.song && !titleRe.test(title)) continue;
+    } else if (rule.song && !songMatchesStem(rule.song, id, title)) continue;
     if (rule.svg) return rule.svg;
   }
   return inst.svg;

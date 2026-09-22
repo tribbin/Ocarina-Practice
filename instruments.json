@@ -30,6 +30,7 @@
         {
           "theme": "oot",
           "song": "sarias-song",
+          "songTitle": "^saria'?s song$",
           "svg": "instruments/oot-alto-c-12/ocarina-template-saria.svg"
         }
       ]
