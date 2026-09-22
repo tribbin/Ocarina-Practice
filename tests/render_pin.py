@@ -1,0 +1,274 @@
+#!/usr/bin/env python3
+# Render-behaviour pin (guardrail for the pending per-keystroke render
+# refactor): the refactor must NOT move any of these bits, so they are frozen
+# here before it starts —
+#   * the token strip chips (order, classes, raw text, data-i, roles)
+#   * the fingering-chart grid composition (cards with data-i, sec-head for
+#     named bars, tab-bar lines, tab-tempo chips, bad chips ABSENT)
+#   * the scroll band difference (a named bar keeps its tagged line instead
+#     of a header row) and the live/single sheet target
+#   * highlightToken's .now propagation across both strips and the sheet card
+#   * the token strip's focus-restore across a rebuild
+#
+#   python3 tests/render_pin.py      # headless & silent
+
+import http.server
+import socketserver
+import sys
+import threading
+from pathlib import Path
+
+from playwright.sync_api import sync_playwright
+
+ROOT = Path(__file__).resolve().parent.parent
+HEADLESS = "--headed" not in sys.argv
+WAIT = ("window.NOTES && window.NOTES.length"
+        " && typeof parse === 'function'")
+
+MELODY = ("# Pin\n"
+          "# tempo 120\n"
+          '|["A",C2] C4 D4/2 zz\n'
+          "# tempo 90\n"
+          "| E4 -/2 F4 G4 ~ C5 r/2")
+
+# chip = (class-prefix parts, text, data-i) walking BOTH strips in DOM order.
+
+STRIP_SPEC = [
+    (("bar has-note", "|", "0"), True),      # named bar chip
+    (("ch1", "C₄ 𝅘𝅥", "1"), True),
+    (("ch1", "D₄ 𝅗𝅥", "2"), True),
+    (("bad", "zz", "3"), False),             # junk chip: plain span, no role
+    (("tempo", "♩=90", "4"), True),
+    (("bar", "|", "5"), True),
+    (("ch1", "E₄ 𝅘𝅥", "6"), True),
+    (("tie ch1", "– 𝅗𝅥", "7"), True),
+    (("ch1", "F₄ 𝅘𝅥", "8"), True),
+    (("ch1", "G₄ 𝅘𝅥", "9"), True),
+    (("slide ch1", "⇝C₅ 𝅘𝅥", "10"), True),
+    (("pause", "r 𝅗𝅥", "11"), True),
+]
+
+SHEET_SPEC = [
+    ("sec-head", "A", None),
+    ("card ch1", "", "1"),
+    ("card ch1", "", "2"),
+    ("tab-tempo", "♩=90", "4"),
+    ("tab-bar", "", None),
+    ("card ch1", "", "6"),
+    ("card rest tie ch1", "– – 𝅗𝅥", "7"),
+    ("card ch1", "", "8"),
+    ("card ch1", "", "9"),
+    ("card ch1", "", "10"),
+    ("card rest", "rest 𝅗𝅥", "11"),
+]
+
+PROBE = """
+(SRC) => {
+  const ta = document.getElementById('src');
+  ta.value = SRC;
+  ta.dispatchEvent(new Event('input', { bubbles: true }));
+  const stripRows = [...document.querySelectorAll('#tokens > .tok')].map(el => ({
+    cls: el.className,
+    text: (el.textContent || '').replace(/\\s+/g, ' ').trim(),
+    di: el.dataset.i != null ? el.dataset.i : null,
+    role: el.getAttribute('role') || null,
+    label: el.getAttribute('aria-label') || null,
+    title: el.title || null,
+  }));
+  const focusRows = [...document.querySelectorAll('#focusTokens > .tok')].map(el => ({
+    cls: el.className, text: (el.textContent || '').replace(/\\s+/g, ' ').trim(),
+    di: el.dataset.i != null ? el.dataset.i : null,
+  }));
+  const sheetRows = [...document.getElementById('sheet').children].map(el => ({
+    cls: el.className.replace('tok', '').trim(),
+    text: (el.textContent || '').replace(/\\s+/g, ' ').trim().slice(0, 24),
+    di: el.dataset ? (el.dataset.i != null ? el.dataset.i : null) : null,
+  }));
+  return { stripRows, focusRows, sheetRows,
+           sheetMode: document.getElementById('sheet').className };
+}
+"""
+
+HIGHLIGHT = """
+(I) => {
+  highlightToken(I, null, undefined, false);
+  const lit = (scope) => [...document.querySelectorAll(scope)].map(el => el.dataset ? el.dataset.i : el.getAttribute('data-i') || el.className.includes('now') ? (el.dataset.i ?? '') : '').filter(x => x !== '');
+  const inStrip = [...document.querySelectorAll('#tokens .tok.now')].map(el => el.dataset.i);
+  const inFocus = [...document.querySelectorAll('#focusTokens .tok.now')].map(el => el.dataset.i);
+  const inSheet = [...document.querySelectorAll('#sheet .now')].map(el => el.dataset.i);
+  const anywhere = document.querySelectorAll('.now').length;
+  return { inStrip, inFocus, inSheet, anywhere };
+}
+"""
+
+FOCUS_RESTORE = """
+() => {
+  const first = [...document.querySelectorAll('#tokens .tok[role="button"]')]
+    .find(el => el.dataset.i === '1');
+  first.focus();
+  render();
+  const strip = [...document.querySelectorAll('#tokens .tok[role="button"]')];
+  return { focused: document.activeElement.dataset.i || null,
+           tabStops: strip.filter(el => el.tabIndex === 0).length,
+           onFocused: document.activeElement.dataset.i };
+}
+"""
+
+
+class QuietHandler(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *a, **kw):
+        super().__init__(*a, directory=str(ROOT), **kw)
+
+    def log_message(self, *a):
+        pass
+
+
+def start_server():
+    socketserver.ThreadingTCPServer.allow_reuse_address = True
+    httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), QuietHandler)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    return httpd, httpd.server_address[1]
+
+
+def main():
+    failures = []
+    httpd, port = start_server()
+    base = f"http://127.0.0.1:{port}"
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=HEADLESS,
+                                        args=["--autoplay-policy=no-user-gesture-required"])
+            page = browser.new_page()
+            errs = []
+            page.on("pageerror", lambda e: errs.append(str(e)))
+            page.goto(base)
+            page.wait_for_function(WAIT)
+            page.evaluate(
+                "() => { const b = document.getElementById('playback');"
+                " b.querySelector('.collapse-btn').click(); }")
+            r = page.evaluate(PROBE, MELODY)
+
+            # --- token strip (and the zen reading strip get the same chips)
+            if len(r["stripRows"]) != len(STRIP_SPEC):
+                failures.append(
+                    f"strip: expected {len(STRIP_SPEC)} chips, got "
+                    f"{len(r['stripRows'])}:\n    "
+                    + "\n    ".join(f"{x['cls']!r} {x['text']!r} i={x['di']}"
+                                    for x in r["stripRows"]))
+            else:
+                for got, (want, role) in zip(r["stripRows"], STRIP_SPEC):
+                    cls_prefix, text, di = want
+                    cls = got["cls"].split()
+                    prefix = cls_prefix.split()
+                    if not all(p in cls for p in prefix):
+                        failures.append(
+                            f"strip: chip i={di} class prefix mismatch — "
+                            f"need {prefix} in {got['cls']!r}")
+                    if got["text"] != text:
+                        failures.append(
+                            f"strip: chip i={di} text {got['text']!r} != "
+                            f"{text!r}")
+                    if role and got["role"] != "button":
+                        failures.append(
+                            f"strip: chip i={di} must be role=button (click/"
+                            f"Enter), got role={got['role']!r}")
+                    if not role and got["role"] is not None:
+                        failures.append(
+                            f"strip: chip i={di} must NOT be a button")
+                    if got["di"] != di:
+                        failures.append(
+                            f"strip: chip data-i {got['di']} != {di}")
+
+            if len(r["focusRows"]) != len(STRIP_SPEC):
+                failures.append(
+                    f"focus strip: expected {len(STRIP_SPEC)} chips, got "
+                    f"{len(r['focusRows'])}")
+
+            # --- sheet composition
+            if len(r["sheetRows"]) != len(SHEET_SPEC):
+                failures.append(
+                    f"sheet: expected {len(SHEET_SPEC)} children, got "
+                    f"{len(r['sheetRows'])}:\n    "
+                    + "\n    ".join(f"{x['cls']!r} {x['text']!r}"
+                                    for x in r["sheetRows"]))
+            else:
+                for got, (cls_prefix, text, di) in zip(r["sheetRows"],
+                                                       SHEET_SPEC):
+                    prefix = cls_prefix.split()
+                    cls = got["cls"].split()
+                    for want in prefix:
+                        if want not in cls:
+                            failures.append(
+                                f"sheet: class {want!r} missing from "
+                                f"{got['cls']!r} at data-i={di}")
+                    if text and got["text"] != text:
+                        failures.append(
+                            f"sheet: text {got['text']!r} != {text!r}")
+                    if got["di"] != di:
+                        failures.append(
+                            f"sheet: data-i {got['di']} != {di}")
+
+            # bad junk must never reach the grid
+            grid_text = page.evaluate(
+                "() => document.getElementById('sheet').textContent")
+            if "zz" in grid_text:
+                failures.append("sheet: junk ('zz') must not leak into the grid")
+
+            # --- scroll band: the named bar keeps its tagged line
+            page.evaluate("setDisplayMode('scroll')")
+            r2 = page.evaluate(PROBE, MELODY)
+            heads_scroll = [row["cls"] for row in r2["sheetRows"]
+                            if "sec-head" in row["cls"]]
+            bars_scroll = [row for row in r2["sheetRows"]
+                           if "tab-bar" in row["cls"]]
+            if heads_scroll:
+                failures.append(
+                    "scroll: the band must not grow header rows "
+                    f"(found {heads_scroll})")
+            if not any("has-note" in row["cls"] for row in bars_scroll):
+                failures.append(
+                    "scroll: the named bar must keep a tagged line "
+                    "(tab-bar has-note)")
+            page.evaluate("setDisplayMode('grid')")
+
+            # --- highlightToken propagation
+            h = page.evaluate(HIGHLIGHT, "10")
+            if h["inStrip"] != ["10"] or h["inFocus"] != ["10"] or \
+                    h["inSheet"] != ["10"]:
+                failures.append(
+                    f"highlight: .now must land on data-i=10 in strip, focus "
+                    f"strip and sheet, got strip {h['inStrip']} focus "
+                    f"{h['inFocus']} sheet {h['inSheet']}")
+            if h["anywhere"] != 3:
+                failures.append(
+                    f"highlight: old .now marks must clear (found "
+                    f"{h['anywhere']} marked elements, want 3)")
+
+            # --- focus restores across the rebuild
+            fr = page.evaluate(FOCUS_RESTORE)
+            if fr["focused"] != "1" or fr["onFocused"] != "1":
+                failures.append(
+                    f"rebuild: the focused token must keep focus across a "
+                    f"restore (got focused {fr['focused']!r})")
+            if fr["tabStops"] != 1:
+                failures.append(
+                    f"rebuild: exactly one roving tab stop must survive "
+                    f"(got {fr['tabStops']})")
+
+            if errs:
+                failures.append(f"page errors {errs}")
+            browser.close()
+    finally:
+        httpd.shutdown()
+    if failures:
+        print("\nFAIL:")
+        for f in failures:
+            print("  - " + f)
+        return 1
+    print("\nPASS: the render path's chips, grid composition, scroll-band "
+          "difference, highlight propagation and focus restore are pinned.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
