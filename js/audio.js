@@ -104,6 +104,30 @@ const AUDIO_DEFAULTS = {
   gapMs: 120, rmsGate: 0.01, chainTravelMs: 800,
 };
 const AUDIO_DEBUG = Object.assign({}, AUDIO_DEFAULTS);
+// Voice builders (playNoteAt/playTickAt) swallow any WebAudio failure so a
+// bad synth call can never break the page — but an ocarina that silently
+// plays nothing is the worst failure mode for a practice tool. Record
+// count + site + cause; the debug panel surfaces it via OCA_DEBUG.voiceErrors().
+let voiceErrorCount = 0, lastVoiceError = "", voiceWarnAt = 0;
+function recordVoiceError(site, e) {
+  voiceErrorCount++;
+  lastVoiceError = site + ": " + (e && e.message ? e.message : String(e));
+  const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+  if (now - voiceWarnAt > 1000) {   // at most one console line per second
+    voiceWarnAt = now;
+    try { console.warn("[audio] voice build failed: " + lastVoiceError); } catch (err) {}
+  }
+}
+// resume() rejects under autoplay policy (no user gesture yet); never let
+// that surface as an unhandled-rejection error — the next real gesture
+// retries via unlockAudio.
+function safeResume(ctx) {
+  try {
+    if (!ctx || ctx.state !== "suspended") return;
+    const p = ctx.resume();
+    if (p && p.catch) p.catch(() => {});
+  } catch (e) {}
+}
 // Exposed for the dev panel: params are tweaked in place; invalidateWave()
 // drops the cached PeriodicWave so the next note rebuilds it from the
 // current harmonic amplitudes.
@@ -111,6 +135,8 @@ window.OCA_DEBUG = {
   params: AUDIO_DEBUG,
   defaults: AUDIO_DEFAULTS,
   invalidateWave() { ocWaveCache = null; },
+  voiceErrors() { return { count: voiceErrorCount, last: lastVoiceError }; },
+  clearVoiceErrors() { voiceErrorCount = 0; lastVoiceError = ""; },
   // Live audit helper: the full derived voice profile for a note id.
   profile(id) { return voiceProfileFor(id, freqOf(id)); },
   // The installed per-ocarina tone model (instruments/<id>/tone.json) —
@@ -533,12 +559,7 @@ function setVibratoEnabled(on) {
 function unlockAudio() {
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === "suspended") {
-      // resume() rejects outside a user gesture (autoplay policy); hovers
-      // must not stack rejected-promise errors in the console.
-      const p = audioCtx.resume();
-      if (p && p.catch) p.catch(() => {});
-    }
+    safeResume(audioCtx);
   } catch (e) {}
 }
 
@@ -981,7 +1002,7 @@ function playNote(id, durSec) {
 function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === "suspended") audioCtx.resume();
+    if (audioCtx.state === "suspended") safeResume(audioCtx);
     const ctx = audioCtx;
     // Late scheduling (a main-thread stall past the 0.3 s lookahead — GC/JIT
     // bursts, worse on phones) hands a `when` already in the past. All gain/
@@ -1637,7 +1658,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
         }
       });
     }
-  } catch (e) {}
+  } catch (e) { recordVoiceError("playNoteAt " + id, e); }
 }
 
 function tickEnabled() {
@@ -1655,7 +1676,7 @@ function liteMode() {
 function playTickAt(when, bag) {
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === "suspended") audioCtx.resume();
+    if (audioCtx.state === "suspended") safeResume(audioCtx);
     const ctx = audioCtx;
     let t0 = when == null ? ctx.currentTime : when;
     if (t0 < ctx.currentTime + 0.015) t0 = ctx.currentTime + 0.015; // past-scheduled tick = click (see playNoteAt)
@@ -1686,7 +1707,7 @@ function playTickAt(when, bag) {
         try { osc.stop(ctx.currentTime + 0.05); } catch (e) {}
       }
     });
-  } catch (e) {}
+  } catch (e) { recordVoiceError("playTickAt", e); }
 }
 
 function isMelodyPlaying() { return melodyPlaying; }
