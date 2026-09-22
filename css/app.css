@@ -600,7 +600,6 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
   background: var(--panel); color: var(--ink);
 }
 
-.tempo-lab.lib-dd { gap: 6px; }
 .loop-lab {
   display: flex; align-items: center; gap: 6px; cursor: pointer; margin: 0;
 }
@@ -688,7 +687,18 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
 .check-lab input { margin: 0; }
 h2#title { margin: 8px 0 10px; font-size: 18px; text-align: center; }
 
-.lib-dd { position: relative; }
+/* Library cluster in the input head: the title sits on top, the song
+   dropdown below it — both centered on their shared midline (it no longer
+   borrows the Tempo dial's column styling, which misaligned the title). */
+.lib-dd {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  margin-left: auto;
+}
+.lib-dd > span:first-child {
+  font-size: 11px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--clay-dark);
+}
 .lib-dd-wrap { position: relative; }
 .lib-dd-btn {
   background: var(--panel) !important; color: var(--ink) !important;

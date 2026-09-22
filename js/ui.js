@@ -1797,7 +1797,13 @@ function perfRelocate() {
   const head = document.querySelector("#playback .box-head");
   const zen = !!(panel && panel.classList.contains("focus"));
   const target = zen ? panel : head;
-  if (target && perfWrap.parentElement !== target) target.appendChild(perfWrap);
+  if (target && perfWrap.parentElement !== target) {
+    // Second place, left of the toggles: directly after the collapse
+    // chevron — the head's leftmost item but one.
+    const collapse = target.querySelector(".collapse-btn");
+    if (collapse) target.insertBefore(perfWrap, collapse.nextSibling);
+    else target.insertBefore(perfWrap, target.firstChild);
+  }
 }
 
 // Collapsible section bodies: INPUT / PLAYBACK have a top-left chevron in
