@@ -25,6 +25,12 @@ HEADLESS = "--headed" not in sys.argv
 WAIT = ("window.NOTES && window.NOTES.length"
         " && typeof parse === 'function'")
 
+# Pinned against the Triple Bass C explicitly: the default instrument now
+# boots the 12-hole Alto C (the app's home instrument), whose A4–F6 range
+# would turn most of the pin melody into out-of-range cards. The Triple Bass
+# covers the melody AND spans all three chamber colors the spec calibrates.
+PIN_INST = "ico-oak-leaf-bass-c-triple"
+
 MELODY = ("# Pin\n"
           "# tempo 120\n"
           '|["A",C2] C4 D4/2 zz\n'
@@ -141,7 +147,7 @@ def main():
             page = browser.new_page()
             errs = []
             page.on("pageerror", lambda e: errs.append(str(e)))
-            page.goto(base)
+            page.goto(f"{base}?inst={PIN_INST}")
             page.wait_for_function(WAIT)
             page.evaluate(
                 "() => { const b = document.getElementById('playback');"

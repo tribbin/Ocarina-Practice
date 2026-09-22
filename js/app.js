@@ -161,7 +161,9 @@ function queryHas(name) {
 }
 
 function themeFromQuery() {
-  return queryHas("oot") ? "oot" : "";
+  // The Hyrule backdrop IS the app's home look now; `?plain` opts out to the
+  // classic light theme (`?oot` stays honored for old shared links).
+  return queryHas("plain") ? "" : "oot";
 }
 
 function applyTheme(name) {
@@ -240,8 +242,11 @@ async function boot() {
       fillLibrary(songParam);
       loadLibraryItem(songParam);
     } else {
-      fillLibrary("major");
-      loadLibraryItem("major");
+      // First visit territory: the Alto C's own Song of Storms is the home
+      // song; fall back to the major scale if the id is ever missing.
+      const home = BUILTIN["song-of-storms-alto"] ? "song-of-storms-alto" : "major";
+      fillLibrary(home);
+      loadLibraryItem(home);
     }
     if (queryHas("zen")) enterZenFromLink();
   } catch (err) {

@@ -40,6 +40,8 @@ python -m http.server 8000
 
 then open `http://localhost:8000`. Deploying as a static site (e.g. GitHub Pages) works as-is.
 
+Visiting without parameters opens the Hyrule Field look with the 12-hole Alto C and Song of Storms loaded; URL parameters steer things per link: `?plain` (classic light theme), `?inst=<ocarina id>` and `?song=<library id>` (in shared links), `?zen=1` (straight into Zen practice).
+
 ## Accepted by design
 
 Page-lifetime costs the app carries deliberately (all reviewed and kept — closing the
