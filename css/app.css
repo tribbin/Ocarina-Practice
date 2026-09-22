@@ -787,6 +787,7 @@ h2#title {
 /* The selected song centers in its own track; the caret anchors the right
    edge without shifting the text off center. */
 #libDdText { flex: 1; text-align: center; }
+#libDdText.placeholder { color: var(--muted); font-weight: 400; }
 .lib-dd-caret { position: absolute; right: 8px; font-size: 10px; opacity: .65; }
 .lib-dd-menu {
   position: absolute; top: calc(100% + 4px); right: 0; left: 0; z-index: 40;

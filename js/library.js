@@ -115,7 +115,7 @@ function fillLibrary(selectId) {
   // dropdown cannot keep pointing at a song that is currently hidden.
   if (cur && [...sel.options].some(o => o.value === cur)) sel.value = cur;
   else sel.selectedIndex = -1;
-  syncLibraryMenu();
+  syncLibraryMenu(cur);
 }
 
 function clearLibrarySelection() {
@@ -165,14 +165,25 @@ function pickLibrary(id) {
   syncLibraryMenu();
 }
 
-function syncLibraryMenu() {
+function syncLibraryMenu(holdId) {
   const sel = document.getElementById("scale");
   const menu = document.getElementById("libDdMenu");
   const text = document.getElementById("libDdText");
   if (!sel || !menu || !text) return;
   const cur = sel.value;
   const chosen = sel.options[sel.selectedIndex];
-  text.textContent = chosen ? chosen.textContent : "";
+  let label = chosen ? chosen.textContent : "";
+  // A song can drop out of the filtered list (out of range / hidden) while
+  // still being the song loaded in the editor: the label must keep saying so
+  // instead of collapsing flat. Genuinely different content (Clear / typed)
+  // shows the placeholder.
+  if (!label && holdId) {
+    const item = BUILTIN[holdId]
+      || (typeof userLib === "function" ? userLib()[holdId] : null);
+    if (item) label = item.name || holdId;
+  }
+  text.textContent = label || "No song selected";
+  text.classList.toggle("placeholder", !label);
   menu.innerHTML = "";
   for (const node of sel.children) {
     if (node.tagName === "OPTGROUP") {
