@@ -1550,10 +1550,6 @@ function isMelodyPlaying() { return melodyPlaying; }function isMelodyPaused() { 
 function stopMelody() {
   melodyPlaying = false;
   melodyPaused = false;
-  pendingBass = null; // parked support markers die with the transport
-  openSupport = null;
-  lastSupportId = null;
-  lastSupportEnd = 0;
   if (audioCtx) markSystemSound(melodyStopAt(audioCtx)); // sources stop past the bus decay
   melodyBag.forEach(n => { try { (n.fade || n.stop)(); } catch (e) {} });
   melodyBag = [];
@@ -1578,6 +1574,9 @@ function playMelody(fromIdx) {
   melodyHoldUntil = -1;
   melodyPaused = false;
   melodyPos = gridBeatsBefore(melodyTokens, melodyIdx);
+  // Statically anchor the second, parallel support melody to these tokens:
+  // its events fire at melody pivots while the walk runs.
+  supportPlan = buildSupportPlan(melodyTokens);
   // Seed the current tempo: header tempo, then any inline "# tempo" tokens that
   // occur before the start index (so playing from mid-song uses the right one).
   melodyQuarter = quarterSec();
@@ -1648,24 +1647,86 @@ function rewindMelody() {
 const SCHED_AHEAD = 0.3;  // schedule this far ahead of the audio clock (s)
 const SCHED_TICK = 0.05;  // how often the scheduler wakes up (s)
 
-// Support-note walk state (module scope like melodyIdx/melodyNextTime: the
-// scheduler returns between ticks whenever the lookahead window is full, and
-// markers parked across such a batch boundary MUST survive — per-call locals
-// silently dropped them).
-let pendingBass = null;   // { id, beats(null=until next bar), ext, slideFrom, startAt }
-let lastSupportId = null; // last support pitch that actually fired
-let lastSupportEnd = 0;   // audio-clock time that ring is scheduled to end
-let openSupport = null;   // voice handle(s) of the last open-ended ring
-// A continuation [-/N] starts this much BEFORE the previous ring's release
-// begins, so the two voices crossfade (the release itself runs ~0.18 s):
-// sounded as one long held tone instead of separate notes.
-const SUPPORT_HANDOFF_LEAD = 0.15;
+// ---------------------------------------------------------------------------
+// The support layer is a SECOND, PARALLEL MELODY (the contrabass track).
+// Brackets are its notes written inline: [C3/2] a note, [-/2] a tie that
+// extends the running chain, [~G3/2] a glide into a pitch. This pre-pass
+// turns markers into statically anchored plan events so the melody walk can
+// fire them with the melody's own note semantics at the melody clock — no
+// hand-off state, no seams: an event's onset IS the melody time of the pivot
+// after its marker (first rest/note; bar/tempo/bass, ties transparent), and
+// a ring plus its extensions are ONE voice exactly like a melody tie chain.
+// ---------------------------------------------------------------------------
 
-// Seconds a support note spans when its bracket carried no duration: grid
-// time from the pivot to the NEXT bar line (an inline tempo change rebalances
-// the tail via its own quarter; an end-of-song measure drones to the last
-// token). Bass markers are zero-time and thus naturally transparent here.
-function bassSpanSec(startIdx) {
+// Static plan built once in playMelody: { byAnchor: Map<idx, events[]>,
+// trailing, loopEvents, open }. Events (all in marker order per anchor):
+//   { anchorIdx, id, beats(null = durationless), ext, slide, slideFrom,
+//     intoSlide } — beats/ext are grid beats, composed at fire time with the
+// live quarter the same way melody notes are.
+let supportPlan = null;
+
+function buildSupportPlan(tokens) {
+  const byAnchor = new Map(), trailing = [];
+  let last = null;   // running chain: the last planned note event
+  let queue = [];    // markers parked awaiting their pivot, in marker order
+  const flush = idx => {
+    if (!queue.length) return;
+    if (idx >= tokens.length) { // past the last note: the one end-of-song ring
+      for (const e of queue) trailing.push(e);
+      queue = [];
+      return;
+    }
+    let list = byAnchor.get(idx);
+    if (!list) byAnchor.set(idx, list = []);
+    for (const e of queue) { e.anchorIdx = idx; list.push(e); }
+    queue = [];
+  };
+  // A glide whose anchor is the running chain's pitch makes that note flow
+  // into the slide: full hold, crossfaded past the junction (the melody's
+  // own note-into-~ rule, unbroken by melody rests between the slots).
+  const markIntoSlide = (e, prev) => {
+    if (!prev || !e.slide || !prev.id || e.id === prev.id) return;
+    if (e.slideFrom === prev.id) prev.intoSlide = true;
+  };
+  const park = (id, beats, slide, desc) => {
+    const e = { id, beats: beats == null ? null : beats, ext: 0,
+                slide: !!slide,
+                slideFrom: slide && last && last.id ? last.id : null,
+                intoSlide: false };
+    if (desc) e.desc = desc; // hidden, kept for round-trips
+    markIntoSlide(e, last);
+    last = e;
+    queue.push(e);
+  };
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    if (t.type === "bar") {
+      if (t.bass) park(t.bass, t.beats, t.slide, t.desc);
+      continue;
+    }
+    if (t.type === "tempo") continue; // transparent: markers ride past it
+    if (t.type === "bass") {
+      if (t.ext != null) {
+        // [-/N]: tie — extends the running chain's ring. Ties never sound on
+        // their own and never fire; the chain may span melody rests (the
+        // glue is the support track's own chain, not the melody's).
+        if (last) last.ext += t.ext;
+        continue;
+      }
+      park(t.id, t.beats, t.slide, t.desc);
+      continue;
+    }
+    if (t.type === "note" || t.type === "rest") flush(i); // pivot (ties skip)
+  }
+  flush(tokens.length); // markers past the last note still get their ring
+  return { byAnchor, trailing, loopEvents: null, open: null };
+}
+
+// Seconds a durationless support spans: grid time from its anchor to the
+// NEXT bar line (an inline tempo change rebalances the tail via its own
+// quarter; an end-of-song measure drones to the last token) — the synthesized
+// fill the parallel track gets for a bracket with no notated length.
+function openSupportSpanSec(startIdx) {
   let beats = 0, q = melodyQuarter;
   for (let i = startIdx; i < melodyTokens.length; i++) {
     const t = melodyTokens[i];
@@ -1682,12 +1743,58 @@ function bassSpanSec(startIdx) {
 // playNoteAt only pushes into the bag it is given, so a small dual forwarder
 // lands the same voice in the melody bag (pause/stop/loop decay) AND the
 // bass bag (setBassEnabled cuts it when focus mode turns off mid-playback).
-function playSupportAt(id, when, durSec, slideFrom) {
+function playSupportAt(id, when, durSec, slideFrom, intoSlide) {
   const base = melodyBag.length;
   playNoteAt(id, when, durSec, {
     push(v) { melodyBag.push(v); bassBag.push(v); }
-  }, slideFrom || null, false);
+  }, slideFrom || null, !!intoSlide);
   return melodyBag.slice(base); // the voice handle(s) this support created
+}
+
+// Fires every plan event anchored at the melody token `anchorIdx` (in marker
+// order): Zen playback only, checked at fire time so a practice switch later
+// in the song never schedules further support notes.
+function fireDueSupport(anchorIdx, when) {
+  const plan = supportPlan;
+  if (!plan) return;
+  const list = plan.byAnchor.get(anchorIdx);
+  const armed = plan.loopEvents;
+  if (!list && !armed) return;
+  plan.loopEvents = null; // the loop-pass trailing flush is one-shot
+  if (!(typeof isFocusMode === "function") || !isFocusMode()) return;
+  if (typeof isPracticeActive === "function" && isPracticeActive()) return;
+  if (list) for (const e of list) fireSupportEvent(e, when);
+  if (armed) for (const e of armed) fireSupportEvent(e, when);
+}
+
+function fireSupportEvent(e, when) {
+  let dur, slideFrom = null, intoSlide = false;
+  if (e.beats == null) {
+    // Durationless: ring until the next bar (or the last token) — the
+    // synthesized fill, timed live like the pre-track drones were.
+    dur = openSupportSpanSec(e.anchorIdx);
+    if (e.ext) dur += e.ext * melodyQuarter / tempoSpeed();
+  } else {
+    const hold = (e.beats + e.ext) * melodyQuarter; // melody holds read the live quarter
+    dur = Math.max(0.09, e.intoSlide ? hold : hold * 0.92);
+    slideFrom = e.slide ? e.slideFrom : null;
+    intoSlide = !!e.intoSlide;
+  }
+  // A new open-ended ring — and a glide taking over a sustained drone —
+  // retires the previous still-open ring (their spans would overlap through
+  // the ring/glide otherwise). Plain bounded supports never cut anyone.
+  if ((e.beats == null || e.slide) && supportPlan.open &&
+      supportPlan.open.anchorIdx !== e.anchorIdx) {
+    supportPlan.open.voices.forEach(v => { try { (v.fade || v.stop)(); } catch (err) {} });
+    supportPlan.open = null;
+  }
+  const voices = playSupportAt(e.id, when, dur, slideFrom, intoSlide);
+  if (e.beats == null) {
+    // Same-anchor open events are a chord: keep one cut-set per pivot.
+    if (supportPlan.open && supportPlan.open.anchorIdx === e.anchorIdx)
+      supportPlan.open.voices.push(...voices);
+    else supportPlan.open = { anchorIdx: e.anchorIdx, voices };
+  }
 }
 
 function scheduleMelody(when) {
@@ -1695,110 +1802,38 @@ function scheduleMelody(when) {
   // First call after (re)start seeds the clock from the passed absolute time.
   if (when != null) melodyNextTime = when;
   pruneBag(melodyBag);
-  function firePending(when) {
-    if (!pendingBass) return;
-    const p = pendingBass;
-    pendingBass = null;
-    if (!(typeof isFocusMode === "function") || !isFocusMode()) return;
-    if (typeof isPracticeActive === "function" && isPracticeActive()) return;
-    // Checked at fire time, not once at start: a practice switch later in the
-    // song must never schedule further support notes.
-    const base = p.beats != null
-      ? p.beats * melodyQuarter / tempoSpeed()
-      : bassSpanSec(melodyIdx);
-    // Every pending ring can carry accumulated [-/N] extensions.
-    const dur = base + (p.ext || 0) * melodyQuarter / tempoSpeed();
-    // A new open-ended support retires the previous open-ended one (their
-    // default spans overlap otherwise), and a hand-off (startAt) takes over
-    // the previous sustained drone — it must not keep ringing through the
-    // glide. Plain bounded supports never cut anyone.
-    if ((p.beats == null || p.startAt != null) && openSupport)
-      openSupport.forEach(v => { try { (v.fade || v.stop)(); } catch (e) {} });
-    // Continuations [−/N] with nothing pending carry their own start time:
-    // the previous ring's end minus the hand-off lead (never in the past).
-    const t0 = p.startAt != null ? Math.max(p.startAt, audioCtx.currentTime + 0.02) : when;
-    const voices = playSupportAt(p.id, t0, dur, p.slideFrom);
-    lastSupportId = p.id;
-    lastSupportEnd = t0 + dur;
-    if (p.beats == null) openSupport = voices;
-  }
-
   while (melodyNextTime < audioCtx.currentTime + SCHED_AHEAD) {
     let atBar = (melodyIdx === melodyFrom);
-    // Consume bar lines (zero time), inline tempo changes and hidden support
-    // markers. A "tempo" token switches the sec-per-quarter used from this
-    // point forward; brackets park their pitch for the pivot to fire.
+    // Consume bar lines (zero time) and inline tempo changes (a "tempo"
+    // token switches the sec-per-quarter used from this point forward).
+    // Support markers are zero-time too but need no walk: the support plan
+    // (buildSupportPlan) is statically anchored to these token indices and
+    // fires at the pivot below.
     while (melodyIdx < melodyTokens.length &&
            (melodyTokens[melodyIdx].type === "bar" || melodyTokens[melodyIdx].type === "tempo" ||
             melodyTokens[melodyIdx].type === "bass")) {
       const zt = melodyTokens[melodyIdx];
       if (zt.type === "tempo") melodyQuarter = quarterSecFor(zt.bpm);
-      else if (zt.type === "bar") {
-        atBar = true;
-        if (zt.bass) pendingBass = zt.slide
-          ? { id: zt.bass, beats: zt.beats, slideFrom: lastSupportId,
-              startAt: pendingBass || !lastSupportId ? null
-                : Math.max(0, lastSupportEnd - SUPPORT_HANDOFF_LEAD) }
-          : { id: zt.bass, beats: zt.beats };
-      } else if (zt.ext != null) {
-        // [-/N]: extend the pending ring; with nothing pending, CONTINUE the
-        // last support from exactly where its scheduled ring ends (crossfaded
-        // by SUPPORT_HANDOFF_LEAD) — never waiting for the next melody pivot,
-        // which may sit beats after the ring already released.
-        if (pendingBass) pendingBass.ext = (pendingBass.ext || 0) + zt.ext;
-        else if (lastSupportId) {
-          pendingBass = { id: lastSupportId, beats: zt.ext, ext: 0,
-                          startAt: Math.max(0, lastSupportEnd - SUPPORT_HANDOFF_LEAD) };
-          firePending(audioCtx.currentTime + 0.02); // startAt is absolute: fire NOW
-        }
-      } else if (zt.slide) {
-        // [~F/N]: glide into a new support pitch. With a pending (unfired)
-        // bracket its pitch is the anchor — the sweep starts from the
-        // notated pitch at the next pivot. With nothing pending the glide
-        // HANDS OFF where the last ring ends (crossfaded, like [−/N]): a
-        // sustained drone audibly bends to the new pitch instead of
-        // re-attacking at whatever melody pivot comes next.
-        pendingBass = { id: zt.id, beats: zt.beats,
-                        slideFrom: (pendingBass && pendingBass.id) || lastSupportId,
-                        startAt: pendingBass || !lastSupportId ? null
-                          : Math.max(0, lastSupportEnd - SUPPORT_HANDOFF_LEAD) };
-      } else {
-        pendingBass = { id: zt.id, beats: zt.beats };
-      }
+      else if (zt.type === "bar") atBar = true;
       melodyIdx++;
     }
     if (melodyIdx >= melodyTokens.length) {
       if (document.getElementById("loopMel") && document.getElementById("loopMel").checked) {
         melodyIdx = 0;
         melodyQuarter = quarterSec(); // reset to the header tempo at loop start
-        openSupport = null; // a new loop: the previous drone must not leak in
+        if (supportPlan) {
+          // A new loop: the previous drone must not leak in, and markers
+          // parked past the last note (anchored at the token-list end) ring
+          // at each new pass's first pivot — armed here, flushed once there.
+          supportPlan.open = null;
+          supportPlan.loopEvents = supportPlan.trailing.length ? supportPlan.trailing : null;
+        }
         while (melodyIdx < melodyTokens.length &&
                (melodyTokens[melodyIdx].type === "bar" || melodyTokens[melodyIdx].type === "tempo" ||
                 melodyTokens[melodyIdx].type === "bass")) {
           const zt = melodyTokens[melodyIdx];
           if (zt.type === "tempo") melodyQuarter = quarterSecFor(zt.bpm);
-          else if (zt.type === "bar") {
-            atBar = true;
-            if (zt.bass) pendingBass = zt.slide
-              ? { id: zt.bass, beats: zt.beats, slideFrom: lastSupportId,
-                  startAt: pendingBass || !lastSupportId ? null
-                    : Math.max(0, lastSupportEnd - SUPPORT_HANDOFF_LEAD) }
-              : { id: zt.bass, beats: zt.beats };
-          } else if (zt.ext != null) {
-            if (pendingBass) pendingBass.ext = (pendingBass.ext || 0) + zt.ext;
-            else if (lastSupportId) {
-              pendingBass = { id: lastSupportId, beats: zt.ext, ext: 0,
-                              startAt: Math.max(0, lastSupportEnd - SUPPORT_HANDOFF_LEAD) };
-              firePending(audioCtx.currentTime + 0.02); // startAt is absolute: fire NOW
-            }
-          } else if (zt.slide) {
-            pendingBass = { id: zt.id, beats: zt.beats,
-                            slideFrom: (pendingBass && pendingBass.id) || lastSupportId,
-                            startAt: pendingBass || !lastSupportId ? null
-                              : Math.max(0, lastSupportEnd - SUPPORT_HANDOFF_LEAD) };
-          } else {
-            pendingBass = { id: zt.id, beats: zt.beats };
-          }
+          else if (zt.type === "bar") atBar = true;
           melodyIdx++;
         }
         if (melodyIdx >= melodyTokens.length) { stopMelody(); return; }
@@ -1806,8 +1841,15 @@ function scheduleMelody(when) {
         melodyHoldUntil = -1;
         atBar = true;
       } else {
-        // Support bracket trailing past the last note: give it its one ring.
-        firePending(Math.max(melodyNextTime, audioCtx.currentTime + 0.02));
+        // Support markers trailing past the last note: give them their one
+        // ring at the song's end (the plan anchors them at the token-list
+        // end). One-shot per playback — the armed flush consumes itself.
+        if (supportPlan && supportPlan.trailing.length && !supportPlan.endFired) {
+          supportPlan.endFired = true;
+          supportPlan.loopEvents = supportPlan.trailing;
+          fireDueSupport(melodyTokens.length,
+                         Math.max(melodyNextTime, audioCtx.currentTime + 0.02));
+        }
         // No loop: stop once the last scheduled note's time has passed;
         // otherwise keep the scheduler ticking so it can finish it.
         if (melodyNextTime <= audioCtx.currentTime) { stopMelody(); return; }
@@ -1822,8 +1864,10 @@ function scheduleMelody(when) {
     if (atBar && tickEnabled() && barHasNote(melodyTokens, melodyIdx)) playTickAt(noteWhen, melodyBag);
     const tok = melodyTokens[melodyIdx];
     // Pivot: a rest or a fresh note onset (ties stay part of the previous
-    // chain) is the moment a parked support note begins its ring.
-    if (pendingBass && (tok.type === "note" || tok.type === "rest")) firePending(noteWhen);
+    // chain) is the moment the support plan's events anchored here fire —
+    // at this token's exact melody-clock onset.
+    if (supportPlan && (tok.type === "note" || tok.type === "rest"))
+      fireDueSupport(melodyIdx, noteWhen);
     const step = Math.max(0.001, swungBeats(tok, melodyPos) * melodyQuarter /
                   tempoSpeed()); // tempo dial: % of the song's own speed (live — mid-song slider moves apply to upcoming notes)
     melodyPos += tokenGridBeats(tok);
