@@ -33,5 +33,7 @@ jobs:
         run: python tests/practice_accepts_melody.py
       - name: Run support-bracket tests
         run: python tests/support_accepts_brackets.py
+      - name: Run library hardening tests
+        run: python tests/library_hardening.py
       - name: Run instrument layout tests
         run: python tests/instruments_load.py

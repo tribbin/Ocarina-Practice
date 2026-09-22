@@ -10,16 +10,47 @@ function initBuiltin(songs) {
 }
 
 function userLib() {
-  try { return JSON.parse(localStorage.getItem(LIB_KEY) || "{}") || {}; }
-  catch (e) { return {}; }
+  let raw = null;
+  try { raw = localStorage.getItem(LIB_KEY); } catch (e) { raw = null; }
+  if (!raw) return {};
+  let parsed = null;
+  try { parsed = JSON.parse(raw); } catch (e) { parsed = null; }
+  if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+  // Corrupt or non-object content: keep the evidence (backed up once) and
+  // reset the key so the next real save isn't reading from a poisoned value —
+  // otherwise a save would silently overwrite the broken state and the data
+  // is lost for good.
+  try {
+    localStorage.setItem(LIB_KEY + ".corrupt-" + Date.now(), raw);
+    localStorage.setItem(LIB_KEY, "{}");
+  } catch (e) {}
+  return {};
 }
 
+// Returns true when the write landed; false means storage refused it (quota
+// exceeded, private mode…) and callers must surface that instead of letting
+// the save quietly do nothing.
 function setUserLib(obj) {
-  localStorage.setItem(LIB_KEY, JSON.stringify(obj));
+  try { localStorage.setItem(LIB_KEY, JSON.stringify(obj)); return true; }
+  catch (e) { return false; }
 }
 
 function slugName(name) {
-  return "u-" + String(name).trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || ("song-" + Date.now());
+  // Punctuation-only or junk names slugify to "" and would all share one id
+  // ("u-"); give those a timestamped id instead.
+  const base = String(name).trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return base ? "u-" + base : "song-" + Date.now();
+}
+
+// Re-saving the exact same display name is a deliberate overwrite; any other
+// id collision (e.g. punctuation-differing names that slugify identically)
+// gets a -2, -3, … suffix instead of silently replacing the stored song.
+function uniqueUserId(lib, name) {
+  const base = slugName(name);
+  let id = base;
+  let n = 1;
+  while (lib[id] && lib[id].name !== name) id = base + "-" + (++n);
+  return id;
 }
 
 // Full melody text for a library id (built-in or user), or "" if unknown.
@@ -45,7 +76,7 @@ function showHiddenSongs() {
 }
 
 function setShowHidden(v) {
-  localStorage.setItem(SHOW_HIDDEN_KEY, v ? "1" : "0");
+  try { localStorage.setItem(SHOW_HIDDEN_KEY, v ? "1" : "0"); } catch (e) {}
 }
 
 function fillLibrary(selectId) {
@@ -424,14 +455,21 @@ function wireLibrary() {
     if (!name) return;
     const named = name;
     const lib = userLib();
-    const id = slugName(named);
+    const id = uniqueUserId(lib, named);
     const tempo = songTempo();
     const swing = currentSwing();
     const tickEl = document.getElementById("tickMel");
     const next = withPlayHeaders(body, named, tempo, swing);
     ta.value = next;
     lib[id] = { name: named, body: next, tempo, swing, tick: tickEl ? tickEl.checked : undefined };
-    setUserLib(lib);
+    const saved = setUserLib(lib);
+    if (!saved) {
+      // The text (possibly with the added headers) stays in the editor, so
+      // nothing is lost — only the library filing refused.
+      libToast("Could not save to the library — browser storage is full or blocked.");
+      render();
+      return;
+    }
     fillLibrary(id);
     render();
     // The range rule may file the song as hidden for THIS ocarina: say so,
@@ -450,7 +488,10 @@ function wireLibrary() {
     if (!lib[id]) return;
     if (!(await libConfirm("Remove \"" + (lib[id].name || id) + "\" from this browser?"))) return;
     delete lib[id];
-    setUserLib(lib);
+    if (!setUserLib(lib)) {
+      libToast("Could not remove — browser storage is full or blocked.");
+      return;
+    }
     fillLibrary("major");
     loadLibraryItem("major");
   };
