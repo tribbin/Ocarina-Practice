@@ -50,9 +50,8 @@ NOTES = r"""
     lower: n0("c4"),
     // accidentals: sharp targets enharmonic id always written sharps-first
     sharpSpell: n0("C#4"),
-    // canonical "s" ids are NOT melody grammar: writing "Cs4" in the
-    // textarea silently degrades to C4 (junk-skip of the rest) — locked
-    // behaviour, flagged in TODO for a decision
+    // s-form IS melody grammar now (decision a): Cs4 == C#4, display
+    // spelling normalized to the hash form
     shorthand: t("Cs4 C5"),
     // flats re-spell into substance ids (Db4 -> Cs4), octave-adjacent flats
     // shift octave: Cb4 -> B3
@@ -71,17 +70,24 @@ NOTES = r"""
     stacAfter: n0("C4!"),
     stacBefore: n0("C4!/8"),
     stacAfterDur: n0("C4/8!"),
-    // garbage is silently skipped (no token, never a wrong pitch)
+    // junk around legal tokens surfaces as visible "bad" chips (decision b):
+    // garbage, typos, multi-digit octaves — everything unparsable becomes a
+    // chip instead of silently vanishing into a wrong pitch or nothing
     junkLetter: t("H4 C4"),
-    // a second digit must NOT silently change the pitch (C10 must not
-    // parse as C1!)
     c10: t("C10"),
     c44: t("C44"),
-    // ties: continuation keeps id + original spelling
-    tie: t("C4 - /2").map(x => ({type: x.type, id: x.id,
+    badMiddle: t("C4 foo D4"),
+    badTail: t("C4 zz"),
+    // ties: continuation keeps id + original spelling (the duration attaches
+    // without a space: "-/2"; spaced "- /2" surfaces the "/2" as a bad chip)
+    tie: t("C4 -/2").map(x => ({type: x.type, id: x.id,
                                  sl: x.spellLetter, so: x.spellOct})),
-    // leading tie with no previous note behaves as a rest
-    leadTie: t("- /2"),
+    // orphan tie (no note before it) is junk now: rests are written with `r`
+    // (decision: only r means rest; a bare dash is a typo, show it)
+    leadTie: t("-/2"),
+    // dash chained after a BAR keeps the previous note's tie (book of songs
+    // works this way: "A4/2. | -/2.")
+    tieAcrossBar: t("A4/2 | -/2"),
     // slides picture from the previous note; rests break a pending slide
     slide: t("C4 ~ D4"),
     slideBroken: t("C4 ~ r D4"),
@@ -167,9 +173,10 @@ def main():
             check("lower", n["lower"]["id"] == "C4"
                   and n["lower"]["spellLetter"] == "C", "lowercase must normalize")
             check("shorthand", len(n["shorthand"]) == 2
-                  and n["shorthand"][0]["id"] == "C4"
+                  and n["shorthand"][0]["id"] == "Cs4"
+                  and n["shorthand"][0]["spellAcc"] == "#"
                   and n["shorthand"][1]["id"] == "C5",
-                  f"s-form as text silently degrades to n0 junk-skip: {n['shorthand']!r}")
+                  f"s-form must parse like a sharp with hash display: {n['shorthand']!r}")
             check("sharpSpell", n["sharpSpell"]["id"] == "Cs4"
                   and n["sharpSpell"]["spellAcc"] == "#",
                   "C#4 -> Cs4 with # recorded for display")
@@ -205,14 +212,30 @@ def main():
                   "C4!/8 normalizes to dur-then-bang (see parse.js:8)")
             check("stacAfterDur", n["stacAfterDur"]["staccato"] is True
                   and n["stacAfterDur"]["dur"] == 8, "C4/8! parses staccato")
-            # --- garbage handling ---
-            check("junkLetter", n["junkLetter"] == [n["plain"]],
-                  "junk letters must be silently skipped")
-            check("c10", len(n["c10"]) == 0,
-                  f"C10 must NOT silently become a wrong pitch "
-                  f"(pre-fix produces C1): {n['c10']!r}")
-            check("c44", len(n["c44"]) == 0,
-                  "C44 has a malformed octave: no token at all (never C4)")
+            # --- junk handling: everything unparsable becomes a bad chip ---
+            jl = n["junkLetter"]
+            check("junkLetter", len(jl) == 2 and jl[0]["type"] == "bad"
+                  and jl[0]["raw"] == "H4" and jl[1]["id"] == "C4",
+                  f"junk must surface as a visible bad chip: {jl!r}")
+            c10 = n["c10"]
+            check("c10", len(c10) == 1 and c10[0]["type"] == "bad"
+                  and c10[0]["raw"] == "C10",
+                  f"C10 must be a visible bad chip, never a wrong pitch "
+                  f"(pre-fix produced C1): {c10!r}")
+            c44 = n["c44"]
+            check("c44", len(c44) == 1 and c44[0]["type"] == "bad"
+                  and c44[0]["raw"] == "C44",
+                  f"C44 must be a visible bad chip: {c44!r}")
+            bm = n["badMiddle"]
+            check("badMiddle", len(bm) == 4 and bm[1]["id"] == "F4"
+                  and bm[2]["type"] == "bad" and bm[2]["raw"] == "oo"
+                  and bm[3]["id"] == "D4",
+                  f"stray LETTERS are legal octaveless notes by design (f -> "
+                  f"F4); the remaining junk becomes a bad chip: {bm!r}")
+            bt = n["badTail"]
+            check("badTail", len(bt) == 2 and bt[1]["type"] == "bad"
+                  and bt[1]["raw"] == "zz",
+                  f"trailing junk must surface too: {bt!r}")
             # --- ties & slides ---
             tie = n["tie"]
             check("tie", len(tie) == 2 and tie[1]["type"] == "tie"
@@ -220,8 +243,14 @@ def main():
                   and tie[1]["so"] == 4,
                   f"tie continuation must carry id + original spelling: {tie!r}")
             lt = n["leadTie"]
-            check("leadTie", len(lt) == 1 and lt[0]["type"] == "rest",
-                  "leading '-' with no prior note is a rest")
+            check("leadTie", len(lt) == 1 and lt[0]["type"] == "bad"
+                  and lt[0]["raw"] == "-/2",
+                  f"orphan tie must surface as a bad chip, not act as a "
+                  f"rest: {lt!r}")
+            tb = n["tieAcrossBar"]
+            check("tieAcrossBar", len(tb) == 3 and tb[2]["type"] == "tie"
+                  and tb[2]["id"] == "A4",
+                  f"dashes after bars keep tying the previous note: {tb!r}")
             sl = n["slide"]
             check("slide", isinstance(sl, list) and len(sl) == 2
                   and sl[1]["slide"] is True and sl[1]["slideFrom"] == "C4",

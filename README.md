@@ -18,7 +18,7 @@ Built with plain HTML/CSS/JavaScript — no build step, no dependencies.
 
 | | |
 |---|---|
-| Notes | `C4` `D4` … `C#4`/`Db4` |
+| Notes | `C4` `D4` … `C#4`/`Db4`/`Cs4` |
 | Bars / rests | `\|` / `r` |
 | Ties / slides | `-` / `~` (e.g. `F4 ~ A4`) |
 | Staccato | `!` (e.g. `C4!`) |

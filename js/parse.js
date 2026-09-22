@@ -1,12 +1,25 @@
 function parse(src) {
   const tokens = [];
-  const re = /([A-Ga-g])([#b])?(\d)?(?!\d)(\/\d+\.?t?)?(!)?|(\|)\s*(\[[^\]]*\])?|(r)(\/\d+\.?t?)?|(-)(\/\d+\.?t?)?|(~)|(#[^\n]*)|(\[[^\]]*\])/g;
+  const re = /([A-Ga-g])([#bs])?(\d)?(?!\d)(\/\d+\.?t?)?(!)?|(\|)\s*(\[[^\]]*\])?|(r)(\/\d+\.?t?)?|(-)(\/\d+\.?t?)?|(~)|(#[^\n]*)|(\[[^\]]*\])/g;
   let m, lastOct = 4, lastPitch = null, canTie = false, pendingSlide = false;
   // Staccato may be written before or after the duration: normalize
   // "C5!/8" -> "C5/8!" so the /8 always parses (the note regex consumes
   // dur-then-bang only).
   const text = src.replace(/[–—]/g, "|").replace(/!(\/\d+\.?t?)/g, "$1!");
+  // Everything the grammar cannot consume becomes a visible "bad" chip
+  // instead of silently vanishing (typos, multi-digit octaves like C10,
+  // foreign words). Whitespace separators are legal; stray LETTERS are not
+  // junk — they are legal octaveless notes by design ("buck" plays something).
+  let scanPos = 0;
+  const pushJunk = (chunk) => {
+    const raw = String(chunk).trim();
+    if (raw) tokens.push({ type: "bad", raw });
+  };
   while ((m = re.exec(text))) {
+    if (m.index > scanPos) pushJunk(text.slice(scanPos, m.index));
+    // The inline-tempo rewind below can move the resume point BACK before
+    // this match's end — slice() with start > end is "", so no phantom junk.
+    scanPos = m.index + m[0].length;
     if (m[13]) {
       // Inline "# tempo N" AFTER music has started emits a tempo-change token so
       // playback shifts tempo from this point on. Leading "# tempo" lines are
@@ -92,26 +105,32 @@ function parse(src) {
         t.spellOct = lastPitch.spellOct;
         tokens.push(t);
       } else {
-        // Continuation of previous rest (or leading gap): extend as a rest.
-        tokens.push({type:"rest", dur: pd.dur, dotted: pd.dotted, triplet: pd.triplet, beats: pd.beats, raw: m[0]});
+        // Orphan tie: no note to continue (start of text, or after a rest).
+        // Rests are written with `r` and only `r` — a bare dash is a typo,
+        // so surface it as a visible bad chip instead of silently acting
+        // as a rest. (Bar-crossing ties keep working: bars don't reset
+        // canTie, and every shipped song relies on that.)
+        pushJunk(m[0]);
       }
       pendingSlide = false;
       continue;
     }
     const letter = m[1].toUpperCase();
-    const acc = m[2] || "";
+    let acc = m[2] || "";
     let oct = m[3] ? parseInt(m[3],10) : lastOct;
     const pd = parseDur(m[4]);
     const dur = pd.dur;
     const spellOct = oct;
     lastOct = oct;
     let core = letter;
-    if (acc === "#") core += "s";
+    if (acc === "#" || acc === "s") core += "s";
     else if (acc === "b") {
       const flat = {C:["B",-1], D:["Cs",0], E:["Ds",0], F:["E",0], G:["Fs",0], A:["Gs",0], B:["As",0]};
       const [n, d] = flat[letter];
       core = n; oct += d;
     }
+    // s-spelling is for convenience (canonical ids); display wants the hash.
+    if (acc === "s") acc = "#";
     const tok = {
       type:"note", id: core + oct, dur, dotted: pd.dotted, triplet: pd.triplet, beats: pd.beats, raw: m[0],
       spellLetter: letter, spellAcc: acc, spellOct
@@ -126,6 +145,7 @@ function parse(src) {
     lastPitch = tok;
     canTie = true;
   }
+  if (scanPos < text.length) pushJunk(text.slice(scanPos));
   return tokens;
 }
 
