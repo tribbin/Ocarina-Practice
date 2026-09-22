@@ -53,7 +53,7 @@ def start_server():
 
 # Each case: (name, melody text, expectations as {pitch: dur_beats | {
 # "slide": anchor_pitch}}, plus flags). beat × 0.6 s at the 100 BPM default.
-# EQUIVALENCE PAIRS — the whole point (handover §4 §1): the bracket version
+# EQUIVALENCE PAIRS — the whole point: the bracket version
 # must produce the same playNoteAt events as the extracted support line
 # played as the melody. C5/G5: in the default Triple Bass C range so BOTH
 # sides really sound.
