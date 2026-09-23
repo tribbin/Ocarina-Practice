@@ -5,4 +5,4 @@
 
 # Work files: recordings, FFT snapshots, tone analysis reports
 research/
-tests/**/*.pyc
+**/__pycache__/
