@@ -22,10 +22,17 @@ ROOT = Path(__file__).resolve().parent.parent
 HEADLESS = "--headed" not in sys.argv
 WAIT = ("window.NOTES && window.NOTES.length"
         " && typeof parse === 'function'")
-INJECT = """() => {
+INJECT = """async () => {
+  // Typed input renders on a settle (the per-keystroke debounce): poll for
+  // the strip change instead of reading the DOM synchronously.
   const ta = document.getElementById('src');
   ta.value = 'zz C4 | yy';
   ta.dispatchEvent(new Event('input', { bubbles: true }));
+  const t0 = Date.now();
+  while (!document.querySelector('#tokens .tok.bad') &&
+         Date.now() - t0 < 3000) {
+    await new Promise(r => setTimeout(r, 15));
+  }
   const el = document.querySelector('#tokens .tok.bad');
   if (!el) return null;
   const cs = getComputedStyle(el);

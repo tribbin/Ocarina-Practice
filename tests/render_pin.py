@@ -9,6 +9,7 @@
 #     of a header row) and the live/single sheet target
 #   * highlightToken's .now propagation across both strips and the sheet card
 #   * the token strip's focus-restore across a rebuild
+#   * the typed-input debounce contract (stale during the settle, fresh after)
 #
 #   python3 tests/render_pin.py      # headless & silent
 
@@ -69,10 +70,20 @@ SHEET_SPEC = [
 ]
 
 PROBE = """
-(SRC) => {
+async (SRC) => {
+  // Typed input renders on a short settle (the per-keystroke debounce): the
+  // probe reports the FIRST render whose title matches the typed melody.
+  const expect = String(SRC).split("\\n").find(l =>
+    /^#/.test(l) && !/^#\\s*tempo\\b/.test(l) && !/^#\\s*swing\\b/.test(l));
+  const wantTitle = expect ? expect.replace(/^#\\s*/, "") : "";
   const ta = document.getElementById('src');
   ta.value = SRC;
   ta.dispatchEvent(new Event('input', { bubbles: true }));
+  const t0 = Date.now();
+  while (document.getElementById('title').textContent !== wantTitle &&
+         Date.now() - t0 < 3000) {
+    await new Promise(r => setTimeout(r, 15));
+  }
   const stripRows = [...document.querySelectorAll('#tokens > .tok')].map(el => ({
     cls: el.className,
     text: (el.textContent || '').replace(/\\s+/g, ' ').trim(),
@@ -117,6 +128,32 @@ FOCUS_RESTORE = """
   return { focused: document.activeElement.dataset.i || null,
            tabStops: strip.filter(el => el.tabIndex === 0).length,
            onFocused: document.activeElement.dataset.i };
+}
+"""
+
+# Debounce contract: typed edits coalesce into one render per settle — during
+# the settle window the previous render stays on screen (title and strip both
+# keep showing the old content), and the fresh render appears by the next
+# beat. The 20 ms early read is deliberately under the debounce budget so an
+# immediate render fails here; the 900 ms late read is ~15x over it so even a
+# slow CI machine is served.
+DEBOUNCE_SRC = "# Debounced\n\nC6 D6 E6"
+DEBOUNCE = """
+async (SRC) => {
+  const ta = document.getElementById('src');
+  const tokens = document.getElementById('tokens');
+  const beforeTitle = document.getElementById('title').textContent;
+  const beforeText = (tokens.textContent || '').replace(/\\s+/g, ' ').trim();
+  ta.value = SRC;
+  ta.dispatchEvent(new Event('input', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 20));
+  const earlyTitle = document.getElementById('title').textContent;
+  const earlyText = (tokens.textContent || '').replace(/\\s+/g, ' ').trim();
+  await new Promise(r => setTimeout(r, 900));
+  const lateTitle = document.getElementById('title').textContent;
+  const lateText = (tokens.textContent || '').replace(/\\s+/g, ' ').trim();
+  return { beforeTitle, earlyTitle, lateTitle,
+           beforeText, earlyText, lateText };
 }
 """
 
@@ -260,6 +297,24 @@ def main():
                 failures.append(
                     f"rebuild: exactly one roving tab stop must survive "
                     f"(got {fr['tabStops']})")
+
+            # --- typed edits coalesce into one render per settle ---
+            d = page.evaluate(DEBOUNCE, DEBOUNCE_SRC)
+            if d["earlyTitle"] != d["beforeTitle"] or \
+                    d["earlyText"] != d["beforeText"]:
+                failures.append(
+                    "debounce: within the settle window the previous render "
+                    f"must stay on screen (title {d['beforeTitle']!r}->"
+                    f"{d['earlyTitle']!r}, strip changed="
+                    f"{d['earlyText'] != d['beforeText']})")
+            if d["lateTitle"] != "Debounced":
+                failures.append(
+                    "debounce: after the settle the new render must be on " +
+                    f"screen (title {d['lateTitle']!r} != 'Debounced')")
+            if d["lateText"] == d["beforeText"]:
+                failures.append(
+                    "debounce: after the settle the strip must reflect the "
+                    "typed melody (it still reads the old one)")
 
             if errs:
                 failures.append(f"page errors {errs}")

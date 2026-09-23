@@ -53,3 +53,5 @@ jobs:
         run: python tests/instrument_switch_race.py
       - name: Run instrument layout tests
         run: python tests/instruments_load.py
+      - name: Run svg re-render coordinates pin
+        run: python tests/svg_cache.py
