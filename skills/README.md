@@ -20,9 +20,12 @@ partition and clone.
   with 16th + triplet support, meter/bar verification, A3–G6 range fitting).
   Stretches: pure-stdlib `scripts/mid2tab.py`. Feeds §9 F6 of
   `plans/TODO.md` (MIDI import baked into the app's Load-File path).
-- `ocarina-melodies/` — the tab notation grammar, per-ocarina ranges and the
-  songs.json entry shape; the companion context the midi skill (and any
-  hand-transcription) leans on.
+- `ocarina-melodies/` — hand-transcription craft for `songs.json` bodies,
+  not transposition and not MIDI parsing: meter-exact bar balancing, the
+  tie-split rule ("replace that one token"), loop rests and Loop-return
+  semantics, `# swing` line behavior, octave choice by minimal chamber
+  jumps, staccato `!` semantics. The companion convention source the
+  midi skill (and any hand-transcription) leans on.
 - `tone-analysis/` — single-tone WAV measurement and synth-approximation
   workflow: envelope/pitch-stability/harmonic-timbre/noise/onset reports
   (self-calibrating scripts), recorder FFT-snapshot cross-checks, offline
