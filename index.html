@@ -25,6 +25,10 @@
   <div class="inst-picker">
     <select id="instSel" class="inst-sel" aria-label="Ocarina"></select>
   </div>
+  <div class="head-tools">
+    <button class="ghost" type="button" id="themeBtn" title="Switch the theme"></button>
+    <button class="ghost" type="button" id="helpBtn" title="Keyboard shortcuts" aria-haspopup="dialog">?</button>
+  </div>
 </header>
 <div class="wrap">
   <section class="panel noprint">
@@ -33,8 +37,6 @@
         <div class="head-left">
           <button class="ghost collapse-btn" type="button" aria-expanded="false" title="Expand" aria-label="Expand input block"></button>
           <button class="ghost" type="button" id="clear" title="Empty the input field">Clear</button>
-          <button class="ghost" type="button" id="themeBtn" title="Switch the theme"></button>
-          <button class="ghost" type="button" id="helpBtn" title="Keyboard shortcuts" aria-haspopup="dialog">?</button>
         </div>
         <div class="lib-dd" id="libDd">
           <span class="head-label">Song Library</span>
@@ -112,33 +114,6 @@
         </div>
       </div>
       <div class="tokens" id="tokens"></div>
-  <div id="sr-gesture-hints" class="sr-only">
-    Notation chips (button-shaped): activating one plays the song from
-    that note; on touch a quick tap plays from here, a held press auditions
-    the note once. Piano keys: activate or click to hear the note;
-    right-click (or two-finger context) adds it to the melody. Tan pills
-    mark text outside the melody notation — fix or remove them.
-  </div>
-  <div id="helpOverlay" class="help-dialog" role="dialog" aria-modal="true" aria-label="Keyboard and gesture shortcuts" hidden>
-    <div class="help-card">
-      <div class="help-head">
-        <b>Shortcuts</b>
-        <button class="help-x" type="button" title="Close">✕</button>
-      </div>
-      <dl class="help-rows">
-        <dt>Space</dt><dd>Pause / Continue playback or practice (not while typing)</dd>
-        <dt>Enter</dt><dd>Hear the focused piano key · play the song from the focused notation chip</dd>
-        <dt>← →</dt><dd>Step the piano chromatically · walk the notation chips · cycle grid/scroll/single in the mode segment</dd>
-        <dt>↑ ↓</dt><dd>Move the piano an octave</dd>
-        <dt>Home / End</dt><dd>First / last token (piano + chips)</dd>
-        <dt>Right-click key</dt><dd>Add that note to the melody</dd>
-        <dt>Quick tap chip</dt><dd>Play the song from there (touch and mouse)</dd>
-        <dt>Hold chip / key</dt><dd>Hear just that one note (about ¼ s)</dd>
-        <dt>?</dt><dd>Show / hide this list</dd>
-      </dl>
-      <div class="help-foot">Full tuning lives in the dev panel: <code>DEBUG=1</code> in the console.</div>
-    </div>
-  </div>
     </div>
     <div class="block" id="pianoBlock">
       <div class="box-head piano-head">
@@ -210,7 +185,34 @@
   </section>
 </div>
 
-<script src="js/parse.js"></script>
+  <div id="helpOverlay" class="help-dialog" role="dialog" aria-modal="true" aria-label="Keyboard and gesture shortcuts" hidden>
+    <div class="help-card">
+      <div class="help-head">
+        <b>Shortcuts</b>
+        <button class="help-x" type="button" title="Close">✕</button>
+      </div>
+      <dl class="help-rows">
+        <dt>Space</dt><dd>Pause / Continue playback or practice (not while typing)</dd>
+        <dt>Enter</dt><dd>Hear the focused piano key · play the song from the focused notation chip</dd>
+        <dt>← →</dt><dd>Step the piano chromatically · walk the notation chips · cycle grid/scroll/single in the mode segment</dd>
+        <dt>↑ ↓</dt><dd>Move the piano an octave</dd>
+        <dt>Home / End</dt><dd>First / last token (piano + chips)</dd>
+        <dt>Right-click key</dt><dd>Add that note to the melody</dd>
+        <dt>Quick tap chip</dt><dd>Play the song from there (touch and mouse)</dd>
+        <dt>Hold chip / key</dt><dd>Hear just that one note (about ¼ s)</dd>
+        <dt>?</dt><dd>Show / hide this list</dd>
+      </dl>
+      <div class="help-foot">Full tuning lives in the dev panel: <code>DEBUG=1</code> in the console.</div>
+    </div>
+  </div>
+  <div id="sr-gesture-hints" class="sr-only">
+    Notation chips (button-shaped): activating one plays the song from
+    that note; on touch a quick tap plays from here, a held press auditions
+    the note once. Piano keys: activate or click to hear the note;
+    right-click (or two-finger context) adds it to the melody. Tan pills
+    mark text outside the melody notation — fix or remove them.
+  </div>
+  <script src="js/parse.js"></script>
 <script src="js/ocarina.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/library.js"></script>

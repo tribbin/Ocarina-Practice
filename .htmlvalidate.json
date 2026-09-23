@@ -1,0 +1,8 @@
+{
+  "rules": {
+    "endtag": "error",
+    "no-dup-attr": "error",
+    "attr-value-quotes": "error",
+    "void": "error"
+  }
+}
