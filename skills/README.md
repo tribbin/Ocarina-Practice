@@ -32,6 +32,12 @@ partition and clone.
   for instruments.json. Feeds §1 B5 of `plans/TODO.md` (chamber tuning
   for every ocarina); the tone.json schema and recording protocol live in
   `instruments/README.md`.
+- `song-transposing/` — verified pitch work on `songs.json` bodies:
+  transpose/respell between the ocarina charts (incl. the bass-double →
+  alto-double +12 pair invariant and the s-form/sharp respelling rules),
+  with the double-C chart pair, support-bracket verbatim semantics and
+  every learned rewriting trap encoded in `transpose.cjs`/`verify_song.cjs`
+  and pinned by `tests/transpose_skill.py`.
 
 `skills/` is the canonical committed home. `.opencode/skills/` holds
 opencode's runtime-registered copies (gitignored) — when a skill changes

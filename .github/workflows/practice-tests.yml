@@ -86,3 +86,5 @@ jobs:
         run: python tests/svg_sanitized.py
       - name: Run theme toggle tests
         run: python tests/theme_toggle.py
+      - name: Run transposer skill script tests
+        run: python tests/transpose_skill.py
