@@ -88,3 +88,5 @@ jobs:
         run: python tests/theme_toggle.py
       - name: Run transposer skill script tests
         run: python tests/transpose_skill.py
+      - name: Run song-stub page generator contract tests
+        run: python tests/gen_pages.py

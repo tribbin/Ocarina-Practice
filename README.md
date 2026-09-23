@@ -39,7 +39,12 @@ Serve the folder over **localhost** (the microphone in practice mode requires HT
 python -m http.server 8000
 ```
 
-then open `http://localhost:8000`. Deploying as a static site (e.g. GitHub Pages) works as-is.
+then open `http://localhost:8000`. Deploying works as a GitHub Pages site via
+Actions (`.github/workflows/deploy-site.yml`): the published surface is an
+explicit allowlist — plus per-song landing pages like `/song/zelda/song-of-time/`
+generated from `songs.json` at deploy time (stubs stay out of Git; docs, tests
+and planning files never serve) — so each song has a canonical URL that boots
+the app straight into it on the 12-hole C alto.
 
 Visiting without parameters opens the Hyrule Field look with the 12-hole Alto C and Song of Storms loaded; URL parameters steer things per link: `?plain` (classic light theme), `?inst=<ocarina id>` and `?song=<library id>` (in shared links), `?zen=1` (straight into Zen practice).
 

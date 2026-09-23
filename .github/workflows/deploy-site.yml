@@ -1,0 +1,71 @@
+# Site deploy: Actions decide what serves (Robin's call — the repo tree is
+# NOT the site, and generated stub pages never live in Git). The assemble
+# step below IS the content allowlist: only files named there land in the
+# published artifact, so docs/plans/tests never reach the web below this
+# line. Pages' source setting must be "GitHub Actions" for this to take
+# over from the retired branch deployment.
+name: deploy site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "css/**"
+      - "js/**"
+      - "songs.json"
+      - "instruments.json"
+      - "instruments/**"
+      - "sw.js"
+      - "manifest.webmanifest"
+      - "favicon.svg"
+      - "hyrule.webp"
+      - "icon-192.png"
+      - "icon-512.png"
+      - "tools/gen_song_pages.py"
+      - ".github/workflows/deploy-site.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Generate per-song stub pages
+        run: python tools/gen_song_pages.py --out site/ --site-prefix /Ocarina-Practice
+      - name: Assemble the served tree (the content allowlist)
+        run: |
+          touch site/.nojekyll
+          for f in index.html sw.js manifest.webmanifest favicon.svg icon-192.png icon-512.png hyrule.webp songs.json instruments.json; do
+            cp "$f" site/
+          done
+          mkdir -p site/css site/js site/instruments
+          cp -r css/. site/css/
+          cp -r js/. site/js/
+          find instruments -type f \( -name "*.json" -o -name "*.svg" \) -print0 | while IFS= read -r -d '' f; do
+            d="site/$(dirname "$f")"; mkdir -p "$d"; cp "$f" "$d/"
+          done
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
