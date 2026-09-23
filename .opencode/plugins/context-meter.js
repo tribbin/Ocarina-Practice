@@ -66,7 +66,11 @@ export const ContextMeterPlugin = async ({ client, worktree }) => {
     const cacheWrite = pick(cache.write, t.cacheWrite);
     const output = pick(t.output, t.completionTokens, t.completion);
     const reasoning = pick(t.reasoning);
-    const used = input + cacheRead + cacheWrite + output + reasoning;
+    // The API's own total wins when present (validated against the vibe
+    // stream 2026-09-23: tokens.total === input+cache.read+cache.write+
+    // output+reasoning); the sum is the fallback for shapes without it.
+    const used = pick(t.total) ||
+      input + cacheRead + cacheWrite + output + reasoning;
     return { m, tokens: { input, cache_read: cacheRead, cache_write: cacheWrite,
                           output, reasoning }, used };
   };
