@@ -43,7 +43,7 @@ RUN_DRIVER = """
   render();
   const pets = setInterval(() => {
     const P = OCA_PRACTICE._p;
-    if (P.state === "await" || P.state === "rest" || !P.bar) {
+    if (P.state === "await" || P.state === "dip" || P.state === "rest" || !P.bar) {
       window.__pracFrame = { hz: 0, rms: 0 };
     } else {
       const k = P.zonesNear >= 0 ? P.zonesNear : 0;

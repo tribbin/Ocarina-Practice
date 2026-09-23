@@ -107,9 +107,16 @@ const AUDIO_DEFAULTS = {
   // detector treats as "not playing". Inside a chained (~) slide the same
   // silence/pitch wipe uses the much larger chainTravelMs instead, and that
   // window also renews the arrival tolerance between zones — plenty of time
-  // to travel to (and settle onto) the next note.
+  // to travel to (and settle onto) the next note. The separate-note gate in
+  // practice mode: when a closed note could keep sounding straight into the
+  // next one (close pitch), the tone must dip once — to dipFrac of the
+  // level it was holding (a tongued volume notch; full silence is the
+  // trivial case) — sustained for dipMs (~ one detection frame; the
+  // reference is a running average of the hold level, so a short articulation
+  // reads clearly while mic wobble cannot fake the drop).
   tuneCents: 20, transientCents: 60, transientMs: 150,
   gapMs: 120, rmsGate: 0.01, chainTravelMs: 800,
+  dipMs: 60, dipFrac: 0.5,
 };
 const AUDIO_DEBUG = Object.assign({}, AUDIO_DEFAULTS);
 // Voice builders (playNoteAt/playTickAt) swallow any WebAudio failure so a

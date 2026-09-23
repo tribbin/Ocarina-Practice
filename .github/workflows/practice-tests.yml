@@ -38,6 +38,10 @@ jobs:
           playwright install --with-deps chromium
       - name: Run practice acceptance tests
         run: python tests/practice_accepts_melody.py
+      - name: Run separate-note dip gate tests
+        run: python tests/practice_dip.py
+      - name: Run practice seat (zen return) tests
+        run: python tests/practice_zen_return.py
       - name: Run support-bracket tests
         run: python tests/support_accepts_brackets.py
       - name: Run parser edge-case tests

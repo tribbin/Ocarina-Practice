@@ -70,8 +70,13 @@ import { currentSongId } from "./app.js";
     calibrating: false,
     tokens: [], idx: 0, quarter: 0.5,
     bar: null,          // { startIdx, endIdx, zones:[hz], targetSec, filled, chainId, slide:false, stac:false }
-    state: "idle",      // await | ready | hit | fill | drain? (drain is fill w/ neg) | rest
+    state: "idle",      // await | ready | hit | fill | drain? (drain is fill w/ neg) | rest | dip
     gapAcc: 0,          // ms of continuous silence accumulated (await phase)
+    dipAcc: 0,          // ms of continuous below-reference level (dip phase)
+    holdRms: 0,         // EMA of the sounding level while the tone is up:
+                        // the dip gate's relative notch measures against it
+    doneHz: null,       // last completed bar's final zone pitch: the tone a
+                        // continuing hold would carry into the next bar
     transientLeft: 0,   // ms of onset-grace remaining
     restLeft: 0,        // ms left of a rest
     wipes: 0,           // mid-hold drop count THIS RUN (progress history)
@@ -231,6 +236,7 @@ import { currentSongId } from "./app.js";
     ready: { sym: "●", col: "", tip: "Ready — play the note." },
     hit: { sym: "●", col: "zone", tip: "Hit. Steady to the pitch…" },
     fill: { sym: "●", col: "zone", tip: "Hold the note in tune." },
+    dip: { sym: "○", col: "", tip: "Give the two notes a dip — tongue the tone down briefly to start this one." },
     rest: { sym: "‖", col: "", tip: "Rest" },
   };
   function glyphTip(g) {
@@ -882,11 +888,21 @@ import { currentSongId } from "./app.js";
     // "await" phase. That gate was only ever the RESTART rule; consecutive
     // notes must not force silence between them. Such bars FLOW straight
     // into "ready": an in-tune sounding note arms the frontier immediately.
-    P.state = fresh ? "await" : "ready";
+    // One exception: when the CLOSED previous bar's tone could continue
+    // straight into this bar's note (its pitch sits within the onset arm
+    // tolerance), one uninterrupted hold would cover both notes — so this
+    // bar stays shut in "dip" until the air was cut once. Pitches that
+    // collide within the tolerance are the only case: any farther apart and
+    // the travel itself is the distinct step.
+    const continuing = !fresh && P.doneHz != null &&
+      Math.abs(centsOf(P.doneHz, P.bar.zones[0])) <= dbg().transientCents;
+    P.state = fresh ? "await" : (continuing ? "dip" : "ready");
     // No pinned restart announcement at session start / manual anchors: the
     // brief await→ready transition reports itself; only a WIPE pins (below).
     P.msgHold = ""; P.msgHoldUntil = 0;
     P.gapAcc = 0;
+    P.dipAcc = 0;
+    if (fresh) P.holdRms = 0; // no hold level to compare a notch against
     P.transientLeft = 0;
     P.hzSm = 0;
     try {
@@ -900,6 +916,18 @@ import { currentSongId } from "./app.js";
   function nextPitchedIdx(i) {
     for (let k = i; k < P.tokens.length; k++) if (isPitchedTok(P.tokens[k])) return k;
     return -1;
+  }
+
+  // The token of the note practice currently expects: the frontier zone's
+  // token inside the bar, else the raw index (rests). The live tab seeds
+  // itself here while a session is active — a mode change that rebuilds the
+  // card (zen exit/return, theme flip …) must not fall back to the first
+  // note and lie about where the player stands.
+  function practiceSpotToken() {
+    if (P.bar && P.bar.zoneIdx && P.bar.hiZone != null) {
+      return P.bar.zoneIdx[Math.min(P.bar.hiZone, P.bar.zoneIdx.length - 1)];
+    }
+    return P.idx;
   }
 
   function tick() {
@@ -941,17 +969,41 @@ import { currentSongId } from "./app.js";
 
     const b = P.bar;
     const sounding = P.rms >= dg.rmsGate;
+    // Reference level of the current hold (an EMA over sounding frames):
+    // what the dip gate's relative notch is measured against — a tongued
+    // 50% volume dip counts without ever reaching full silence.
+    if (sounding) P.holdRms = P.holdRms ? P.holdRms * 0.8 + P.rms * 0.2 : P.rms;
 
     switch (P.state) {
       case "await": {
         // RE-ATTACK phase — reached only after a wipe / at a fresh entry:
         // a hit needs a real articulation, continuous silence for gapMs.
         // Note-to-note entries never come through here (they enter "ready"
-        // directly and can sound through — no forced stop between notes).
+        // — or "dip" when the closed tone could continue into this note —
+        // directly, with no forced stop).
         if (!sounding) {
           P.gapAcc += dt;
           if (P.gapAcc >= dg.gapMs) { P.state = "ready"; renderPanel(); }
         } else P.gapAcc = 0;
+        break;
+      }
+      case "dip": {
+        // Separate-note gate, tuned to the real tonguing gesture: the tone
+        // must break ONCE relative to the level it was holding — a full
+        // stop OR a drop to dipFrac of the recent hold level (a tongued
+        // notch that never reaches silence counts). It needs to persist
+        // only dipMs (≈ one detection frame): what keeps a mic wobble from
+        // faking the notch is the reference itself, an EMA of the sounding
+        // level tracked while the tone is up — noise does not halve a
+        // stable hold. No credit accrues while waiting and nothing wipes —
+        // the tuner simply waits for the articulation, and a dip that
+        // comes naturally during a breath passes silently.
+        const dipped = P.rms < dg.rmsGate ||
+          (P.holdRms > 0 && P.rms <= dg.dipFrac * P.holdRms);
+        if (dipped) {
+          P.dipAcc += dt;
+          if (P.dipAcc >= dg.dipMs) { P.dipAcc = 0; P.state = "ready"; }
+        } else P.dipAcc = 0;
         break;
       }
       case "ready": {
@@ -1063,6 +1115,10 @@ import { currentSongId } from "./app.js";
 
   function finishBar() {
     zenGlowSpark(); // the completed note's intensity sparks as the advance lands
+    // The tone the hold was standing on when the bar completed: the next
+    // bar's entry gate compares against it — a continuing tone must not
+    // cover two separate notes (see enterIdx's "dip" phase).
+    P.doneHz = P.bar.zones[P.bar.zones.length - 1];
     const afterIdx = P.bar.endIdx + 1;
     enterIdx(afterIdx < P.tokens.length ? afterIdx : P.tokens.length);
     if (P.idx >= P.tokens.length) endReached();
@@ -1209,6 +1265,8 @@ import { currentSongId } from "./app.js";
 
   function stopPractice() {
     P.active = false; P.paused = false; P.completed = false; P.bar = null;
+    P.doneHz = null; // no completed tone to compare the next session against
+    P.holdRms = 0;
     // Leave the card's meta band immediately: the parked/hidden tuner must
     // not keep the symmetric grid layout (or its plate) in the live view.
     if (panel && panel.classList.contains("in-card")) {
@@ -1344,6 +1402,9 @@ import { currentSongId } from "./app.js";
     history: practiceHistory,
     // transport anchors: where practice currently stands (token idx)
     posIdx: () => P.idx,
+    // the tone practice expects RIGHT NOW (frontier zone's token — the live
+    // tab seeds from it while a session is active)
+    spot: practiceSpotToken,
     from: practiceFrom, pauseToggle: practicePauseToggle,
     start: startPractice, stop: stopPractice,
     relocate: relocatePanel,
@@ -1380,9 +1441,14 @@ function practiceToggle() { if (window.OCA_PRACTICE) OCA_PRACTICE.pauseToggle();
 // ui.js calls this on every zen/focus transition (syncFocusMode) and after
 // zen/layout changes: re-seat the tuner in its host panel and re-clamp it.
 function practiceRelocatePanel() { if (window.OCA_PRACTICE) OCA_PRACTICE.relocate(); }
+// The currently-expected tone as a token index (the live tab seeds from it
+// during an active session; -1 when there is nothing to name). Module-scope
+// trampoline: the live state sits in the IIFE above, exposed via its public
+// surface — same shape as the other practice trampolines.
+function practiceSpot() { return window.OCA_PRACTICE ? OCA_PRACTICE.spot() : -1; }
 
 export { isPracticeActive, isPracticePaused, practiceInvalidate,
-         practiceRelocatePanel, practiceToggle };
+         practiceRelocatePanel, practiceSpot, practiceToggle };
 window.isPracticeActive = isPracticeActive;
 window.isPracticePaused = isPracticePaused;
 window.practiceInvalidate = practiceInvalidate;

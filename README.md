@@ -8,7 +8,7 @@ Built with plain HTML/CSS/JavaScript — no build step, no dependencies.
 
 - **Tab sheets** — fingerings rendered on the ocarina template as you type; display as a grid, scrolling line, or one note at a time. Printable and downloadable.
 - **Immediate playback** — a synthesized ocarina voice plays your melody with tempo and swing dials; click any note to start from there.
-- **Practice mode** — the song only advances when you hit each note in tune through the microphone, guided by a built-in tuner. Ties hold continuously; `~` slides become chains you must travel through pitch by pitch; rests count on the clock.
+- **Practice mode** — the song only advances when you hit each note in tune through the microphone, guided by a built-in tuner. Ties hold continuously; `~` slides become chains you must travel through pitch by pitch; rests count on the clock. Unlinked notes cannot share one hold: when a note could keep sounding straight into the next (same/close pitch), practice waits for a distinct dip — tongue the tone down (a clear volume dip is enough), then hold again.
 - **Zen mode** — distraction-free fullscreen practice with shareable links that open straight to a given song and ocarina.
 - **Offline** — one connected visit is enough: the app keeps booting, loading songs and swapping ocarinas with no connection (installable as an app via the browser's menu). Updates arrive with your next visit.
 - **Piano keyboard** — audition notes by ear, right-click to add them to the melody.

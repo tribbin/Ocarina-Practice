@@ -120,8 +120,9 @@ SRC => new Promise(resolve => {
 ZONES_DRIVER = """
 SRC => new Promise(resolve => {
   if (SRC) { document.getElementById("src").value = SRC; render(); }
-  // Player model: silence when the engine demands a re-attack ("await"),
-  // otherwise sound the pitch the tuner currently demands.
+  // Player model: silence when the engine demands a re-attack ("await") or
+  // a separate-note dip ("dip"), otherwise sound the pitch the tuner
+  // currently demands.
   OCA_PRACTICE.start();
   let awaitLate = false, wentBack = false, lastIdx = 0;
   const feed = setInterval(() => {
@@ -129,7 +130,7 @@ SRC => new Promise(resolve => {
     if (P.state === "await" && P.idx > 5) awaitLate = true;
     if (P.idx < lastIdx) wentBack = true;
     lastIdx = Math.max(lastIdx, P.idx);
-    if (P.state === "await" || P.state === "rest" || !P.bar) {
+    if (P.state === "await" || P.state === "dip" || P.state === "rest" || !P.bar) {
       window.__pracFrame = { hz: 0, rms: 0 };
     } else {
       const k = P.zonesNear >= 0 ? P.zonesNear : 0;

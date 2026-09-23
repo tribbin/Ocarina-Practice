@@ -9,7 +9,7 @@ import { audioCtx, audioPerfReset, audioPerfSnapshot, isMelodyPaused,
 import { applySwing, applyTempoPct, clearLibrarySelection, currentSwing, libToast,
          safeAlert, songTempo, tempoPct } from "./library.js";
 import { isPracticeActive, isPracticePaused, practiceInvalidate,
-         practiceRelocatePanel, practiceToggle } from "./practice.js";
+         practiceRelocatePanel, practiceSpot, practiceToggle } from "./practice.js";
 import { applyTheme, currentTemplatePath, ensureOcarinaTemplate,
          installedTplPath } from "./app.js";
 let APP_CSS = "";
@@ -317,12 +317,26 @@ function liveOorHtml(t) {
       <span class="dur">${durLabel(t.dur, t.dotted, t.triplet)}</span></div>`;
 }
 
+// The live tab's position when no explicit one is known: an ACTIVE practice
+// session owns the card (the tuner's currently-expected note), anything else
+// falls back to the first note. This is what keeps a zen exit/return — a
+// rebuild between practice's own highlight calls — from displaying the song's
+// first tone while the practice engine is standing on a later one.
+function liveSpotIdx(tokens) {
+  if (isPracticeActive()) {
+    const s = practiceSpot();
+    if (s >= 0 && s < tokens.length && tokens[s] &&
+        tokens[s].type !== "bar" && tokens[s].type !== "bass") return s;
+  }
+  return firstSoundIdx(tokens);
+}
+
 function fillLiveSheet(sheet, tokens, idx) {
   sheet.classList.remove("scroll");
   sheet.classList.add("live");
   resetCardIndex();
   let i = idx;
-  if (i == null || i < 0 || !tokens[i] || tokens[i].type === "bar" || tokens[i].type === "bass") i = firstSoundIdx(tokens);
+  if (i == null || i < 0 || !tokens[i] || tokens[i].type === "bar" || tokens[i].type === "bass") i = liveSpotIdx(tokens);
   if (!tokens.length || i < 0 || !tokens[i] || tokens[i].type === "bar" || tokens[i].type === "bass") return;
   const card = document.createElement("div");
   const t = tokens[i];
@@ -341,7 +355,7 @@ function updateLiveTab(tokens, idx) {
   const sheet = document.getElementById("sheet");
   if (!sheet || !isLiveTab()) return;
   let i = idx;
-  if (i == null || i < 0 || !tokens[i] || tokens[i].type === "bar") i = firstSoundIdx(tokens);
+  if (i == null || i < 0 || !tokens[i] || tokens[i].type === "bar") i = liveSpotIdx(tokens);
   const t = tokens[i];
   if (!t) return;
   const card = sheet.querySelector(".card.live");
@@ -1489,7 +1503,7 @@ function syncFocusMode() {
       syncLoopUI();
       revealZenUi();
       const toks = lastTokens.length ? lastTokens : parse(document.getElementById("src").value);
-      scrollFocusStripTo(liveIdx >= 0 ? liveIdx : firstSoundIdx(toks));
+      scrollFocusStripTo(liveIdx >= 0 ? liveIdx : liveSpotIdx(toks));
     }
     if (typeof perfRelocate === "function") perfRelocate();
     // Re-seat the practice tuner for the new layout (body ↔ #tabPanel) and
