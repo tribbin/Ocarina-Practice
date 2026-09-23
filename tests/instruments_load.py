@@ -183,10 +183,18 @@ TPL_PROBE = """
 """
 
 TYPED = """
-(title) => {
+async (title) => {
+  // Typed input renders on a short settle (the per-keystroke debounce):
+  // poll for the typed song's own title before any probe reads state.
   const ta = document.getElementById('src');
   ta.value = '# ' + title + '\\n\\nC4 D4 E4';
   ta.dispatchEvent(new Event('input', { bubbles: true }));
+  const t0 = Date.now();
+  while (document.getElementById('title').textContent !== title &&
+         Date.now() - t0 < 3000) {
+    await new Promise(r => setTimeout(r, 15));
+  }
+  return document.getElementById('title').textContent;
 }
 """
 
@@ -274,14 +282,6 @@ def main():
                     failures.append("parity: uninstalling must restore the generic "
                                     "profile bit-for-bit (incl. en === null)")
             page.close()
-            # 3 — per-song ocarina template selection (svgWhen): the manifest
-            # rule must fire by song id (the shipped entry selected in the
-            # dropdown) AND by matching song title (a hand-typed Saria's Song
-            # body), and stay on the generic template for other titles.
-            print("== per-song ocarina template (svgWhen)", flush=True)
-            page = browser.new_page()
-            errs = []
-            page.on("pageerror", lambda e: errs.append(str(e)))
             # 3 — per-song ocarina template selection (svgWhen): on the
             # 12-hole Alto C the plain sarias-song body is out of range (so
             # the dropdown stays empty — a stem-id match there can only be a
@@ -304,6 +304,13 @@ def main():
             byId = page.evaluate(TPL_PROBE)
             page.goto(base + "?inst=oot-alto-c-12&oot")
             page.wait_for_function(BOOT_WAIT)
+            # BOOT_WAIT (practice + NOTES) can fire before boot() reaches its
+            # tail — the home song's library load then still overwrites #src
+            # and clobbers typed text. Pin the library tail first (#scale), as
+            # the id-path leg above does, before any typed probe.
+            page.wait_for_function(
+                "() => document.getElementById('scale').value ==="
+                " 'song-of-storms-alto'")
             page.evaluate(TYPED, "Saria's Song")
             byTitle = page.evaluate(TPL_PROBE)
             page.evaluate(TYPED, "Zelda's Lullaby")
@@ -354,9 +361,21 @@ def main():
                 failures.append(
                     "the boot must still land on the manifest default after "
                     f"an unknown id, got {bogus['inst']!r}")
+            if errs:
+                failures.append(f"boot diagnostics: page errors {errs}")
+            page.close()
+            ctx4.close()
 
             # Duplicated manifest id: intercept instruments.json with a
             # doctored copy; the app must report the repeat and still boot.
+            # FRESH context: this leg's first load still installs a SW whose
+            # precache holds the REAL instruments.json — reused here (shared
+            # with the bogus99 leg above), the SW would claim the second
+            # navigation and serve its cache, hiding the routed manifest.
+            ctx5 = browser.new_context()
+            page = ctx5.new_page()
+            errs = []
+            page.on("pageerror", lambda e: errs.append(str(e)))
             page.route("**/instruments.json", lambda route: route.fulfill(
                 status=200,
                 content_type="application/json",
@@ -376,7 +395,6 @@ def main():
             dup = page.evaluate(
                 "() => ({ err: document.getElementById('err').textContent,"
                         " notes: (window.NOTES || []).length })")
-            page.unroute("**/instruments.json")
             if "ico-oak-leaf-bass-c-triple" not in dup["err"] or \
                     "repeat" not in dup["err"]:
                 failures.append(
@@ -387,9 +405,9 @@ def main():
                     "the boot must still land with a working instrument "
                     "after reporting the duplicate id")
             page.close()
+            ctx5.close()
             if errs:
                 failures.append(f"boot diagnostics: page errors {errs}")
-            ctx4.close()
 
             browser.close()
     finally:
