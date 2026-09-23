@@ -90,13 +90,53 @@ file sits at the repo root so every session finds it first.
 
 15. `sw.js` `VERSION` bumps whenever shipped behavior changes — stale-
     while-revalidate otherwise serves the previous cache on the first visit.
-16. No node on the system: lint locally through a node tarball under
-    `/tmp/opencode/node/bin` (see the TODO session log). Tests and lint are
-    verified locally before every commit statement.
+16. **Before redoing specialized research, check `skills/`** — purpose-
+    specific capabilities with their own SKILL.md (midi-to-ocarina-tab,
+    ocarina-melodies, wav sound-profile fitting…). They exist precisely so
+    prior work is not redone; refine them in place when a session learns
+    something new. The AI never writes `plans/IDEAS.txt` (Robin's
+    scratchpad) — skills/ files, in contrast, are maintained documents.
 17. Test suites run their own throwaway HTTP server + isolated Chromium;
     they share nothing with Robin's preview (which is `file://` — no
     service worker, ever). Verify page behavior via `python3 -m http.server`,
     never through his preview.
+
+## Commands (split per OS)
+
+Linux (laptop; no system node):
+- Full local sweep: `python tests/run_all.py` from the repo root, run with
+  the repo's venv (`python3.13 .venv/bin/python3 tests/run_all.py` is the
+  same thing; plain `python3` on this box has no playwright). Filter:
+  `tests/run_all.py <substring>`.
+- Lint (none-node machines): a node-22 tarball lives under `/tmp/opencode/
+  node/bin` — when freshly booted/rebooted restore it:
+  `curl -fsSL https://nodejs.org/dist/v22.14.0/node-v22.14.0-linux-x64.tar.xz`
+  `| tar -xJf - -C /tmp/opencode/node --strip-components=1
+  mkdir-p`, then `export PATH=/tmp/opencode/node/bin:$PATH` and run
+  `npx --yes eslint@9 js/ && npx --yes html-validate@8 index.html`.
+  CI runs the exact same two commands (GitHub runner), so the pinned
+  versions match whatever CI runs.
+- One-time suite bootstrap: `python -m venv .venv` (if absent) then
+  `.venv/bin/pip install playwright && .venv/bin/playwright install
+  --with-deps chromium` (mirrors the CI step).
+- Verify app changes by hand: `python3 -m http.server` from the repo root,
+  then a normal browser tab (never Robin's file:// preview).
+
+Windows (partition):
+- Full local sweep: `py tests/run_all.py` (or your venv python: e.g.
+  `%VENVDIR%\Scripts\python.exe tests\run_all.py`) — the runner is pure
+  python and prints PASS/FAIL per suite.
+- Lint: with a system Node installed, `npx --yes eslint@9 js/ && npx
+  --yes html-validate@8 index.html` is identical to CI. Without node, say
+  so in the session — pin the run to CI (each push is a health check, and
+  the lint step runs there).
+- One-time suite bootstrap: `py -m venv .venv` then
+  `.venv\Scripts\pip install playwright` and
+  `.venv\Scripts\playwright install chromium` (the `--with-deps` system
+  packages are a Linux need only).
+- PWA service-work notes are Linux-irrelevant here: file:// previews and
+  served localhost behave the same on both OSes (no service worker on
+  file://).
 
 ## Context budget: wrap up before quality decays
 
