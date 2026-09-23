@@ -1673,7 +1673,6 @@ html[data-theme="oot"] .help-card { --panel: #fff; }
 .help-rows { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; font-size: 14px; }
 .help-rows dt { font-weight: 700; color: var(--accent, #8b3d2f); white-space: nowrap; }
 .help-rows dd { margin: 0; }
-.help-foot { margin-top: 10px; font-size: 12px; opacity: .75; }
 
 /* Practice history line: one muted run summary under the tuner track. */
 .prac-history {
