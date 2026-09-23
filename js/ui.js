@@ -1,8 +1,32 @@
+import { durLabel, isOutOfRange, parse, pretty, rangeCheck, spelledLabel,
+         swingFromText, tempoFromText, titleFromText, withPlayHeaders } from "./parse.js";
+import { ocarinaSVG } from "./ocarina.js";
+import { audioCtx, audioPerfReset, audioPerfSnapshot, isMelodyPaused,
+         isMelodyPlaying, liteMode, pauseMelody, perf, playMelody, playNote,
+         resumeMelody, setBassEnabled, setPerfAlertListener, setReverbEnabled,
+         setVibratoEnabled, soundingGridBeats, stopMelody, togglePlayPause,
+         unlockAudio } from "./audio.js";
+import { applySwing, applyTempoPct, clearLibrarySelection, currentSwing, libToast,
+         safeAlert, songTempo, tempoPct } from "./library.js";
+import { isPracticeActive, isPracticePaused, practiceInvalidate,
+         practiceRelocatePanel, practiceSpot, practiceToggle } from "./practice.js";
+import { applyTheme, currentTemplatePath, ensureOcarinaTemplate,
+         installedTplPath } from "./app.js";
 let APP_CSS = "";
 let lastTokens = [];
 let liveIdx = -1;
 let displayMode = "grid"; // "grid" | "scroll" | "single"
 let zenPrevMode = null;
+// Hover-preview suppression window: rebuilt strips quieter than hovering.
+let hoverQuietUntil = 0;
+
+// The app shell writes its stylesheet text here once at boot (ui owns the
+// style plumbing; app owns boot).
+function setAppCss(cssText) { APP_CSS = cssText; }
+
+// Hover-preview quieting is written by BOTH the strip rebuild (here) and the
+// audio scheduler; the helper is the one legal write path across the boundary.
+function bumpHoverQuiet(ms = 400) { hoverQuietUntil = Date.now() + ms; }
 
 function fitInput() {
   const ta = document.getElementById("src");
@@ -47,7 +71,11 @@ function resetLiveTab() {
 function cueFirstNote() {
   const toks = lastTokens.length ? lastTokens : parse(document.getElementById("src").value);
   if (!toks.length) return;
-  const i = firstSoundIdx(toks);
+  // The cue names where to START: playback's default pickup is the first
+  // note, but a running practice session owns the position — a zen entry's
+  // stopMelody() (or any stop while practicing) must re-cue the tone the
+  // tuner currently expects, never the score's first note.
+  const i = liveSpotIdx(toks);
   const t = toks[i];
   highlightToken(i, t && t.id);
   scrollFocusStripTo(i);
@@ -163,6 +191,7 @@ function appendNoteCard(sheet, t, i) {
       r.textContent = (t.raw || id) + " ✕";
     }
     sheet.appendChild(r);
+    indexCardEl(r);
     return;
   }
   const ch = CHAMBER[id];
@@ -173,10 +202,13 @@ function appendNoteCard(sheet, t, i) {
     <div class="meta"><span class="nm">${spelledLabel(t)}${t.staccato ? '<span class="stac-mark" title="staccato (short, with a pause)">\u2022</span>' : ''}</span>
      <span class="dur">${durLabel(t.dur, t.dotted, t.triplet)}</span></div>`;
   sheet.appendChild(card);
+  indexCardEl(card);
 }
 
 function fillFullSheet(sheet, tokens, sectioned = true) {
   sheet.classList.remove("live");
+  resetCardIndex(); // the sheet rebuilds from empty — its index follows
+  
   tokens.forEach((t, i) => {
     if (t.type === "bass") return; // hidden support marker
     // Junk chips belong to the token strip and the reading strip only: a
@@ -213,7 +245,9 @@ function fillFullSheet(sheet, tokens, sectioned = true) {
       r.innerHTML = `<div class="compact">rest</div>
         <div class="meta"><span></span>
         <span class="dur">${durLabel(t.dur, t.dotted, t.triplet)}</span></div>`;
-      sheet.appendChild(r); return;
+      sheet.appendChild(r);
+      indexCardEl(r);
+      return;
     }
     if (t.type === "tie") {
       if (!t.id || !NOTES.includes(t.id)) {
@@ -227,7 +261,9 @@ function fillFullSheet(sheet, tokens, sectioned = true) {
           r.innerHTML = `<div class="compact">–</div>
             <div class="meta"><span class="nm">–</span>
             <span class="dur">${durLabel(t.dur, t.dotted, t.triplet)}</span></div>`;
-          sheet.appendChild(r); return;
+          sheet.appendChild(r);
+          indexCardEl(r);
+          return;
         }
         const r = document.createElement("div"); r.className = "rest";
         r.style.borderColor = "var(--accent)"; r.style.color = "var(--accent)";
@@ -241,7 +277,9 @@ function fillFullSheet(sheet, tokens, sectioned = true) {
       r.innerHTML = `<div class="compact">–</div>
         <div class="meta"><span class="nm">–</span>
         <span class="dur">${durLabel(t.dur, t.dotted, t.triplet)}</span></div>`;
-      sheet.appendChild(r); return;
+      sheet.appendChild(r);
+      indexCardEl(r);
+      return;
     }
     appendNoteCard(sheet, t, i);
   });
@@ -283,11 +321,26 @@ function liveOorHtml(t) {
       <span class="dur">${durLabel(t.dur, t.dotted, t.triplet)}</span></div>`;
 }
 
+// The live tab's position when no explicit one is known: an ACTIVE practice
+// session owns the card (the tuner's currently-expected note), anything else
+// falls back to the first note. This is what keeps a zen exit/return — a
+// rebuild between practice's own highlight calls — from displaying the song's
+// first tone while the practice engine is standing on a later one.
+function liveSpotIdx(tokens) {
+  if (isPracticeActive()) {
+    const s = practiceSpot();
+    if (s >= 0 && s < tokens.length && tokens[s] &&
+        tokens[s].type !== "bar" && tokens[s].type !== "bass") return s;
+  }
+  return firstSoundIdx(tokens);
+}
+
 function fillLiveSheet(sheet, tokens, idx) {
   sheet.classList.remove("scroll");
   sheet.classList.add("live");
+  resetCardIndex();
   let i = idx;
-  if (i == null || i < 0 || !tokens[i] || tokens[i].type === "bar" || tokens[i].type === "bass") i = firstSoundIdx(tokens);
+  if (i == null || i < 0 || !tokens[i] || tokens[i].type === "bar" || tokens[i].type === "bass") i = liveSpotIdx(tokens);
   if (!tokens.length || i < 0 || !tokens[i] || tokens[i].type === "bar" || tokens[i].type === "bass") return;
   const card = document.createElement("div");
   const t = tokens[i];
@@ -299,13 +352,14 @@ function fillLiveSheet(sheet, tokens, idx) {
   if (t.id) card.dataset.pitch = t.id;
   card.innerHTML = liveCardHtml(t, tokens, i);
   sheet.appendChild(card);
+  indexCardEl(card);
 }
 
 function updateLiveTab(tokens, idx) {
   const sheet = document.getElementById("sheet");
   if (!sheet || !isLiveTab()) return;
   let i = idx;
-  if (i == null || i < 0 || !tokens[i] || tokens[i].type === "bar") i = firstSoundIdx(tokens);
+  if (i == null || i < 0 || !tokens[i] || tokens[i].type === "bar") i = liveSpotIdx(tokens);
   const t = tokens[i];
   if (!t) return;
   const card = sheet.querySelector(".card.live");
@@ -347,10 +401,20 @@ function updateRangeWarning(outOf) {
   const inst = window.CURRENT_INSTRUMENT;
   const name = inst ? [inst.type, inst.version].filter(Boolean).join(" · ") : "this ocarina";
   const n = outOf === 1 ? "1 note is" : outOf + " notes are";
+  // Instrument name and range label come from the data files: escaped, since
+  // they ride innerHTML (the day a data file is user-supplied, hostile text
+  // must stay text).
   bar.innerHTML = `<span class="rw-icon" aria-hidden="true">\u26A0</span>` +
-    `<span>${n} outside ${name} (range ${rangeLabel()}). ` +
+    `<span>${n} outside ${escHtml(name)} (range ${escHtml(rangeLabel())}). ` +
     `Out-of-range notes are marked below and can't be played.</span>`;
   bar.hidden = false;
+}
+
+// Markup-safe text for innerHTML composition. Attribute assignments (.title,
+// .aria-*) are engine-escaped already; innerHTML is the parsing one.
+function escHtml(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
 function render() {
@@ -365,10 +429,12 @@ function render() {
     const src = document.getElementById("src").value;
     fitInput();
     document.getElementById("title").textContent = titleFromText(src);
+
     const typedSwing = swingFromText(src);
     applySwing(typedSwing != null ? typedSwing : 0);
     const tokens = parse(src);
     lastTokens = tokens;
+    window.lastTokens = tokens; // test/console compat mirror
     drawTokens(tokens);
     const sheet = document.getElementById("sheet");
     const err = document.getElementById("err");
@@ -386,7 +452,19 @@ function render() {
     updateRangeWarning(outOf);
     // Out-of-range info lives in the tablature section (banner + marked
     // cards) — #err carries only genuine input problems, so no has-oor magic.
-    err.textContent = problems.join(" · ");
+    // Render owns ONE child line of #err instead of the whole node: appended
+    // lines (the global error net, boot's config diagnostics) keep their divs
+    // across renders instead of being textContent-wiped here.
+    if (err) {
+      let line = err.querySelector(":scope > .err-render");
+      if (!line) {
+        line = document.createElement("div");
+        line.className = "err-render";
+        err.appendChild(line);
+      }
+      line.textContent = problems.join(" · ");
+      line.hidden = !problems.length;
+    }
     document.getElementById("stats").textContent =
       notes ? `${notes} notes · ${switches} chamber switch${switches===1?"":"es"}` : "Type or click a melody.";
     if (typeof syncFocusMode === "function") syncFocusMode();
@@ -415,11 +493,26 @@ function tokenSeconds(tokOrDur, dotted) {
   return Math.max(0.12, beats * quarterSec());
 }
 
+// Per-render element indexes for highlightQuery-free lookups: the note path
+// used to run 2-3 document-wide [data-i=N] sweeps per token during playback.
+// Strips and sheet rebuild together, so their indexes refresh at the same
+// seams (fillFullSheet / fillLiveSheet / drawTokenStrip entries and rebuilds).
+const tokByI = new Map();   // data-i → [token els, strip order]
+const cardByI = new Map();  // data-i → card/rest el on the sheet
+
+function resetCardIndex() {
+  cardByI.clear();
+}
+
+function indexCardEl(el) {
+  if (el && el.dataset && el.dataset.i != null) cardByI.set(String(el.dataset.i), el);
+}
+
 function highlightToken(i, noteId, durSec, sounding) {
   liveIdx = i;
   const lite = typeof liteMode === "function" && liteMode();
   document.querySelectorAll(".tok.now, .card.now, .rest.now, .key.now").forEach(el => el.classList.remove("now"));
-  document.querySelectorAll('.tok[data-i="' + i + '"]').forEach(el => el.classList.add("now"));
+  for (const el of (tokByI.get(String(i)) || [])) el.classList.add("now");
   // The focus strip is the reading line in Zen — keep it moving even in Lite
   // (smooth scrolling is browser-native and cheap; Lite still skips the
   // sheet auto-scroll and the glow below). Practice mode follows it too: the
@@ -431,7 +524,7 @@ function highlightToken(i, noteId, durSec, sounding) {
   if (isLiveTab()) {
     updateLiveTab(lastTokens.length ? lastTokens : parse(document.getElementById("src").value), i);
   } else {
-      const card = document.querySelector('.card[data-i="' + i + '"], .rest[data-i="' + i + '"]');
+      const card = cardByI.get(String(i)) || null;
       if (card) {
         card.classList.add("now");
         const sheet = document.getElementById("sheet");
@@ -448,7 +541,7 @@ function highlightToken(i, noteId, durSec, sounding) {
             let move = barStart;
             if (!barStart) {
               const nk = nextCardIdx(toks, i);
-              const next = nk >= 0 ? document.querySelector('.card[data-i="' + nk + '"], .rest[data-i="' + nk + '"]') : null;
+              const next = nk >= 0 ? cardByI.get(String(nk)) || null : null;
               if (next) {
                 const nc = next.getBoundingClientRect();
                 const nw = wrap.getBoundingClientRect();
@@ -624,7 +717,12 @@ function hushTokenHover() {
   hoverVoiceToken = null;
 }
 
+// Passive observer for suites/dev: who is entering the hover-preview path.
+let hoverProbe = null;
+function setHoverProbe(fn) { hoverProbe = fn || null; }
+
 function hoverPreview(i, t) {
+  if (hoverProbe) try { hoverProbe(i, t); } catch (e) {}
   if (isMelodyPlaying() || hoverQuietUntil > Date.now()) return;
   // Practicing owns the glow and the sounds: token hovers would inject
   // playback-mode pulses over the fill-driven halo.
@@ -831,7 +929,20 @@ function buildTokenEl(t, i) {
     el.tabIndex = -1;                        // roving anchor assigned in drawTokenStrip
     el.setAttribute("role", "button");
     const nm = t.id && NOTES.includes(t.id) ? pretty(t.id) : "";
-    el.setAttribute("aria-label", nm ? "Play from " + nm : "Play from here");
+    const isOor = el.classList.contains("oor");
+    const label = isOor
+      ? "Play from " + pretty(t.id) + " — " +
+        (el.classList.contains("oor-low") ? "below" : "above") +
+        " this ocarina's range (" + rangeLabel() + "), the note itself can't be played"
+      : (nm ? "Play from " + nm : "Play from here");
+    el.setAttribute("aria-label", label);
+    // The gesture hint (tap/hold semantics, right-click add) rides a shared
+    // describedby block instead of a title-only tooltip.
+    el.setAttribute("aria-describedby", "sr-gesture-hints");
+  } else {
+    // Bad pills: no button role, but the fix-or-remove explanation must not
+    // be titled-only either.
+    el.setAttribute("aria-describedby", "sr-gesture-hints");
   }
   return el;
 }
@@ -878,10 +989,19 @@ function drawTokenStrip(box, tokens, sectioned) {
     if (again && again.hasAttribute("role")) refocus = again;
   }
   if (refocus) refocus.focus();
+  // refresh this strip's slice of the highlight index (one fill per strip
+  // rebuild instead of a document sweep per playback note)
+  box.querySelectorAll('.tok[data-i]').forEach(el => {
+    const k = String(el.dataset.i);
+    let arr = tokByI.get(k);
+    if (!arr) { arr = []; tokByI.set(k, arr); }
+    arr.push(el);
+  });
 }
 
 function drawTokens(tokens) {
-  hoverQuietUntil = Date.now() + 400;
+  tokByI.clear(); // both strips rebuild — the strip index follows
+  bumpHoverQuiet();
   drawTokenStrip(document.getElementById("tokens"), tokens, true);
   drawTokenStrip(document.getElementById("focusTokens"), tokens);
 }
@@ -991,6 +1111,9 @@ function buildKB() {
         k.tabIndex = -1;                       // roving anchor picked after build
         k.setAttribute("role", "button");
         k.setAttribute("aria-label", "Hear " + pretty(id));
+        // Gesture info rides the shared describedby hint block (click hear /
+        // right-click add) instead of a title-only tooltip.
+        k.setAttribute("aria-describedby", "sr-gesture-hints");
         k.title = id + " — click hear, right-click add";
         k.innerHTML = `<span class="n">${w}${oct===4?"":oct}</span>`;
         k.onclick = () => { kbRoving(kb, k); playNote(id); pianoNotePreview(id); };
@@ -1012,6 +1135,7 @@ function buildKB() {
           b.tabIndex = -1;
           b.setAttribute("role", "button");
           b.setAttribute("aria-label", "Hear " + pretty(sid));
+          b.setAttribute("aria-describedby", "sr-gesture-hints");
           b.title = sid + " — click hear, right-click add";
           b.onclick = () => { kbRoving(kb, b); playNote(sid); pianoNotePreview(sid); };
           b.oncontextmenu = e => { e.preventDefault(); kbRoving(kb, b); playNote(sid); addNote(sid); pianoNotePreview(sid); };
@@ -1166,11 +1290,78 @@ function wireUi() {
     if (typeof practiceInvalidate === "function") try { practiceInvalidate(); } catch (e) {}
     render();
   };
+  // Theme toggle beside Clear: flip data-theme (plain ↔ Hyrule), persist the
+  // choice, repaint the chrome-color hint and re-render so svgWhen rules
+  // (e.g. the saria body) re-resolve for the new theme.
+  const themeBtn = document.getElementById("themeBtn");
+  if (themeBtn) {
+    themeBtn.onclick = () => {
+      const next = document.documentElement.hasAttribute("data-theme") ? "" : "oot";
+      applyTheme(next);
+      try { localStorage.setItem("oco-theme", next); } catch (e) {}
+      syncThemeGlyph();
+      syncThemeMeta();
+      render();
+    };
+    syncThemeGlyph();
+    syncThemeMeta();
+  }
+  // Shortcut overlay: opens on the "?" ghost button or the "?" key (never
+  // while typing), closes on ✕ / backdrop / Escape; focus lands on the close
+  // button and returns to the opener on exit.
+  const helpOverlay = document.getElementById("helpOverlay");
+  let helpReturnFocus = null;
+  const helpOpen = () => {
+    if (!helpOverlay || !helpOverlay.hidden) return;
+    helpReturnFocus = document.activeElement;
+    helpOverlay.hidden = false;
+    helpOverlay.classList.add("open");
+    const x = helpOverlay.querySelector(".help-x");
+    if (x) { try { x.focus(); } catch (e) {} }
+  };
+  const helpShut = () => {
+    if (!helpOverlay || helpOverlay.hidden) return;
+    helpOverlay.hidden = true;
+    helpOverlay.classList.remove("open");
+    if (helpReturnFocus && helpReturnFocus.focus) {
+      try { helpReturnFocus.focus(); } catch (e) {}
+    }
+    helpReturnFocus = null;
+  };
+  const helpBtn = document.getElementById("helpBtn");
+  if (helpBtn) helpBtn.onclick = helpOpen;
+  if (helpOverlay) {
+    helpOverlay.querySelector(".help-x").addEventListener("click", helpShut);
+    helpOverlay.addEventListener("click", (e) => {
+      if (e.target === helpOverlay) helpShut(); // backdrop, not the card
+    });
+  }
+  document.addEventListener("keydown", (e) => {
+    if (helpOverlay && !helpOverlay.hidden) {
+      if (e.key === "Escape") { e.preventDefault(); helpShut(); }
+      return;
+    }
+    if (e.key === "?" && !isTextEntry(document.activeElement)) {
+      e.preventDefault();
+      helpShut();
+      helpOpen();
+    }
+  });
+  let srcRenderTimer = 0;
   document.getElementById("src").addEventListener("input", () => {
     // Typed edits replace the melody the session was built from — end it so
-    // the next Practice press starts fresh on the edited song.
+    // the next Practice press starts fresh on the edited song. That must not
+    // wait for the render settle: the session is already stale.
     if (typeof practiceInvalidate === "function") try { practiceInvalidate(); } catch (e) {}
-    render();
+    // Every keystroke once re-parsed, rebuilt both token strips and re-
+    // cloned the whole sheet. Typed edits coalesce into one render per
+    // 200 ms pause — roughly the hush between two typed units — so half-
+    // parsed bursts ("C#cr", "D4 E") never flash on the strips, and the
+    // sheet still lands a blink after you stop. Programmatic loads
+    // (library, clear, piano inserts, instrument swaps) keep calling
+    // render() directly.
+    clearTimeout(srcRenderTimer);
+    srcRenderTimer = setTimeout(render, 200);
   });
   const big = document.getElementById("bigSmall");
   if (big) big.onclick = () => {
@@ -1223,6 +1414,25 @@ function wireUi() {
   wireFocusControls();
   wireSpacebar();
   updateTransportUI();
+}
+
+// Theme chrome: button glyph + the browser bar's theme-color hint live on the
+// CURRENT data-theme; both re-sync on toggle and at wire time.
+function syncThemeGlyph() {
+  const btn = document.getElementById("themeBtn");
+  if (!btn) return;
+  const on = document.documentElement.hasAttribute("data-theme");
+  btn.textContent = on ? "Hyrule" : "Plain";
+  btn.title = on ? "Switch to the classic light theme"
+                 : "Switch to the Hyrule Field theme";
+  btn.setAttribute("aria-label", btn.title);
+}
+
+function syncThemeMeta() {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) return;
+  const bg = getComputedStyle(document.body).backgroundColor;
+  meta.setAttribute("content", bg || "#f6efe6");
 }
 
 let zenUiTimer = 0;
@@ -1297,7 +1507,7 @@ function syncFocusMode() {
       syncLoopUI();
       revealZenUi();
       const toks = lastTokens.length ? lastTokens : parse(document.getElementById("src").value);
-      scrollFocusStripTo(liveIdx >= 0 ? liveIdx : firstSoundIdx(toks));
+      scrollFocusStripTo(liveIdx >= 0 ? liveIdx : liveSpotIdx(toks));
     }
     if (typeof perfRelocate === "function") perfRelocate();
     // Re-seat the practice tuner for the new layout (body ↔ #tabPanel) and
@@ -1887,3 +2097,17 @@ function perfDismissToast() {
   perfToast = null;
   if (perfBtn) perfBtn.classList.remove("alerted");
 }
+
+export { bumpHoverQuiet, buildKB, clearHighlight, cueFirstNote, enterZenFromLink,
+         firstSoundIdx, freezeZenGlow, highlightToken, isFocusMode, isFullscreen,
+         isLiveTab, lastTokens, loopOn, noteMidi, quarterSec, render, resetLiveTab,
+         setAppCss, setHoverProbe, tokenSeconds, updateTransportUI, wireUi };
+
+// Classic-script compat surface (tests + dev console).
+window.render = render; window.highlightToken = highlightToken;
+window.clearHighlight = clearHighlight; window.quarterSec = quarterSec;
+window.buildKB = buildKB; window.loopOn = loopOn; window.updateTransportUI = updateTransportUI;
+window.isFullscreen = isFullscreen; window.enterZenFromLink = enterZenFromLink;
+window.resetLiveTab = resetLiveTab; window.setAppCss = setAppCss;
+window.setDisplayMode = setDisplayMode;
+window.setHoverProbe = setHoverProbe;

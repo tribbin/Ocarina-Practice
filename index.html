@@ -6,6 +6,8 @@
 <meta name="description" content="Ocarina tab maker and practice companion: type notes, get fingerings, play back through a synthesized ocarina, and practice with microphone feedback." />
 <meta name="theme-color" content="#f6efe6" />
 <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icon-192.png" />
 <title>Ocarina Practice</title>
 <script>
 (function () {
@@ -22,6 +24,10 @@
   <h1>Ocarina Practice</h1>
   <div class="inst-picker">
     <select id="instSel" class="inst-sel" aria-label="Ocarina"></select>
+  </div>
+  <div class="head-tools">
+    <button class="ghost" type="button" id="themeBtn" title="Switch the theme"></button>
+    <button class="ghost" type="button" id="helpBtn" title="Keyboard shortcuts" aria-haspopup="dialog">?</button>
   </div>
 </header>
 <div class="wrap">
@@ -179,13 +185,32 @@
   </section>
 </div>
 
-<script src="js/parse.js"></script>
-<script src="js/ocarina.js"></script>
-<script src="js/audio.js"></script>
-<script src="js/library.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/practice.js"></script>
-<script src="js/app.js"></script>
-<script src="js/debug.js"></script>
+  <div id="helpOverlay" class="help-dialog" role="dialog" aria-modal="true" aria-label="Keyboard and gesture shortcuts" hidden>
+    <div class="help-card">
+      <div class="help-head">
+        <b>Shortcuts</b>
+        <button class="help-x" type="button" title="Close">✕</button>
+      </div>
+      <dl class="help-rows">
+        <dt>Space</dt><dd>Pause / Continue playback or practice (not while typing)</dd>
+        <dt>Enter</dt><dd>Hear the focused piano key · play the song from the focused notation chip</dd>
+        <dt>← →</dt><dd>Step the piano chromatically · walk the notation chips · cycle grid/scroll/single in the mode segment</dd>
+        <dt>↑ ↓</dt><dd>Move the piano an octave</dd>
+        <dt>Home / End</dt><dd>First / last token (piano + chips)</dd>
+        <dt>Right-click key</dt><dd>Add that note to the melody</dd>
+        <dt>Quick tap chip</dt><dd>Play the song from there (touch and mouse)</dd>
+        <dt>Hold chip / key</dt><dd>Hear just that one note (about ¼ s)</dd>
+        <dt>?</dt><dd>Show / hide this list</dd>
+      </dl>
+    </div>
+  </div>
+  <div id="sr-gesture-hints" class="sr-only">
+    Notation chips (button-shaped): activating one plays the song from
+    that note; on touch a quick tap plays from here, a held press auditions
+    the note once. Piano keys: activate or click to hear the note;
+    right-click (or two-finger context) adds it to the melody. Tan pills
+    mark text outside the melody notation — fix or remove them.
+  </div>
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>

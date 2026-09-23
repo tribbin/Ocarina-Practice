@@ -25,12 +25,23 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Lint scripts (eslint flat config)
+        run: npx --yes eslint@9 js/
+      - name: Validate HTML structure
+        run: npx --yes html-validate@8 index.html
       - name: Install Playwright + Chromium
         run: |
           pip install playwright
           playwright install --with-deps chromium
       - name: Run practice acceptance tests
         run: python tests/practice_accepts_melody.py
+      - name: Run separate-note dip gate tests
+        run: python tests/practice_dip.py
+      - name: Run practice seat (zen return) tests
+        run: python tests/practice_zen_return.py
       - name: Run support-bracket tests
         run: python tests/support_accepts_brackets.py
       - name: Run parser edge-case tests
@@ -53,3 +64,23 @@ jobs:
         run: python tests/instrument_switch_race.py
       - name: Run instrument layout tests
         run: python tests/instruments_load.py
+      - name: Run svg re-render coordinates pin
+        run: python tests/svg_cache.py
+      - name: Run debug panel contract tests
+        run: python tests/debug_panel.py
+      - name: Run offline (service worker) tests
+        run: python tests/offline_pwa.py
+      - name: Run pitch worker tests
+        run: python tests/ac_worker.py
+      - name: Run scheduler grid pin (swing parity)
+        run: python tests/swing_grid.py
+      - name: Run gesture-hint a11y tests
+        run: python tests/sr_hints.py
+      - name: Run transport scheduler contract tests
+        run: python tests/transport_schedule.py
+      - name: Run practice history tests
+        run: python tests/practice_history.py
+      - name: Run template safety tests
+        run: python tests/svg_sanitized.py
+      - name: Run theme toggle tests
+        run: python tests/theme_toggle.py

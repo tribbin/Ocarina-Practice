@@ -107,11 +107,9 @@ ZEN_CASES = [
 RUN_DRIVER = """
 CASES => new Promise(resolve => {
   const runs = [];
-  const orig = playNoteAt;
   let phase = 0;
   const step = () => {
     if (phase >= CASES.length) {
-      playNoteAt = orig;
       resolve({ runs,
                 focus: document.getElementById('tabPanel').classList.contains('focus') });
       return;
@@ -122,11 +120,10 @@ CASES => new Promise(resolve => {
     const cb = document.getElementById('loopMel');
     if (cb) cb.checked = !!c.loop;
     const events = [];
-    playNoteAt = function (id, when, dur, bag, slideFrom, intoSlide) {
+    setNoteSink((id, when, dur, slideFrom, intoSlide) => {
       events.push({ id, when: when == null ? -1 : when, dur,
                     slideFrom: slideFrom || null, intoSlide: !!intoSlide });
-      return orig(id, when, dur, bag, slideFrom, intoSlide);
-    };
+    });
     setTimeout(() => {
       playMelody();
       setTimeout(() => { runs.push(events); step(); }, c.waitMs);
@@ -142,18 +139,13 @@ CASE => new Promise(resolve => {
   document.getElementById('src').value = CASE.src;
   render();
   const events = [];
-  const orig = playNoteAt;
-  playNoteAt = function (id, when, dur, bag, slideFrom, intoSlide) {
-    events.push({ id });
-    return orig(id, when, dur, bag, slideFrom, intoSlide);
-  };
+  setNoteSink((id) => { events.push({ id }); });
   // Plain view: toggleZen's in-place branch would go to zen from the
   // fallback-plain state; force NON-zen by exiting the fallback first.
   if (document.body.classList.contains("zen-fallback")) toggleZen();
   setTimeout(() => {
     playMelody();
     setTimeout(() => {
-      playNoteAt = orig;
       resolve({ events,
                 focus: document.getElementById('tabPanel').classList.contains('focus') });
     }, 3000);
@@ -288,12 +280,10 @@ def run_equivalence_pair(page, pair, failures):
 SAME_VOICE_DRIVER = """
 () => new Promise(resolve => {
   const events = [];
-  const orig = playNoteAt;
-  playNoteAt = function (id, when, dur, bag, slideFrom, intoSlide) {
+  setNoteSink((id, when, dur) => {
     events.push({ id, dur: Math.round(dur * 1000) / 1000,
                   when: when == null ? "live" : Math.round(when * 1000) / 1000 });
-    return orig(id, when, dur, bag, slideFrom, intoSlide);
-  };
+  });;
   enterZenFromLink();
   setTimeout(() => {
     playNote("C2", 0.552);            // simulated instrument press (0.92 × beat)
@@ -301,7 +291,7 @@ SAME_VOICE_DRIVER = """
     render();
     setTimeout(() => {
       playMelody();
-      setTimeout(() => { playNoteAt = orig; stopMelody(); resolve(events); }, 3200);
+      setTimeout(() => { setNoteSink(null); stopMelody(); resolve(events); }, 3200);
     }, 250);
   }, 250);
 })

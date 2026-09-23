@@ -1,10 +1,15 @@
+import { audioCtx, cutLive, freqOf, getReverbBus, playNote, reverbEnabled, setReverbEnabled, sharedAudioCtx } from "./audio.js";
+
 // Dev audio-debug panel. Enable from the browser console with:
-//   DEBUG=1        (DEBUG=0 hides it; `window.OCO_DEBUG.toggle()` also works)
+//   DEBUG=1        (DEBUG=0 hides it; `window.OCA_DEBUG.toggle()` also works)
 // or by appending ?debug=1 to the page URL. Every slice of the voice — the
 // base PeriodicWave harmonics, the tone lowpass, the high-note fade map and
 // each layered partial — is exposed as a slider and applied to newly played
 // notes. Tweaks persist in localStorage ("oco-debug-audio"); the panel
 // restores itself on reload.
+//
+// The panel DOM is built on first open only: a visit with no ?debug=1, no
+// console toggle and no saved-open state never creates it.
 (function () {
   "use strict";
   var KEY = "oco-debug-audio";
@@ -14,9 +19,14 @@
   var P = api.params;
   var D = api.defaults;
   var on = false;
+  var panel = null;   // built lazily on first open (buildPanel)
+  var built = false;
   var rows = [];      // { sync() } per slider row, for reset-all re-render
   var saveT = 0;
   var sweepT = 0;
+  var notesHost = null;
+  var notePoll = 0;
+  var builtFor = "";
 
   // ---- restore saved tweaks (only keys that still exist in the table) ----
   try {
@@ -94,6 +104,8 @@
       ["transientCents", "Onset grace \u00A2", 0, 120, 5],
       ["transientMs", "Onset grace ms", 50, 400, 10],
       ["gapMs", "Attack gap ms", 50, 400, 10],
+      ["dipMs", "Note dip ms", 30, 400, 10],
+      ["dipFrac", "Note dip level ×", 0.2, 0.9, 0.05],
       ["chainTravelMs", "Chain travel grace ms", 100, 2000, 50],
       ["rmsGate", "Mic silence gate", 0.002, 0.08, 0.002],
     ]},
@@ -114,38 +126,12 @@
     }, 300);
   }
 
-  // ---- panel skeleton ----
-  var panel = document.createElement("div");
-  panel.id = "dbgPanel";
-  panel.innerHTML =
-    '<div class="dbg-head">' +
-      '<b>AUDIO DEBUG</b>' +
-      '<span class="dbg-hint">console: DEBUG=1 / DEBUG=0</span>' +
-      '<button class="dbg-x" type="button" title="Hide (or DEBUG=0)">\u2715</button>' +
-    '</div>' +
-    '<div class="dbg-tests">' +
-      '<span class="dbg-testcap">Test:</span>' +
-      '<span class="dbg-notes" id="dbgNotes"></span>' +
-      '<button class="dbg-btn" type="button" id="dbgSweep">Sweep range</button>' +
-      '<button class="dbg-btn" type="button" id="dbgStop">Stop</button>' +
-      '<button class="dbg-btn" type="button" id="dbgWav" title="Capture what plays next for 3.5 s (single notes only; skips the output limiter) and download it as a WAV">\u2913 Export WAV</button>' +
-      '<button class="dbg-btn" type="button" id="dbgLag" title="Fakes audio-clock starvation: triggers the perf fallback (red pulse + Lite proposal)">Induce lag</button>' +
-    '</div>' +
-    '<div id="dbgGroups"></div>' +
-    '<div class="dbg-foot">' +
-      '<button class="dbg-btn" type="button" id="dbgReset">Reset all</button>' +
-      '<button class="dbg-btn" type="button" id="dbgCopy">Copy tweaks</button>' +
-      '<span class="dbg-tip">applies to newly played notes \u00b7 auto-saved \u00b7 dbl-click a label to reset one value</span>' +
-    '</div>';
-  document.body.appendChild(panel);
-
-  // ---- Draggable panel: grab the header, drop anywhere, remember it ----
-  // Pointer-based so touch works too. A dragged position is inline left/top
-  // (with right:auto cleared), which outranks both the body default
-  // (top/right 10px) and the zen reposition (top 76px right 10px) — so the
-  // dragged spot survives the move into #tabPanel for zen and back out.
-  var POS_KEY = "oco-debug-pos";
+  // ---- panel position: inline left/top is dragged (or restored) state and
+  // outranks both the body default (top/right 10px) and the zen reposition
+  // (top 76px right 10px) — so the dragged spot survives the move into
+  // #tabPanel for zen and back out. Only valid once the panel exists.
   function clampPos(x, y) {
+    if (!panel) return { x: x, y: y };
     var w = panel.offsetWidth || 350;
     return {
       // Keep ≥60px horizontally / 40px vertically reachable on any screen.
@@ -161,66 +147,295 @@
   }
   function savePos() {
     try {
-      localStorage.setItem(POS_KEY, JSON.stringify({
+      localStorage.setItem("oco-debug-pos", JSON.stringify({
         x: parseInt(panel.style.left, 10), y: parseInt(panel.style.top, 10)
       }));
     } catch (e) {}
   }
   function resetPos() {
     panel.style.left = ""; panel.style.top = ""; panel.style.right = "";
-    try { localStorage.removeItem(POS_KEY); } catch (e) {}
+    try { localStorage.removeItem("oco-debug-pos"); } catch (e) {}
   }
-  try {
-    var savedPos = JSON.parse(localStorage.getItem(POS_KEY) || "null");
-    if (savedPos && isFinite(savedPos.x) && isFinite(savedPos.y)) applyPos(savedPos.x, savedPos.y);
-  } catch (e) {}
   window.addEventListener("resize", function () {
     // A resized viewport must never strand the panel out of reach.
-    if (panel.style.left !== "") {
-      applyPos(parseInt(panel.style.left, 10), parseInt(panel.style.top, 10));
-    }
+    if (!panel || panel.style.left === "") return;
+    applyPos(parseInt(panel.style.left, 10), parseInt(panel.style.top, 10));
   });
-  (function wireDrag() {
-    var head = panel.querySelector(".dbg-head");
-    if (!head) return;
-    var drag = null;
-    head.addEventListener("pointerdown", function (e) {
-      if (e.target.closest(".dbg-x")) return; // hide button stays a button
-      var r = panel.getBoundingClientRect();
-      drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, moved: false, r: r };
-      try { head.setPointerCapture(e.pointerId); } catch (e2) {}
-      panel.style.userSelect = "none";
+
+  function buildPanel() {
+    if (built) return;
+    built = true;
+
+    // ---- panel skeleton ----
+    panel = document.createElement("div");
+    panel.id = "dbgPanel";
+    panel.innerHTML =
+      '<div class="dbg-head">' +
+        '<b>AUDIO DEBUG</b>' +
+        '<span class="dbg-hint">console: DEBUG=1 / DEBUG=0</span>' +
+        '<button class="dbg-x" type="button" title="Hide (or DEBUG=0)">\u2715</button>' +
+      '</div>' +
+      '<div class="dbg-tests">' +
+        '<span class="dbg-testcap">Test:</span>' +
+        '<span class="dbg-notes" id="dbgNotes"></span>' +
+        '<button class="dbg-btn" type="button" id="dbgSweep">Sweep range</button>' +
+        '<button class="dbg-btn" type="button" id="dbgStop">Stop</button>' +
+        '<button class="dbg-btn" type="button" id="dbgWav" title="Capture what plays next for 3.5 s (single notes only; skips the output limiter) and download it as a WAV">\u2913 Export WAV</button>' +
+        '<button class="dbg-btn" type="button" id="dbgLag" title="Fakes audio-clock starvation: triggers the perf fallback (red pulse + Lite proposal)">Induce lag</button>' +
+      '</div>' +
+      '<div id="dbgGroups"></div>' +
+      '<div class="dbg-foot">' +
+        '<button class="dbg-btn" type="button" id="dbgReset">Reset all</button>' +
+        '<button class="dbg-btn" type="button" id="dbgCopy">Copy tweaks</button>' +
+        '<span class="dbg-tip">applies to newly played notes \u00b7 auto-saved \u00b7 dbl-click a label to reset one value</span>' +
+      '</div>';
+    document.body.appendChild(panel);
+
+    // ---- draggable panel: grab the header, drop anywhere, remember it ----
+    // Pointer-based so touch works too.
+    (function wireDrag() {
+      var head = panel.querySelector(".dbg-head");
+      if (!head) return;
+      var drag = null;
+      head.addEventListener("pointerdown", function (e) {
+        if (e.target.closest(".dbg-x")) return; // hide button stays a button
+        var r = panel.getBoundingClientRect();
+        drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, moved: false, r: r };
+        try { head.setPointerCapture(e.pointerId); } catch (e2) {}
+        panel.style.userSelect = "none";
+      });
+      head.addEventListener("pointermove", function (e) {
+        if (!drag) return;
+        drag.moved = true;
+        applyPos(e.clientX - drag.dx, e.clientY - drag.dy);
+      });
+      head.addEventListener("pointerup", function () {
+        if (drag && drag.moved) savePos();
+        drag = null;
+        panel.style.userSelect = "";
+      });
+      head.addEventListener("pointercancel", function () {
+        drag = null;
+        panel.style.userSelect = "";
+      });
+      // Double-click (not on ✕) returns the panel to its stylesheet position
+      // wherever it is — table center-right by default, below the ✕ in Zen.
+      head.addEventListener("dblclick", function (e) {
+        if (!e.target.closest(".dbg-x")) resetPos();
+      });
+    })();
+
+    // Restore a remembered dragged position.
+    try {
+      var savedPos = JSON.parse(localStorage.getItem("oco-debug-pos") || "null");
+      if (savedPos && isFinite(savedPos.x) && isFinite(savedPos.y)) applyPos(savedPos.x, savedPos.y);
+    } catch (e) {}
+
+    // ---- reference test notes: 5 evenly spaced across the instrument range ----
+    // window.NOTES is installed asynchronously by app.js's boot(), so the
+    // buttons are (re)built lazily: on open and whenever they're not ready.
+    notesHost = panel.querySelector("#dbgNotes");
+    var sweepBtn = panel.querySelector("#dbgSweep");
+    sweepBtn.addEventListener("click", function () {
+      stopSweep();
+      var list = buildNotes();
+      if (!list.length) return;
+      var i = 0;
+      sweepT = setInterval(function () {
+        if (i >= list.length) { stopSweep(); return; }
+        playId(list[i++], 0.2);
+      }, 240);
+      sweepBtn.textContent = "\u2026 sweeping";
     });
-    head.addEventListener("pointermove", function (e) {
-      if (!drag) return;
-      drag.moved = true;
-      applyPos(e.clientX - drag.dx, e.clientY - drag.dy);
+
+    panel.querySelector("#dbgStop").addEventListener("click", function () {
+      stopSweep();
+      if (typeof cutLive === "function") cutLive();
     });
-    head.addEventListener("pointerup", function () {
-      if (drag && drag.moved) savePos();
-      drag = null;
-      panel.style.userSelect = "";
+
+    // ---- Induce lag: fakes audio-clock starvation so the perf fallback ----
+    // (red-pulse button, Lite proposal toast, counters) can be exercised on
+    // demand, without waiting for a real underrun.
+    var lagBtn = panel.querySelector("#dbgLag");
+    var lagT = 0;
+    lagBtn.addEventListener("click", function () {
+      if (!api || typeof api.simulateLag !== "function") return;
+      api.simulateLag();
+      var left = (typeof api.alertThrottleLeftMs === "function") ? api.alertThrottleLeftMs() : 0;
+      if (left > 0) {
+        // Raise still counts the glitch; only the toast/pulse is throttled.
+        lagBtn.title = "Raise fires, toast throttled — retry in " + Math.ceil(left / 1000) + " s";
+        clearTimeout(lagT);
+        lagT = setTimeout(function () {
+          lagBtn.title = "Fakes audio-clock starvation: triggers the perf fallback (red pulse + Lite proposal)";
+        }, left + 500);
+        return;
+      }
+      lagBtn.textContent = "\u2026 induced";
+      setTimeout(function () { lagBtn.textContent = "Induce lag"; }, 1200);
     });
-    head.addEventListener("pointercancel", function () {
-      drag = null;
-      panel.style.userSelect = "";
+
+    // ---- WAV export: capture the next played note(s) for 3.5 s and download ----
+    // Taps the reverb-bus input (dry source mix; the output limiter/headroom
+    // stage is bypassed, so absolute levels read ~4.4 dB hotter than playback —
+    // fine for spectral analysis, which is the point). Single notes only: a
+    // loud chord can exceed ±1 and clamp in the 16-bit file.
+    var wavBtn = panel.querySelector("#dbgWav");
+    var wavTap = null, wavBlocks = null, wavN = 0, wavEl = null;
+    function wavDone() {
+      try { wavEl.removeEventListener("click", wavClick); } catch (e) {}
+      if (wavEl) wavEl.textContent = "\u2913 Export WAV";
+      wavEl = null;
+    }
+    function wavClick(ev) {
+      ev.preventDefault();
+      finishWav();
+    }
+    function finishWav() {
+      if (!wavTap) { wavDone(); return; }
+      try { wavTap.onaudioprocess = null; wavTap.disconnect(); } catch (e) {}
+      // flush captured blocks into one buffer
+      var flat = new Float32Array(wavN * 4096);
+      for (var i = 0; i < wavN; i++) flat.set(wavBlocks[i], i * 4096);
+      wavTap = null; wavBlocks = null; wavN = 0;
+      // encode 16-bit mono WAV + download (header rate = the context's real
+      // sample rate — a hardcoded 44100 made the export read wrong in Audacity
+      // on 48 kHz devices)
+      var sr = (typeof audioCtx !== "undefined" && audioCtx) ? audioCtx.sampleRate : 44100;
+      var n = flat.length;
+      var buf = new ArrayBuffer(44 + n * 2), dv = new DataView(buf);
+      var ws = function (off, str) { for (var i2 = 0; i2 < str.length; i2++) dv.setUint8(off + i2, str.charCodeAt(i2)); };
+      ws(0, "RIFF"); dv.setUint32(4, 36 + n * 2, true); ws(8, "WAVE"); ws(12, "fmt ");
+      dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+      dv.setUint32(24, sr, true); dv.setUint32(28, sr * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true);
+      ws(36, "data"); dv.setUint32(40, n * 2, true);
+      for (var j = 0; j < n; j++) {
+        var v = Math.max(-1, Math.min(1, flat[j]));
+        dv.setInt16(44 + j * 2, v < 0 ? v * 0x8000 : v * 0x7FFF, true);
+      }
+      var blob = new Blob([buf], { type: "audio/wav" });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "ocarina_debug_export.wav";
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+      wavDone();
+      console.log("[audio debug] WAV exported (" + (n / sr).toFixed(2) + " s, " + sr + " mono 16-bit)");
+    }
+    wavBtn.addEventListener("click", function () {
+      if (wavEl) { finishWav(); return; }  // second click truncates + saves
+      try {
+        sharedAudioCtx();
+        if (audioCtx.state === "suspended") audioCtx.resume();
+        wavEl = wavBtn;
+        wavBtn.textContent = "\u25cf recording next note\u2026";
+        wavBlocks = [];
+        wavN = 0;
+        wavTap = audioCtx.createScriptProcessor(4096, 1, 1);
+        wavTap.onaudioprocess = function (e) {
+          if (wavBlocks) {
+            wavBlocks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+            wavN++;
+            if (wavN >= Math.ceil(3.5 * audioCtx.sampleRate / 4096)) finishWav();
+          }
+        };
+        (typeof getReverbBus === "function" ? getReverbBus(audioCtx) : audioCtx.destination).connect(wavTap);
+        wavTap.connect(audioCtx.destination);
+        // keep the capture armed even if the user plays within the panel
+        wavEl.addEventListener("click", wavClick);
+        console.log("[audio debug] capture armed \u2014 play a note now (single notes only)");
+      } catch (e) {
+        console.log("[audio debug] export failed: " + e);
+        wavDone();
+      }
     });
-    // Double-click (not on ✕) returns the panel to its stylesheet position
-    // wherever it is — table center-right by default, below the ✕ in Zen.
-    head.addEventListener("dblclick", function (e) {
-      if (!e.target.closest(".dbg-x")) resetPos();
+
+    // ---- slider rows ----
+    function addRow(host, grp, row) {
+      var k = row[0], label = row[1], min = row[2], max = row[3], step = row[4];
+      var line = document.createElement("div");
+      line.className = "dbg-row";
+      var lab = document.createElement("span");
+      lab.className = "dbg-lab";
+      lab.textContent = label;
+      lab.title = k + " \u00b7 dbl-click to reset";
+      var rng = document.createElement("input");
+      rng.type = "range"; rng.min = min; rng.max = max; rng.step = step; rng.value = P[k];
+      var num = document.createElement("input");
+      num.type = "number"; num.className = "dbg-num"; num.min = min; num.max = max; num.step = step;
+      num.value = fmt(P[k], step);
+      var rst = document.createElement("button");
+      rst.className = "dbg-rst"; rst.type = "button"; rst.textContent = "\u21ba";
+      rst.title = "Back to default (" + fmt(D[k], step) + ")";
+
+      function sync() {
+        var mod = Math.abs(P[k] - D[k]) > 1e-12;
+        line.classList.toggle("mod", mod);
+        rng.value = P[k];
+        num.value = fmt(P[k], step);
+      }
+
+      function setVal(v) {
+        var was = P[k];
+        P[k] = clamp(+v || 0, min, max);
+        sync();
+        if (grp.wave) api.invalidateWave();
+        if (k === "reverbWet") {
+          // Re-ramp the live wet gain (setReverbEnabled re-reads the level).
+          try { setReverbEnabled(reverbEnabled); } catch (e) {}
+        }
+        if (was !== P[k]) save();
+      }
+
+      rng.addEventListener("input", function () { setVal(rng.value); });
+      num.addEventListener("change", function () { setVal(num.value); });
+      rst.addEventListener("click", function () { setVal(D[k]); });
+      lab.addEventListener("dblclick", function () { setVal(D[k]); });
+
+      line.appendChild(lab);
+      line.appendChild(rng);
+      line.appendChild(num);
+      line.appendChild(rst);
+      host.appendChild(line);
+      rows.push(sync);
+    }
+
+    var groupsHost = panel.querySelector("#dbgGroups");
+    GROUPS.forEach(function (grp) {
+      var det = document.createElement("details");
+      det.className = "dbg-group";
+      var sum = document.createElement("summary");
+      sum.textContent = grp.t + (grp.wave ? " (rebuilds wave)" : "");
+      det.appendChild(sum);
+      var body = document.createElement("div");
+      body.className = "dbg-rows";
+      grp.r.forEach(function (row) { addRow(body, grp, row); });
+      det.appendChild(body);
+      groupsHost.appendChild(det);
     });
-  })();
+
+    // ---- footer buttons ----
+    panel.querySelector("#dbgReset").addEventListener("click", resetAll);
+
+    panel.querySelector("#dbgCopy").addEventListener("click", function () {
+      var tweaked = {};
+      Object.keys(D).forEach(function (k) {
+        if (Math.abs(P[k] - D[k]) > 1e-12) tweaked[k] = P[k];
+      });
+      var keys = Object.keys(tweaked).sort();
+      var s = "{\n" + keys.map(function (k) { return "  " + k + ": " + tweaked[k]; }).join(",\n") + "\n}";
+      try { navigator.clipboard.writeText(JSON.stringify(tweaked)); } catch (e) {}
+      console.log("[audio debug] off-default tweaks (raw JSON also on the clipboard):\n" + s);
+    });
+
+    panel.querySelector(".dbg-x").addEventListener("click", function () { show(false); });
+  }
 
   function playId(id, dur) {
     if (typeof playNote === "function") playNote(id, dur);
   }
 
   // ---- reference test notes: 5 evenly spaced across the instrument range ----
-  // window.NOTES is installed asynchronously by app.js's boot(), so the
-  // buttons are (re)built lazily: on open and whenever they're not ready.
-  var notesHost = panel.querySelector("#dbgNotes");
-  var builtFor = "";
   function ascNotes() {
     return (window.NOTES || []).slice().sort(function (a, b) { return freqOf(a) - freqOf(b); });
   }
@@ -247,214 +462,17 @@
     return list;
   }
 
-  var sweepBtn = panel.querySelector("#dbgSweep");
-  sweepBtn.addEventListener("click", function () {
-    stopSweep();
-    var list = buildNotes();
-    if (!list.length) return;
-    var i = 0;
-    sweepT = setInterval(function () {
-      if (i >= list.length) { stopSweep(); return; }
-      playId(list[i++], 0.2);
-    }, 240);
-    sweepBtn.textContent = "\u2026 sweeping";
-  });
   function stopSweep() {
     if (sweepT) { clearInterval(sweepT); sweepT = 0; }
-    sweepBtn.textContent = "Sweep range";
+    var btn = document.getElementById("dbgSweep");
+    if (btn) btn.textContent = "Sweep range";
   }
-
-  panel.querySelector("#dbgStop").addEventListener("click", function () {
-    stopSweep();
-    if (typeof cutLive === "function") cutLive();
-  });
-
-  // ---- Induce lag: fakes audio-clock starvation so the perf fallback ----
-  // (red-pulse button, Lite proposal toast, counters) can be exercised on
-  // demand, without waiting for a real underrun.
-  var lagBtn = panel.querySelector("#dbgLag");
-  var lagT = 0;
-  lagBtn.addEventListener("click", function () {
-    if (!api || typeof api.simulateLag !== "function") return;
-    api.simulateLag();
-    var left = (typeof api.alertThrottleLeftMs === "function") ? api.alertThrottleLeftMs() : 0;
-    if (left > 0) {
-      // Raise still counts the glitch; only the toast/pulse is throttled.
-      lagBtn.title = "Raise fires, toast throttled — retry in " + Math.ceil(left / 1000) + " s";
-      clearTimeout(lagT);
-      lagT = setTimeout(function () {
-        lagBtn.title = "Fakes audio-clock starvation: triggers the perf fallback (red pulse + Lite proposal)";
-      }, left + 500);
-      return;
-    }
-    lagBtn.textContent = "\u2026 induced";
-    setTimeout(function () { lagBtn.textContent = "Induce lag"; }, 1200);
-  });
-
-  // ---- WAV export: capture the next played note(s) for 3.5 s and download ----
-  // Taps the reverb-bus input (dry source mix; the output limiter/headroom
-  // stage is bypassed, so absolute levels read ~4.4 dB hotter than playback —
-  // fine for spectral analysis, which is the point). Single notes only: a
-  // loud chord can exceed ±1 and clamp in the 16-bit file.
-  var wavBtn = panel.querySelector("#dbgWav");
-  var wavTap = null, wavBlocks = null, wavN = 0, wavEl = null;
-  function wavDone() {
-    try { wavEl.removeEventListener("click", wavClick); } catch (e) {}
-    if (wavEl) wavEl.textContent = "\u2913 Export WAV";
-    wavEl = null;
-  }
-  function wavClick(ev) {
-    ev.preventDefault();
-    finishWav();
-  }
-  function finishWav() {
-    if (!wavTap) { wavDone(); return; }
-    try { wavTap.onaudioprocess = null; wavTap.disconnect(); } catch (e) {}
-    // flush captured blocks into one buffer
-    var flat = new Float32Array(wavN * 4096);
-    for (var i = 0; i < wavN; i++) flat.set(wavBlocks[i], i * 4096);
-    wavTap = null; wavBlocks = null; wavN = 0;
-    // encode 16-bit mono WAV + download (header rate = the context's real
-    // sample rate — a hardcoded 44100 made the export read wrong in Audacity
-    // on 48 kHz devices)
-    var sr = (typeof audioCtx !== "undefined" && audioCtx) ? audioCtx.sampleRate : 44100;
-    var n = flat.length;
-    var buf = new ArrayBuffer(44 + n * 2), dv = new DataView(buf);
-    var ws = function (off, str) { for (var i2 = 0; i2 < str.length; i2++) dv.setUint8(off + i2, str.charCodeAt(i2)); };
-    ws(0, "RIFF"); dv.setUint32(4, 36 + n * 2, true); ws(8, "WAVE"); ws(12, "fmt ");
-    dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
-    dv.setUint32(24, sr, true); dv.setUint32(28, sr * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true);
-    ws(36, "data"); dv.setUint32(40, n * 2, true);
-    for (var j = 0; j < n; j++) {
-      var v = Math.max(-1, Math.min(1, flat[j]));
-      dv.setInt16(44 + j * 2, v < 0 ? v * 0x8000 : v * 0x7FFF, true);
-    }
-    var blob = new Blob([buf], { type: "audio/wav" });
-    var a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "ocarina_debug_export.wav";
-    a.click();
-    setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
-    wavDone();
-    console.log("[audio debug] WAV exported (" + (n / sr).toFixed(2) + " s, " + sr + " mono 16-bit)");
-  }
-  wavBtn.addEventListener("click", function () {
-    if (wavEl) { finishWav(); return; }  // second click truncates + saves
-    try {
-      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === "suspended") audioCtx.resume();
-      wavEl = wavBtn;
-      wavBtn.textContent = "\u25cf recording next note\u2026";
-      wavBlocks = [];
-      wavN = 0;
-      wavTap = audioCtx.createScriptProcessor(4096, 1, 1);
-      wavTap.onaudioprocess = function (e) {
-        if (wavBlocks) {
-          wavBlocks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
-          wavN++;
-          if (wavN >= Math.ceil(3.5 * audioCtx.sampleRate / 4096)) finishWav();
-        }
-      };
-      (typeof getReverbBus === "function" ? getReverbBus(audioCtx) : audioCtx.destination).connect(wavTap);
-      wavTap.connect(audioCtx.destination);
-      // keep the capture armed even if the user plays within the panel
-      wavEl.addEventListener("click", wavClick);
-      console.log("[audio debug] capture armed \u2014 play a note now (single notes only)");
-    } catch (e) {
-      console.log("[audio debug] export failed: " + e);
-      wavDone();
-    }
-  });
-
-  // ---- slider rows ----
-  function addRow(host, grp, row) {
-    var k = row[0], label = row[1], min = row[2], max = row[3], step = row[4];
-    var line = document.createElement("div");
-    line.className = "dbg-row";
-    var lab = document.createElement("span");
-    lab.className = "dbg-lab";
-    lab.textContent = label;
-    lab.title = k + " \u00b7 dbl-click to reset";
-    var rng = document.createElement("input");
-    rng.type = "range"; rng.min = min; rng.max = max; rng.step = step; rng.value = P[k];
-    var num = document.createElement("input");
-    num.type = "number"; num.className = "dbg-num"; num.min = min; num.max = max; num.step = step;
-    num.value = fmt(P[k], step);
-    var rst = document.createElement("button");
-    rst.className = "dbg-rst"; rst.type = "button"; rst.textContent = "\u21ba";
-    rst.title = "Back to default (" + fmt(D[k], step) + ")";
-
-    function sync() {
-      var mod = Math.abs(P[k] - D[k]) > 1e-12;
-      line.classList.toggle("mod", mod);
-      rng.value = P[k];
-      num.value = fmt(P[k], step);
-    }
-
-    function setVal(v) {
-      var was = P[k];
-      P[k] = clamp(+v || 0, min, max);
-      sync();
-      if (grp.wave) api.invalidateWave();
-      if (k === "reverbWet") {
-        // Re-ramp the live wet gain (setReverbEnabled re-reads the level).
-        try { setReverbEnabled(reverbEnabled); } catch (e) {}
-      }
-      if (was !== P[k]) save();
-    }
-
-    rng.addEventListener("input", function () { setVal(rng.value); });
-    num.addEventListener("change", function () { setVal(num.value); });
-    rst.addEventListener("click", function () { setVal(D[k]); });
-    lab.addEventListener("dblclick", function () { setVal(D[k]); });
-
-    line.appendChild(lab);
-    line.appendChild(rng);
-    line.appendChild(num);
-    line.appendChild(rst);
-    host.appendChild(line);
-    rows.push(sync);
-  }
-
-  var groupsHost = panel.querySelector("#dbgGroups");
-  GROUPS.forEach(function (grp) {
-    var det = document.createElement("details");
-    det.className = "dbg-group";
-    var sum = document.createElement("summary");
-    sum.textContent = grp.t + (grp.wave ? " (rebuilds wave)" : "");
-    det.appendChild(sum);
-    var body = document.createElement("div");
-    body.className = "dbg-rows";
-    grp.r.forEach(function (row) { addRow(body, grp, row); });
-    det.appendChild(body);
-    groupsHost.appendChild(det);
-  });
-
-  // ---- footer buttons ----
-  function resetAll() {
-    Object.keys(D).forEach(function (k) { P[k] = D[k]; });
-    api.invalidateWave();
-    try { setReverbEnabled(reverbEnabled); } catch (e) {}
-    rows.forEach(function (fn) { fn(); });
-    save();
-  }
-  panel.querySelector("#dbgReset").addEventListener("click", resetAll);
-
-  panel.querySelector("#dbgCopy").addEventListener("click", function () {
-    var tweaked = {};
-    Object.keys(D).forEach(function (k) {
-      if (Math.abs(P[k] - D[k]) > 1e-12) tweaked[k] = P[k];
-    });
-    var keys = Object.keys(tweaked).sort();
-    var s = "{\n" + keys.map(function (k) { return "  " + k + ": " + tweaked[k]; }).join(",\n") + "\n}";
-    try { navigator.clipboard.writeText(JSON.stringify(tweaked)); } catch (e) {}
-    console.log("[audio debug] off-default tweaks (raw JSON also on the clipboard):\n" + s);
-  });
 
   // ---- show / hide ----
   function show(v) {
     on = !!v;
-    panel.classList.toggle("open", on);
+    if (on) buildPanel();
+    if (panel) panel.classList.toggle("open", on);
     if (on) {
       buildNotes();
       if (!(window.NOTES || []).length) pollNotes();
@@ -466,7 +484,6 @@
 
   // If the panel opens before app.js's boot() has installed the instrument,
   // poll briefly so the test-note buttons appear as soon as NOTES arrive.
-  var notePoll = 0;
   function pollNotes() {
     if (notePoll) return;
     notePoll = setInterval(function () {
@@ -474,7 +491,13 @@
     }, 400);
   }
 
-  panel.querySelector(".dbg-x").addEventListener("click", function () { show(false); });
+  function resetAll() {
+    Object.keys(D).forEach(function (k) { P[k] = D[k]; });
+    api.invalidateWave();
+    try { setReverbEnabled(reverbEnabled); } catch (e) {}
+    rows.forEach(function (fn) { fn(); });
+    save();
+  }
 
   // The console hook: `DEBUG=1` shows the panel, `DEBUG=0` hides it.
   try {
@@ -492,12 +515,12 @@
     try { if (localStorage.getItem(OPEN_KEY) === "1") show(true); } catch (e) {}
   }
 
-  // Public handle: window.OCO_DEBUG.{params, defaults, show, hide, toggle, resetAll, invalidateWave}
+  // Public handle: window.OCA_DEBUG.{params, defaults, show, hide, toggle,
+  // resetAll, simulateLag, alertThrottleLeftMs, voiceErrors, invalidateWave}
   api.show = function () { show(true); };
   api.hide = function () { show(false); };
   api.toggle = function () { show(!on); };
   api.resetAll = resetAll;
-  window.OCO_DEBUG = api;
 
   // ---- Zen overlay: the panel is fixed on <body>, so real fullscreen ----
   // (Zen mode) paints the fullscreen element over it and the panel vanishes.

@@ -38,6 +38,13 @@
 //
 // Tests: appending ?practiceTest=1 replaces the mic frames with the synthetic
 // provider at window.__pracFrame = { hz, rms } (the same code paths run).
+import { parse } from "./parse.js";
+import { AUDIO_DEFAULTS, audioCtx, freqOf, quarterSecFor, stopMelody, syncTransport,
+         sysSoundUntilSec, unlockAudio } from "./audio.js";
+import { clearHighlight, freezeZenGlow, highlightToken, isFullscreen, isLiveTab,
+         lastTokens, loopOn, noteMidi, quarterSec, updateTransportUI } from "./ui.js";
+import { PITCH_MIN_HZ, PITCH_MAX_HZ, autoCorrelate } from "./pitch-dsp.js";
+import { currentSongId } from "./app.js";
 (function () {
   "use strict";
 
@@ -53,12 +60,8 @@
                                // while anything rings, mic frames read as
                                // the SPEAKERS, never as an ocarina, so they
                                // are treated as silence
-  const MIN_HZ = 160;
-  // Ceiling must cover the highest in-use note plus attack overshoot:
-  // C7 (the alto's top note) reads ~2093 Hz — its autocorrelation lag
-  // (~22.9 samples at 48 kHz) sits BELOW the search floor when MAX_HZ was
-  // 2000, and the detector then reported a far-lower ghost peak.
-  const MAX_HZ = 2600;
+  // Pitch range lives in js/pitch-dsp.js (PITCH_MIN_HZ/PITCH_MAX_HZ) — the
+  // detector and the frame guards read the same constants.
   const needleLo = -50;        // display window in cents
   const needleHi = 50;
 
@@ -67,10 +70,19 @@
     calibrating: false,
     tokens: [], idx: 0, quarter: 0.5,
     bar: null,          // { startIdx, endIdx, zones:[hz], targetSec, filled, chainId, slide:false, stac:false }
-    state: "idle",      // await | ready | hit | fill | drain? (drain is fill w/ neg) | rest
+    state: "idle",      // await | ready | hit | fill | drain? (drain is fill w/ neg) | rest | dip
     gapAcc: 0,          // ms of continuous silence accumulated (await phase)
+    dipAcc: 0,          // ms of continuous below-reference level (dip phase)
+    holdRms: 0,         // EMA of the sounding level while the tone is up:
+                        // the dip gate's relative notch measures against it
+    doneHz: null,       // last completed bar's final zone pitch: the tone a
+                        // continuing hold would carry into the next bar
     transientLeft: 0,   // ms of onset-grace remaining
     restLeft: 0,        // ms left of a rest
+    wipes: 0,           // mid-hold drop count THIS RUN (progress history)
+    centsAcc: 0,        // Σ |cents to the current target| over hold frames
+    centsN: 0,          // hold frames counted for the cents mean
+    startedAt: 0,
     hz: 0, hzSm: 0, rms: 0, cents: 0,
     signal: false,      // the frame registered a pitch (locked Hz above the noise floor)
     msgHold: "", msgHoldUntil: 0, // readable-hold override for status feedback
@@ -224,6 +236,7 @@
     ready: { sym: "●", col: "", tip: "Ready — play the note." },
     hit: { sym: "●", col: "zone", tip: "Hit. Steady to the pitch…" },
     fill: { sym: "●", col: "zone", tip: "Hold the note in tune." },
+    dip: { sym: "○", col: "", tip: "Give the two notes a dip — tongue the tone down briefly to start this one." },
     rest: { sym: "‖", col: "", tip: "Rest" },
   };
   function glyphTip(g) {
@@ -255,7 +268,8 @@
       '<div class="prac-row1"><span class="prac-note">—</span>' +
       '<span class="prac-status"></span></div>' +
       '<div class="prac-scale"><div class="prac-zone"></div><div class="prac-mark"></div></div>' +
-      '<div class="prac-track"><div class="prac-fill"></div></div>';
+      '<div class="prac-track"><div class="prac-fill"></div></div>' +
+      '<div class="prac-history" hidden></div>';
     els.note = panel.querySelector(".prac-note");
     els.status = panel.querySelector(".prac-status");
     els.scale = panel.querySelector(".prac-scale");
@@ -263,6 +277,7 @@
     els.mark = panel.querySelector(".prac-mark");
     els.track = panel.querySelector(".prac-track");
     els.fill = panel.querySelector(".prac-fill");
+    els.history = panel.querySelector(".prac-history");
     // No Pause/Skip/Restart/End here: the transports own mode control, and
     // clicking any token re-anchors the practice. The panel is a pure tuner
     // display (draggable by its face).
@@ -316,16 +331,17 @@
     p.addEventListener("pointercancel", done);
   }
 
-  // Where the fixed tuner lives. In single-card layouts (Live view / zen) it
-  // is integrated INTO the live fingering card as the card's bottom strip —
-  // no own face, the card's chamber background showing; the note label is
-  // the card's own. Grid/scroll keep the floating overlay, whose host choice
-  // still matters on the ?oot theme: the input/playback section is stacked
-  // ABOVE #tabPanel (z 2 vs z 1, so the perf pop can overlay the cards) and
-  // a child of #tabPanel can never rise above it — so the overlay hosts on
-  // <body> (root stacking context wins outright) except during zen, where it
-  // must stay INSIDE #tabPanel (body-level content is painted over by the
-  // fullscreen element).
+  // Where the fixed tuner lives. In Zen (focus/fullscreen/fallback) with a
+  // live card it is integrated INTO the card as its bottom strip — no own
+  // face, the card's chamber background showing; the note label is the
+  // card's own. Everywhere else (grid/scroll/plain single) it keeps the
+  // floating overlay, whose host choice still matters on the ?oot theme:
+  // the input/playback section is stacked ABOVE #tabPanel (z 2 vs z 1, so
+  // the perf pop can overlay the cards) and a child of #tabPanel can never
+  // rise above it — so the overlay hosts on <body> (root stacking context
+  // wins outright) except during real fullscreen zen, where it must stay
+  // INSIDE #tabPanel (body-level content is painted over by the fullscreen
+  // element).
   function panelHost() {
     const tab = document.getElementById("tabPanel");
     if (tab && (tab.classList.contains("focus") ||
@@ -336,6 +352,16 @@
   // the pitch changes, so this runs not just on zen transitions (ui.js
   // syncFocusMode) but on every card rebuild (ui.js updateLiveTab) and from
   // renderPanel as a safety net.
+  // The integrated card band is ZEN's mechanic (Robin's call): covered by
+  // real fullscreen, the focus class, or the CSS fallback zen. In the plain
+  // single view outside Zen the tuner keeps its floating face (grid/scroll
+  // treatment) — nothing about non-Zen should absorb it into the card.
+  function zenSeatedView() {
+    const tab = document.getElementById("tabPanel");
+    return document.body.classList.contains("zen-fallback") ||
+      !!(tab && (tab.classList.contains("focus") ||
+        (typeof isFullscreen === "function" && isFullscreen())));
+  }
   function relocatePanel() {
     if (!panel) return;
     // Sitting in the card band is a practice-mode decision: only while the
@@ -344,7 +370,8 @@
     // alive and pull the note symbols toward the center.
     const seated = typeof isPracticeActive === "function" && isPracticeActive() &&
       !(typeof isPracticePaused === "function" && isPracticePaused()) &&
-      typeof isLiveTab === "function" && isLiveTab();
+      typeof isLiveTab === "function" && isLiveTab() &&
+      zenSeatedView();
     const card = seated ? document.querySelector(".card.live") : null;
     const meta = card ? card.querySelector(".meta") : null;
     const inCard = !!card;
@@ -604,140 +631,104 @@
     };
   }
 
-  // Normalized autocorrelation with parabolic peak interpolation.
-  // History: an earlier "first lag within 95% of the best clarity" octave
-  // guard snapped onto the SHOULDER of the true peak (only ~4-5% short of the
-  // true period on mid/high notes), reading +72..+90¢ high depending on the
-  // note — a pure detector artifact, never a recording problem. The guard is
-  // gone; octave protection now only considers true SUB-MULTIPLES of the best
-  // lag (k× the fundamental period — the honest subharmonic case), each with
-  // a local-maximum clarity check.
-  function autoCorrelate(buf, sr) {
-    const n = buf.length;
-    const half = Math.floor(n / 2);
-    const minLag = Math.max(2, Math.floor(sr / MAX_HZ));
-    const maxLag = Math.min(half, Math.ceil(sr / MIN_HZ));
-    // correlation curve computed once
-    const c = new Float32Array(maxLag + 1);
-    for (let lag = minLag; lag <= maxLag; lag++) {
-      let corr = 0, ea = 0, eb = 0;
-      const m = n - lag;
-      for (let i = 0; i < m; i++) {
-        corr += buf[i] * buf[i + lag];
-        ea += buf[i] * buf[i];
-        eb += buf[i + lag] * buf[i + lag];
-      }
-      c[lag] = (ea && eb) ? corr / Math.sqrt(ea * eb) : 0;
+  // ---- pitch analysis off the main thread --------------------------------
+  // The detector (autoCorrelate in js/pitch-dsp.js, ~2M multiply-adds per
+  // 2048-sample frame at 9 fine passes) used to run inside the tick — on
+  // slow devices that jittered every 66 ms cadence step. A dedicated worker
+  // now owns it: frames are transferred, results come back a few ms later
+  // and the state machine advances on the result. The classic-script DSP
+  // stays loaded so a failed/unavailable Worker (file://, restrictions)
+  // falls back to the bit-identical main-thread computation.
+
+  let acWorker = null, acWorkerDead = false;
+  let acSeq = 0;                 // never reused
+  const acJobs = new Map();      // seq → onHz(hz)
+
+  function ensureAcWorker() {
+    if (acWorkerDead || (typeof Worker === "undefined")) return null;
+    if (acWorker) return acWorker;
+    try {
+      acWorker = new Worker("js/pitch-ac-worker.js", { type: "module" });
+      acWorker.onmessage = (e) => {
+        const d = e.data;
+        if (!d) return;
+        const job = acJobs.get(d.seq);
+        if (!job) return;      // stale: the session/pause dropped it already
+        acJobs.delete(d.seq);
+        if (typeof job.onHz === "function") job.onHz(d.hz);
+      };
+      acWorker.onerror = () => {
+        acJobs.clear();
+        acWorkerDead = true;
+        try { acWorker.terminate(); } catch (e) {}
+        acWorker = null;
+      };
+      return acWorker;
+    } catch (e) {
+      acWorkerDead = true;
+      return null;
     }
-    c[0] = -1; c[1] = -1; // sentinel: no lags below minLag exist
-    let globalLag = -1, globalC = 0;
-    for (let lag = minLag; lag <= maxLag; lag++) {
-      if (c[lag] > globalC) { globalC = c[lag]; globalLag = lag; }
-    }
-    if (globalLag < 0 || globalC < 0.85) return 0;
-    // The pitch = the SHORTEST local maximum whose clarity is ~that of the
-    // global best. Integer multiples of a fractional period always re-
-    // correlate nearly perfectly (the global max can be 5× the true period),
-    // and non-maximum shoulders are never periods — comparing against those
-    // caused the old +72..+90¢ shoulder-snap.
-    let bestLag = -1, bestC = 0;
-    for (let lag = minLag; lag < maxLag; lag++) {
-      if (c[lag] >= c[lag - 1] && c[lag] >= c[lag + 1] &&
-          c[lag] >= globalC * 0.9) {
-        bestLag = lag; bestC = c[lag];
-        break;
-      }
-    }
-    if (bestLag < 0) { bestLag = globalLag; bestC = globalC; }
-    // Sub-multiple safety net (weak fundamentals locked onto a harmonic):
-    // only k× multiples qualify, each with local-max clarity.
-    for (let k = 4; k >= 2; k--) {
-      const cand = Math.round(bestLag / k);
-      if (cand < minLag) continue;
-      let m = cand;
-      if (c[cand - 1] > c[m]) m = cand - 1;
-      if (c[cand + 1] > c[m]) m = cand + 1;
-      if (m < minLag || m >= bestLag) continue;
-      if (c[m] >= bestC * 0.9) { bestLag = m; bestC = c[m]; }
-    }
-    // Parabolic interpolation around the final lag (sub-sample precision):
-    // removes the integer-lag quantization that used to read anywhere from
-    // -26¢ to +26¢ depending on where the true period fell.
-    let delta = 0;
-    if (bestLag > minLag && bestLag < maxLag) {
-      const a = c[bestLag - 1], b = c[bestLag], cc = c[bestLag + 1];
-      const den = a - 2 * b + cc;
-      if (den > 1e-12) {
-        delta = 0.5 * (a - cc) / den;
-        if (delta > 1 || delta < -1) delta = 0;
-      }
-    }
-    let fl = bestLag + delta;
-    // Fine refine: correlate against a linearly-shifted copy on a 0.25-sample
-    // grid around the parabolic estimate (the composite curve is not exactly
-    // parabolic when harmonics are present, so the analytic apex drifts).
-    const fine = (fq) => {
-      const k = Math.floor(fq), fr = fq - k;
-      const m = Math.min(n - k - 2, n - Math.ceil(fl) - 2);
-      if (m < 64) return -1;
-      let corr = 0, ea = 0, eb = 0;
-      for (let i = 0; i < m; i++) {
-        const y = (1 - fr) * buf[i + k] + fr * buf[i + k + 1];
-        const xi = buf[i];
-        corr += xi * y;
-        ea += xi * xi;
-        eb += y * y;
-      }
-      return corr / Math.sqrt(ea * eb);
-    };
-    let best = -2, bestFl = fl;
-    for (let fq = fl - 1; fq <= fl + 1; fq += 0.25) {
-      if (fq < minLag || fq > maxLag) continue;
-      const v = fine(fq);
-      if (v > best) { best = v; bestFl = fq; }
-    }
-    if (best > 0) {
-      // parabola on the fine grid (0.25 steps)
-      const fC = fine(bestFl), fL2 = fine(bestFl - 0.25), fR = fine(bestFl + 0.25);
-      const den2 = fL2 - 2 * fC + fR;
-      let d2 = 0;
-      if (den2 > 1e-12) {
-        d2 = 0.5 * (fL2 - fR) / den2;
-        if (d2 > 1 || d2 < -1) d2 = 0;
-      }
-      fl = bestFl + d2 * 0.25;
-    }
-    return sr / fl;
   }
 
-  function readFrame() {
+  // A session break (stop/pause) invalidates queued frames: results that
+  // arrive after the break must not step the machine that follows.
+  function acDropFrames() {
+    acJobs.clear();
+  }
+
+  // ---- per-frame analysis + consumption ----------------------------------
+  // readFrame fills the acoustic state (P.rms/P.hz) and finishes the frame
+  // (smoothing, zone scoring), then calls done() — the caller's continuation
+  // (the practice state machine). Silent frames and the TEST-provider path
+  // complete synchronously, exactly like before.
+  function readFrame(done) {
     if (TEST) {
       const f = window.__pracFrame;
-      if (!f) { P.rms = 0; P.hz = 0; return; }
+      if (!f) { P.rms = 0; P.hz = 0; finishFrame(done); return; }
       P.rms = f.rms || 0;
       P.hz = f.hz || 0;
-    } else if (P.mic) {
+      finishFrame(done);
+      return;
+    }
+    if (P.mic) {
       P.mic.analyser.getFloatTimeDomainData(P.mic.buf);
       const buf = P.mic.buf, sr = P.mic.sr;
       let s = 0;
       for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
       P.rms = Math.sqrt(s / buf.length);
-      P.hz = P.rms >= dbg().rmsGate ? autoCorrelate(buf, sr) : 0;
       // The mic hears the speakers too: any ring from site-made sound
       // (playback, previews, ticks, their reverb tail) must not register as
       // input. While it sounds, this frame reads as silence — the same road
       // a real player's gap takes, so holds pause/wipe by the usual rules.
       try {
-        if ((P.hz || P.rms) && typeof sysSoundUntilSec === "function" &&
+        if (P.rms && typeof sysSoundUntilSec === "function" &&
             audioCtx && audioCtx.currentTime < sysSoundUntilSec() + REVERB_TAIL_MS / 1000) {
           P.rms = 0;
-          P.hz = 0;
         }
       } catch (e) {}
+      if (P.rms < dbg().rmsGate) { P.hz = 0; finishFrame(done); return; }
+      const w = ensureAcWorker();
+      if (w) {
+        // Transfer a copy — the analyser reuses its buffer the next tick.
+        const copy = buf.slice(0);
+        ++acSeq;
+        acJobs.set(acSeq, {
+          onHz: (hz) => { P.hz = hz; finishFrame(done); },
+        });
+        w.postMessage({ seq: acSeq, sr: sr, buf: copy }, [copy.buffer]);
+        return;                 // done() runs when the worker answers
+      }
+      P.hz = autoCorrelate(buf, sr);
+      finishFrame(done);
+      return;
     }
+    finishFrame(done);
+  }
+
+  function finishFrame(done) {
     // The pitch is measured as-is — no correction factors. Whatever the
     // capture chain does shows up in the cents delta, displayed live.
-    if (P.hz && (P.hz < MIN_HZ * 0.6 || P.hz > MAX_HZ * 1.3)) P.hz = 0;
+    if (P.hz && (P.hz < PITCH_MIN_HZ * 0.6 || P.hz > PITCH_MAX_HZ * 1.3)) P.hz = 0;
     P.hzSm = P.rms > 0 ? (P.hzSm && P.hz ? P.hzSm * (1 - 0.55) + P.hz * 0.55 : P.hz) : 0;
     // A REGISTERED reading requires the frame to be WELL above the noise
     // floor AND a locked pitch: silence or room noise is not a note, and the
@@ -766,6 +757,17 @@
     P.zonesNear = near;
     P.zonesNearCents = near >= 0 && cents !== 999 ? Math.abs(cents) : 999;
     P.cents = cents;
+    // Progress history: while a hold is actually live, sample the frame's
+    // distance to the current target (cap at the outer bandwidth so a drift
+    // blip cannot dominate the run mean).
+    if (P.bar && P.signal && (P.state === "hit" || P.state === "fill")) {
+      P.centsAcc += Math.min(P.zonesNearCents, 50);
+      P.centsN++;
+    }
+    // Analysis complete — hand the frame to the caller's continuation (the
+    // practice state machine advances here, a few ms after dispatch when it
+    // was a worker frame).
+    if (done) done();
   }
 
   // Zen glow, practice edition: same envelope as the play-mode pulse — the
@@ -898,11 +900,21 @@
     // "await" phase. That gate was only ever the RESTART rule; consecutive
     // notes must not force silence between them. Such bars FLOW straight
     // into "ready": an in-tune sounding note arms the frontier immediately.
-    P.state = fresh ? "await" : "ready";
+    // One exception: when the CLOSED previous bar's tone could continue
+    // straight into this bar's note (its pitch sits within the onset arm
+    // tolerance), one uninterrupted hold would cover both notes — so this
+    // bar stays shut in "dip" until the air was cut once. Pitches that
+    // collide within the tolerance are the only case: any farther apart and
+    // the travel itself is the distinct step.
+    const continuing = !fresh && P.doneHz != null &&
+      Math.abs(centsOf(P.doneHz, P.bar.zones[0])) <= dbg().transientCents;
+    P.state = fresh ? "await" : (continuing ? "dip" : "ready");
     // No pinned restart announcement at session start / manual anchors: the
     // brief await→ready transition reports itself; only a WIPE pins (below).
     P.msgHold = ""; P.msgHoldUntil = 0;
     P.gapAcc = 0;
+    P.dipAcc = 0;
+    if (fresh) P.holdRms = 0; // no hold level to compare a notch against
     P.transientLeft = 0;
     P.hzSm = 0;
     try {
@@ -916,6 +928,18 @@
   function nextPitchedIdx(i) {
     for (let k = i; k < P.tokens.length; k++) if (isPitchedTok(P.tokens[k])) return k;
     return -1;
+  }
+
+  // The token of the note practice currently expects: the frontier zone's
+  // token inside the bar, else the raw index (rests). The live tab seeds
+  // itself here while a session is active — a mode change that rebuilds the
+  // card (zen exit/return, theme flip …) must not fall back to the first
+  // note and lie about where the player stands.
+  function practiceSpotToken() {
+    if (P.bar && P.bar.zoneIdx && P.bar.hiZone != null) {
+      return P.bar.zoneIdx[Math.min(P.bar.hiZone, P.bar.zoneIdx.length - 1)];
+    }
+    return P.idx;
   }
 
   function tick() {
@@ -932,7 +956,18 @@
 
     const t = P.tokens[P.idx];
     if (!t) { endReached(); return; }
-    readFrame();
+    // The frame completes synchronously for silent and TEST-provider frames,
+    // and a few ms later from the pitch worker otherwise — the state machine
+    // below advances ONCE per consumed frame (its spacing stretches only if
+    // the worker genuinely falls behind; dt keeps crediting the dispatched
+    // cadence, so holds keep counting wall time honestly either way).
+    readFrame(() => advanceFrame(t, dt, dg));
+  }
+
+  function advanceFrame(t, dt, dg) {
+    // A session stopped or paused while this frame was in flight: the step
+    // is fruitless — none of the machine's stores belong to it anymore.
+    if (!P.active || P.paused) return;
 
     // auto-pass tokens
     if (t.type === "tempo") { P.quarter = quarterSecFor(t.bpm); advance(); return; }
@@ -946,17 +981,41 @@
 
     const b = P.bar;
     const sounding = P.rms >= dg.rmsGate;
+    // Reference level of the current hold (an EMA over sounding frames):
+    // what the dip gate's relative notch is measured against — a tongued
+    // 50% volume dip counts without ever reaching full silence.
+    if (sounding) P.holdRms = P.holdRms ? P.holdRms * 0.8 + P.rms * 0.2 : P.rms;
 
     switch (P.state) {
       case "await": {
         // RE-ATTACK phase — reached only after a wipe / at a fresh entry:
         // a hit needs a real articulation, continuous silence for gapMs.
         // Note-to-note entries never come through here (they enter "ready"
-        // directly and can sound through — no forced stop between notes).
+        // — or "dip" when the closed tone could continue into this note —
+        // directly, with no forced stop).
         if (!sounding) {
           P.gapAcc += dt;
           if (P.gapAcc >= dg.gapMs) { P.state = "ready"; renderPanel(); }
         } else P.gapAcc = 0;
+        break;
+      }
+      case "dip": {
+        // Separate-note gate, tuned to the real tonguing gesture: the tone
+        // must break ONCE relative to the level it was holding — a full
+        // stop OR a drop to dipFrac of the recent hold level (a tongued
+        // notch that never reaches silence counts). It needs to persist
+        // only dipMs (≈ one detection frame): what keeps a mic wobble from
+        // faking the notch is the reference itself, an EMA of the sounding
+        // level tracked while the tone is up — noise does not halve a
+        // stable hold. No credit accrues while waiting and nothing wipes —
+        // the tuner simply waits for the articulation, and a dip that
+        // comes naturally during a breath passes silently.
+        const dipped = P.rms < dg.rmsGate ||
+          (P.holdRms > 0 && P.rms <= dg.dipFrac * P.holdRms);
+        if (dipped) {
+          P.dipAcc += dt;
+          if (P.dipAcc >= dg.dipMs) { P.dipAcc = 0; P.state = "ready"; }
+        } else P.dipAcc = 0;
         break;
       }
       case "ready": {
@@ -1018,6 +1077,7 @@
             P.dropAcc = 0;
             P.state = "await";
             P.gapAcc = 0;
+            P.wipes++; // progress history: a real mid-hold drop
             holdMsg(); // wiped hold: the re-attack instruction must be read
           }
         } else if (k < 0) {
@@ -1067,6 +1127,10 @@
 
   function finishBar() {
     zenGlowSpark(); // the completed note's intensity sparks as the advance lands
+    // The tone the hold was standing on when the bar completed: the next
+    // bar's entry gate compares against it — a continuing tone must not
+    // cover two separate notes (see enterIdx's "dip" phase).
+    P.doneHz = P.bar.zones[P.bar.zones.length - 1];
     const afterIdx = P.bar.endIdx + 1;
     enterIdx(afterIdx < P.tokens.length ? afterIdx : P.tokens.length);
     if (P.idx >= P.tokens.length) endReached();
@@ -1084,12 +1148,87 @@
   }
 
   function standby() {
+    recordPracticeRun();
     P.completed = true;
     P.paused = true; // frozen at the end; Resume wraps to the first note
     clearOverlays(); // the last note's bar ends with the song
     if (panel) panel.hidden = true; // neutral: no tuner
     zenGlowOff();
     if (typeof syncTransport === "function") try { syncTransport(); } catch (e) {}
+  }
+
+  // ---- practice progress history -------------------------------------------
+  // Per-song run records in localStorage ("oco-practice-history"): every
+  // COMPLETED run adds {ts, wipes, cents, sec} where wipes counts real
+  // mid-hold drops and cents is the mean deviation to the live target during
+  // holds (null when no hold frame ever registered). Capped, fail-soft, and
+  // keyed by library id (a text-only song hashes its body so retrying a piece
+  // that lives only in the textarea still groups).
+  const PRAC_HIST_KEY = "oco-practice-history";
+  const PRAC_HIST_MAX = 24;
+
+  function practiceSongKey() {
+    const id = typeof currentSongId === "function" ? currentSongId() : "";
+    if (id) return id;
+    try {
+      const text = document.getElementById("src").value || "";
+      let h = 5381;
+      for (let i = 0; i < text.length; i++) h = ((h * 33) ^ text.charCodeAt(i)) >>> 0;
+      return "text:" + h.toString(36);
+    } catch (e) { return "unknown"; }
+  }
+
+  function readHistory() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(PRAC_HIST_KEY) || "{}");
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (e) { return {}; }
+  }
+
+  function writeHistory(all) {
+    try { localStorage.setItem(PRAC_HIST_KEY, JSON.stringify(all)); }
+    catch (e) {}  // history is a nice-to-have; storage refusal cannot hurt a run
+  }
+
+  function recordPracticeRun() {
+    if (!P.startedAt) return;
+    const key = practiceSongKey();
+    const all = readHistory();
+    const entry = all[key] || { runs: [] };
+    const meanCents = P.centsN
+      ? Math.round((P.centsAcc / P.centsN) * 10) / 10
+      : null;
+    entry.runs.push({
+      ts: Date.now(),
+      wipes: P.wipes,
+      cents: meanCents,
+      sec: Math.max(1, Math.round((performance.now() - P.startedAt) / 1000)),
+    });
+    if (entry.runs.length > PRAC_HIST_MAX) {
+      entry.runs = entry.runs.slice(-PRAC_HIST_MAX);
+    }
+    all[key] = entry;
+    writeHistory(all);
+    refreshPracHistory();
+  }
+
+  function refreshPracHistory() {
+    if (!els.history) return;
+    const entry = readHistory()[practiceSongKey()];
+    const runs = (entry && entry.runs) || [];
+    if (!runs.length) { els.history.hidden = true; els.history.textContent = ""; return; }
+    const last = runs[runs.length - 1];
+    const cents = last.cents == null ? "" : " · avg ±" + last.cents + "\u00A2";
+    els.history.textContent = "runs " + runs.length +
+      " · last " + last.wipes + " wipe" + (last.wipes === 1 ? "" : "s") +
+      cents;
+    els.history.hidden = false;
+  }
+
+  // Public read for the dev panel / tests: this song's run list.
+  function practiceHistory() {
+    const entry = readHistory()[practiceSongKey()];
+    return entry ? { runs: entry.runs } : { runs: [] };
   }
 
   // --------------------------------------------------------------- control
@@ -1103,6 +1242,7 @@
     P.paused = false;
     P.err = "";
     P.active = true;
+    P.wipes = 0; P.centsAcc = 0; P.centsN = 0; P.startedAt = performance.now();
     openPanel();
     const start = nextPitchedIdx((typeof fromIdx === "number") ? fromIdx : 0);
     if (start < 0) { P.err = "No playable notes in this melody."; renderPanel(); return; }
@@ -1137,6 +1277,8 @@
 
   function stopPractice() {
     P.active = false; P.paused = false; P.completed = false; P.bar = null;
+    P.doneHz = null; // no completed tone to compare the next session against
+    P.holdRms = 0;
     // Leave the card's meta band immediately: the parked/hidden tuner must
     // not keep the symmetric grid layout (or its plate) in the live view.
     if (panel && panel.classList.contains("in-card")) {
@@ -1153,6 +1295,7 @@
       try { P.mic.source.disconnect(); } catch (e) {}
       P.mic.connected = false;
     }
+    acDropFrames();
     if (P.mic) {
       try { P.mic.stream.getTracks().forEach(tr => tr.stop()); } catch (e) {}
       P.mic = null;
@@ -1170,6 +1313,7 @@
     if (!P.active) return;
     P.paused = !P.paused;
     P.last = performance.now();
+    acDropFrames(); // in-flight frames must not step the paused machine
     // Disengaged (paused) = neutral: the tuner never shows while practice is
     // not running. Paused in the card band must ALSO leave the band — the
     // empty middle column would otherwise pull the note symbols inward.
@@ -1193,9 +1337,29 @@
 
   function openPanel() {
     buildPanel();
+    refreshPracHistory(); // this song's past runs greet the player
     panel.hidden = false;
     relocatePanel(); // seat for the CURRENT layout before any tick seats it
     clampPanelToScreen(); // zen may have taken over while the tuner was hidden
+  }
+
+  // Synthetic probe frame for the test hooks: tone at f/sr with a harmonic
+  // mix (h = [1, 0.15] default = fundamental + 15% H2) plus optional noise
+  // (deterministic LCG — the same request must produce the same buffer).
+  function probeBuffer(f, sr, h, noise) {
+    const n = 2048, buf = new Float32Array(n);
+    const H = h || [1, 0.15];
+    let seed = 42;
+    const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+    for (let i = 0; i < n; i++) {
+      let v = 0;
+      for (let k = 0; k < H.length; k++) {
+        v += H[k] * Math.sin(2 * Math.PI * f * (k + 1) * i / sr);
+      }
+      if (noise) v += noise * (rnd() * 2 - 1);
+      buf[i] = v;
+    }
+    return buf;
   }
 
   function syncTransportAny() {
@@ -1226,22 +1390,33 @@
     // [1, 0.15] default = fundamental + 15% H2) plus optional noise, and
     // returns the measured Hz — for verifying autoCorrelate from the console.
     testAC: function (f, sr, h, noise) {
-      const n = 2048, buf = new Float32Array(n);
-      const H = h || [1, 0.15];
-      let seed = 42;
-      const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
-      for (let i = 0; i < n; i++) {
-        let v = 0;
-        for (let k = 0; k < H.length; k++) {
-          v += H[k] * Math.sin(2 * Math.PI * f * (k + 1) * i / sr);
-        }
-        if (noise) v += noise * (rnd() * 2 - 1);
-        buf[i] = v;
-      }
-      return autoCorrelate(buf, sr);
+      return autoCorrelate(probeBuffer(f, sr, h, noise), sr);
     },
+    // Same frame through the WORKER path (the one the tuner actually uses
+    // while practicing): resolves the measured Hz, or null when no worker
+    // could be created (fallback-only environment). testAC and testACAsync
+    // run the SAME detector from the SAME file in both threads, so healthy
+    // results are bit-identical — the worker suite leans on that.
+    testACAsync: function (f, sr, h, noise) {
+      return new Promise(resolve => {
+        const w = ensureAcWorker();
+        if (!w) { resolve(null); return; }
+        const buf = probeBuffer(f, sr, h, noise);
+        ++acSeq;
+        acJobs.set(acSeq, { onHz: hz => resolve(hz) });
+        w.postMessage({ seq: acSeq, sr: sr, buf: buf }, [buf.buffer]);
+      });
+    },
+    // Whether the practice analysis runs in the worker (true once a worker
+    // was created successfully) — diagnostics/tests.
+    usingWorker: () => !!acWorker && !acWorkerDead,
+    // Progress history for this song (tests + dev panel).
+    history: practiceHistory,
     // transport anchors: where practice currently stands (token idx)
     posIdx: () => P.idx,
+    // the tone practice expects RIGHT NOW (frontier zone's token — the live
+    // tab seeds from it while a session is active)
+    spot: practiceSpotToken,
     from: practiceFrom, pauseToggle: practicePauseToggle,
     start: startPractice, stop: stopPractice,
     relocate: relocatePanel,
@@ -1278,3 +1453,16 @@ function practiceToggle() { if (window.OCA_PRACTICE) OCA_PRACTICE.pauseToggle();
 // ui.js calls this on every zen/focus transition (syncFocusMode) and after
 // zen/layout changes: re-seat the tuner in its host panel and re-clamp it.
 function practiceRelocatePanel() { if (window.OCA_PRACTICE) OCA_PRACTICE.relocate(); }
+// The currently-expected tone as a token index (the live tab seeds from it
+// during an active session; -1 when there is nothing to name). Module-scope
+// trampoline: the live state sits in the IIFE above, exposed via its public
+// surface — same shape as the other practice trampolines.
+function practiceSpot() { return window.OCA_PRACTICE ? OCA_PRACTICE.spot() : -1; }
+
+export { isPracticeActive, isPracticePaused, practiceInvalidate,
+         practiceRelocatePanel, practiceSpot, practiceToggle };
+window.isPracticeActive = isPracticeActive;
+window.isPracticePaused = isPracticePaused;
+window.practiceInvalidate = practiceInvalidate;
+window.practiceToggle = practiceToggle;
+window.practiceRelocatePanel = practiceRelocatePanel;

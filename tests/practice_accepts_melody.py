@@ -91,10 +91,20 @@ SRC => new Promise(resolve => {
   }, 30);
   OCA_PRACTICE.start();
   let awaitLate = false;
+  // The arbiter waits for the session to be SEEN engaged before the stop
+  // signal means anything: on a slow CI box the first poll tick can race the
+  // engage (pick '?song' renders, transport syncs) and read inactive — a
+  // 0-completion instant stop that is a measurement artifact, not a case fail
+  // (bit a CI run to flake exactly like this). Two consecutive inactive
+  // reads AFTER engagement are the only end-of-case signal.
+  let started = false, idleStreak = 0;
   const poll = setInterval(() => {
     const P = OCA_PRACTICE._p;
     if (P.state === "await" && P.idx > 5) awaitLate = true;
+    if (OCA_PRACTICE.active() && !P.paused) { started = true; }
     if (!OCA_PRACTICE.active() || P.paused) {
+      if (!started) { idleStreak = 0; return; }   // engage still racing in
+      if (++idleStreak < 2) return;               // one blip is not a stop
       clearInterval(feed); clearInterval(poll);
       resolve({ completed: !!P.completed, awaitLate, idx: P.idx,
                 total: P.tokens.length, timeout: false });
@@ -110,8 +120,9 @@ SRC => new Promise(resolve => {
 ZONES_DRIVER = """
 SRC => new Promise(resolve => {
   if (SRC) { document.getElementById("src").value = SRC; render(); }
-  // Player model: silence when the engine demands a re-attack ("await"),
-  // otherwise sound the pitch the tuner currently demands.
+  // Player model: silence when the engine demands a re-attack ("await") or
+  // a separate-note dip ("dip"), otherwise sound the pitch the tuner
+  // currently demands.
   OCA_PRACTICE.start();
   let awaitLate = false, wentBack = false, lastIdx = 0;
   const feed = setInterval(() => {
@@ -119,16 +130,20 @@ SRC => new Promise(resolve => {
     if (P.state === "await" && P.idx > 5) awaitLate = true;
     if (P.idx < lastIdx) wentBack = true;
     lastIdx = Math.max(lastIdx, P.idx);
-    if (P.state === "await" || P.state === "rest" || !P.bar) {
+    if (P.state === "await" || P.state === "dip" || P.state === "rest" || !P.bar) {
       window.__pracFrame = { hz: 0, rms: 0 };
     } else {
       const k = P.zonesNear >= 0 ? P.zonesNear : 0;
       window.__pracFrame = { hz: P.bar.zones[k], rms: 0.4 };
     }
   }, 30);
+  let started = false, idleStreak = 0;
   const poll = setInterval(() => {
     const P = OCA_PRACTICE._p;
+    if (OCA_PRACTICE.active() && !P.paused) { started = true; }
     if (!OCA_PRACTICE.active() || P.paused) {
+      if (!started) { idleStreak = 0; return; }
+      if (++idleStreak < 2) return;
       clearInterval(feed); clearInterval(poll);
       resolve({ completed: !!P.completed, awaitLate, wentBack, timeout: false });
     }

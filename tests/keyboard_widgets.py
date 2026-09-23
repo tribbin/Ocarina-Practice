@@ -110,8 +110,7 @@ async () => {
   // through the hover-preview path (stub recordable even in headless,
   // where the context stays suspended and the audible half stays silent).
   const hpCalls = [];
-  const realHover = window.hoverPreview;
-  window.hoverPreview = (i, t) => { hpCalls.push({ i, id: t && t.id }); if (realHover) realHover(i, t); };
+  setHoverProbe((i, t) => { hpCalls.push({ i, id: t && t.id }); });
   toks[0].focus();
   toks[0].dispatchEvent(new KeyboardEvent('keydown', {key: 'ArrowRight', bubbles: true}));
   out.arrow = toks.indexOf(document.activeElement);
@@ -119,7 +118,7 @@ async () => {
   out.arrowNote = target ? (target.getAttribute('aria-label') || '') : null;
   out.hpCalls = hpCalls;
   out.hadPreview = target ? target.classList.contains('now') : false;
-  window.hoverPreview = realHover;
+  setHoverProbe(null);
   target.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', bubbles: true}));
   out.playedFromToken = window.isMelodyPlaying();
   if (out.playedFromToken && typeof stopMelody === 'function') {
@@ -136,9 +135,8 @@ async () => {
   // --- dwell: hover and arrow-walk must DELAY the note, not fire on touch ---
   out.audio = window.OCA_DEBUG.audioState ? window.OCA_DEBUG.audioState() : null;
   if (out.audio === 'running') {
-    const realPn = window.playNote;
     window.__pn = [];
-    window.playNote = (...args) => { window.__pn.push(args[0]); return realPn(...args); };
+    setAuditionSink((id) => { window.__pn.push(id); });
     const rest = (ms) => new Promise(r => setTimeout(r, ms));
     // The gesture click raised the hover quiet-window (hushHovers); settle
     // it out so the probe measures the dwell delay, not the quiet window.
@@ -154,7 +152,7 @@ async () => {
     toks[2].dispatchEvent(new MouseEvent('mouseleave'));
     await new Promise(r => setTimeout(r, 400));
     out.pnAfterSkim = window.__pn.length;
-    window.playNote = realPn;
+    setAuditionSink(null);
   }
   return out;
 }
@@ -210,9 +208,9 @@ async () => {
   await rest(600); // settle the 400 ms quiet-window out
   // Count preview notes like the mouse-dwell probe does (playNote wrapper):
   // voices may outlive their note, but calls are exact.
-  const realPn = window.playNote;
+
   const pn = [];
-  window.playNote = (...a) => { pn.push(String(a[0])); return realPn(...a); };
+  setAuditionSink((id) => { pn.push(String(id)); });
   const touch = (el) => new TouchEvent('touchstart', { bubbles: true, cancelable: true,
     touches: [new Touch({ identifier: 1, target: el, clientX: 5, clientY: 5 })] });
   const drift = (el) => new TouchEvent('touchmove', { bubbles: true, cancelable: true,
@@ -246,7 +244,7 @@ async () => {
   toks[2].dispatchEvent(drift(toks[2]));
   await rest(420);
   out.driftSilent = pn.length === n0;
-  window.playNote = realPn;
+  setAuditionSink(null);
   if (typeof stopMelody === 'function') { try { stopMelody(); } catch (e) {} }
   return out;
 }

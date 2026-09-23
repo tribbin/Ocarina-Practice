@@ -8,8 +8,9 @@ Built with plain HTML/CSS/JavaScript — no build step, no dependencies.
 
 - **Tab sheets** — fingerings rendered on the ocarina template as you type; display as a grid, scrolling line, or one note at a time. Printable and downloadable.
 - **Immediate playback** — a synthesized ocarina voice plays your melody with tempo and swing dials; click any note to start from there.
-- **Practice mode** — the song only advances when you hit each note in tune through the microphone, guided by a built-in tuner. Ties hold continuously; `~` slides become chains you must travel through pitch by pitch; rests count on the clock.
+- **Practice mode** — the song only advances when you hit each note in tune through the microphone, guided by a built-in tuner. Ties hold continuously; `~` slides become chains you must travel through pitch by pitch; rests count on the clock. Unlinked notes cannot share one hold: when a note could keep sounding straight into the next (same/close pitch), practice waits for a distinct dip — tongue the tone down (a clear volume dip is enough), then hold again.
 - **Zen mode** — distraction-free fullscreen practice with shareable links that open straight to a given song and ocarina.
+- **Offline** — one connected visit is enough: the app keeps booting, loading songs and swapping ocarinas with no connection (installable as an app via the browser's menu). Updates arrive with your next visit.
 - **Piano keyboard** — audition notes by ear, right-click to add them to the melody.
 - **Library** — ready-made songs and scales, save/load files, and a personal library in-browser.
 - **Multiple instruments** — Triple Bass C, Double Alto C, and the 12-hole Alto C, each with its own fingerings and template.
@@ -51,3 +52,5 @@ sound), and the debug panel's waveform preview cache grows as you tweak — neve
 shrinks, but only while you are actively tweaking in the debug panel.
 
 Extending it: songs live in `songs.json`; each ocarina lives in its own folder `instruments/<id>/` (fingerings, body template, optional `tone.json` with fitted per-chamber sound anchors — see `instruments/README.md`). New instruments and songs can be added without touching code.
+
+A song entry with `"hidden": true` marks a song still in the works: the text stays in the repo and travels with every commit, but it is kept out of the dropdown until the library's "Show hidden songs" toggle is ticked — handy for choreographing a song locally before it is ready to play, without knowing it will vanish if the machine dies. (The toggle also reveals songs whose notes outrun the selected ocarina's range.)

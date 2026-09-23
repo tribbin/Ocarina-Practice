@@ -1,5 +1,9 @@
+import { parse } from "./parse.js";
+import { currentSwing, tempoPct } from "./library.js";
+import { bumpHoverQuiet, clearHighlight, cueFirstNote, firstSoundIdx, freezeZenGlow,
+         highlightToken, isFocusMode, quarterSec, tokenSeconds, updateTransportUI } from "./ui.js";
+import { isPracticeActive } from "./practice.js";
 let audioCtx = null;
-let hoverQuietUntil = 0;
 let liveVoices = [];
 let melodyBag = [];
 // Ledger of site-MADE sound (synth voices, ticks, previews, leftovers of a
@@ -13,7 +17,11 @@ let melodyPlaying = false;
 let melodyTokens = [];
 let melodyIdx = 0;
 let melodyFrom = 0;
-let melodyPos = 0;
+// Melody position on the NOTATION grid, in integer 96ths of a beat (96 divides
+// every duration the parser emits: dyadic values, dots and triplets). Compare
+// via beat integer, never via accumulated float: triplet-flavored ulps would
+// drift the swing-parity sample off the beat over long songs.
+let melodyPos96 = 0;
 let melodyHoldUntil = -1;
 let melodyPaused = false;
 let melodyNextTime = 0; // absolute ctx time of the next note to schedule
@@ -99,9 +107,16 @@ const AUDIO_DEFAULTS = {
   // detector treats as "not playing". Inside a chained (~) slide the same
   // silence/pitch wipe uses the much larger chainTravelMs instead, and that
   // window also renews the arrival tolerance between zones — plenty of time
-  // to travel to (and settle onto) the next note.
+  // to travel to (and settle onto) the next note. The separate-note gate in
+  // practice mode: when a closed note could keep sounding straight into the
+  // next one (close pitch), the tone must dip once — to dipFrac of the
+  // level it was holding (a tongued volume notch; full silence is the
+  // trivial case) — sustained for dipMs (~ one detection frame; the
+  // reference is a running average of the hold level, so a short articulation
+  // reads clearly while mic wobble cannot fake the drop).
   tuneCents: 20, transientCents: 60, transientMs: 150,
   gapMs: 120, rmsGate: 0.01, chainTravelMs: 800,
+  dipMs: 60, dipFrac: 0.5,
 };
 const AUDIO_DEBUG = Object.assign({}, AUDIO_DEFAULTS);
 // Voice builders (playNoteAt/playTickAt) swallow any WebAudio failure so a
@@ -142,6 +157,13 @@ window.OCA_DEBUG = {
   liveVoiceCount() { return countAliveVoices(liveVoices); },
   // "none" / "suspended" / "running" — the autoplay-policy state of the ctx.
   audioState() { return audioCtx ? audioCtx.state : "none"; },
+  // Melody position on the scheduler's integer 96th-of-a-beat grid — the
+  // swing parity reads it; suites pin that the integer grid is held exactly.
+  melodyPos96() { return melodyPos96; },
+  // Transport diagnostics (suites + dev panel): how many melody-bag voices
+  // are alive right now and how many cut bus generations exist / were cut.
+  melodyAlive() { return countAliveVoices(melodyBag); },
+  busAudit() { return { cutBusCount: cutBuses.size, retiredCount: retiredBuses.length }; },
   // Live audit helper: the full derived voice profile for a note id.
   profile(id) { return voiceProfileFor(id, freqOf(id)); },
   // The installed per-ocarina tone model (instruments/<id>/tone.json) —
@@ -227,12 +249,14 @@ function barHasNote(tokens, idx) {
   return false;
 }
 
-function swungBeats(tok, pos) {
+function swungBeats(tok, pos96) {
   const beats = tokenGridBeats(tok);
   const s = (typeof currentSwing === "function" ? currentSwing() : 0) / 100;
   if (s <= 0 || Math.abs(beats - 0.5) > 1e-6) return beats;
   const longF = 0.5 + s / 6;
-  const onBeat = Math.round(pos * 2) % 2 === 0;
+  // pos96 IS the beat position (integer 96ths): half-beats are exact multiples
+  // of 48, so the parity test needs no rounding tolerance at all.
+  const onBeat = Math.round(pos96 / 48) % 2 === 0;
   return onBeat ? longF : 1 - longF;
 }
 
@@ -484,7 +508,7 @@ function getMelodyCutBus(ctx, wire) {
   }
   return b;
 }
-function isMelodyBag(bag) { return bag === melodyBag; }
+function isMelodyBag(bag) { return bag === melodyBag || !!(bag && bag.melodyRoute); }
 // Render-cut the melody buses as ONE continuous event per bus: an exponential
 // setTargetAtTime decay, scheduled a little AHEAD of the render cursor. Three
 // rules come straight from this bug's history:
@@ -578,7 +602,7 @@ function unlockAudio() {
 );
 
 function hushHovers() {
-  hoverQuietUntil = Date.now() + 400;
+  bumpHoverQuiet();
   cutLive();
 }
 window.addEventListener("focus", hushHovers);
@@ -958,6 +982,18 @@ function getOcarinaWave(ctx, vp) {
   return w;
 }
 
+// Test seam + shared-context accessor (module boundary): suites capture the
+// playNoteAt calls without monkeypatching a module-internal binding, and the
+// debug WAV export needs a legal handle on the one shared AudioContext.
+let noteSink = null;
+let auditionSink = null;
+function setNoteSink(fn) { noteSink = fn || null; }
+function setAuditionSink(fn) { auditionSink = fn || null; }
+function sharedAudioCtx() {
+  audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
 function cutLive() {
   if (audioCtx) markSystemSound(audioCtx.currentTime + 0.1); // fades + stops land soon after
   liveVoices.forEach(n => { try { (n.fade || n.stop)(); } catch (e) {} });
@@ -1004,6 +1040,7 @@ function pruneBag(bag) {
 
 function playNote(id, durSec) {
   cutLive();
+  if (auditionSink) try { auditionSink(id, durSec); } catch (e) {}
   playNoteAt(id, null, durSec == null ? tokenSeconds(4) : durSec, liveVoices);
 }
 
@@ -1012,6 +1049,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === "suspended") safeResume(audioCtx);
     const ctx = audioCtx;
+    if (noteSink) try { noteSink(id, when, durSec, slideFromId, intoSlide); } catch (e) {}
     // Late scheduling (a main-thread stall past the 0.3 s lookahead — GC/JIT
     // bursts, worse on phones) hands a `when` already in the past. All gain/
     // pitch automation scheduled for the past collapses into one instant
@@ -1723,6 +1761,7 @@ function isMelodyPaused() { return melodyPaused; }
 
 function stopMelody() {
   melodyPlaying = false;
+  dropHighlightPlan();
   melodyPaused = false;
   if (audioCtx) markSystemSound(melodyStopAt(audioCtx)); // sources stop past the bus decay
   melodyBag.forEach(n => { try { (n.fade || n.stop)(); } catch (e) {} });
@@ -1747,7 +1786,7 @@ function playMelody(fromIdx) {
   melodyFrom = from;
   melodyHoldUntil = -1;
   melodyPaused = false;
-  melodyPos = gridBeatsBefore(melodyTokens, melodyIdx);
+  melodyPos96 = Math.round(gridBeatsBefore(melodyTokens, melodyIdx) * 96);
   // Statically anchor the second, parallel support melody to these tokens:
   // its events fire at melody pivots while the walk runs.
   supportPlan = buildSupportPlan(melodyTokens);
@@ -1772,6 +1811,7 @@ function pauseMelody() {
   if (!melodyPlaying) return;
   melodyPlaying = false;
   melodyPaused = true;
+  dropHighlightPlan(); // highlights of a paused transport never fire
   if (audioCtx) markSystemSound(melodyStopAt(audioCtx)); // sources stop past the bus decay
   melodyBag.forEach(n => { try { (n.fade || n.stop)(); } catch (e) {} });
   melodyBag = [];
@@ -1914,12 +1954,17 @@ function openSupportSpanSec(startIdx) {
 // The support voice IS the modelled instrument voice (playNoteAt), so it
 // inherits chorus, reverb, wind/edge layers and the same tuning as playing
 // the note on the selected ocarinaZen playback only — the scheduler gates it.
-// playNoteAt only pushes into the bag it is given, so a small dual forwarder
-// lands the same voice in the melody bag (pause/stop/loop decay) AND the
-// bass bag (setBassEnabled cuts it when focus mode turns off mid-playback).
+// The bag IS the routing discriminator inside playNoteAt: a melody-bag voice
+// feeds the cut layer and stops on the melody's horizon, while anything else
+// fell off to the raw reverb bus and the legacy .value fade (the click-prone
+// path). This forwarder declares melodyRoute so support voices ride the SAME
+// cut bus generation and stop horizon as melody voices, while its push still
+// lands the handle in the melody bag (pause/stop/loop decay) AND the bass bag
+// (setBassEnabled cuts it when focus mode turns off mid-playback).
 function playSupportAt(id, when, durSec, slideFrom, intoSlide) {
   const base = melodyBag.length;
   playNoteAt(id, when, durSec, {
+    melodyRoute: true,
     push(v) { melodyBag.push(v); bassBag.push(v); }
   }, slideFrom || null, !!intoSlide);
   return melodyBag.slice(base); // the voice handle(s) this support created
@@ -1971,6 +2016,58 @@ function fireSupportEvent(e, when) {
   }
 }
 
+// ---- shared highlight plan ------------------------------------------------
+// Every scheduled token used to carry its OWN setTimeout for highlightToken —
+// page-lifetime timers alive across the whole song length. The plan keeps
+// them queued by audio-clock position and fires them through ONE timer/rAF
+// pair: wakes only as work comes due, rAF for the near-term batches so
+// highlight throws land inside a frame instead of a timer clamp.
+const highlightPlan = [];   // { at, run } — at = performance.now()-based ms
+let highlightTimer = 0;
+let highlightRaf = 0;
+
+function armHighlightPlan() {
+  if (!highlightPlan.length) { highlightTimer = 0; return; }
+  clearTimeout(highlightTimer);
+  cancelAnimationFrame(highlightRaf);
+  const delay = Math.max(0, highlightPlan[0].at - performance.now());
+  if (delay <= 34) {
+    highlightRaf = requestAnimationFrame(flushHighlightPlan);
+  } else {
+    // wake 16 ms BEFORE the next item, so the near-term branch sees it in
+    // the same frame it comes due instead of one timer clamp late
+    highlightTimer = setTimeout(armHighlightPlan, delay - 16);
+  }
+}
+
+function flushHighlightPlan() {
+  highlightTimer = 0; highlightRaf = 0;
+  const now = performance.now();
+  while (highlightPlan.length && highlightPlan[0].at <= now) {
+    const item = highlightPlan.shift();
+    try { item.run(); } catch (e) {}
+  }
+  armHighlightPlan();
+}
+
+function queueHighlight(delayMs, run) {
+  // The scheduler walks monotonic positions, but lookahead bursts can land a
+  // piece out of order — sort and re-arm so the next wake always targets the
+  // earliest due item.
+  highlightPlan.push({ at: performance.now() + Math.max(0, delayMs), run: run });
+  if (highlightPlan.length > 1) {
+    highlightPlan.sort((a, b) => a.at - b.at);
+  }
+  armHighlightPlan();
+}
+
+function dropHighlightPlan() {
+  highlightPlan.length = 0;
+  clearTimeout(highlightTimer);
+  cancelAnimationFrame(highlightRaf);
+  highlightTimer = 0; highlightRaf = 0;
+}
+
 function scheduleMelody(when) {
   if (!melodyPlaying) return;
   // First call after (re)start seeds the clock from the passed absolute time.
@@ -2011,7 +2108,7 @@ function scheduleMelody(when) {
           melodyIdx++;
         }
         if (melodyIdx >= melodyTokens.length) { stopMelody(); return; }
-        melodyPos = 0;
+        melodyPos96 = 0;
         melodyHoldUntil = -1;
         atBar = true;
       } else {
@@ -2042,9 +2139,9 @@ function scheduleMelody(when) {
     // at this token's exact melody-clock onset.
     if (supportPlan && (tok.type === "note" || tok.type === "rest"))
       fireDueSupport(melodyIdx, noteWhen);
-    const step = Math.max(0.001, swungBeats(tok, melodyPos) * melodyQuarter /
+    const step = Math.max(0.001, swungBeats(tok, melodyPos96) * melodyQuarter /
                   tempoSpeed()); // tempo dial: % of the song's own speed (live — mid-song slider moves apply to upcoming notes)
-    melodyPos += tokenGridBeats(tok);
+    melodyPos96 += Math.round(tokenGridBeats(tok) * 96);
     const pitched = (tok.type === "note" || tok.type === "tie") && NOTES.includes(tok.id);
     let didSound = false;
     if (pitched && melodyIdx > melodyHoldUntil) {
@@ -2073,10 +2170,36 @@ function scheduleMelody(when) {
     }
     const hlIdx = melodyIdx, hlId = tok.id, hlDur = lastHoldSec, hlSound = didSound;
     const hlDelay = Math.max(0, (noteWhen - audioCtx.currentTime) * 1000);
-    setTimeout(() => { if (melodyPlaying) highlightToken(hlIdx, hlId, hlDur, hlSound); }, hlDelay);
+    queueHighlight(hlDelay,
+      () => { if (melodyPlaying) highlightToken(hlIdx, hlId, hlDur, hlSound); });
     melodyIdx++;
     melodyNextTime += step;
   }
 
   melodyTimer = setTimeout(() => scheduleMelody(null), SCHED_TICK * 1000);
 }
+
+export { AUDIO_DEFAULTS, audioCtx, audioPerfReset, audioPerfSnapshot, cutLive, freqOf,
+         getReverbBus, installToneModel, isMelodyPaused, isMelodyPlaying, liteMode,
+         pauseMelody, perf, playMelody, playNote, playNoteAt, quarterSecFor, resumeMelody,
+         reverbEnabled, setBassEnabled, setPerfAlertListener, setReverbEnabled,
+         setVibratoEnabled, soundingGridBeats, stopMelody, syncTransport,
+         sysSoundUntilSec, tokenGridBeats, swungBeats, lastHoldIndex, togglePlayPause,
+         unlockAudio, setNoteSink, setAuditionSink, sharedAudioCtx };
+
+// Classic-script compat surface (tests + dev console).
+// audioCtx is a let swapped on lazy creation, so the mirror is a live getter —
+// a plain assignment here would freeze the not-yet-created undefined.
+Object.defineProperty(window, "audioCtx", { get () { return audioCtx; } });
+window.sharedAudioCtx = sharedAudioCtx;
+window.playNote = playNote; window.playMelody = playMelody; window.stopMelody = stopMelody;
+window.playNoteAt = playNoteAt; window.isMelodyPlaying = isMelodyPlaying;
+window.setNoteSink = setNoteSink; window.setAuditionSink = setAuditionSink;
+window.vInterp = vInterp; window.V_ANCHORS = V_ANCHORS; window.db2lin = db2lin;
+window.toneVal = typeof toneVal === "function" ? toneVal : undefined;
+window.isMelodyPaused = isMelodyPaused; window.playTickAt = playTickAt;
+window.tokenGridBeats = tokenGridBeats; window.swungBeats = swungBeats;
+window.soundingGridBeats = soundingGridBeats; window.lastHoldIndex = lastHoldIndex;
+window.quarterSecFor = quarterSecFor; window.freqOf = freqOf; window.cutLive = cutLive;
+window.installToneModel = installToneModel;
+window.stopMelody = stopMelody;

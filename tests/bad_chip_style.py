@@ -22,10 +22,17 @@ ROOT = Path(__file__).resolve().parent.parent
 HEADLESS = "--headed" not in sys.argv
 WAIT = ("window.NOTES && window.NOTES.length"
         " && typeof parse === 'function'")
-INJECT = """() => {
+INJECT = """async () => {
+  // Typed input renders on a settle (the per-keystroke debounce): poll for
+  // the strip change instead of reading the DOM synchronously.
   const ta = document.getElementById('src');
   ta.value = 'zz C4 | yy';
   ta.dispatchEvent(new Event('input', { bubbles: true }));
+  const t0 = Date.now();
+  while (!document.querySelector('#tokens .tok.bad') &&
+         Date.now() - t0 < 3000) {
+    await new Promise(r => setTimeout(r, 15));
+  }
   const el = document.querySelector('#tokens .tok.bad');
   if (!el) return null;
   const cs = getComputedStyle(el);
@@ -114,11 +121,16 @@ def main():
                 shots.append((suffix, page))
                 if errs:
                     failures.append(f"page errors {errs}")
-            # Screenshots for human eyeballing (not asserted here).
+            # Screenshots for human eyeballing (not asserted here — engine
+            # timing hiccups on element screenshots must never fake a red,
+            # the assertions above are the contract).
             for suffix, page in shots:
                 strip = page.query_selector("#tokens")
                 if strip:
-                    strip.screenshot(path=f"/tmp/opencode/bad-{suffix}.png")
+                    try:
+                        strip.screenshot(path=f"/tmp/opencode/bad-{suffix}.png")
+                    except Exception:
+                        print(f"  (screenshot skipped: {suffix})")
             browser.close()
     finally:
         httpd.shutdown()

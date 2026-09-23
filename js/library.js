@@ -1,9 +1,16 @@
+import { isOutOfRange, parse, swingFromText, tempoFromText, titleFromText,
+         withPlayHeaders } from "./parse.js";
+import { stopMelody } from "./audio.js";
+import { render, resetLiveTab } from "./ui.js";
+import { practiceInvalidate } from "./practice.js";
+import { ensureOcarinaTemplate } from "./app.js";
 const LIB_KEY = "oco-bass-c-library";
 const SHOW_HIDDEN_KEY = "oco-bass-c-show-hidden";
 let BUILTIN = {};
 
 function initBuiltin(songs) {
   BUILTIN = songs || {};
+  window.BUILTIN = BUILTIN; // compat mirror (shipped-songs probes read it)
   if (BUILTIN.chromatic && !BUILTIN.chromatic.body) {
     BUILTIN.chromatic.body = NOTES.map(n => n.replace(/^([A-G])s/, "$1#")).join(" ");
   }
@@ -401,60 +408,53 @@ function libToast(msg) {
 function safeAlert(msg) {
   try { alert(msg); } catch (e) { libToast(msg); }
 }
-function libPrompt(title, suggested) {
+// One dialog core for both shapes: libPrompt carries an input and resolves
+// null on cancel OR empty submit (exactly like the native prompt() it
+// replaced), libConfirm resolves true/false on Enter/Escape/buttons.
+function libModal(opts) {
   return new Promise(resolve => {
-    if (typeof document === "undefined") { resolve(null); return; }
+    if (typeof document === "undefined") { resolve(opts.input ? null : false); return; }
     const wrap = document.createElement("div");
     wrap.className = "lib-dialog noprint";
     wrap.innerHTML =
       '<div class="lib-dialog-card">' +
       '<div class="lib-dialog-title"></div>' +
-      '<input type="text" class="lib-dialog-input" spellcheck="false" maxlength="80">' +
+      (opts.input ? '<input type="text" class="lib-dialog-input" spellcheck="false" maxlength="80">' : "") +
       '<div class="lib-dialog-row">' +
-      '<button type="button" class="lib-dialog-ok">Save</button>' +
-      '<button type="button" class="lib-dialog-cancel">Cancel</button></div></div>';
-    wrap.querySelector(".lib-dialog-title").textContent = title;
-    const input = wrap.querySelector("input");
-    input.value = suggested || "";
+      '<button type="button" class="lib-dialog-ok">' + opts.okLabel + '</button>' +
+      '<button type="button" class="lib-dialog-cancel">' + opts.cancelLabel + '</button></div></div>';
+    wrap.querySelector(".lib-dialog-title").textContent = opts.text;
+    const input = opts.input ? wrap.querySelector("input") : null;
+    if (input) input.value = opts.suggested || "";
     document.body.appendChild(wrap);
-    const done = (val) => {
-      const name = (val || "").trim();
+    let closed = false;
+    const finishing = (val) => {
+      if (closed) return;
+      closed = true;
       wrap.remove();
       document.removeEventListener("keydown", key);
-      resolve(name || null);       // empty means cancel, like prompt() did
+      if (input) {
+        const name = (val || "").trim();
+        resolve(name || null);       // empty means cancel, like prompt() did
+      } else {
+        resolve(val);
+      }
     };
     const key = (e) => {
-      if (e.key === "Enter") { e.preventDefault(); done(input.value); }
-      else if (e.key === "Escape") { e.preventDefault(); done(null); }
+      if (e.key === "Enter") { e.preventDefault(); finishing(input ? input.value : true); }
+      else if (e.key === "Escape") { e.preventDefault(); finishing(input ? null : false); }
     };
-    wrap.querySelector(".lib-dialog-ok").addEventListener("click", () => done(input.value));
-    wrap.querySelector(".lib-dialog-cancel").addEventListener("click", () => done(null));
+    wrap.querySelector(".lib-dialog-ok").addEventListener("click", () => finishing(input ? input.value : true));
+    wrap.querySelector(".lib-dialog-cancel").addEventListener("click", () => finishing(input ? null : false));
     document.addEventListener("keydown", key);
-    setTimeout(() => { try { input.focus(); input.select(); } catch (e) {} }, 0);
+    if (input) setTimeout(() => { try { input.focus(); input.select(); } catch (e) {} }, 0);
   });
 }
+function libPrompt(title, suggested) {
+  return libModal({ input: true, text: title, okLabel: "Save", cancelLabel: "Cancel", suggested });
+}
 function libConfirm(text) {
-  return new Promise(resolve => {
-    if (typeof document === "undefined") { resolve(false); return; }
-    const wrap = document.createElement("div");
-    wrap.className = "lib-dialog noprint";
-    wrap.innerHTML =
-      '<div class="lib-dialog-card">' +
-      '<div class="lib-dialog-title"></div>' +
-      '<div class="lib-dialog-row">' +
-      '<button type="button" class="lib-dialog-ok">Remove</button>' +
-      '<button type="button" class="lib-dialog-cancel">Cancel</button></div></div>';
-    wrap.querySelector(".lib-dialog-title").textContent = text;
-    document.body.appendChild(wrap);
-    const done = (val) => { wrap.remove(); document.removeEventListener("keydown", key); resolve(val); };
-    const key = (e) => {
-      if (e.key === "Enter") { e.preventDefault(); done(true); }
-      else if (e.key === "Escape") { e.preventDefault(); done(false); }
-    };
-    wrap.querySelector(".lib-dialog-ok").addEventListener("click", () => done(true));
-    wrap.querySelector(".lib-dialog-cancel").addEventListener("click", () => done(false));
-    document.addEventListener("keydown", key);
-  });
+  return libModal({ text, okLabel: "Remove", cancelLabel: "Cancel" });
 }
 
 function wireLibrary() {
@@ -549,3 +549,17 @@ function wireLibrary() {
     reader.readAsText(f);
   };
 }
+
+export { BUILTIN, applySwing, applyTempoPct, clearLibrarySelection, currentSwing,
+         fillLibrary, initBuiltin, libToast, loadLibraryItem, safeAlert, songTempo,
+         syncLibraryMenu, tempoPct, userLib, wireLibrary, setUserLib, slugName,
+         uniqueUserId, showHiddenSongs };
+
+// Classic-script compat surface (tests + dev console).
+window.userLib = userLib; window.setUserLib = setUserLib; window.slugName = slugName;
+window.uniqueUserId = uniqueUserId; window.withPlayHeaders = withPlayHeaders;
+window.fillLibrary = fillLibrary; window.initBuiltin = initBuiltin;
+window.loadLibraryItem = loadLibraryItem; window.tempoFromText = tempoFromText;
+window.applySongTick = applySongTick;
+window.setShowHidden = setShowHidden;
+window.showHiddenSongs = showHiddenSongs;

@@ -1,3 +1,12 @@
+import { parse, titleFromText } from "./parse.js";
+import { installOcarinaTemplate, invalidateSvgHtml } from "./ocarina.js";
+import { installToneModel } from "./audio.js";
+import { BUILTIN, fillLibrary, initBuiltin, loadLibraryItem, syncLibraryMenu,
+         userLib, wireLibrary } from "./library.js";
+import { buildKB, enterZenFromLink, render, setAppCss, wireUi } from "./ui.js";
+import { practiceInvalidate } from "./practice.js";
+import "./debug.js";
+
 // Global error net: uncaught window errors and unhandled promise rejections
 // land in #err as appended lines — the messages render()/boot() put there
 // must survive (both sides write the same node, so overwriting here would
@@ -30,6 +39,9 @@ function installFingerings(fing) {
   window.DISPLAY = Object.fromEntries(fing.notes.map(n => [n.id, n.display]));
   window.CHAMBER = Object.fromEntries(fing.notes.map(n => [n.id, n.chamber]));
   window.COVER = Object.fromEntries(fing.notes.map(n => [n.id, n.covered]));
+  // Hole/chamber data feeds the card-svg memoization; a fresh fingering set
+  // alone is enough to end every stored rendering.
+  if (typeof invalidateSvgHtml === "function") invalidateSvgHtml();
   const root = document.documentElement;
   const chambers = fing.chambers || {};
   for (const [id, cfg] of Object.entries(chambers)) {
@@ -48,7 +60,7 @@ async function loadJson(path) {
 }
 
 const TPL_CACHE = {};
-let installedTplPath = "";
+export let installedTplPath = "";
 let tplSyncing = null;
 // Instrument-load generation: each loadInstrument bumps it, and only the run
 // belonging to the newest switch may install. Without this, a slow older
@@ -106,10 +118,12 @@ function ensureOcarinaTemplate() {
   if (!path || path === installedTplPath) return Promise.resolve(false);
   if (tplSyncing) return tplSyncing;
   tplSyncing = loadTemplateText(path).then(text => {
-    installOcarinaTemplate(text);
+    const ok = installOcarinaTemplate(text);  // false: unparsable SVG text
+    // Mark the path consumed either way — a failure must never re-arm the
+    // render loop by looking "not yet installed" forever.
     installedTplPath = path;
     tplSyncing = null;
-    return true;
+    return ok;
   }).catch(err => {
     tplSyncing = null;
     console.error(err);
@@ -161,9 +175,16 @@ function queryHas(name) {
 }
 
 function themeFromQuery() {
-  // The Hyrule backdrop IS the app's home look now; `?plain` opts out to the
-  // classic light theme (`?oot` stays honored for old shared links).
-  return queryHas("plain") ? "" : "oot";
+  // ?plain / ?oot stay honored per shared link; without them the SAVED choice
+  // rules (the Hyrule look stays the default for a fresh browser). The toggle
+  // beside Clear rides the same key ("oco-theme").
+  if (queryHas("plain")) return "";
+  if (queryHas("oot")) return "oot";
+  try {
+    const saved = localStorage.getItem("oco-theme");
+    if (saved === "" || saved === "oot") return saved;
+  } catch (e) {}
+  return "oot";
 }
 
 function applyTheme(name) {
@@ -221,9 +242,28 @@ async function boot() {
       loadJson("songs.json"),
       loadText("css/app.css")
     ]);
-    APP_CSS = cssText;
+    setAppCss(cssText);
     window.INSTRUMENTS = manifest.instruments || [];
+    // Manifest sanity: a duplicated id makes the picker ambiguous (two
+    // indistinguishable entries) — say so instead of silently picking the
+    // first match; a bogus ?inst id would otherwise fall back invisible.
+    {
+      const seen = new Set(), dups = [];
+      for (const inst of window.INSTRUMENTS) {
+        if (inst && inst.id) {
+          if (seen.has(inst.id)) dups.push(inst.id);
+          else seen.add(inst.id);
+        }
+      }
+      if (dups.length) {
+        reportGlobalError("boot", "instruments.json repeats ocarina id(s): " + dups.join(", "));
+      }
+    }
     const instParam = queryParam("inst");
+    if (instParam && !window.INSTRUMENTS.some(i => i.id === instParam)) {
+      reportGlobalError("boot", "Unknown ocarina id \u2018" + instParam +
+        "\u2019 — using the default instrument instead.");
+    }
     const chosen = (instParam && INSTRUMENTS.find(i => i.id === instParam))
       || INSTRUMENTS.find(i => i.id === manifest.default) || INSTRUMENTS[0];
     if (!chosen) throw new Error("No instruments defined in instruments.json");
@@ -260,3 +300,25 @@ async function boot() {
 }
 
 boot();
+
+// Offline mode: the service worker (sw.js) serves the shell, song data and
+// the ocarinas' fingerings/templates from cache, with background refresh for
+// updates. Best-effort by design — plain http:// (no secure context) and
+// browsers without the API simply skip it; a failed registration must never
+// reach the app.
+window.addEventListener("load", () => {
+  // Only serve over HTTP(S): a file-scheme page (VS Code preview) has no
+  // service worker cache to offer.
+  if (!/^https?:$/.test(location.protocol)) return;
+  if (!navigator.serviceWorker) return;
+  try { navigator.serviceWorker.register("sw.js").catch(() => {}); } catch (e) {}
+});
+
+export { applyTheme, currentSongId, currentTemplatePath, ensureOcarinaTemplate };
+window.applyTheme = applyTheme; window.currentSongId = currentSongId;
+window.currentSongTitle = currentSongTitle; window.loadText = loadText;
+window.switchInstrument = switchInstrument; window.installFingerings = installFingerings;
+window.fillInstrumentSelect = fillInstrumentSelect; window.boot = boot;
+window.currentTemplatePath = currentTemplatePath;
+window.ensureOcarinaTemplate = ensureOcarinaTemplate;
+window.loadJson = loadJson;

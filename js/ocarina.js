@@ -1,14 +1,76 @@
+// Rendering clone memoization: a card's svg is a pure function of its inputs
+// (covered hole set, chamber, big-holes view, installed template), but
+// building it is not cheap — full clone + part tagging + a per-hole styling
+// pass for every note card in the sheet. Outputs are reused per input across
+// renders; invalidated wholesale whenever the template or fingering data is
+// reinstalled (the epoch prefix keeps stale entries from ever being read).
+let svgClock = 0;
+let svgHtmlCache = new Map();
+function invalidateSvgHtml() {
+  svgClock++;
+  if (svgHtmlCache.size) svgHtmlCache.clear();
+}
+
+// Template sanitizer: the SVG body text is data (fetched per instrument), and
+// it will be used via innerHTML on every card — active content must be gone
+// before install: script elements, foreignObject payloads, on*-attribute
+// handlers, and javascript:/data: URLs in href-likes. Nothing here repaints
+// the drawing: fills, paths, clips and inkscape labels all survive; anything
+// that fails to parse installs NOTHING (the app falls back to the
+// "template has no svg" error state rather than unsafe markup).
+function sanitizeSvgTemplate(svgText) {
+  let doc;
+  try {
+    doc = new DOMParser().parseFromString(svgText, "image/svg+xml");
+  } catch (e) {
+    return null;
+  }
+  if (doc.querySelector("parsererror")) return null;
+  doc.querySelectorAll("script, foreignObject").forEach(n => n.remove());
+  doc.querySelectorAll("*").forEach(el => {
+    for (const a of [...el.attributes]) {
+      const n = a.name.toLowerCase();
+      if (n.startsWith("on")) { el.removeAttribute(a.name); continue; }
+      if ((n === "href" || n.endsWith(":href") || n.endsWith(":attr")) &&
+          /^(\s|)*(javascript|data):/i.test(a.value)) {
+        el.removeAttribute(a.name);
+      }
+    }
+  });
+  try {
+    const root = doc.documentElement;
+    if (!root || root.nodeName.toLowerCase() !== "svg") return null;
+    return new XMLSerializer().serializeToString(root);
+  } catch (e) {
+    return null;
+  }
+}
+
+// Returns true when a sanitized template was actually installed; false means
+// the text could not be sanitized (unparsable XML) and NOTHING was installed.
+// Callers must not mark the path as installed-and-armed on false, or a
+// sanitize failure would live-lock the render loop.
 function installOcarinaTemplate(svgText) {
   let tpl = document.getElementById("oca-tpl");
-  if (!tpl) {
+  const safe = sanitizeSvgTemplate(svgText);
+  const ok = safe != null;
+  if (!tpl && ok) {
     tpl = document.createElement("template");
     tpl.id = "oca-tpl";
     document.body.appendChild(tpl);
   }
-  tpl.innerHTML = svgText;
+  if (!tpl) return ok;
+  tpl.innerHTML = safe;
+  invalidateSvgHtml();
+  return ok;
 }
 
 function ocarinaSVG(covered, chamber) {
+  const big = document.getElementById("bigSmall");
+  const key = svgClock + "|" + chamber + "|" + (covered || []).join(",") + "|" +
+    (big && big.getAttribute("aria-pressed") === "true" ? "big" : "reg");
+  const hit = svgHtmlCache.get(key);
+  if (hit != null) return hit;
   try {
     const src = document.getElementById("oca-tpl");
     if (!src) return "<div>missing ocarina template</div>";
@@ -57,7 +119,12 @@ function ocarinaSVG(covered, chamber) {
     if (bigBtn && bigBtn.getAttribute("aria-pressed") === "true") {
       enlargeSmallHoles(clone);
     }
-    return clone.outerHTML;
+    const html = clone.outerHTML;
+    // Bulk reset instead of per-entry eviction: miss bursts re-warm a few
+    // dozen entries in one render, never a pathological set of them.
+    if (svgHtmlCache.size >= 512) svgHtmlCache.clear();
+    svgHtmlCache.set(key, html);
+    return html;
   } catch (e) {
     const d = document.createElement("div");
     d.textContent = String(e); // error text must never become live markup
@@ -114,3 +181,6 @@ function enlargeSmallHoles(svg) {
     h.r *= s;
   }
 }
+
+export { installOcarinaTemplate, invalidateSvgHtml, ocarinaSVG };
+window.ocarinaSVG = ocarinaSVG; window.installOcarinaTemplate = installOcarinaTemplate;
