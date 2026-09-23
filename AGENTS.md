@@ -136,6 +136,13 @@ Windows (partition):
 - Lint: a system Node exists (node 24 local; CI pins node 22, but npx
   pins the same eslint@9/html-validate@8 majors): `npx --yes eslint@9
   js/ && npx --yes html-validate@8 index.html` is identical to CI.
+- CI failure checks (gh is installed on this partition; one query, never
+  a long silent watch): on a red or suspicious run, report by
+  SHA/trigger/job (attribution rule) and read what actually failed with
+  `gh run view <run-id> --log-failed` (fresh eyes over the real log, per
+  the test-hardening rule). A mid-flight run is left alone — check back
+  later or ask Robin to re-run; do not stream/poll it — long silent
+  commands here read as stuck.
 - One-time suite bootstrap: `python -m venv .venv` then
   `.venv\Scripts\pip install playwright` and
   `.venv\Scripts\playwright install chromium` (the `--with-deps` system
