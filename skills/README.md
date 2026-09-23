@@ -23,8 +23,16 @@ partition and clone.
 - `ocarina-melodies/` — the tab notation grammar, per-ocarina ranges and the
   songs.json entry shape; the companion context the midi skill (and any
   hand-transcription) leans on.
-- `wav-sound-profile/` — (pending, hosted on the Windows partition) make a
-  sound profile of a recorded WAV and iterate over synthesizer tunings very
-  fast to approximate the recorded tone as closely as possible — the
-  per-chamber `tone.json` fitting workflow for instruments.json. Copy it
-  into this folder so it travels with the repo.
+- `tone-analysis/` — single-tone WAV measurement and synth-approximation
+  workflow: envelope/pitch-stability/harmonic-timbre/noise/onset reports
+  (self-calibrating scripts), recorder FFT-snapshot cross-checks, offline
+  Chrome renders of the repo synth for comparison (with a reproduced-bug
+  log in the SKILL.md), and the staged fastloop tuning loop against
+  recorded reference takes — drives the per-chamber `tone.json` fitting
+  for instruments.json. Feeds §1 B5 of `plans/TODO.md` (chamber tuning
+  for every ocarina); the tone.json schema and recording protocol live in
+  `instruments/README.md`.
+
+`skills/` is the canonical committed home. `.opencode/skills/` holds
+opencode's runtime-registered copies (gitignored) — when a skill changes
+here, refresh its `.opencode/skills/` mirror so both stay word-identical.
