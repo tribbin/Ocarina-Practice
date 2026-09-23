@@ -1173,11 +1173,14 @@ function wireUi() {
     // wait for the render settle: the session is already stale.
     if (typeof practiceInvalidate === "function") try { practiceInvalidate(); } catch (e) {}
     // Every keystroke once re-parsed, rebuilt both token strips and re-
-    // cloned the whole sheet — far more work than a 60 ms settle hides. Typed
-    // edits coalesce into one render per pause; programmatic loads (library,
-    // clear, piano inserts, instrument swaps) keep calling render() directly.
+    // cloned the whole sheet. Typed edits coalesce into one render per
+    // 200 ms pause — roughly the hush between two typed units — so half-
+    // parsed bursts ("C#cr", "D4 E") never flash on the strips, and the
+    // sheet still lands a blink after you stop. Programmatic loads
+    // (library, clear, piano inserts, instrument swaps) keep calling
+    // render() directly.
     clearTimeout(srcRenderTimer);
-    srcRenderTimer = setTimeout(render, 60);
+    srcRenderTimer = setTimeout(render, 200);
   });
   const big = document.getElementById("bigSmall");
   if (big) big.onclick = () => {
