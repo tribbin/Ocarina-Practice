@@ -347,10 +347,20 @@ function updateRangeWarning(outOf) {
   const inst = window.CURRENT_INSTRUMENT;
   const name = inst ? [inst.type, inst.version].filter(Boolean).join(" · ") : "this ocarina";
   const n = outOf === 1 ? "1 note is" : outOf + " notes are";
+  // Instrument name and range label come from the data files: escaped, since
+  // they ride innerHTML (the day a data file is user-supplied, hostile text
+  // must stay text).
   bar.innerHTML = `<span class="rw-icon" aria-hidden="true">\u26A0</span>` +
-    `<span>${n} outside ${name} (range ${rangeLabel()}). ` +
+    `<span>${n} outside ${escHtml(name)} (range ${escHtml(rangeLabel())}). ` +
     `Out-of-range notes are marked below and can't be played.</span>`;
   bar.hidden = false;
+}
+
+// Markup-safe text for innerHTML composition. Attribute assignments (.title,
+// .aria-*) are engine-escaped already; innerHTML is the parsing one.
+function escHtml(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
 function render() {

@@ -109,10 +109,12 @@ function ensureOcarinaTemplate() {
   if (!path || path === installedTplPath) return Promise.resolve(false);
   if (tplSyncing) return tplSyncing;
   tplSyncing = loadTemplateText(path).then(text => {
-    installOcarinaTemplate(text);
+    const ok = installOcarinaTemplate(text);  // false: unparsable SVG text
+    // Mark the path consumed either way — a failure must never re-arm the
+    // render loop by looking "not yet installed" forever.
     installedTplPath = path;
     tplSyncing = null;
-    return true;
+    return ok;
   }).catch(err => {
     tplSyncing = null;
     console.error(err);

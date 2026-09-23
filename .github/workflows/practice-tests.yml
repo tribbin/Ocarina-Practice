@@ -72,3 +72,5 @@ jobs:
         run: python tests/sr_hints.py
       - name: Run transport scheduler contract tests
         run: python tests/transport_schedule.py
+      - name: Run template safety tests
+        run: python tests/svg_sanitized.py

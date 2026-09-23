@@ -11,15 +11,58 @@ function invalidateSvgHtml() {
   if (svgHtmlCache.size) svgHtmlCache.clear();
 }
 
+// Template sanitizer: the SVG body text is data (fetched per instrument), and
+// it will be used via innerHTML on every card — active content must be gone
+// before install: script elements, foreignObject payloads, on*-attribute
+// handlers, and javascript:/data: URLs in href-likes. Nothing here repaints
+// the drawing: fills, paths, clips and inkscape labels all survive; anything
+// that fails to parse installs NOTHING (the app falls back to the
+// "template has no svg" error state rather than unsafe markup).
+function sanitizeSvgTemplate(svgText) {
+  let doc;
+  try {
+    doc = new DOMParser().parseFromString(svgText, "image/svg+xml");
+  } catch (e) {
+    return null;
+  }
+  if (doc.querySelector("parsererror")) return null;
+  doc.querySelectorAll("script, foreignObject").forEach(n => n.remove());
+  doc.querySelectorAll("*").forEach(el => {
+    for (const a of [...el.attributes]) {
+      const n = a.name.toLowerCase();
+      if (n.startsWith("on")) { el.removeAttribute(a.name); continue; }
+      if ((n === "href" || n.endsWith(":href") || n.endsWith(":attr")) &&
+          /^(\s|)*(javascript|data):/i.test(a.value)) {
+        el.removeAttribute(a.name);
+      }
+    }
+  });
+  try {
+    const root = doc.documentElement;
+    if (!root || root.nodeName.toLowerCase() !== "svg") return null;
+    return new XMLSerializer().serializeToString(root);
+  } catch (e) {
+    return null;
+  }
+}
+
+// Returns true when a sanitized template was actually installed; false means
+// the text could not be sanitized (unparsable XML) and NOTHING was installed.
+// Callers must not mark the path as installed-and-armed on false, or a
+// sanitize failure would live-lock the render loop.
 function installOcarinaTemplate(svgText) {
   let tpl = document.getElementById("oca-tpl");
-  if (!tpl) {
+  const safe = sanitizeSvgTemplate(svgText);
+  const ok = safe != null;
+  if (!tpl && ok) {
     tpl = document.createElement("template");
     tpl.id = "oca-tpl";
     document.body.appendChild(tpl);
   }
-  tpl.innerHTML = svgText;
+  if (!tpl) return ok;
+  tpl.innerHTML = safe;
   invalidateSvgHtml();
+  return ok;
 }
 
 function ocarinaSVG(covered, chamber) {
