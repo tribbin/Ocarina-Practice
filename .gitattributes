@@ -1,0 +1,15 @@
+# One line-ending truth across both machines (Linux laptop / Windows
+# partition): every text file is LF in the repository AND in the working
+# tree. Editors and tools on both sides (VS Code, git-bash, PowerShell,
+# python, node) read and write LF fine, and a mixed-EOL working tree is
+# what happens otherwise — the Windows checkout previously rendered CRLF
+# (Git-for-Windows' system core.autocrlf=true) while LF-preferring tools
+# inserted their own lines into it, producing `w/mixed` files.
+# Binaries are pinned explicitly so future formats never rely on
+# auto-detection; eol=lf beats any local core.autocrlf.
+* text=auto eol=lf
+
+*.png -text
+*.webp -text
+*.jpg -text
+*.wav -text
