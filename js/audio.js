@@ -497,7 +497,7 @@ function getMelodyCutBus(ctx, wire) {
   }
   return b;
 }
-function isMelodyBag(bag) { return bag === melodyBag; }
+function isMelodyBag(bag) { return bag === melodyBag || !!(bag && bag.melodyRoute); }
 // Render-cut the melody buses as ONE continuous event per bus: an exponential
 // setTargetAtTime decay, scheduled a little AHEAD of the render cursor. Three
 // rules come straight from this bug's history:
@@ -1929,12 +1929,17 @@ function openSupportSpanSec(startIdx) {
 // The support voice IS the modelled instrument voice (playNoteAt), so it
 // inherits chorus, reverb, wind/edge layers and the same tuning as playing
 // the note on the selected ocarinaZen playback only — the scheduler gates it.
-// playNoteAt only pushes into the bag it is given, so a small dual forwarder
-// lands the same voice in the melody bag (pause/stop/loop decay) AND the
-// bass bag (setBassEnabled cuts it when focus mode turns off mid-playback).
+// The bag IS the routing discriminator inside playNoteAt: a melody-bag voice
+// feeds the cut layer and stops on the melody's horizon, while anything else
+// fell off to the raw reverb bus and the legacy .value fade (the click-prone
+// path). This forwarder declares melodyRoute so support voices ride the SAME
+// cut bus generation and stop horizon as melody voices, while its push still
+// lands the handle in the melody bag (pause/stop/loop decay) AND the bass bag
+// (setBassEnabled cuts it when focus mode turns off mid-playback).
 function playSupportAt(id, when, durSec, slideFrom, intoSlide) {
   const base = melodyBag.length;
   playNoteAt(id, when, durSec, {
+    melodyRoute: true,
     push(v) { melodyBag.push(v); bassBag.push(v); }
   }, slideFrom || null, !!intoSlide);
   return melodyBag.slice(base); // the voice handle(s) this support created
