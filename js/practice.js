@@ -67,6 +67,10 @@
     gapAcc: 0,          // ms of continuous silence accumulated (await phase)
     transientLeft: 0,   // ms of onset-grace remaining
     restLeft: 0,        // ms left of a rest
+    wipes: 0,           // mid-hold drop count THIS RUN (progress history)
+    centsAcc: 0,        // Σ |cents to the current target| over hold frames
+    centsN: 0,          // hold frames counted for the cents mean
+    startedAt: 0,
     hz: 0, hzSm: 0, rms: 0, cents: 0,
     signal: false,      // the frame registered a pitch (locked Hz above the noise floor)
     msgHold: "", msgHoldUntil: 0, // readable-hold override for status feedback
@@ -251,7 +255,8 @@
       '<div class="prac-row1"><span class="prac-note">—</span>' +
       '<span class="prac-status"></span></div>' +
       '<div class="prac-scale"><div class="prac-zone"></div><div class="prac-mark"></div></div>' +
-      '<div class="prac-track"><div class="prac-fill"></div></div>';
+      '<div class="prac-track"><div class="prac-fill"></div></div>' +
+      '<div class="prac-history" hidden></div>';
     els.note = panel.querySelector(".prac-note");
     els.status = panel.querySelector(".prac-status");
     els.scale = panel.querySelector(".prac-scale");
@@ -259,6 +264,7 @@
     els.mark = panel.querySelector(".prac-mark");
     els.track = panel.querySelector(".prac-track");
     els.fill = panel.querySelector(".prac-fill");
+    els.history = panel.querySelector(".prac-history");
     // No Pause/Skip/Restart/End here: the transports own mode control, and
     // clicking any token re-anchors the practice. The panel is a pure tuner
     // display (draggable by its face).
@@ -726,6 +732,13 @@
     P.zonesNear = near;
     P.zonesNearCents = near >= 0 && cents !== 999 ? Math.abs(cents) : 999;
     P.cents = cents;
+    // Progress history: while a hold is actually live, sample the frame's
+    // distance to the current target (cap at the outer bandwidth so a drift
+    // blip cannot dominate the run mean).
+    if (P.bar && P.signal && (P.state === "hit" || P.state === "fill")) {
+      P.centsAcc += Math.min(P.zonesNearCents, 50);
+      P.centsN++;
+    }
     // Analysis complete — hand the frame to the caller's continuation (the
     // practice state machine advances here, a few ms after dispatch when it
     // was a worker frame).
@@ -993,6 +1006,7 @@
             P.dropAcc = 0;
             P.state = "await";
             P.gapAcc = 0;
+            P.wipes++; // progress history: a real mid-hold drop
             holdMsg(); // wiped hold: the re-attack instruction must be read
           }
         } else if (k < 0) {
@@ -1059,12 +1073,87 @@
   }
 
   function standby() {
+    recordPracticeRun();
     P.completed = true;
     P.paused = true; // frozen at the end; Resume wraps to the first note
     clearOverlays(); // the last note's bar ends with the song
     if (panel) panel.hidden = true; // neutral: no tuner
     zenGlowOff();
     if (typeof syncTransport === "function") try { syncTransport(); } catch (e) {}
+  }
+
+  // ---- practice progress history -------------------------------------------
+  // Per-song run records in localStorage ("oco-practice-history"): every
+  // COMPLETED run adds {ts, wipes, cents, sec} where wipes counts real
+  // mid-hold drops and cents is the mean deviation to the live target during
+  // holds (null when no hold frame ever registered). Capped, fail-soft, and
+  // keyed by library id (a text-only song hashes its body so retrying a piece
+  // that lives only in the textarea still groups).
+  const PRAC_HIST_KEY = "oco-practice-history";
+  const PRAC_HIST_MAX = 24;
+
+  function practiceSongKey() {
+    const id = typeof currentSongId === "function" ? currentSongId() : "";
+    if (id) return id;
+    try {
+      const text = document.getElementById("src").value || "";
+      let h = 5381;
+      for (let i = 0; i < text.length; i++) h = ((h * 33) ^ text.charCodeAt(i)) >>> 0;
+      return "text:" + h.toString(36);
+    } catch (e) { return "unknown"; }
+  }
+
+  function readHistory() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(PRAC_HIST_KEY) || "{}");
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (e) { return {}; }
+  }
+
+  function writeHistory(all) {
+    try { localStorage.setItem(PRAC_HIST_KEY, JSON.stringify(all)); }
+    catch (e) {}  // history is a nice-to-have; storage refusal cannot hurt a run
+  }
+
+  function recordPracticeRun() {
+    if (!P.startedAt) return;
+    const key = practiceSongKey();
+    const all = readHistory();
+    const entry = all[key] || { runs: [] };
+    const meanCents = P.centsN
+      ? Math.round((P.centsAcc / P.centsN) * 10) / 10
+      : null;
+    entry.runs.push({
+      ts: Date.now(),
+      wipes: P.wipes,
+      cents: meanCents,
+      sec: Math.max(1, Math.round((performance.now() - P.startedAt) / 1000)),
+    });
+    if (entry.runs.length > PRAC_HIST_MAX) {
+      entry.runs = entry.runs.slice(-PRAC_HIST_MAX);
+    }
+    all[key] = entry;
+    writeHistory(all);
+    refreshPracHistory();
+  }
+
+  function refreshPracHistory() {
+    if (!els.history) return;
+    const entry = readHistory()[practiceSongKey()];
+    const runs = (entry && entry.runs) || [];
+    if (!runs.length) { els.history.hidden = true; els.history.textContent = ""; return; }
+    const last = runs[runs.length - 1];
+    const cents = last.cents == null ? "" : " · avg ±" + last.cents + "\u00A2";
+    els.history.textContent = "runs " + runs.length +
+      " · last " + last.wipes + " wipe" + (last.wipes === 1 ? "" : "s") +
+      cents;
+    els.history.hidden = false;
+  }
+
+  // Public read for the dev panel / tests: this song's run list.
+  function practiceHistory() {
+    const entry = readHistory()[practiceSongKey()];
+    return entry ? { runs: entry.runs } : { runs: [] };
   }
 
   // --------------------------------------------------------------- control
@@ -1078,6 +1167,7 @@
     P.paused = false;
     P.err = "";
     P.active = true;
+    P.wipes = 0; P.centsAcc = 0; P.centsN = 0; P.startedAt = performance.now();
     openPanel();
     const start = nextPitchedIdx((typeof fromIdx === "number") ? fromIdx : 0);
     if (start < 0) { P.err = "No playable notes in this melody."; renderPanel(); return; }
@@ -1170,6 +1260,7 @@
 
   function openPanel() {
     buildPanel();
+    refreshPracHistory(); // this song's past runs greet the player
     panel.hidden = false;
     relocatePanel(); // seat for the CURRENT layout before any tick seats it
     clampPanelToScreen(); // zen may have taken over while the tuner was hidden
@@ -1241,7 +1332,8 @@
     },
     // Whether the practice analysis runs in the worker (true once a worker
     // was created successfully) — diagnostics/tests.
-    usingWorker: () => !!acWorker && !acWorkerDead,
+    // Progress history for this song (tests + dev panel).
+    history: practiceHistory,
     // transport anchors: where practice currently stands (token idx)
     posIdx: () => P.idx,
     from: practiceFrom, pauseToggle: practicePauseToggle,

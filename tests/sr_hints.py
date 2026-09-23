@@ -117,13 +117,25 @@ def main():
             page.wait_for_function(
                 "() => !document.getElementById('helpOverlay').hidden")
             help1 = page.evaluate("""
-              () => ({
-                modal: document.getElementById('helpOverlay').getAttribute('aria-modal'),
-                label: document.getElementById('helpOverlay').getAttribute('aria-label') || '',
-                focusOnClose: document.activeElement.classList.contains('help-x'),
-                mentionsSpace: (document.getElementById('helpOverlay').textContent || '').includes('Space'),
-              })
+              () => {
+                const ov = document.getElementById('helpOverlay');
+                const r = ov.getBoundingClientRect();
+                return {
+                  modal: ov.getAttribute('aria-modal'),
+                  label: ov.getAttribute('aria-label') || '',
+                  focusOnClose: document.activeElement.classList.contains('help-x'),
+                  mentionsSpace: (ov.textContent || '').includes('Space'),
+                  // The overlay must actually SHOW: it used to live inside
+                  // the collapsed input block's display:none subtree, and a
+                  // hidden-attribute-only probe waved that straight through.
+                  visible: r.width > 100 && r.height > 100 &&
+                           getComputedStyle(ov).display !== 'none',
+                };
+              }
             """)
+            if not help1["visible"]:
+                failures.append("the opened overlay must be VISIBLE on screen "
+                                "(a display:none ancestor hid it once)")
             if not help1["modal"] or "shortcuts" not in help1["label"].lower():
                 failures.append("the help overlay must be an aria-modal dialog "
                                 f"named Shortcuts (got {help1})")
