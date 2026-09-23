@@ -9,6 +9,11 @@
 #     so they are excluded from this rule)
 #   - metadata sane: non-empty body (chromatic generates its own), name,
 #     tempo 10–400, URL-safe id (ids are ?song= deep-link params)
+#   - the FROZEN slug contract (Robin, 2026-09-24): a key is a base slug
+#     (lowercase-hyphen ASCII) or a variant that ends in a REGISTERED suffix
+#     (arrangement/ocarina markers and content markers) and chains to an
+#     existing key with that suffix stripped — variants hang off real bases
+#     so public link space grows without ever renaming a base
 #
 #   python3 tests/shipped_songs.py      # headless & silent
 
@@ -18,6 +23,28 @@ import re
 import sys
 import threading
 from pathlib import Path
+
+# Registered trailing suffixes (the closed list; extend ONLY here): ocarina
+# markers (alto, 12, contrabass) and transposition/interval markers (c,
+# upN/downN). Content-shaping words (short, part...) are part of BASE slugs —
+# 'concerning-hobbits-short' is its own base, the -c copy chains to it.
+SUFFIX = re.compile(r"-(alto|12|contrabass|c|up\d+|down\d+)$")
+
+# Synthetic violations in the suite prove the tripwire, since the shipped
+# corpus is expected to be clean.
+TRIPWIRE_BAD = [
+    "Song of Storms",        # not lowercase-hyphen ASCII
+    "song-of-storms--alto",  # empty middle token
+    "-alto",                 # variant of nothing
+    "phantom-song-alto",     # registered suffix without the base it chains to
+]
+
+TRIPWIRE_OK = [
+    "song-of-time",                # base
+    "song-of-time-alto",           # registered suffix, chains to a base
+    "concerning-hobbits-short-c",  # content marker then interval marker
+    "botw-theme-down3",            # interval marker
+]
 
 from playwright.sync_api import sync_playwright
 
@@ -72,6 +99,21 @@ def start_server():
     return httpd, httpd.server_address[1]
 
 
+def slug_violation(key, all_keys, report):
+    # Returns a complaint string or None; `report` maps key -> complaint for
+    # the caller to sort out (second pass needs the full key set).
+    if not re.fullmatch(r"[a-z0-9-]+", key):
+        return "id not lowercase-hyphen ASCII (it is a public perma-link slug)"
+    if "-" not in key or SUFFIX.search(key) is None:
+        return None  # base slug (or a suffix-less word ending)
+    # Variant shape: strip ONE trailing registered suffix; the remainder
+    # must be an existing key (base or another variant).
+    prefix = SUFFIX.sub("", key)
+    if not prefix or prefix not in all_keys:
+        return f"variant '{key}' chains to nothing ('{prefix}' is not a key)"
+    return None
+
+
 def main():
     failures = []
     httpd, port = start_server()
@@ -85,6 +127,18 @@ def main():
             page.goto(base)
             page.wait_for_function(WAIT)
             songs = page.evaluate(SONGS)
+            all_keys = set(songs)
+
+            # Tripwire proof first: the checker must reject every known-bad
+            # crack and admit the known-good shapes (the shipped corpus is
+            # expected clean, so the synthetic legs are the red proof).
+            for bad in TRIPWIRE_BAD:
+                if slug_violation(bad, all_keys, {}) is None:
+                    failures.append(f"slug tripwire blind to {bad!r}")
+            for good in TRIPWIRE_OK:
+                v = slug_violation(good, all_keys, {})
+                if v:
+                    failures.append(f"slug checker rejects good shape {good!r}: {v}")
 
             if not songs:
                 failures.append("no songs found in BUILTIN — initBuiltin ran?")
@@ -104,8 +158,9 @@ def main():
                     failures.append(f"{sid}: missing display name")
                 if s["tempo"] is None or not (10 <= s["tempo"] <= 400):
                     failures.append(f"{sid}: tempo out of 10–400: {s['tempo']!r}")
-                if not re.fullmatch(r"[a-z0-9-]+", sid):
-                    failures.append(f"{sid}: id not URL-safe (used in ?song=)")
+                v = slug_violation(sid, all_keys, {})
+                if v:
+                    failures.append(f"{sid}: {v}")
 
             if errs:
                 failures.append(f"page errors {errs}")

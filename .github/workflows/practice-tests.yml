@@ -36,6 +36,8 @@ jobs:
         run: |
           pip install playwright
           playwright install --with-deps chromium
+      - name: Run console-hygiene boot error scan
+        run: python tests/console_hygiene.py
       - name: Run practice acceptance tests
         run: python tests/practice_accepts_melody.py
       - name: Run separate-note dip gate tests
@@ -84,3 +86,7 @@ jobs:
         run: python tests/svg_sanitized.py
       - name: Run theme toggle tests
         run: python tests/theme_toggle.py
+      - name: Run transposer skill script tests
+        run: python tests/transpose_skill.py
+      - name: Run song-stub page generator contract tests
+        run: python tests/gen_pages.py

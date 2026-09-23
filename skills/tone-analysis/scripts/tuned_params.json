@@ -1,0 +1,17 @@
+{
+ "h1": 1.0,
+ "h2": 0.0046864,
+ "h3": 0.0076008,
+ "h4": 0.0007653,
+ "h5": 0.0015082,
+ "vibDepth": 0.0,
+ "tremDepth": 0.0,
+ "masterLevel": 0.1261,
+ "airLevel": 0.0,
+ "edgeBase": 0.0006,
+ "chiffScale": 0.25,
+ "otBase": 0.00135,
+ "otEffort": 0.00108,
+ "edgeReg": 0.0004,
+ "otNoise": 0.35
+}

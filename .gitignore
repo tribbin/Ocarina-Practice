@@ -1,7 +1,9 @@
-.opencode/
+.opencode/*
+!.opencode/plugins/
 .grok/
 .venv/
+site/
 
 # Work files: recordings, FFT snapshots, tone analysis reports
 research/
-tests/**/*.pyc
+**/__pycache__/

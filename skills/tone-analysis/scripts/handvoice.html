@@ -1,0 +1,137 @@
+<!DOCTYPE html><html><body><div id="OUT">READY</div><script>
+// Hand-clone of playNoteAt's full-voice graph (dry chain only, as in the app's
+// default reverb-off state), with per-layer drop toggles from the URL (?drop=chiff,edge,...)
+const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+const drops = new Set((location.hash.match(/drop=([\w,]+)/) || [0, ""])[1].split(",").filter(Boolean));
+const no = k => drops.has(k);
+
+function buildVoice(o) {
+  const freq = 513.16, dur = 1.55, t0 = 0;
+  const noiseLen = Math.floor(o.sampleRate * 0.5);
+  const nbuf = o.createBuffer(1, noiseLen, o.sampleRate);
+  const nd = nbuf.getChannelData(0);
+  for (let i = 0; i < noiseLen; i++) nd[i] = Math.random() * 2 - 1;
+
+  const outGain = o.createGain(); outGain.gain.value = 0.6;
+  outGain.connect(o.destination);
+  const bus = o.createGain(); bus.connect(outGain);
+
+  const master = o.createGain();
+  master.gain.setValueAtTime(0.0001, t0);
+  master.gain.linearRampToValueAtTime(0.05, t0 + 0.006);
+  master.gain.linearRampToValueAtTime(0.16, t0 + 0.021);
+  master.gain.linearRampToValueAtTime(0.26, t0 + 0.05);
+  master.gain.setValueAtTime(0.26, t0 + 1.4);
+  master.gain.linearRampToValueAtTime(0.0001, t0 + dur);
+  master.setValueAtTime && master.gain.setValueAtTime(0.0001, t0 + dur + 0.03);
+  master.connect(bus);
+
+  const lp = o.createBiquadFilter(); lp.type = "lowpass";
+  lp.frequency.value = Math.min(9000, freq * 4.2); lp.Q.value = 0.7;
+  lp.connect(master);
+  const trem = o.createGain(); trem.gain.value = 1;
+  lp.connect(trem); trem.connect(master);
+
+  const wave = o.createPeriodicWave(
+    new Float32Array([0, 1, 0.06, 0.03, 0.012, 0.006]),
+    new Float32Array([0, 0, 0, 0, 0, 0]));
+  const osc = o.createOscillator(); osc.setPeriodicWave(wave);
+  osc.frequency.setValueAtTime(freq * 0.993, t0);
+  osc.frequency.linearRampToValueAtTime(freq * 1.002, t0 + 0.02);
+  osc.frequency.exponentialRampToValueAtTime(freq, t0 + 0.038);
+  osc.frequency.setValueAtTime(freq, t0 + 1.4);
+  osc.frequency.linearRampToValueAtTime(freq * 0.989, t0 + dur);
+  osc.connect(lp); osc.start(t0); osc.stop(t0 + dur + 0.03);
+
+  if (!no("air")) {
+    const air = o.createOscillator(); air.type = "sine";
+    air.frequency.setValueAtTime(freq * 2.01, t0);
+    const ag = o.createGain();
+    ag.gain.setValueAtTime(0.0001, t0);
+    ag.gain.linearRampToValueAtTime(0.02, t0 + 0.03);
+    ag.gain.setValueAtTime(0.02, t0 + 1.4);
+    ag.gain.linearRampToValueAtTime(0.0001, t0 + dur);
+    air.connect(ag); ag.connect(lp);
+    air.start(t0); air.stop(t0 + dur + 0.03);
+  }
+
+  if (!no("vib")) {
+    const lfo = o.createOscillator(); lfo.type = "sine"; lfo.frequency.value = 5.5;
+    const lfoG = o.createGain(); const tremG = o.createGain();
+    lfoG.gain.setValueAtTime(0.0001, t0);
+    lfoG.gain.setValueAtTime(0.0001, t0 + 0.35);
+    lfoG.gain.linearRampToValueAtTime(freq * 0.0035, t0 + 0.55);
+    tremG.gain.setValueAtTime(0.0001, t0);
+    tremG.gain.setValueAtTime(0.0001, t0 + 0.35);
+    tremG.gain.linearRampToValueAtTime(0.05, t0 + 0.55);
+    lfo.connect(lfoG); lfoG.connect(osc.frequency);
+    lfo.connect(tremG); tremG.connect(trem.gain);
+    lfo.start(t0); lfo.stop(t0 + dur + 0.03);
+  }
+
+  if (!no("edge")) {
+    const edge = o.createOscillator(); edge.type = "sine";
+    const detune = 1.012 + Math.random() * 0.008;
+    edge.frequency.setValueAtTime(freq * detune, t0);
+    const wander = o.createOscillator(); wander.type = "sine"; wander.frequency.value = 8.5;
+    const wg = o.createGain(); wg.gain.value = freq * 0.006;
+    wander.connect(wg); wg.connect(edge.frequency);
+    const eg = o.createGain();
+    eg.gain.setValueAtTime(0.0001, t0);
+    eg.gain.linearRampToValueAtTime(0.045, t0 + 0.03);
+    eg.gain.setValueAtTime(0.045, t0 + 1.4);
+    eg.gain.linearRampToValueAtTime(0.0001, t0 + dur);
+    const ebp = o.createBiquadFilter(); ebp.type = "bandpass";
+    ebp.frequency.value = freq * detune; ebp.Q.value = 4;
+    edge.connect(ebp); ebp.connect(eg); eg.connect(master);
+    edge.start(t0); edge.stop(t0 + dur + 0.03);
+    wander.start(t0); wander.stop(t0 + dur + 0.03);
+  }
+
+  if (!no("chiff")) {
+    const hp = o.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 380;
+    const cl = o.createBiquadFilter(); cl.type = "lowpass"; cl.Q.value = 0.4;
+    cl.frequency.setValueAtTime(4600, t0);
+    cl.frequency.exponentialRampToValueAtTime(1400, t0 + 0.13);
+    const cg = o.createGain();
+    cg.gain.setValueAtTime(0.0001, t0);
+    cg.gain.linearRampToValueAtTime(0.0127, t0 + 0.02);
+    cg.gain.linearRampToValueAtTime(0.0108, t0 + 0.1);
+    cg.gain.linearRampToValueAtTime(0.0, t0 + 0.2);
+    const src = o.createBufferSource(); src.buffer = nbuf;
+    src.connect(hp); hp.connect(cl); cl.connect(cg); cg.connect(master);
+    src.start(t0); src.stop(t0 + 0.22);
+  }
+
+  if (!no("ot")) {
+    const og = o.createGain();
+    og.gain.setValueAtTime(0.0001, t0);
+    og.gain.linearRampToValueAtTime(0.14, t0 + 0.02);
+    og.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.24);
+    og.connect(bus);
+    const bp = o.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = 18;
+    bp.frequency.setValueAtTime(freq * 2.02, t0);
+    bp.frequency.exponentialRampToValueAtTime(freq * 2, t0 + 0.17);
+    const src = o.createBufferSource(); src.buffer = nbuf;
+    src.connect(bp); bp.connect(og);
+    src.start(t0); src.stop(t0 + 0.26);
+    const ot = o.createOscillator(); ot.type = "sine";
+    ot.frequency.setValueAtTime(freq * 2 * 1.004, t0);
+    ot.frequency.linearRampToValueAtTime(freq * 2, t0 + 0.24);
+    ot.connect(og);
+    ot.start(t0); ot.stop(t0 + 0.26);
+  }
+}
+
+const o = new OAC(1, 44100 * 2.3, 44100);
+try { buildVoice(o); document.getElementById("OUT").textContent = "SCHED"; } catch (e) { document.getElementById("OUT").textContent = "SCHED-ERR:" + e; }
+o.startRendering().then(
+  b => {
+    const ch = b.getChannelData(0);
+    let mx = 0; for (let i = 0; i < ch.length; i++) mx = Math.max(mx, Math.abs(ch[i]));
+    document.getElementById("OUT").textContent = "OK len=" + ch.length + " peak=" + mx.toFixed(3) + (drops.size ? " dropped:" + [...drops] : "");
+  },
+  e => { document.getElementById("OUT").textContent = "RDERR:" + e + " dropped:" + [...drops]; }
+);
+setInterval(() => { if (document.getElementById("OUT").textContent === "SCHED") document.getElementById("OUT").textContent = "WAIT"; }, 250);
+</script></body></html>

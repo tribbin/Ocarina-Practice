@@ -1,0 +1,49 @@
+This document is for not-forgetting ideas. Don't assume we want them implemented already. However, you may refer to them or keep them in mind.
+
+SMALL SCREENS
+
+When a device has a small screen, they will not want to use certain functions.
+I think we can disable certain functions in that case.
+People are likely going to use their phone for playing the music or practicing; not music-editing.
+
+Also, on small screens (especially vertical screens) the layout should be completely different, as currently (in the non-Zen screen) the buttons are all over the place; make them nice vertical rows or something.
+
+As you'd not see much of the backdrop anyway, we probably want a dedicated fullscreen solution.
+
+We will brainstorm this some time.
+
+SEARCH ENGINE OPTIMIZATION
+
+So when Ocarina of Time for the Switch 2 comes out in November, people will receive dinky plastic ocarinas and will likely look for song online.
+I want the individual songs indexed by Google to one-click to the (especially) 12-hole ocarina page for that song.
+I want to postpone informing search crawlers until we have good PERMANENT links in order for these songs.
+Rule: When a direct-link exists, it should be a perma-link (content may change, but link must serve what the crawl expected).
+I want to control the 'theme' of our page and for links. A direct link to a song should have the song title added to the 'preview' and such.
+
+PERFORMANCE
+
+Give option to pre-calculate (wave forms of notes for) a song and cache them.
+Show a pre-processing bar so the user can choose to await the pre-caching before starting.
+If the song plays, stop further pre-caching as you'd not want to put the extra strain on the device; pre-caching is specifically to prevent that.
+Minify JS and CSS on GitHub deploy.
+
+LAYOUT
+
+Add close-button top-right of the (non-Zen mode) practice/tuner to un-press the practice. This will feel natural/familiar instintively for many users.
+It is not clear to the (new) user that they should start playing the song after pressing 'practice'. Can we inform the user either through a microphone icon in the blue button, instead of the note?
+I don't know what the (practice) 'history' function does, so I assume the user doesn't either.
+
+BRANDING
+
+Pondering calling it "Robin's Ocarina Practice", to make it more findable/relatable.
+
+OTHERS
+
+Use browser-builtin tooling like Lighthouse.
+Switching instruments will auto-switch to the same song with matching range, if it exists.
+Make the 12-hole 'complete' regarding Zelda Ocarina of Time game songs.
+
+THEMES
+
+Additional 80s black audio-stack with square-row LED displays. The red understripe for headers can remain the same as other.
+Switching between themes in a way that signifies the color theme without showing it in the current theme during normal usage.
