@@ -25,6 +25,11 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Lint scripts (eslint flat config)
+        run: npx --yes eslint@9 js/
       - name: Install Playwright + Chromium
         run: |
           pip install playwright
