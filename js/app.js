@@ -263,3 +263,13 @@ async function boot() {
 }
 
 boot();
+
+// Offline mode: the service worker (sw.js) serves the shell, song data and
+// the ocarinas' fingerings/templates from cache, with background refresh for
+// updates. Best-effort by design — plain http:// (no secure context) and
+// browsers without the API simply skip it; a failed registration must never
+// reach the app.
+window.addEventListener("load", () => {
+  if (!navigator.serviceWorker) return;
+  try { navigator.serviceWorker.register("sw.js").catch(() => {}); } catch (e) {}
+});

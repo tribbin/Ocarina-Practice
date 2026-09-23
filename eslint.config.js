@@ -7,7 +7,7 @@
 // prints its first counts.
 module.exports = [
   {
-    files: ["js/**/*.js", "tests/**/*.js"],
+    files: ["js/**/*.js", "tests/**/*.js", "sw.js"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "script",

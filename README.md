@@ -10,6 +10,7 @@ Built with plain HTML/CSS/JavaScript — no build step, no dependencies.
 - **Immediate playback** — a synthesized ocarina voice plays your melody with tempo and swing dials; click any note to start from there.
 - **Practice mode** — the song only advances when you hit each note in tune through the microphone, guided by a built-in tuner. Ties hold continuously; `~` slides become chains you must travel through pitch by pitch; rests count on the clock.
 - **Zen mode** — distraction-free fullscreen practice with shareable links that open straight to a given song and ocarina.
+- **Offline** — one connected visit is enough: the app keeps booting, loading songs and swapping ocarinas with no connection (installable as an app via the browser's menu). Updates arrive with your next visit.
 - **Piano keyboard** — audition notes by ear, right-click to add them to the melody.
 - **Library** — ready-made songs and scales, save/load files, and a personal library in-browser.
 - **Multiple instruments** — Triple Bass C, Double Alto C, and the 12-hole Alto C, each with its own fingerings and template.

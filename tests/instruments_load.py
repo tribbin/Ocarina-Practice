@@ -295,6 +295,12 @@ def main():
             page.on("pageerror", lambda e: errs.append(str(e)))
             page.goto(base + "?inst=oot-alto-c-12&song=sarias-song-alto&oot")
             page.wait_for_function(BOOT_WAIT)
+            # FINGERINGS install precedes the library tail (the tone-model
+            # round-trip comes after in loadInstrument): probing #scale/#src
+            # can otherwise race the ?song load in.
+            page.wait_for_function(
+                "() => document.getElementById('scale').value ==="
+                " 'sarias-song-alto'")
             byId = page.evaluate(TPL_PROBE)
             page.goto(base + "?inst=oot-alto-c-12&oot")
             page.wait_for_function(BOOT_WAIT)
