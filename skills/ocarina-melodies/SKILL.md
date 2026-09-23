@@ -105,6 +105,29 @@ sheets at a glance:
 - Songs with out-of-range notes for the current ocarina vanish from the
   dropdown (auto-hidden); the "Show hidden songs" toggle reveals them.
 
+## Song slugs — the frozen link contract (locked 2026-09-24)
+
+Public URLs address a SONG: `/song/<category>/<base-slug>`. The base slug is
+the song's permanent identity; arrangement copies live as suffixed sibling
+keys and are never their own indexed pages.
+
+- **URL default player: the 12-hole C alto** when a link gives only a song.
+  Future ocarina families (single/double/triple/quadruple chamber counts,
+  soprano, ...) extend the marker list — they never rename bases.
+- **Category token** normalizes from the songs.json group family (today:
+  zelda, scales, other — "Zelda on Bass"/"Zelda on Alto" both collapse to
+  zelda). The category also keys per-category theming: zelda → the Hyrule
+  look; other categories default to Plain or acquire their own in the future.
+- Grammar: base slugs are lowercase-hyphen ASCII. Variant keys end in a
+  REGISTERED suffix from the closed list — ocarina markers (`alto`, `12`,
+  `contrabass`, future names) and interval markers (`c`, `upN`, `downN`).
+  Every suffixed key must chain to an existing key once the suffix is
+  stripped (variants hang off real bases; bases are forever). Content-shaping
+  words (`short`, …) belong to the BASE slug, not the suffix list.
+- Enforced by `tests/shipped_songs.py` (fails CI on any violating key). The
+  `-alt`/`-alto` spell split was fixed before first indexing (`major-alto`,
+  `chromatic-alto`); nothing is indexed yet, so no alias table was needed.
+
 ## Transcription craft (the rules that survive edits)
 
 1. Get **pitch sequence** from an ocarina/single-line source, and
