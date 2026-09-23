@@ -55,3 +55,5 @@ jobs:
         run: python tests/instruments_load.py
       - name: Run svg re-render coordinates pin
         run: python tests/svg_cache.py
+      - name: Run debug panel contract tests
+        run: python tests/debug_panel.py
