@@ -326,6 +326,66 @@ def main():
                     "svgWhen: an unrelated title must keep the generic "
                     f"template, got {byOtherTitle!r}")
             page.close()
+
+            # 4 — boot diagnostics: an unknown ?inst id and a duplicated
+            # manifest id both report loudly in #err (append, never clobber)
+            # while the boot itself still lands fail-soft.
+            print("== boot diagnostics (bogus/duplicate instrument ids)",
+                  flush=True)
+            page = browser.new_page()
+            errs = []
+            page.on("pageerror", lambda e: errs.append(str(e)))
+            page.goto(base + "?inst=bogus99")
+            page.wait_for_function(BOOT_WAIT)
+            page.wait_for_function(
+                "() => document.getElementById('scale').value ||"
+                " document.querySelectorAll('#scale option').length > 1")
+            bogus = page.evaluate(
+                "() => ({ err: document.getElementById('err').textContent,"
+                        " inst: window.CURRENT_INSTRUMENT &&"
+                        " window.CURRENT_INSTRUMENT.id })")
+            if "bogus99" not in bogus["err"]:
+                failures.append(
+                    "an unknown ?inst id must be reported in #err naming the "
+                    f"id, got {bogus['err']!r}")
+            if bogus["inst"] != "oot-alto-c-12":
+                failures.append(
+                    "the boot must still land on the manifest default after "
+                    f"an unknown id, got {bogus['inst']!r}")
+
+            # Duplicated manifest id: intercept instruments.json with a
+            # doctored copy; the app must report the repeat and still boot.
+            page.route("**/instruments.json", lambda route: route.fulfill(
+                status=200,
+                content_type="application/json",
+                body="""{"default": "oot-alto-c-12", "instruments": [
+                  {"id": "ico-oak-leaf-bass-c-triple",
+                   "fingerings": "instruments/ico-oak-leaf-bass-c-triple/fingerings.json",
+                   "svg": "instruments/ico-oak-leaf-bass-c-triple/ocarina-template.svg"},
+                  {"id": "ico-oak-leaf-bass-c-triple",
+                   "fingerings": "instruments/ico-oak-leaf-bass-c-triple/fingerings.json",
+                   "svg": "instruments/ico-oak-leaf-bass-c-triple/ocarina-template.svg"},
+                  {"id": "oot-alto-c-12",
+                   "fingerings": "instruments/oot-alto-c-12/fingerings.json",
+                   "svg": "instruments/oot-alto-c-12/ocarina-template.svg"}
+                ]}"""))
+            page.goto(base)
+            page.wait_for_function(BOOT_WAIT)
+            dup = page.evaluate(
+                "() => ({ err: document.getElementById('err').textContent,"
+                        " notes: (window.NOTES || []).length })")
+            page.unroute("**/instruments.json")
+            if "ico-oak-leaf-bass-c-triple" not in dup["err"] or \
+                    "repeat" not in dup["err"]:
+                failures.append(
+                    "a duplicated manifest id must be reported in #err "
+                    f"(got {dup['err']!r})")
+            if not dup["notes"]:
+                failures.append(
+                    "the boot must still land with a working instrument "
+                    "after reporting the duplicate id")
+            page.close()
+
             browser.close()
     finally:
         httpd.shutdown()

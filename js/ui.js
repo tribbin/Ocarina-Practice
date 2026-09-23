@@ -386,7 +386,19 @@ function render() {
     updateRangeWarning(outOf);
     // Out-of-range info lives in the tablature section (banner + marked
     // cards) — #err carries only genuine input problems, so no has-oor magic.
-    err.textContent = problems.join(" · ");
+    // Render owns ONE child line of #err instead of the whole node: appended
+    // lines (the global error net, boot's config diagnostics) keep their divs
+    // across renders instead of being textContent-wiped here.
+    if (err) {
+      let line = err.querySelector(":scope > .err-render");
+      if (!line) {
+        line = document.createElement("div");
+        line.className = "err-render";
+        err.appendChild(line);
+      }
+      line.textContent = problems.join(" · ");
+      line.hidden = !problems.length;
+    }
     document.getElementById("stats").textContent =
       notes ? `${notes} notes · ${switches} chamber switch${switches===1?"":"es"}` : "Type or click a melody.";
     if (typeof syncFocusMode === "function") syncFocusMode();
@@ -831,7 +843,20 @@ function buildTokenEl(t, i) {
     el.tabIndex = -1;                        // roving anchor assigned in drawTokenStrip
     el.setAttribute("role", "button");
     const nm = t.id && NOTES.includes(t.id) ? pretty(t.id) : "";
-    el.setAttribute("aria-label", nm ? "Play from " + nm : "Play from here");
+    const isOor = el.classList.contains("oor");
+    const label = isOor
+      ? "Play from " + pretty(t.id) + " — " +
+        (el.classList.contains("oor-low") ? "below" : "above") +
+        " this ocarina's range (" + rangeLabel() + "), the note itself can't be played"
+      : (nm ? "Play from " + nm : "Play from here");
+    el.setAttribute("aria-label", label);
+    // The gesture hint (tap/hold semantics, right-click add) rides a shared
+    // describedby block instead of a title-only tooltip.
+    el.setAttribute("aria-describedby", "sr-gesture-hints");
+  } else {
+    // Bad pills: no button role, but the fix-or-remove explanation must not
+    // be titled-only either.
+    el.setAttribute("aria-describedby", "sr-gesture-hints");
   }
   return el;
 }
@@ -991,6 +1016,9 @@ function buildKB() {
         k.tabIndex = -1;                       // roving anchor picked after build
         k.setAttribute("role", "button");
         k.setAttribute("aria-label", "Hear " + pretty(id));
+        // Gesture info rides the shared describedby hint block (click hear /
+        // right-click add) instead of a title-only tooltip.
+        k.setAttribute("aria-describedby", "sr-gesture-hints");
         k.title = id + " — click hear, right-click add";
         k.innerHTML = `<span class="n">${w}${oct===4?"":oct}</span>`;
         k.onclick = () => { kbRoving(kb, k); playNote(id); pianoNotePreview(id); };
@@ -1012,6 +1040,7 @@ function buildKB() {
           b.tabIndex = -1;
           b.setAttribute("role", "button");
           b.setAttribute("aria-label", "Hear " + pretty(sid));
+          b.setAttribute("aria-describedby", "sr-gesture-hints");
           b.title = sid + " — click hear, right-click add";
           b.onclick = () => { kbRoving(kb, b); playNote(sid); pianoNotePreview(sid); };
           b.oncontextmenu = e => { e.preventDefault(); kbRoving(kb, b); playNote(sid); addNote(sid); pianoNotePreview(sid); };

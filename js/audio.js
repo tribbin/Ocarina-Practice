@@ -13,7 +13,11 @@ let melodyPlaying = false;
 let melodyTokens = [];
 let melodyIdx = 0;
 let melodyFrom = 0;
-let melodyPos = 0;
+// Melody position on the NOTATION grid, in integer 96ths of a beat (96 divides
+// every duration the parser emits: dyadic values, dots and triplets). Compare
+// via beat integer, never via accumulated float: triplet-flavored ulps would
+// drift the swing-parity sample off the beat over long songs.
+let melodyPos96 = 0;
 let melodyHoldUntil = -1;
 let melodyPaused = false;
 let melodyNextTime = 0; // absolute ctx time of the next note to schedule
@@ -142,6 +146,9 @@ window.OCA_DEBUG = {
   liveVoiceCount() { return countAliveVoices(liveVoices); },
   // "none" / "suspended" / "running" — the autoplay-policy state of the ctx.
   audioState() { return audioCtx ? audioCtx.state : "none"; },
+  // Melody position on the scheduler's integer 96th-of-a-beat grid — the
+  // swing parity reads it; suites pin that the integer grid is kept exactly.
+  melodyPos96() { return melodyPos96; },
   // Live audit helper: the full derived voice profile for a note id.
   profile(id) { return voiceProfileFor(id, freqOf(id)); },
   // The installed per-ocarina tone model (instruments/<id>/tone.json) —
@@ -227,12 +234,14 @@ function barHasNote(tokens, idx) {
   return false;
 }
 
-function swungBeats(tok, pos) {
+function swungBeats(tok, pos96) {
   const beats = tokenGridBeats(tok);
   const s = (typeof currentSwing === "function" ? currentSwing() : 0) / 100;
   if (s <= 0 || Math.abs(beats - 0.5) > 1e-6) return beats;
   const longF = 0.5 + s / 6;
-  const onBeat = Math.round(pos * 2) % 2 === 0;
+  // pos96 IS the beat position (integer 96ths): half-beats are exact multiples
+  // of 48, so the parity test needs no rounding tolerance at all.
+  const onBeat = Math.round(pos96 / 48) % 2 === 0;
   return onBeat ? longF : 1 - longF;
 }
 
@@ -1747,7 +1756,7 @@ function playMelody(fromIdx) {
   melodyFrom = from;
   melodyHoldUntil = -1;
   melodyPaused = false;
-  melodyPos = gridBeatsBefore(melodyTokens, melodyIdx);
+  melodyPos96 = Math.round(gridBeatsBefore(melodyTokens, melodyIdx) * 96);
   // Statically anchor the second, parallel support melody to these tokens:
   // its events fire at melody pivots while the walk runs.
   supportPlan = buildSupportPlan(melodyTokens);
@@ -2011,7 +2020,7 @@ function scheduleMelody(when) {
           melodyIdx++;
         }
         if (melodyIdx >= melodyTokens.length) { stopMelody(); return; }
-        melodyPos = 0;
+        melodyPos96 = 0;
         melodyHoldUntil = -1;
         atBar = true;
       } else {
@@ -2042,9 +2051,9 @@ function scheduleMelody(when) {
     // at this token's exact melody-clock onset.
     if (supportPlan && (tok.type === "note" || tok.type === "rest"))
       fireDueSupport(melodyIdx, noteWhen);
-    const step = Math.max(0.001, swungBeats(tok, melodyPos) * melodyQuarter /
+    const step = Math.max(0.001, swungBeats(tok, melodyPos96) * melodyQuarter /
                   tempoSpeed()); // tempo dial: % of the song's own speed (live — mid-song slider moves apply to upcoming notes)
-    melodyPos += tokenGridBeats(tok);
+    melodyPos96 += Math.round(tokenGridBeats(tok) * 96);
     const pitched = (tok.type === "note" || tok.type === "tie") && NOTES.includes(tok.id);
     let didSound = false;
     if (pitched && melodyIdx > melodyHoldUntil) {

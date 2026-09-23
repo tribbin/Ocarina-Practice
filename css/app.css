@@ -1635,3 +1635,15 @@ html[data-theme="oot"] .t-btn {
     100% { opacity: 0; }
   }
 }
+
+/* Screen-reader-only helper blocks referenced by aria-describedby (the
+   gesture hints for notation chips / piano keys). */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

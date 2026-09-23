@@ -66,3 +66,7 @@ jobs:
         run: python tests/offline_pwa.py
       - name: Run pitch worker tests
         run: python tests/ac_worker.py
+      - name: Run scheduler grid pin (swing parity)
+        run: python tests/swing_grid.py
+      - name: Run gesture-hint a11y tests
+        run: python tests/sr_hints.py

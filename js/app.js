@@ -226,7 +226,26 @@ async function boot() {
     ]);
     APP_CSS = cssText;
     window.INSTRUMENTS = manifest.instruments || [];
+    // Manifest sanity: a duplicated id makes the picker ambiguous (two
+    // indistinguishable entries) — say so instead of silently picking the
+    // first match; a bogus ?inst id would otherwise fall back invisible.
+    {
+      const seen = new Set(), dups = [];
+      for (const inst of window.INSTRUMENTS) {
+        if (inst && inst.id) {
+          if (seen.has(inst.id)) dups.push(inst.id);
+          else seen.add(inst.id);
+        }
+      }
+      if (dups.length) {
+        reportGlobalError("boot", "instruments.json repeats ocarina id(s): " + dups.join(", "));
+      }
+    }
     const instParam = queryParam("inst");
+    if (instParam && !window.INSTRUMENTS.some(i => i.id === instParam)) {
+      reportGlobalError("boot", "Unknown ocarina id \u2018" + instParam +
+        "\u2019 — using the default instrument instead.");
+    }
     const chosen = (instParam && INSTRUMENTS.find(i => i.id === instParam))
       || INSTRUMENTS.find(i => i.id === manifest.default) || INSTRUMENTS[0];
     if (!chosen) throw new Error("No instruments defined in instruments.json");
