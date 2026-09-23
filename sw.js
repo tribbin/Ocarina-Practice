@@ -25,6 +25,8 @@ const CORE = [
   "js/library.js",
   "js/ui.js",
   "js/practice.js",
+  "js/pitch-dsp.js",
+  "js/pitch-ac-worker.js",
   "js/app.js",
   "js/debug.js",
 ];

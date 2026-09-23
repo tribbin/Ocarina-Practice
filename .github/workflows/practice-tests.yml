@@ -64,3 +64,5 @@ jobs:
         run: python tests/debug_panel.py
       - name: Run offline (service worker) tests
         run: python tests/offline_pwa.py
+      - name: Run pitch worker tests
+        run: python tests/ac_worker.py
