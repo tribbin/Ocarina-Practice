@@ -1241,6 +1241,22 @@ function wireUi() {
     if (typeof practiceInvalidate === "function") try { practiceInvalidate(); } catch (e) {}
     render();
   };
+  // Theme toggle beside Clear: flip data-theme (plain ↔ Hyrule), persist the
+  // choice, repaint the chrome-color hint and re-render so svgWhen rules
+  // (e.g. the saria body) re-resolve for the new theme.
+  const themeBtn = document.getElementById("themeBtn");
+  if (themeBtn) {
+    themeBtn.onclick = () => {
+      const next = document.documentElement.hasAttribute("data-theme") ? "" : "oot";
+      applyTheme(next);
+      try { localStorage.setItem("oco-theme", next); } catch (e) {}
+      syncThemeGlyph();
+      syncThemeMeta();
+      render();
+    };
+    syncThemeGlyph();
+    syncThemeMeta();
+  }
   let srcRenderTimer = 0;
   document.getElementById("src").addEventListener("input", () => {
     // Typed edits replace the melody the session was built from — end it so
@@ -1308,6 +1324,25 @@ function wireUi() {
   wireFocusControls();
   wireSpacebar();
   updateTransportUI();
+}
+
+// Theme chrome: button glyph + the browser bar's theme-color hint live on the
+// CURRENT data-theme; both re-sync on toggle and at wire time.
+function syncThemeGlyph() {
+  const btn = document.getElementById("themeBtn");
+  if (!btn) return;
+  const on = document.documentElement.hasAttribute("data-theme");
+  btn.textContent = on ? "Hyrule" : "Plain";
+  btn.title = on ? "Switch to the classic light theme"
+                 : "Switch to the Hyrule Field theme";
+  btn.setAttribute("aria-label", btn.title);
+}
+
+function syncThemeMeta() {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) return;
+  const bg = getComputedStyle(document.body).backgroundColor;
+  meta.setAttribute("content", bg || "#f6efe6");
 }
 
 let zenUiTimer = 0;

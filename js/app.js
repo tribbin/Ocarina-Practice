@@ -166,9 +166,16 @@ function queryHas(name) {
 }
 
 function themeFromQuery() {
-  // The Hyrule backdrop IS the app's home look now; `?plain` opts out to the
-  // classic light theme (`?oot` stays honored for old shared links).
-  return queryHas("plain") ? "" : "oot";
+  // ?plain / ?oot stay honored per shared link; without them the SAVED choice
+  // rules (the Hyrule look stays the default for a fresh browser). The toggle
+  // beside Clear rides the same key ("oco-theme").
+  if (queryHas("plain")) return "";
+  if (queryHas("oot")) return "oot";
+  try {
+    const saved = localStorage.getItem("oco-theme");
+    if (saved === "" || saved === "oot") return saved;
+  } catch (e) {}
+  return "oot";
 }
 
 function applyTheme(name) {

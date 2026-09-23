@@ -74,3 +74,5 @@ jobs:
         run: python tests/transport_schedule.py
       - name: Run template safety tests
         run: python tests/svg_sanitized.py
+      - name: Run theme toggle tests
+        run: python tests/theme_toggle.py
