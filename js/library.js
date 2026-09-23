@@ -1,9 +1,16 @@
+import { isOutOfRange, parse, swingFromText, tempoFromText, titleFromText,
+         withPlayHeaders } from "./parse.js";
+import { stopMelody } from "./audio.js";
+import { render, resetLiveTab } from "./ui.js";
+import { practiceInvalidate } from "./practice.js";
+import { ensureOcarinaTemplate } from "./app.js";
 const LIB_KEY = "oco-bass-c-library";
 const SHOW_HIDDEN_KEY = "oco-bass-c-show-hidden";
 let BUILTIN = {};
 
 function initBuiltin(songs) {
   BUILTIN = songs || {};
+  window.BUILTIN = BUILTIN; // compat mirror (shipped-songs probes read it)
   if (BUILTIN.chromatic && !BUILTIN.chromatic.body) {
     BUILTIN.chromatic.body = NOTES.map(n => n.replace(/^([A-G])s/, "$1#")).join(" ");
   }
@@ -542,3 +549,17 @@ function wireLibrary() {
     reader.readAsText(f);
   };
 }
+
+export { BUILTIN, applySwing, applyTempoPct, clearLibrarySelection, currentSwing,
+         fillLibrary, initBuiltin, libToast, loadLibraryItem, safeAlert, songTempo,
+         syncLibraryMenu, tempoPct, userLib, wireLibrary, setUserLib, slugName,
+         uniqueUserId, showHiddenSongs };
+
+// Classic-script compat surface (tests + dev console).
+window.userLib = userLib; window.setUserLib = setUserLib; window.slugName = slugName;
+window.uniqueUserId = uniqueUserId; window.withPlayHeaders = withPlayHeaders;
+window.fillLibrary = fillLibrary; window.initBuiltin = initBuiltin;
+window.loadLibraryItem = loadLibraryItem; window.tempoFromText = tempoFromText;
+window.applySongTick = applySongTick;
+window.setShowHidden = setShowHidden;
+window.showHiddenSongs = showHiddenSongs;

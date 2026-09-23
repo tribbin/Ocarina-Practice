@@ -337,3 +337,17 @@ function withTitleAndTempo(body, name, bpm) {
   const swing = swingFromText(body);
   return withPlayHeaders(body, name, bpm, swing != null ? swing : 0);
 }
+
+export { durLabel, isOutOfRange, octSub, parse, pretty, rangeCheck, spelledLabel,
+         midiOf, swingFromText, tempoFromText, titleFromText, withPlayHeaders,
+         withTempoLine, withTitleAndTempo };
+
+// Classic-script compat surface (tests + dev console call these by global).
+window.parse = parse; window.titleFromText = titleFromText; window.pretty = pretty;
+window.tempoFromText = tempoFromText; window.swingFromText = swingFromText;
+window.durLabel = durLabel; window.withPlayHeaders = withPlayHeaders;
+window.midiOf = midiOf; window.octSub = octSub;
+window.spelledLabel = spelledLabel;
+window.withTempoLine = withTempoLine;
+window.withTitleAndTempo = withTitleAndTempo;
+window.rangeCheck = rangeCheck; window.isOutOfRange = isOutOfRange;

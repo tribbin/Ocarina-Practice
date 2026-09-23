@@ -3,7 +3,7 @@
 // thread. Frames arrive transferred, results come back at a sample count of
 // the compute cost; js/pitch-dsp.js is the single source of the detector so
 // this worker and the main-thread fallback are bit-identical.
-importScripts("pitch-dsp.js");
+import { autoCorrelate } from "./pitch-dsp.js";
 
 self.onmessage = (e) => {
   const d = e.data;

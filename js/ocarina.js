@@ -181,3 +181,6 @@ function enlargeSmallHoles(svg) {
     h.r *= s;
   }
 }
+
+export { installOcarinaTemplate, invalidateSvgHtml, ocarinaSVG };
+window.ocarinaSVG = ocarinaSVG; window.installOcarinaTemplate = installOcarinaTemplate;

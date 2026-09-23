@@ -47,6 +47,14 @@ async function fillFrom(paths) {
   }));
 }
 
+// Cache writes are scheme-gated: file: origins (VS Code browser preview,
+// opened-from-disk) reject Cache.put at the engine level; nothing here may
+// throw out of a handler.
+async function putOk(cache, key, res) {
+  if (!res || !res.ok || !/^https?:$/.test(self.location.protocol)) return;
+  try { await cache.put(key, res); } catch (e) {}
+}
+
 self.addEventListener("install", (e) => {
   // No cache work on non-HTTP(S) contexts: opened from disk (VS Code browser
   // preview, double-click) the fetches behind addAll are scheme-unsupported
@@ -95,10 +103,7 @@ self.addEventListener("fetch", (e) => {
     e.respondWith((async () => {
       try {
         const res = await fetch(req);
-        if (res.ok) {
-          const c = await cacheOf();
-          c.put("index.html", res.clone());
-        }
+        if (res.ok) putOk(await cacheOf(), "index.html", res.clone());
         return res;
       } catch (err) {
         const c = await cacheOf();
@@ -120,7 +125,7 @@ self.addEventListener("fetch", (e) => {
     }
     try {
       const res = await fetch(req);
-      if (res.ok) await c.put(req, res.clone());
+      await putOk(c, req, res.clone());
       return res;
     } catch (err) {
       return new Response("Offline and not cached yet.", { status: 504 });

@@ -1,8 +1,32 @@
+import { durLabel, isOutOfRange, parse, pretty, rangeCheck, spelledLabel,
+         swingFromText, tempoFromText, titleFromText, withPlayHeaders } from "./parse.js";
+import { ocarinaSVG } from "./ocarina.js";
+import { audioCtx, audioPerfReset, audioPerfSnapshot, isMelodyPaused,
+         isMelodyPlaying, liteMode, pauseMelody, perf, playMelody, playNote,
+         resumeMelody, setBassEnabled, setPerfAlertListener, setReverbEnabled,
+         setVibratoEnabled, soundingGridBeats, stopMelody, togglePlayPause,
+         unlockAudio } from "./audio.js";
+import { applySwing, applyTempoPct, clearLibrarySelection, currentSwing, libToast,
+         safeAlert, songTempo, tempoPct } from "./library.js";
+import { isPracticeActive, isPracticePaused, practiceInvalidate,
+         practiceRelocatePanel, practiceToggle } from "./practice.js";
+import { applyTheme, currentTemplatePath, ensureOcarinaTemplate,
+         installedTplPath } from "./app.js";
 let APP_CSS = "";
 let lastTokens = [];
 let liveIdx = -1;
 let displayMode = "grid"; // "grid" | "scroll" | "single"
 let zenPrevMode = null;
+// Hover-preview suppression window: rebuilt strips quieter than hovering.
+let hoverQuietUntil = 0;
+
+// The app shell writes its stylesheet text here once at boot (ui owns the
+// style plumbing; app owns boot).
+function setAppCss(cssText) { APP_CSS = cssText; }
+
+// Hover-preview quieting is written by BOTH the strip rebuild (here) and the
+// audio scheduler; the helper is the one legal write path across the boundary.
+function bumpHoverQuiet(ms = 400) { hoverQuietUntil = Date.now() + ms; }
 
 function fitInput() {
   const ta = document.getElementById("src");
@@ -387,10 +411,12 @@ function render() {
     const src = document.getElementById("src").value;
     fitInput();
     document.getElementById("title").textContent = titleFromText(src);
+
     const typedSwing = swingFromText(src);
     applySwing(typedSwing != null ? typedSwing : 0);
     const tokens = parse(src);
     lastTokens = tokens;
+    window.lastTokens = tokens; // test/console compat mirror
     drawTokens(tokens);
     const sheet = document.getElementById("sheet");
     const err = document.getElementById("err");
@@ -673,7 +699,12 @@ function hushTokenHover() {
   hoverVoiceToken = null;
 }
 
+// Passive observer for suites/dev: who is entering the hover-preview path.
+let hoverProbe = null;
+function setHoverProbe(fn) { hoverProbe = fn || null; }
+
 function hoverPreview(i, t) {
+  if (hoverProbe) try { hoverProbe(i, t); } catch (e) {}
   if (isMelodyPlaying() || hoverQuietUntil > Date.now()) return;
   // Practicing owns the glow and the sounds: token hovers would inject
   // playback-mode pulses over the fill-driven halo.
@@ -952,7 +983,7 @@ function drawTokenStrip(box, tokens, sectioned) {
 
 function drawTokens(tokens) {
   tokByI.clear(); // both strips rebuild — the strip index follows
-  hoverQuietUntil = Date.now() + 400;
+  bumpHoverQuiet();
   drawTokenStrip(document.getElementById("tokens"), tokens, true);
   drawTokenStrip(document.getElementById("focusTokens"), tokens);
 }
@@ -2048,3 +2079,17 @@ function perfDismissToast() {
   perfToast = null;
   if (perfBtn) perfBtn.classList.remove("alerted");
 }
+
+export { bumpHoverQuiet, buildKB, clearHighlight, cueFirstNote, enterZenFromLink,
+         firstSoundIdx, freezeZenGlow, highlightToken, isFocusMode, isFullscreen,
+         isLiveTab, lastTokens, loopOn, noteMidi, quarterSec, render, resetLiveTab,
+         setAppCss, setHoverProbe, tokenSeconds, updateTransportUI, wireUi };
+
+// Classic-script compat surface (tests + dev console).
+window.render = render; window.highlightToken = highlightToken;
+window.clearHighlight = clearHighlight; window.quarterSec = quarterSec;
+window.buildKB = buildKB; window.loopOn = loopOn; window.updateTransportUI = updateTransportUI;
+window.isFullscreen = isFullscreen; window.enterZenFromLink = enterZenFromLink;
+window.resetLiveTab = resetLiveTab; window.setAppCss = setAppCss;
+window.setDisplayMode = setDisplayMode;
+window.setHoverProbe = setHoverProbe;

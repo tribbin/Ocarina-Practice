@@ -1,5 +1,9 @@
+import { parse } from "./parse.js";
+import { currentSwing, tempoPct } from "./library.js";
+import { bumpHoverQuiet, clearHighlight, cueFirstNote, firstSoundIdx, freezeZenGlow,
+         highlightToken, isFocusMode, quarterSec, tokenSeconds, updateTransportUI } from "./ui.js";
+import { isPracticeActive } from "./practice.js";
 let audioCtx = null;
-let hoverQuietUntil = 0;
 let liveVoices = [];
 let melodyBag = [];
 // Ledger of site-MADE sound (synth voices, ticks, previews, leftovers of a
@@ -591,7 +595,7 @@ function unlockAudio() {
 );
 
 function hushHovers() {
-  hoverQuietUntil = Date.now() + 400;
+  bumpHoverQuiet();
   cutLive();
 }
 window.addEventListener("focus", hushHovers);
@@ -971,6 +975,18 @@ function getOcarinaWave(ctx, vp) {
   return w;
 }
 
+// Test seam + shared-context accessor (module boundary): suites capture the
+// playNoteAt calls without monkeypatching a module-internal binding, and the
+// debug WAV export needs a legal handle on the one shared AudioContext.
+let noteSink = null;
+let auditionSink = null;
+function setNoteSink(fn) { noteSink = fn || null; }
+function setAuditionSink(fn) { auditionSink = fn || null; }
+function sharedAudioCtx() {
+  audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
 function cutLive() {
   if (audioCtx) markSystemSound(audioCtx.currentTime + 0.1); // fades + stops land soon after
   liveVoices.forEach(n => { try { (n.fade || n.stop)(); } catch (e) {} });
@@ -1017,6 +1033,7 @@ function pruneBag(bag) {
 
 function playNote(id, durSec) {
   cutLive();
+  if (auditionSink) try { auditionSink(id, durSec); } catch (e) {}
   playNoteAt(id, null, durSec == null ? tokenSeconds(4) : durSec, liveVoices);
 }
 
@@ -1025,6 +1042,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === "suspended") safeResume(audioCtx);
     const ctx = audioCtx;
+    if (noteSink) try { noteSink(id, when, durSec, slideFromId, intoSlide); } catch (e) {}
     // Late scheduling (a main-thread stall past the 0.3 s lookahead — GC/JIT
     // bursts, worse on phones) hands a `when` already in the past. All gain/
     // pitch automation scheduled for the past collapses into one instant
@@ -2153,3 +2171,24 @@ function scheduleMelody(when) {
 
   melodyTimer = setTimeout(() => scheduleMelody(null), SCHED_TICK * 1000);
 }
+
+export { AUDIO_DEFAULTS, audioCtx, audioPerfReset, audioPerfSnapshot, cutLive, freqOf,
+         getReverbBus, installToneModel, isMelodyPaused, isMelodyPlaying, liteMode,
+         pauseMelody, perf, playMelody, playNote, playNoteAt, quarterSecFor, resumeMelody,
+         reverbEnabled, setBassEnabled, setPerfAlertListener, setReverbEnabled,
+         setVibratoEnabled, soundingGridBeats, stopMelody, syncTransport,
+         sysSoundUntilSec, tokenGridBeats, swungBeats, lastHoldIndex, togglePlayPause,
+         unlockAudio, setNoteSink, setAuditionSink, sharedAudioCtx };
+
+// Classic-script compat surface (tests + dev console).
+window.playNote = playNote; window.playMelody = playMelody; window.stopMelody = stopMelody;
+window.playNoteAt = playNoteAt; window.isMelodyPlaying = isMelodyPlaying;
+window.setNoteSink = setNoteSink; window.setAuditionSink = setAuditionSink;
+window.vInterp = vInterp; window.V_ANCHORS = V_ANCHORS; window.db2lin = db2lin;
+window.toneVal = typeof toneVal === "function" ? toneVal : undefined;
+window.isMelodyPaused = isMelodyPaused; window.playTickAt = playTickAt;
+window.tokenGridBeats = tokenGridBeats; window.swungBeats = swungBeats;
+window.soundingGridBeats = soundingGridBeats; window.lastHoldIndex = lastHoldIndex;
+window.quarterSecFor = quarterSecFor; window.freqOf = freqOf; window.cutLive = cutLive;
+window.installToneModel = installToneModel;
+window.stopMelody = stopMelody;

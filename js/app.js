@@ -1,3 +1,12 @@
+import { parse, titleFromText } from "./parse.js";
+import { installOcarinaTemplate, invalidateSvgHtml } from "./ocarina.js";
+import { installToneModel } from "./audio.js";
+import { BUILTIN, fillLibrary, initBuiltin, loadLibraryItem, syncLibraryMenu,
+         userLib, wireLibrary } from "./library.js";
+import { buildKB, enterZenFromLink, render, setAppCss, wireUi } from "./ui.js";
+import { practiceInvalidate } from "./practice.js";
+import "./debug.js";
+
 // Global error net: uncaught window errors and unhandled promise rejections
 // land in #err as appended lines — the messages render()/boot() put there
 // must survive (both sides write the same node, so overwriting here would
@@ -51,7 +60,7 @@ async function loadJson(path) {
 }
 
 const TPL_CACHE = {};
-let installedTplPath = "";
+export let installedTplPath = "";
 let tplSyncing = null;
 // Instrument-load generation: each loadInstrument bumps it, and only the run
 // belonging to the newest switch may install. Without this, a slow older
@@ -233,7 +242,7 @@ async function boot() {
       loadJson("songs.json"),
       loadText("css/app.css")
     ]);
-    APP_CSS = cssText;
+    setAppCss(cssText);
     window.INSTRUMENTS = manifest.instruments || [];
     // Manifest sanity: a duplicated id makes the picker ambiguous (two
     // indistinguishable entries) — say so instead of silently picking the
@@ -304,3 +313,12 @@ window.addEventListener("load", () => {
   if (!navigator.serviceWorker) return;
   try { navigator.serviceWorker.register("sw.js").catch(() => {}); } catch (e) {}
 });
+
+export { applyTheme, currentSongId, currentTemplatePath, ensureOcarinaTemplate };
+window.applyTheme = applyTheme; window.currentSongId = currentSongId;
+window.currentSongTitle = currentSongTitle; window.loadText = loadText;
+window.switchInstrument = switchInstrument; window.installFingerings = installFingerings;
+window.fillInstrumentSelect = fillInstrumentSelect; window.boot = boot;
+window.currentTemplatePath = currentTemplatePath;
+window.ensureOcarinaTemplate = ensureOcarinaTemplate;
+window.loadJson = loadJson;

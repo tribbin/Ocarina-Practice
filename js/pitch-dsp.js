@@ -3,13 +3,13 @@
 // results from the same source file: js/practice.js loads it as a classic
 // script, js/pitch-ac-worker.js imports it. One detector, one truth.
 
-const PITCH_MIN_HZ = 160;
+export const PITCH_MIN_HZ = 160;
 
 // The highest visible chamber comfortably exceeds A6 (1760 Hz): its first
 // harmonic sits at ~3520+ Hz — but at 48 kHz sample rate a 2600 Hz period
 // (~22.9 samples at 48 kHz) sits BELOW the search floor when MAX_HZ was
 // higher, so this ceiling is also a resolution guard.
-const PITCH_MAX_HZ = 2600;
+export const PITCH_MAX_HZ = 2600;
 
 // Normalized autocorrelation with parabolic peak interpolation.
 // History: an earlier "first lag within 95% of the best clarity" octave
@@ -19,7 +19,7 @@ const PITCH_MAX_HZ = 2600;
 // gone; octave protection now only considers true SUB-MULTIPLES of the best
 // lag (k× the fundamental period — the honest subharmonic case), each with
 // a local-maximum clarity check.
-function autoCorrelate(buf, sr) {
+export function autoCorrelate(buf, sr) {
   const n = buf.length;
   const half = Math.floor(n / 2);
   const minLag = Math.max(2, Math.floor(sr / PITCH_MAX_HZ));

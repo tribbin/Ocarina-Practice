@@ -38,6 +38,13 @@
 //
 // Tests: appending ?practiceTest=1 replaces the mic frames with the synthetic
 // provider at window.__pracFrame = { hz, rms } (the same code paths run).
+import { parse } from "./parse.js";
+import { AUDIO_DEFAULTS, audioCtx, freqOf, quarterSecFor, stopMelody, syncTransport,
+         sysSoundUntilSec, unlockAudio } from "./audio.js";
+import { clearHighlight, freezeZenGlow, highlightToken, isFullscreen, isLiveTab,
+         lastTokens, loopOn, noteMidi, quarterSec, updateTransportUI } from "./ui.js";
+import { PITCH_MIN_HZ, PITCH_MAX_HZ, autoCorrelate } from "./pitch-dsp.js";
+import { currentSongId } from "./app.js";
 (function () {
   "use strict";
 
@@ -623,7 +630,7 @@
     if (acWorkerDead || (typeof Worker === "undefined")) return null;
     if (acWorker) return acWorker;
     try {
-      acWorker = new Worker("js/pitch-ac-worker.js");
+      acWorker = new Worker("js/pitch-ac-worker.js", { type: "module" });
       acWorker.onmessage = (e) => {
         const d = e.data;
         if (!d) return;
@@ -1372,3 +1379,11 @@ function practiceToggle() { if (window.OCA_PRACTICE) OCA_PRACTICE.pauseToggle();
 // ui.js calls this on every zen/focus transition (syncFocusMode) and after
 // zen/layout changes: re-seat the tuner in its host panel and re-clamp it.
 function practiceRelocatePanel() { if (window.OCA_PRACTICE) OCA_PRACTICE.relocate(); }
+
+export { isPracticeActive, isPracticePaused, practiceInvalidate,
+         practiceRelocatePanel, practiceToggle };
+window.isPracticeActive = isPracticeActive;
+window.isPracticePaused = isPracticePaused;
+window.practiceInvalidate = practiceInvalidate;
+window.practiceToggle = practiceToggle;
+window.practiceRelocatePanel = practiceRelocatePanel;

@@ -1,3 +1,5 @@
+import { audioCtx, cutLive, freqOf, getReverbBus, playNote, reverbEnabled, setReverbEnabled, sharedAudioCtx } from "./audio.js";
+
 // Dev audio-debug panel. Enable from the browser console with:
 //   DEBUG=1        (DEBUG=0 hides it; `window.OCA_DEBUG.toggle()` also works)
 // or by appending ?debug=1 to the page URL. Every slice of the voice — the
@@ -321,7 +323,7 @@
     wavBtn.addEventListener("click", function () {
       if (wavEl) { finishWav(); return; }  // second click truncates + saves
       try {
-        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        sharedAudioCtx();
         if (audioCtx.state === "suspended") audioCtx.resume();
         wavEl = wavBtn;
         wavBtn.textContent = "\u25cf recording next note\u2026";

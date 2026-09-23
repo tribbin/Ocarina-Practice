@@ -56,26 +56,22 @@ def start_server():
 CAPTURE_DRIVER = """
 (SRC) => new Promise((resolve, reject) => {
   const notes = [];
-  const orig = playNoteAt;
-  playNoteAt = function (id, when, dur, bag, slideFrom, intoSlide) {
-    notes.push({ id: id, when: when, dur: dur });
-    return orig.call(this, id, when, dur, bag, slideFrom, intoSlide);
-  };
+  setNoteSink((id, when, dur) => notes.push({ id: id, when: when, dur: dur }));
   const title = String(SRC).split("\\n").find(l => /^#/.test(l)).replace(/^#\\s*/, "");
   document.getElementById('src').value = SRC;
   render();
   const t0 = Date.now();
   const arm = () => {
     if (document.getElementById('title').textContent !== title) {
-      if (Date.now() - t0 > 4000) { playNoteAt = orig; reject(new Error("title never matched")); return; }
+      if (Date.now() - t0 > 4000) { reject(new Error("title never matched")); return; }
       setTimeout(arm, 30);
       return;
     }
     playMelody(0);
     const poll = setInterval(() => {
-      if (!isMelodyPlaying() && !melodyPaused) {
+      if (!isMelodyPlaying() && !isMelodyPaused()) {
         clearInterval(poll);
-        playNoteAt = orig;
+        setNoteSink(null);
         setTimeout(() => resolve(notes), 150);
       }
     }, 50);
@@ -103,6 +99,7 @@ def main():
                 " b.querySelector('.collapse-btn').click(); }")
 
             # ---------- 1: one-shot timing, durations, grid, auto-stop ----------
+            print('== scheduler arithmetic leg', flush=True)
             MEL1 = ("# T3 timing\n"
                     "# tempo 96\n"
                     "# swing 33\n"
@@ -199,15 +196,12 @@ def main():
                             "reproduce the token walk exactly")
 
             # ---------- 2: loop wrap parity ----------
+            print('== loop wrap leg', flush=True)
             MEL2 = "# T3 loop\n# tempo 96\n| A4/8 C5/8 D5/8 E5/8"
             lnotes = page.evaluate("""
               (SRC) => new Promise((resolve, reject) => {
                 const notes = [];
-                const orig = playNoteAt;
-                playNoteAt = function (id, when, dur, bag, slideFrom, intoSlide) {
-                  notes.push({ id: id, when: when, dur: dur });
-                  return orig.call(this, id, when, dur, bag, slideFrom, intoSlide);
-                };
+                setNoteSink((id, when, dur) => notes.push({ id: id, when: when, dur: dur }));
                 const title = String(SRC).split("\\n").find(l => /^#/.test(l)).replace(/^#\\s*/, "");
                 document.getElementById('src').value = SRC;
                 document.getElementById('loopMel').checked = true;
@@ -215,7 +209,7 @@ def main():
                 const t0 = Date.now();
                 const arm = () => {
                   if (document.getElementById('title').textContent !== title) {
-                    if (Date.now() - t0 > 4000) { playNoteAt = orig; reject(new Error("loop: title never matched")); return; }
+                    if (Date.now() - t0 > 4000) { reject(new Error("loop: title never matched")); return; }
                     setTimeout(arm, 30);
                     return;
                   }
@@ -223,7 +217,7 @@ def main():
                   setTimeout(() => {
                     stopMelody();
                     document.getElementById('loopMel').checked = false;
-                    playNoteAt = orig;
+                    setNoteSink(null);
                     setTimeout(() => resolve(notes), 120);
                   }, 3600);
                 };
@@ -249,6 +243,7 @@ def main():
                             break
 
             # ---------- 3: cut-bus lifecycle ----------
+            print('== cut-bus lifecycle leg', flush=True)
             cut = page.evaluate("""
               () => new Promise((resolve, reject) => {
                 const title = 'cutbus';
@@ -309,6 +304,7 @@ def main():
                                 f"{cut['dead']})")
 
             # ---------- 4: lite voice builds less machinery ----------
+            print('== lite voice leg', flush=True)
             liteCounts = page.evaluate("""
               () => new Promise(resolve => {
                 const countingRun = () => new Promise(done => {
@@ -343,9 +339,11 @@ def main():
                     f"layers — full {liteCounts['full']}, lite "
                     f"{liteCounts['lite']} must be strictly less")
 
+            print('== closing browser', flush=True)
             if errs:
                 failures.append(f"page errors {errs}")
             browser.close()
+            print('== browser closed', flush=True)
     finally:
         httpd.shutdown()
     if failures:
