@@ -40,3 +40,10 @@ Pondering calling it "Robin's Ocarina Practice", to make it more findable/relata
 OTHERS
 
 Use browser-builtin tooling like Lighthouse.
+Switching instruments will auto-switch to the same song with matching range, if it exists.
+Make the 12-hole 'complete' regarding Zelda Ocarina of Time game songs.
+
+THEMES
+
+Additional 80s black audio-stack with square-row LED displays. The red understripe for headers can remain the same as other.
+Switching between themes in a way that signifies the color theme without showing it in the current theme during normal usage.
