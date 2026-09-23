@@ -30,6 +30,9 @@ function installFingerings(fing) {
   window.DISPLAY = Object.fromEntries(fing.notes.map(n => [n.id, n.display]));
   window.CHAMBER = Object.fromEntries(fing.notes.map(n => [n.id, n.chamber]));
   window.COVER = Object.fromEntries(fing.notes.map(n => [n.id, n.covered]));
+  // Hole/chamber data feeds the card-svg memoization; a fresh fingering set
+  // alone is enough to end every stored rendering.
+  if (typeof invalidateSvgHtml === "function") invalidateSvgHtml();
   const root = document.documentElement;
   const chambers = fing.chambers || {};
   for (const [id, cfg] of Object.entries(chambers)) {

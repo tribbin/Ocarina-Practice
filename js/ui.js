@@ -1166,11 +1166,18 @@ function wireUi() {
     if (typeof practiceInvalidate === "function") try { practiceInvalidate(); } catch (e) {}
     render();
   };
+  let srcRenderTimer = 0;
   document.getElementById("src").addEventListener("input", () => {
     // Typed edits replace the melody the session was built from — end it so
-    // the next Practice press starts fresh on the edited song.
+    // the next Practice press starts fresh on the edited song. That must not
+    // wait for the render settle: the session is already stale.
     if (typeof practiceInvalidate === "function") try { practiceInvalidate(); } catch (e) {}
-    render();
+    // Every keystroke once re-parsed, rebuilt both token strips and re-
+    // cloned the whole sheet — far more work than a 60 ms settle hides. Typed
+    // edits coalesce into one render per pause; programmatic loads (library,
+    // clear, piano inserts, instrument swaps) keep calling render() directly.
+    clearTimeout(srcRenderTimer);
+    srcRenderTimer = setTimeout(render, 60);
   });
   const big = document.getElementById("bigSmall");
   if (big) big.onclick = () => {

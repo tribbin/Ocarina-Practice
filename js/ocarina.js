@@ -1,3 +1,16 @@
+// Rendering clone memoization: a card's svg is a pure function of its inputs
+// (covered hole set, chamber, big-holes view, installed template), but
+// building it is not cheap — full clone + part tagging + a per-hole styling
+// pass for every note card in the sheet. Outputs are reused per input across
+// renders; invalidated wholesale whenever the template or fingering data is
+// reinstalled (the epoch prefix keeps stale entries from ever being read).
+let svgClock = 0;
+let svgHtmlCache = new Map();
+function invalidateSvgHtml() {
+  svgClock++;
+  if (svgHtmlCache.size) svgHtmlCache.clear();
+}
+
 function installOcarinaTemplate(svgText) {
   let tpl = document.getElementById("oca-tpl");
   if (!tpl) {
@@ -6,9 +19,15 @@ function installOcarinaTemplate(svgText) {
     document.body.appendChild(tpl);
   }
   tpl.innerHTML = svgText;
+  invalidateSvgHtml();
 }
 
 function ocarinaSVG(covered, chamber) {
+  const big = document.getElementById("bigSmall");
+  const key = svgClock + "|" + chamber + "|" + (covered || []).join(",") + "|" +
+    (big && big.getAttribute("aria-pressed") === "true" ? "big" : "reg");
+  const hit = svgHtmlCache.get(key);
+  if (hit != null) return hit;
   try {
     const src = document.getElementById("oca-tpl");
     if (!src) return "<div>missing ocarina template</div>";
@@ -57,7 +76,12 @@ function ocarinaSVG(covered, chamber) {
     if (bigBtn && bigBtn.getAttribute("aria-pressed") === "true") {
       enlargeSmallHoles(clone);
     }
-    return clone.outerHTML;
+    const html = clone.outerHTML;
+    // Bulk reset instead of per-entry eviction: miss bursts re-warm a few
+    // dozen entries in one render, never a pathological set of them.
+    if (svgHtmlCache.size >= 512) svgHtmlCache.clear();
+    svgHtmlCache.set(key, html);
+    return html;
   } catch (e) {
     const d = document.createElement("div");
     d.textContent = String(e); // error text must never become live markup
