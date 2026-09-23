@@ -331,16 +331,17 @@ import { currentSongId } from "./app.js";
     p.addEventListener("pointercancel", done);
   }
 
-  // Where the fixed tuner lives. In single-card layouts (Live view / zen) it
-  // is integrated INTO the live fingering card as the card's bottom strip —
-  // no own face, the card's chamber background showing; the note label is
-  // the card's own. Grid/scroll keep the floating overlay, whose host choice
-  // still matters on the ?oot theme: the input/playback section is stacked
-  // ABOVE #tabPanel (z 2 vs z 1, so the perf pop can overlay the cards) and
-  // a child of #tabPanel can never rise above it — so the overlay hosts on
-  // <body> (root stacking context wins outright) except during zen, where it
-  // must stay INSIDE #tabPanel (body-level content is painted over by the
-  // fullscreen element).
+  // Where the fixed tuner lives. In Zen (focus/fullscreen/fallback) with a
+  // live card it is integrated INTO the card as its bottom strip — no own
+  // face, the card's chamber background showing; the note label is the
+  // card's own. Everywhere else (grid/scroll/plain single) it keeps the
+  // floating overlay, whose host choice still matters on the ?oot theme:
+  // the input/playback section is stacked ABOVE #tabPanel (z 2 vs z 1, so
+  // the perf pop can overlay the cards) and a child of #tabPanel can never
+  // rise above it — so the overlay hosts on <body> (root stacking context
+  // wins outright) except during real fullscreen zen, where it must stay
+  // INSIDE #tabPanel (body-level content is painted over by the fullscreen
+  // element).
   function panelHost() {
     const tab = document.getElementById("tabPanel");
     if (tab && (tab.classList.contains("focus") ||
@@ -351,6 +352,16 @@ import { currentSongId } from "./app.js";
   // the pitch changes, so this runs not just on zen transitions (ui.js
   // syncFocusMode) but on every card rebuild (ui.js updateLiveTab) and from
   // renderPanel as a safety net.
+  // The integrated card band is ZEN's mechanic (Robin's call): covered by
+  // real fullscreen, the focus class, or the CSS fallback zen. In the plain
+  // single view outside Zen the tuner keeps its floating face (grid/scroll
+  // treatment) — nothing about non-Zen should absorb it into the card.
+  function zenSeatedView() {
+    const tab = document.getElementById("tabPanel");
+    return document.body.classList.contains("zen-fallback") ||
+      !!(tab && (tab.classList.contains("focus") ||
+        (typeof isFullscreen === "function" && isFullscreen())));
+  }
   function relocatePanel() {
     if (!panel) return;
     // Sitting in the card band is a practice-mode decision: only while the
@@ -359,7 +370,8 @@ import { currentSongId } from "./app.js";
     // alive and pull the note symbols toward the center.
     const seated = typeof isPracticeActive === "function" && isPracticeActive() &&
       !(typeof isPracticePaused === "function" && isPracticePaused()) &&
-      typeof isLiveTab === "function" && isLiveTab();
+      typeof isLiveTab === "function" && isLiveTab() &&
+      zenSeatedView();
     const card = seated ? document.querySelector(".card.live") : null;
     const meta = card ? card.querySelector(".meta") : null;
     const inCard = !!card;

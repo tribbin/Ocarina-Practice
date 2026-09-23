@@ -134,6 +134,61 @@ STOPMELODY_DRIVER = """
 """
 
 
+# Zen-only integration: the in-card tuner strip is ZEN's mechanic — the
+# plain single view (outside fullscreen/fallback zen) keeps the floating
+# overlay face instead of being absorbed into the card's meta band.
+OVERLAY_LEG = """
+(SRC) => new Promise((resolve, reject) => {
+  document.getElementById('src').value = SRC;
+  render();
+  setDisplayMode('grid');
+  OCA_PRACTICE.start();
+  const t0 = Date.now();
+  const feed = setInterval(() => {
+    const P = OCA_PRACTICE._p;
+    if (P.state === "await" || P.state === "dip" || P.state === "rest" || !P.bar) {
+      window.__pracFrame = { hz: 0, rms: 0 };
+    } else {
+      const k = P.zonesNear >= 0 ? P.zonesNear : 0;
+      window.__pracFrame = { hz: P.bar.zones[k], rms: 0.4 };
+    }
+  }, 30);
+  const poll = setInterval(() => {
+    const P = OCA_PRACTICE._p;
+    if (!P.active) {
+      if (Date.now() - t0 < 8000) return;
+      clearInterval(poll); clearInterval(feed);
+      reject(new Error('overlay: practice never engaged'));
+      return;
+    }
+    setDisplayMode('single');        // the plain (non-zen) single view
+    window.practiceRelocatePanel();
+    const panel = document.querySelector('.prac-panel');
+    const hostOf = () => panel.parentElement === document.body ? 'body'
+      : panel.parentElement ? panel.parentElement.className : null;
+    const plain = { inCard: panel.classList.contains('in-card'),
+                    host: hostOf(),
+                    hidden: panel.hidden };
+    document.body.classList.add('zen-fallback');   // CSS fallback zen
+    window.practiceRelocatePanel();
+    const zenfb = { inCard: panel.classList.contains('in-card'),
+                    host: hostOf(),
+                    hidden: panel.hidden };
+    document.body.classList.remove('zen-fallback'); // back out of zen
+    window.practiceRelocatePanel();
+    const back = { inCard: panel.classList.contains('in-card'),
+                   host: hostOf(),
+                   hidden: panel.hidden };
+    clearInterval(feed); clearInterval(poll); OCA_PRACTICE.stop();
+    resolve({ plain, zenfb, back });
+  }, 80);
+  setTimeout(() => { clearInterval(feed); clearInterval(poll);
+    OCA_PRACTICE.stop();
+    reject(new Error('overlay: timeout')); }, 20000);
+})
+"""
+
+
 def main():
     failures = []
     httpd, port = start_server()
@@ -191,6 +246,38 @@ def main():
                     f"stopMelody leg: the card shows token {r['card']!r} while the "
                     f"tuner expects {r['spot']!r} — zen entry's stopMelody tail "
                     "re-cued playback's pickup note over the running practice seat")
+
+            # ---- leg 3: the card-band tuner is zen-only in plain single ----
+            page = browser.new_page()
+            errs = []
+            page.on("pageerror", lambda e: errs.append(str(e)))
+            page.goto(base + "?practiceTest=1")
+            page.wait_for_function(
+                "typeof OCA_PRACTICE !== 'undefined' && !!OCA_PRACTICE"
+                " && window.NOTES && window.NOTES.length")
+            r = page.evaluate(OVERLAY_LEG, SONG)
+            page.close()
+            print(f"== overlay seats: {r!r}", flush=True)
+            if errs:
+                failures.append(f"overlay leg: page errors {errs}")
+            if not r["plain"]:
+                failures.append("overlay leg: no panel found")
+            else:
+                if r["plain"]["inCard"]:
+                    failures.append(
+                        f"overlay leg: in the plain single view the tuner absorbed "
+                        f"into the card band (in-card, host {r['plain']['host']!r}) "
+                        "— outside Zen it must keep the floating overlay face")
+                if r["plain"]["host"] != "body":
+                    failures.append(
+                        f"overlay leg: the plain single view hosts the overlay on "
+                        f"{r['plain']['host']!r}, not the body-level float")
+                if r["plain"]["hidden"]:
+                    failures.append("overlay leg: the plain single view hid the tuner")
+            if not r["zenfb"] or not r["zenfb"]["inCard"]:
+                failures.append("overlay leg: the CSS fallback zen lost the in-card integration")
+            if not r["back"] or r["back"]["inCard"] or r["back"]["hidden"]:
+                failures.append(f"overlay leg: leaving zen did not restore the floating overlay ({r.get('back')!r})")
             browser.close()
     finally:
         httpd.shutdown()
