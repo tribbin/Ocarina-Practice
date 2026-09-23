@@ -112,6 +112,44 @@ def main():
                     "an out-of-range chip must name its direction and the "
                     f"can't-play fact in its label (got {r['oorLabel']!r})")
 
+            # --- shortcut help overlay: button, "?" key, Escape, focus path ---
+            page.click("#helpBtn")
+            page.wait_for_function(
+                "() => !document.getElementById('helpOverlay').hidden")
+            help1 = page.evaluate("""
+              () => ({
+                modal: document.getElementById('helpOverlay').getAttribute('aria-modal'),
+                label: document.getElementById('helpOverlay').getAttribute('aria-label') || '',
+                focusOnClose: document.activeElement.classList.contains('help-x'),
+                mentionsSpace: (document.getElementById('helpOverlay').textContent || '').includes('Space'),
+              })
+            """)
+            if not help1["modal"] or "shortcuts" not in help1["label"].lower():
+                failures.append("the help overlay must be an aria-modal dialog "
+                                f"named Shortcuts (got {help1})")
+            if not help1["focusOnClose"] or not help1["mentionsSpace"]:
+                failures.append("the help overlay must focus its close button "
+                                f"and mention the shortcuts (got {help1})")
+            page.keyboard.press("Escape")
+            page.wait_for_function(
+                "() => document.getElementById('helpOverlay').hidden")
+            back = page.evaluate(
+                "() => document.activeElement.id || document.activeElement.tagName")
+            if back != "helpBtn":
+                failures.append("closing the overlay must return focus to the "
+                                f"opener (got {back})")
+            # "?" opens it, Escape closes again (same path twice)
+            page.keyboard.press("?")
+            page.wait_for_function(
+                "() => !document.getElementById('helpOverlay').hidden")
+            reopen = page.evaluate(
+                "() => document.getElementById('helpOverlay').hidden")
+            if reopen:
+                failures.append("the ? key must open the overlay")
+            page.keyboard.press("Escape")
+            page.wait_for_function(
+                "() => document.getElementById('helpOverlay').hidden")
+
             if errs:
                 failures.append(f"page errors {errs}")
             browser.close()
@@ -124,7 +162,9 @@ def main():
         return 1
     print("\nPASS: token chips, piano keys and junk pills all describedby the "
           "shared gesture-hint block; out-of-range chips self-describe "
-          "(direction + can't play) instead of title-only.")
+          "(direction + can't play) instead of title-only; the shortcut "
+          "overlay opens by button and ?, focuses its close button and "
+          "restores the opener on Escape.")
     return 0
 
 

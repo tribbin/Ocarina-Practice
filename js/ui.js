@@ -1257,6 +1257,47 @@ function wireUi() {
     syncThemeGlyph();
     syncThemeMeta();
   }
+  // Shortcut overlay: opens on the "?" ghost button or the "?" key (never
+  // while typing), closes on ✕ / backdrop / Escape; focus lands on the close
+  // button and returns to the opener on exit.
+  const helpOverlay = document.getElementById("helpOverlay");
+  let helpReturnFocus = null;
+  const helpOpen = () => {
+    if (!helpOverlay || !helpOverlay.hidden) return;
+    helpReturnFocus = document.activeElement;
+    helpOverlay.hidden = false;
+    helpOverlay.classList.add("open");
+    const x = helpOverlay.querySelector(".help-x");
+    if (x) { try { x.focus(); } catch (e) {} }
+  };
+  const helpShut = () => {
+    if (!helpOverlay || helpOverlay.hidden) return;
+    helpOverlay.hidden = true;
+    helpOverlay.classList.remove("open");
+    if (helpReturnFocus && helpReturnFocus.focus) {
+      try { helpReturnFocus.focus(); } catch (e) {}
+    }
+    helpReturnFocus = null;
+  };
+  const helpBtn = document.getElementById("helpBtn");
+  if (helpBtn) helpBtn.onclick = helpOpen;
+  if (helpOverlay) {
+    helpOverlay.querySelector(".help-x").addEventListener("click", helpShut);
+    helpOverlay.addEventListener("click", (e) => {
+      if (e.target === helpOverlay) helpShut(); // backdrop, not the card
+    });
+  }
+  document.addEventListener("keydown", (e) => {
+    if (helpOverlay && !helpOverlay.hidden) {
+      if (e.key === "Escape") { e.preventDefault(); helpShut(); }
+      return;
+    }
+    if (e.key === "?" && !isTextEntry(document.activeElement)) {
+      e.preventDefault();
+      helpShut();
+      helpOpen();
+    }
+  });
   let srcRenderTimer = 0;
   document.getElementById("src").addEventListener("input", () => {
     // Typed edits replace the melody the session was built from — end it so
