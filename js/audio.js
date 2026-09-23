@@ -1736,6 +1736,7 @@ function isMelodyPaused() { return melodyPaused; }
 
 function stopMelody() {
   melodyPlaying = false;
+  dropHighlightPlan();
   melodyPaused = false;
   if (audioCtx) markSystemSound(melodyStopAt(audioCtx)); // sources stop past the bus decay
   melodyBag.forEach(n => { try { (n.fade || n.stop)(); } catch (e) {} });
@@ -1785,6 +1786,7 @@ function pauseMelody() {
   if (!melodyPlaying) return;
   melodyPlaying = false;
   melodyPaused = true;
+  dropHighlightPlan(); // highlights of a paused transport never fire
   if (audioCtx) markSystemSound(melodyStopAt(audioCtx)); // sources stop past the bus decay
   melodyBag.forEach(n => { try { (n.fade || n.stop)(); } catch (e) {} });
   melodyBag = [];
@@ -1984,6 +1986,58 @@ function fireSupportEvent(e, when) {
   }
 }
 
+// ---- shared highlight plan ------------------------------------------------
+// Every scheduled token used to carry its OWN setTimeout for highlightToken —
+// page-lifetime timers alive across the whole song length. The plan keeps
+// them queued by audio-clock position and fires them through ONE timer/rAF
+// pair: wakes only as work comes due, rAF for the near-term batches so
+// highlight throws land inside a frame instead of a timer clamp.
+const highlightPlan = [];   // { at, run } — at = performance.now()-based ms
+let highlightTimer = 0;
+let highlightRaf = 0;
+
+function armHighlightPlan() {
+  if (!highlightPlan.length) { highlightTimer = 0; return; }
+  clearTimeout(highlightTimer);
+  cancelAnimationFrame(highlightRaf);
+  const delay = Math.max(0, highlightPlan[0].at - performance.now());
+  if (delay <= 34) {
+    highlightRaf = requestAnimationFrame(flushHighlightPlan);
+  } else {
+    // wake 16 ms BEFORE the next item, so the near-term branch sees it in
+    // the same frame it comes due instead of one timer clamp late
+    highlightTimer = setTimeout(armHighlightPlan, delay - 16);
+  }
+}
+
+function flushHighlightPlan() {
+  highlightTimer = 0; highlightRaf = 0;
+  const now = performance.now();
+  while (highlightPlan.length && highlightPlan[0].at <= now) {
+    const item = highlightPlan.shift();
+    try { item.run(); } catch (e) {}
+  }
+  armHighlightPlan();
+}
+
+function queueHighlight(delayMs, run) {
+  // The scheduler walks monotonic positions, but lookahead bursts can land a
+  // piece out of order — sort and re-arm so the next wake always targets the
+  // earliest due item.
+  highlightPlan.push({ at: performance.now() + Math.max(0, delayMs), run: run });
+  if (highlightPlan.length > 1) {
+    highlightPlan.sort((a, b) => a.at - b.at);
+  }
+  armHighlightPlan();
+}
+
+function dropHighlightPlan() {
+  highlightPlan.length = 0;
+  clearTimeout(highlightTimer);
+  cancelAnimationFrame(highlightRaf);
+  highlightTimer = 0; highlightRaf = 0;
+}
+
 function scheduleMelody(when) {
   if (!melodyPlaying) return;
   // First call after (re)start seeds the clock from the passed absolute time.
@@ -2086,7 +2140,8 @@ function scheduleMelody(when) {
     }
     const hlIdx = melodyIdx, hlId = tok.id, hlDur = lastHoldSec, hlSound = didSound;
     const hlDelay = Math.max(0, (noteWhen - audioCtx.currentTime) * 1000);
-    setTimeout(() => { if (melodyPlaying) highlightToken(hlIdx, hlId, hlDur, hlSound); }, hlDelay);
+    queueHighlight(hlDelay,
+      () => { if (melodyPlaying) highlightToken(hlIdx, hlId, hlDur, hlSound); });
     melodyIdx++;
     melodyNextTime += step;
   }

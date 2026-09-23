@@ -329,10 +329,12 @@ def main():
 
             # 4 — boot diagnostics: an unknown ?inst id and a duplicated
             # manifest id both report loudly in #err (append, never clobber)
-            # while the boot itself still lands fail-soft.
-            print("== boot diagnostics (bogus/duplicate instrument ids)",
-                  flush=True)
-            page = browser.new_page()
+            # while the boot itself still lands fail-soft. A FRESH context per
+            # leg: the service worker installs during the earlier suites in a
+            # shared context and would serve its precached instruments.json,
+            # hiding the routed doctored manifest from the app entirely.
+            ctx4 = browser.new_context()
+            page = ctx4.new_page()
             errs = []
             page.on("pageerror", lambda e: errs.append(str(e)))
             page.goto(base + "?inst=bogus99")
@@ -385,6 +387,9 @@ def main():
                     "the boot must still land with a working instrument "
                     "after reporting the duplicate id")
             page.close()
+            if errs:
+                failures.append(f"boot diagnostics: page errors {errs}")
+            ctx4.close()
 
             browser.close()
     finally:

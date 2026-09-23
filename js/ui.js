@@ -163,6 +163,7 @@ function appendNoteCard(sheet, t, i) {
       r.textContent = (t.raw || id) + " ✕";
     }
     sheet.appendChild(r);
+    indexCardEl(r);
     return;
   }
   const ch = CHAMBER[id];
@@ -173,10 +174,13 @@ function appendNoteCard(sheet, t, i) {
     <div class="meta"><span class="nm">${spelledLabel(t)}${t.staccato ? '<span class="stac-mark" title="staccato (short, with a pause)">\u2022</span>' : ''}</span>
      <span class="dur">${durLabel(t.dur, t.dotted, t.triplet)}</span></div>`;
   sheet.appendChild(card);
+  indexCardEl(card);
 }
 
 function fillFullSheet(sheet, tokens, sectioned = true) {
   sheet.classList.remove("live");
+  resetCardIndex(); // the sheet rebuilds from empty — its index follows
+  
   tokens.forEach((t, i) => {
     if (t.type === "bass") return; // hidden support marker
     // Junk chips belong to the token strip and the reading strip only: a
@@ -213,7 +217,9 @@ function fillFullSheet(sheet, tokens, sectioned = true) {
       r.innerHTML = `<div class="compact">rest</div>
         <div class="meta"><span></span>
         <span class="dur">${durLabel(t.dur, t.dotted, t.triplet)}</span></div>`;
-      sheet.appendChild(r); return;
+      sheet.appendChild(r);
+      indexCardEl(r);
+      return;
     }
     if (t.type === "tie") {
       if (!t.id || !NOTES.includes(t.id)) {
@@ -227,7 +233,9 @@ function fillFullSheet(sheet, tokens, sectioned = true) {
           r.innerHTML = `<div class="compact">–</div>
             <div class="meta"><span class="nm">–</span>
             <span class="dur">${durLabel(t.dur, t.dotted, t.triplet)}</span></div>`;
-          sheet.appendChild(r); return;
+          sheet.appendChild(r);
+          indexCardEl(r);
+          return;
         }
         const r = document.createElement("div"); r.className = "rest";
         r.style.borderColor = "var(--accent)"; r.style.color = "var(--accent)";
@@ -241,7 +249,9 @@ function fillFullSheet(sheet, tokens, sectioned = true) {
       r.innerHTML = `<div class="compact">–</div>
         <div class="meta"><span class="nm">–</span>
         <span class="dur">${durLabel(t.dur, t.dotted, t.triplet)}</span></div>`;
-      sheet.appendChild(r); return;
+      sheet.appendChild(r);
+      indexCardEl(r);
+      return;
     }
     appendNoteCard(sheet, t, i);
   });
@@ -286,6 +296,7 @@ function liveOorHtml(t) {
 function fillLiveSheet(sheet, tokens, idx) {
   sheet.classList.remove("scroll");
   sheet.classList.add("live");
+  resetCardIndex();
   let i = idx;
   if (i == null || i < 0 || !tokens[i] || tokens[i].type === "bar" || tokens[i].type === "bass") i = firstSoundIdx(tokens);
   if (!tokens.length || i < 0 || !tokens[i] || tokens[i].type === "bar" || tokens[i].type === "bass") return;
@@ -299,6 +310,7 @@ function fillLiveSheet(sheet, tokens, idx) {
   if (t.id) card.dataset.pitch = t.id;
   card.innerHTML = liveCardHtml(t, tokens, i);
   sheet.appendChild(card);
+  indexCardEl(card);
 }
 
 function updateLiveTab(tokens, idx) {
@@ -437,11 +449,26 @@ function tokenSeconds(tokOrDur, dotted) {
   return Math.max(0.12, beats * quarterSec());
 }
 
+// Per-render element indexes for highlightQuery-free lookups: the note path
+// used to run 2-3 document-wide [data-i=N] sweeps per token during playback.
+// Strips and sheet rebuild together, so their indexes refresh at the same
+// seams (fillFullSheet / fillLiveSheet / drawTokenStrip entries and rebuilds).
+const tokByI = new Map();   // data-i → [token els, strip order]
+const cardByI = new Map();  // data-i → card/rest el on the sheet
+
+function resetCardIndex() {
+  cardByI.clear();
+}
+
+function indexCardEl(el) {
+  if (el && el.dataset && el.dataset.i != null) cardByI.set(String(el.dataset.i), el);
+}
+
 function highlightToken(i, noteId, durSec, sounding) {
   liveIdx = i;
   const lite = typeof liteMode === "function" && liteMode();
   document.querySelectorAll(".tok.now, .card.now, .rest.now, .key.now").forEach(el => el.classList.remove("now"));
-  document.querySelectorAll('.tok[data-i="' + i + '"]').forEach(el => el.classList.add("now"));
+  for (const el of (tokByI.get(String(i)) || [])) el.classList.add("now");
   // The focus strip is the reading line in Zen — keep it moving even in Lite
   // (smooth scrolling is browser-native and cheap; Lite still skips the
   // sheet auto-scroll and the glow below). Practice mode follows it too: the
@@ -453,7 +480,7 @@ function highlightToken(i, noteId, durSec, sounding) {
   if (isLiveTab()) {
     updateLiveTab(lastTokens.length ? lastTokens : parse(document.getElementById("src").value), i);
   } else {
-      const card = document.querySelector('.card[data-i="' + i + '"], .rest[data-i="' + i + '"]');
+      const card = cardByI.get(String(i)) || null;
       if (card) {
         card.classList.add("now");
         const sheet = document.getElementById("sheet");
@@ -470,7 +497,7 @@ function highlightToken(i, noteId, durSec, sounding) {
             let move = barStart;
             if (!barStart) {
               const nk = nextCardIdx(toks, i);
-              const next = nk >= 0 ? document.querySelector('.card[data-i="' + nk + '"], .rest[data-i="' + nk + '"]') : null;
+              const next = nk >= 0 ? cardByI.get(String(nk)) || null : null;
               if (next) {
                 const nc = next.getBoundingClientRect();
                 const nw = wrap.getBoundingClientRect();
@@ -913,9 +940,18 @@ function drawTokenStrip(box, tokens, sectioned) {
     if (again && again.hasAttribute("role")) refocus = again;
   }
   if (refocus) refocus.focus();
+  // refresh this strip's slice of the highlight index (one fill per strip
+  // rebuild instead of a document sweep per playback note)
+  box.querySelectorAll('.tok[data-i]').forEach(el => {
+    const k = String(el.dataset.i);
+    let arr = tokByI.get(k);
+    if (!arr) { arr = []; tokByI.set(k, arr); }
+    arr.push(el);
+  });
 }
 
 function drawTokens(tokens) {
+  tokByI.clear(); // both strips rebuild — the strip index follows
   hoverQuietUntil = Date.now() + 400;
   drawTokenStrip(document.getElementById("tokens"), tokens, true);
   drawTokenStrip(document.getElementById("focusTokens"), tokens);

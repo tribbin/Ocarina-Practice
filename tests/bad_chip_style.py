@@ -121,11 +121,16 @@ def main():
                 shots.append((suffix, page))
                 if errs:
                     failures.append(f"page errors {errs}")
-            # Screenshots for human eyeballing (not asserted here).
+            # Screenshots for human eyeballing (not asserted here — engine
+            # timing hiccups on element screenshots must never fake a red,
+            # the assertions above are the contract).
             for suffix, page in shots:
                 strip = page.query_selector("#tokens")
                 if strip:
-                    strip.screenshot(path=f"/tmp/opencode/bad-{suffix}.png")
+                    try:
+                        strip.screenshot(path=f"/tmp/opencode/bad-{suffix}.png")
+                    except Exception:
+                        print(f"  (screenshot skipped: {suffix})")
             browser.close()
     finally:
         httpd.shutdown()
