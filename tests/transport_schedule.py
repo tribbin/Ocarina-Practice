@@ -309,7 +309,7 @@ def main():
               () => new Promise(resolve => {
                 const countingRun = () => new Promise(done => {
                   let n = 0;
-                  const ac = audioCtx;
+                  const ac = audioCtx || sharedAudioCtx();
                   const orig = ac.createOscillator;
                   ac.createOscillator = function () {
                     n++;

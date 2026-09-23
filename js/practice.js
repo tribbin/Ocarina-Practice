@@ -1339,6 +1339,7 @@ import { currentSongId } from "./app.js";
     },
     // Whether the practice analysis runs in the worker (true once a worker
     // was created successfully) — diagnostics/tests.
+    usingWorker: () => !!acWorker && !acWorkerDead,
     // Progress history for this song (tests + dev panel).
     history: practiceHistory,
     // transport anchors: where practice currently stands (token idx)

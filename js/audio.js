@@ -2181,6 +2181,10 @@ export { AUDIO_DEFAULTS, audioCtx, audioPerfReset, audioPerfSnapshot, cutLive, f
          unlockAudio, setNoteSink, setAuditionSink, sharedAudioCtx };
 
 // Classic-script compat surface (tests + dev console).
+// audioCtx is a let swapped on lazy creation, so the mirror is a live getter —
+// a plain assignment here would freeze the not-yet-created undefined.
+Object.defineProperty(window, "audioCtx", { get () { return audioCtx; } });
+window.sharedAudioCtx = sharedAudioCtx;
 window.playNote = playNote; window.playMelody = playMelody; window.stopMelody = stopMelody;
 window.playNoteAt = playNoteAt; window.isMelodyPlaying = isMelodyPlaying;
 window.setNoteSink = setNoteSink; window.setAuditionSink = setAuditionSink;
