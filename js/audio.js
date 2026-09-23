@@ -147,8 +147,12 @@ window.OCA_DEBUG = {
   // "none" / "suspended" / "running" — the autoplay-policy state of the ctx.
   audioState() { return audioCtx ? audioCtx.state : "none"; },
   // Melody position on the scheduler's integer 96th-of-a-beat grid — the
-  // swing parity reads it; suites pin that the integer grid is kept exactly.
+  // swing parity reads it; suites pin that the integer grid is held exactly.
   melodyPos96() { return melodyPos96; },
+  // Transport diagnostics (suites + dev panel): how many melody-bag voices
+  // are alive right now and how many cut bus generations exist / were cut.
+  melodyAlive() { return countAliveVoices(melodyBag); },
+  busAudit() { return { cutBusCount: cutBuses.size, retiredCount: retiredBuses.length }; },
   // Live audit helper: the full derived voice profile for a note id.
   profile(id) { return voiceProfileFor(id, freqOf(id)); },
   // The installed per-ocarina tone model (instruments/<id>/tone.json) —

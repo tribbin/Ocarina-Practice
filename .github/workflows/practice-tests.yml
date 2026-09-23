@@ -70,3 +70,5 @@ jobs:
         run: python tests/swing_grid.py
       - name: Run gesture-hint a11y tests
         run: python tests/sr_hints.py
+      - name: Run transport scheduler contract tests
+        run: python tests/transport_schedule.py
