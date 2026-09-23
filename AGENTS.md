@@ -103,7 +103,7 @@ file sits at the repo root so every session finds it first.
 
 ## Commands (split per OS)
 
-Linux (laptop; no system node):
+Linux partition: no system node.
 - Full local sweep: `python tests/run_all.py` from the repo root, run with
   the repo's venv (`python3.13 .venv/bin/python3 tests/run_all.py` is the
   same thing; plain `python3` on this box has no playwright). Filter:
@@ -123,17 +123,26 @@ Linux (laptop; no system node):
   then a normal browser tab (never Robin's file:// preview).
 
 Windows (partition):
-- Full local sweep: `py tests/run_all.py` (or your venv python: e.g.
-  `%VENVDIR%\Scripts\python.exe tests\run_all.py`) — the runner is pure
-  python and prints PASS/FAIL per suite.
-- Lint: with a system Node installed, `npx --yes eslint@9 js/ && npx
-  --yes html-validate@8 index.html` is identical to CI. Without node, say
-  so in the session — pin the run to CI (each push is a health check, and
-  the lint step runs there).
-- One-time suite bootstrap: `py -m venv .venv` then
+- Interpreter: Store Python resolves as `python` (also `python3`) — the
+  `py` launcher does NOT exist on this box; say "python" everywhere on
+  this machine.
+- Full local sweep: `.venv\Scripts\python.exe tests\run_all.py` from the
+  repo root (system python lacks playwright; the runner is pure python
+  and prints PASS/FAIL per suite).
+- Standalone single-suite run (not via the runner): set UTF-8 stdio
+  first — PowerShell `$env:PYTHONUTF8="1"` — or musical-math prints like
+  `≡` crash on cp1252 consoles (the runner already does this for its
+  children).
+- Lint: a system Node exists (node 24 local; CI pins node 22, but npx
+  pins the same eslint@9/html-validate@8 majors): `npx --yes eslint@9
+  js/ && npx --yes html-validate@8 index.html` is identical to CI.
+- One-time suite bootstrap: `python -m venv .venv` then
   `.venv\Scripts\pip install playwright` and
   `.venv\Scripts\playwright install chromium` (the `--with-deps` system
   packages are a Linux need only).
+- Line endings: `.gitattributes` pins LF for the working tree too
+  (`eol=lf`); Git-for-Windows' system `core.autocrlf=true` is harmless
+  now because attributes win — leave that config alone.
 - PWA service-work notes are Linux-irrelevant here: file:// previews and
   served localhost behave the same on both OSes (no service worker on
   file://).

@@ -10,8 +10,8 @@ whatever scripts/data it needs.
 Refine skills in place over future sessions; the file's history shows how
 the understanding matured.
 
-The skills live in Git so they follow the repo across machines (Linux
-laptop, Windows partition, every clone).
+The skills live in Git so they follow the repo across every machine,
+partition and clone.
 
 ## Index
 
