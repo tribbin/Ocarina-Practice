@@ -36,6 +36,8 @@ jobs:
         run: |
           pip install playwright
           playwright install --with-deps chromium
+      - name: Run console-hygiene boot error scan
+        run: python tests/console_hygiene.py
       - name: Run practice acceptance tests
         run: python tests/practice_accepts_melody.py
       - name: Run separate-note dip gate tests
