@@ -51,3 +51,5 @@ sound), and the debug panel's waveform preview cache grows as you tweak — neve
 shrinks, but only while you are actively tweaking in the debug panel.
 
 Extending it: songs live in `songs.json`; each ocarina lives in its own folder `instruments/<id>/` (fingerings, body template, optional `tone.json` with fitted per-chamber sound anchors — see `instruments/README.md`). New instruments and songs can be added without touching code.
+
+A song entry with `"hidden": true` marks a song still in the works: the text stays in the repo and travels with every commit, but it is kept out of the dropdown until the library's "Show hidden songs" toggle is ticked — handy for choreographing a song locally before it is ready to play, without knowing it will vanish if the machine dies. (The toggle also reveals songs whose notes outrun the selected ocarina's range.)
