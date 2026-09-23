@@ -71,7 +71,11 @@ function resetLiveTab() {
 function cueFirstNote() {
   const toks = lastTokens.length ? lastTokens : parse(document.getElementById("src").value);
   if (!toks.length) return;
-  const i = firstSoundIdx(toks);
+  // The cue names where to START: playback's default pickup is the first
+  // note, but a running practice session owns the position — a zen entry's
+  // stopMelody() (or any stop while practicing) must re-cue the tone the
+  // tuner currently expects, never the score's first note.
+  const i = liveSpotIdx(toks);
   const t = toks[i];
   highlightToken(i, t && t.id);
   scrollFocusStripTo(i);

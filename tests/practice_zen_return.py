@@ -6,6 +6,18 @@
 # own highlight calls; without practice-aware seeding the rebuild fell back
 # to firstSoundIdx and displayed "start over" while P.idx stayed advanced.
 #
+# Two causes are pinned:
+#   1. The rebuild seed: a zen exit/return (mode round-trip) rebuilds the
+#      card between practice's highlight calls — the seed must come from the
+#      active session, not firstSoundIdx.
+#   2. Zen ENTRY's own stopMelody() (the ui-only zen sync calls it on entering
+#      fullscreen with a live tab and no melody): its tail clears the
+#      highlight and cues the FIRST note as playback's pickup position —
+#      which must not stomp the vine of a RUNNING practice session. The
+#      first-note cue is playback's semantics; practice owns the position.
+#      (Only the real fullscreen path runs this call — headless zen falls
+#      back to the CSS mode, so the leg drives stopMelody directly.)
+#
 #   python3 tests/practice_zen_return.py          # headless & silent
 
 import http.server
@@ -36,17 +48,11 @@ def start_server():
     return httpd, httpd.server_address[1]
 
 
-# Advances practice through the song's first bars with the closed-loop
-# player (identical to the acceptance suite's zone model), then flips the
-# display mode out of single and back twice, reading the live card and the
-# tuner's expectation both times. The feeding interval keeps running through
-# the flips — practice stays active exactly like a real session would.
-SEAT_DRIVER = """
+SCROLL_DRIVER = """
 (SRC) => new Promise((resolve, reject) => {
   const ta = document.getElementById('src');
   ta.value = SRC;
   render();
-  let firstSound = null;
   const feed = setInterval(() => {
     const P = OCA_PRACTICE._p;
     if (P.state === "await" || P.state === "dip" || P.state === "rest" || !P.bar) {
@@ -78,14 +84,52 @@ SEAT_DRIVER = """
       const idleCard = document.querySelector('#sheet .card.live');
       clearInterval(feed); clearInterval(poll);
       resolve({ active: active,
-                idleCard: idleCard ? idleCard.dataset.i : null,
-                firstSound: firstSound });
+                idleCard: idleCard ? idleCard.dataset.i : null });
       return;
     }
   }, 60);
   setTimeout(() => { clearInterval(feed); clearInterval(poll);
     OCA_PRACTICE.stop();
     reject(new Error('practice never reached the third note')); }, 20000);
+})
+"""
+
+# Zen entry runs stopMelody() (its sync assumes a stray melody keeps ringing
+# while the tab hides); the tail must not hand the card to playback's
+# pickup-cue while practice is driving the position.
+STOPMELODY_DRIVER = """
+(SRC) => new Promise((resolve, reject) => {
+  const ta = document.getElementById('src');
+  ta.value = SRC;
+  render();
+  setDisplayMode('single');           // the zen view: the live tab owns the sheet
+  const feed = setInterval(() => {
+    const P = OCA_PRACTICE._p;
+    if (P.state === "await" || P.state === "dip" || P.state === "rest" || !P.bar) {
+      window.__pracFrame = { hz: 0, rms: 0 };
+    } else {
+      const k = P.zonesNear >= 0 ? P.zonesNear : 0;
+      window.__pracFrame = { hz: P.bar.zones[k], rms: 0.4 };
+    }
+  }, 30);
+  OCA_PRACTICE.start();
+  let started = false;
+  const poll = setInterval(() => {
+    const P = OCA_PRACTICE._p;
+    if (OCA_PRACTICE.active() && !P.paused) started = true;
+    if (!started) return;
+    if (P.idx >= 2) {
+      stopMelody();                       // what zen entry does, verbatim
+      const card = document.querySelector('#sheet .card.live');
+      clearInterval(feed); clearInterval(poll);
+      resolve({ card: card ? card.dataset.i : null,
+                spot: OCA_PRACTICE.spot(), idx: P.idx });
+      return;
+    }
+  }, 60);
+  setTimeout(() => { clearInterval(feed); clearInterval(poll);
+    OCA_PRACTICE.stop();
+    reject(new Error('stopMelody leg: practice never reached the third note')); }, 20000);
 })
 """
 
@@ -97,6 +141,8 @@ def main():
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=HEADLESS)
+
+            # ---- leg 1: the rebuild seed (zen exit/return round-trip) ----
             page = browser.new_page()
             errs = []
             page.on("pageerror", lambda e: errs.append(str(e)))
@@ -104,27 +150,47 @@ def main():
             page.wait_for_function(
                 "typeof OCA_PRACTICE !== 'undefined' && !!OCA_PRACTICE"
                 " && window.NOTES && window.NOTES.length")
-            r = page.evaluate(SEAT_DRIVER, SONG)
+            r = page.evaluate(SCROLL_DRIVER, SONG)
             page.close()
-            print(f"== mid-song seat: {r['active']!r}  idle card: {r['idleCard']!r}", flush=True)
-            if errs:
-                failures.append(f"page errors {errs}")
+            print(f"== mode round-trip: {r['active']!r}  idle card: {r['idleCard']!r}", flush=True)
             card = r["active"]["card"]
             spot = r["active"]["spot"]
             if card is None:
-                failures.append("no live card after the mode round-trip")
+                failures.append("round-trip: no live card after the mode flip")
             elif r["active"]["idx"] < 2:
-                failures.append(f"practice never advanced (idx {r['active']['idx']})")
+                failures.append(f"round-trip: practice never advanced (idx {r['active']['idx']})")
             elif card != str(spot):
                 failures.append(
-                    f"the rebuilt card shows token {card!r} while the tuner "
-                    f"expects token {spot!r} — a mid-song session must keep "
-                    "its seat across a zen exit/return (card falls back to "
-                    "the first note while the engine stays advanced)")
+                    f"round-trip: the rebuilt card shows token {card!r} while the tuner "
+                    f"expects token {spot!r} — a mid-song session must keep its seat "
+                    "across a zen exit/return")
             elif r["idleCard"] not in (None, "0", str(spot)):
                 failures.append(
-                    f"with practice stopped the card should name the song's "
+                    f"round-trip: with practice stopped the card should name the song's "
                     f"first note, got {r['idleCard']!r}")
+            if errs:
+                failures.append(f"round-trip: page errors {errs}")
+
+            # ---- leg 2: zen entry's stopMelody must not re-cue the pickup ----
+            page = browser.new_page()
+            errs = []
+            page.on("pageerror", lambda e: errs.append(str(e)))
+            page.goto(base + "?practiceTest=1")
+            page.wait_for_function(
+                "typeof OCA_PRACTICE !== 'undefined' && !!OCA_PRACTICE"
+                " && window.NOTES && window.NOTES.length")
+            r = page.evaluate(STOPMELODY_DRIVER, SONG)
+            page.close()
+            print(f"== stopMelody during practice: {r!r}", flush=True)
+            if errs:
+                failures.append(f"stopMelody leg: page errors {errs}")
+            if r["idx"] < 2:
+                failures.append(f"stopMelody leg: practice never advanced (idx {r['idx']})")
+            elif r["card"] != str(r["spot"]):
+                failures.append(
+                    f"stopMelody leg: the card shows token {r['card']!r} while the "
+                    f"tuner expects {r['spot']!r} — zen entry's stopMelody tail "
+                    "re-cued playback's pickup note over the running practice seat")
             browser.close()
     finally:
         httpd.shutdown()
@@ -134,8 +200,8 @@ def main():
             print("  - " + f)
         return 1
     print("\nPASS: an active practice session owns the live card across view "
-          "rebuilds (zen exit/return), and a stopped session falls back to "
-          "the first note as before.")
+          "rebuilds AND across zen entry's stopMelody pickup-cue; a stopped "
+          "session falls back to the first note as always.")
     return 0
 
 
