@@ -141,10 +141,15 @@ Windows (partition):
 ## Context budget: wrap up before quality decays
 
 18. **~300K tokens is the watch line; ~350K the action line** (glm53@vibe).
-    At the watch line: no new large tasks — finish the current slice to a
-    green, committed state. At the action line: wrap up regardless of what
-    is tempting — TODO fully current (session log, next steps, held-for-
-    Robin items), all work committed, then end the session. Past ~400K,
-    clarity visibly degrades: prefer ending early over pushing through. A
-    half-finished TODO entry must never be the only memory of unfinished
-    work.
+    The model cannot introspect its own usage — the opencode plugin
+    `.opencode/plugins/context-meter.js` writes the live numbers to
+    `.opencode/context-usage.json` after every assistant message (`context_est`
+    plus a `zone` verdict: ok/watch/action/hard at 300/350/400K). **Read that
+    file at session start and whenever length is in doubt — the zone it
+    names is the truth.** At the watch line: no new large tasks — finish the
+    current slice to a green, committed state. At the action line: wrap up
+    regardless of what is tempting — TODO fully current (session log, next
+    steps, held-for-Robin items), all work committed, then end the session.
+    Past ~400K, clarity visibly degrades: prefer ending early over pushing
+    through. A half-finished TODO entry must never be the only memory of
+    unfinished work.
