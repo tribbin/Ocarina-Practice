@@ -48,6 +48,11 @@ async function fillFrom(paths) {
 }
 
 self.addEventListener("install", (e) => {
+  // No cache work on non-HTTP(S) contexts: opened from disk (VS Code browser
+  // preview, double-click) the fetches behind addAll are scheme-unsupported
+  // and would throw out of the install. Offline mode is a served-page
+  // feature; a file-scheme page just skips it quietly.
+  if (!/^https?:$/.test(self.location.protocol)) return;
   self.skipWaiting();
   e.waitUntil((async () => {
     const c = await cacheOf();

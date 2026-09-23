@@ -298,6 +298,9 @@ boot();
 // browsers without the API simply skip it; a failed registration must never
 // reach the app.
 window.addEventListener("load", () => {
+  // Only serve over HTTP(S): a file-scheme page (VS Code preview) has no
+  // service worker cache to offer.
+  if (!/^https?:$/.test(location.protocol)) return;
   if (!navigator.serviceWorker) return;
   try { navigator.serviceWorker.register("sw.js").catch(() => {}); } catch (e) {}
 });
