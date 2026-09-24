@@ -19,9 +19,13 @@ file sits at the repo root so every session finds it first.
    live scratchpad — read it at the moment an idea is picked up; never
    transcribe or summarize it anywhere (a stale copy is a wrong copy). Lift
    an idea into TODO.md only when Robin explicitly asks.
-3. **Keep the TODO current as you go, not at the end:** completed items
-   struck with date + SHA; findings placed in their type-sections; datd
-   session-log entries describe what was done. Sessions must be able to die
+3. **Keep the TODO current as you go, not at the end:** completed items MOVE
+   into `plans/DONE.md` (struck, `✅ <date> <SHA>`) at the moment they
+   complete; findings placed in their type-sections; dated
+   session-log entries describe what was done. Structural board moves
+   (complete/add/note/tag/log) run through `python tools/board.py`
+   (`verify` lints both files' shape); prose edits stay hand-made.
+   Sessions must be able to die
    at any minute without losing a thread.
 
 ## Questions: batch early, then self-sustain

@@ -58,12 +58,12 @@ first circle → urgency, last letter → effort.
 Picks for the next session(s), roughly damage × imminence ÷ effort
 (refreshed 2026-09-24 during the DONE split):
 
-| # | Item | Section |
-|---|---|---|
-| 1 | Schema validation of instruments/songs/fingerings on boot — **superseded by §9 F1** (the SW-derived precache makes a bad manifest entry break CI's offline suite; Robin may not want a loud-boot gate for his hand-tuned data) — reconfirm intent before building | §2 R4 |
-| 2 | Robin-field feedback stack: PWA install + airplane-mode practice (§9 F1), theme/help/title-bar eyeball, history line, new highlight-plan playback eyeball, dip dipMs/dipFrac by ear (§4 P2's retuned gate) | feel checks |
-| 3 | §9 feature stack: transpose, MIDI import, recording (section looping declined 2026-09-24 — archived in DONE §9) | §9 |
-| 4 | **Search-engine perma-links BEFORE the November Switch-2 OoT launch** — the one deadline-bound item in the pool (slug freeze → per-song static stubs → og/meta → robots on verification; ~5 weeks) | §9 |
+| Item | Section |
+|---|---|
+| Schema validation of instruments/songs/fingerings on boot — **superseded by §9 F1** (the SW-derived precache makes a bad manifest entry break CI's offline suite; Robin may not want a loud-boot gate for his hand-tuned data) — reconfirm intent before building | §2 R4 |
+| Robin-field feedback stack: PWA install + airplane-mode practice (§9 F1), theme/help/title-bar eyeball, history line, new highlight-plan playback eyeball, dip dipMs/dipFrac by ear (§4 P2's retuned gate) | feel checks |
+| §9 feature stack: transpose, MIDI import, recording (section looping declined 2026-09-24 — archived in DONE §9) | §9 |
+| **Search-engine perma-links BEFORE the November Switch-2 OoT launch** — the one deadline-bound item in the pool (slug freeze → per-song static stubs → og/meta → robots on verification; ~5 weeks) | §9 |
 
 ---
 
@@ -101,7 +101,7 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 
 ## 7. Accessibility & UX
 
-- [ ] **Token chips: long-press-to-listen on touch** ✅ 2026-09-22 `ab4ce0c` — hold rides the SAME 260 ms dwell as mouse/keyboard (`hoverPreview`): touch-down highlights, planted dwell auditions (once), completed hold swallows the follow-up tap (no transport start), quick taps keep native play-from-here, drift/pinch cancels silently. Pressing keeps `-webkit-touch-callout`/selection off. Pinned in `tests/keyboard_widgets.py` (touch section, playNote-call oracle — voice counts inflate from lingering nodes). Robin's feel-check on a real device still open.
+- [ ] **Token chips: long-press-to-listen on touch** ✅ 2026-09-22 `ab4ce0c` — hold rides the SAME 260 ms dwell as mouse/keyboard (`hoverPreview`): touch-down highlights, planted dwell auditions (once), completed hold swallows the follow-up tap (no transport start), quick taps keep native play-from-here, drift/pinch cancels silently. Pressing keeps `-webkit-touch-callout`/selection off. Pinned in `tests/keyboard_widgets.py` (touch section, playNote-call oracle — voice counts inflate from lingering nodes). Robin's feel-check on a real device still open. `🟨 🟠 ⚙S`
 
 - [ ] **Collapse buttons + misc** — §1 B7 was completed long ago; see `plans/DONE.md` §1 for what it covered and pick the misc remainder on touch. `🟢 🟡 ⚙S`
 
@@ -129,7 +129,7 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
 
 ## Session log
 
-(Archive: sessions 1–9 live in `plans/DONE.md`. New entries below.)
+(Older entries live in `plans/DONE.md` (session log). New entries below — retire via `python tools/board.py log-retire` once another session has opened from them.)
 
 - **2026-09-24 (session 10 opens — the DONE-file split, rename-first)** — Robin pulled
   main (refactor4 merged at `df6a3c0`) and forked `session5`; the logged DONE-file split
@@ -146,3 +146,24 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   bump, suites not run.
 - Next (session 9's logged shape): the refinement pass across the open board; then the
   feel-check stack (hot row 2), §9 feature picks (row 3), and the SEO deadline row 4.
+- **2026-09-24 (session 10, part 2 — the board went scriptable)** — Spar with Robin
+  folded into `tools/board.py` (stdlib, both partitions) owning the structural moves:
+  `complete` (strike + ✅ date/SHA + insert into DONE's matching § head, refuses
+  ambiguous or absent title prefixes and strikethrough-marked bodies), `add`
+  (single-line item, before §9's standing blockquote, duplicate-title guard), `note`
+  (in-place finding before the trailing tag span), `tag` (ASCII words —
+  severe/moderate/minor/cosmetic/measure × next/soon/later/idle × s/m/l — re-score the
+  span), `log-add`, `log-retire` (moves all but the newest entry into DONE's log), and
+  `verify` (single-line items + tags grammar, no corpse in TODO / no frozen open item
+  in DONE, heads 1–9 both files, unnumbered hot rows, log stub present). DONE lost its
+  17 frozen open-item copies (the rename-first cost — completing R4 would have collided
+  with its own twin); the hot list dropped row numbers (no renumber obligation); the
+  log stub went generic; AGENTS rule 3 synced to move-at-completion and names the tool;
+  `verify` + `tests/board_tool.py` (8 pure-stdlib sandbox cases) registered in CI
+  before the Playwright install. First dogfood ran green: A6 long-press's missing tag
+  span set to `🟨 🟠 ⚙S` via the tool. First real tool bugs caught by the same setup:
+  `_items` used an undefined list name, the test registry's decorator returned the
+  wrapper function (0/0 cases until spotted). CRLF/`\r` inputs refused everywhere.
+- Next: refinement pass across the open board may lean on the tool everywhere; new
+  findings ride `note`, re-scorings ride `tag`, completions ride `complete` (TODO line
+  leaves, DONE gains the struck archive row).
