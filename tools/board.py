@@ -53,9 +53,12 @@ def _write_lines(path, lines):
 
 
 def _payload(args, single=False):
-    if getattr(args, "file", None) is None:
+    # complete's CLI names its payload flag --notes-file; the generic
+    # subcommands use --file. Both shapes must read through here.
+    src = getattr(args, "file", None) or getattr(args, "notes_file", None)
+    if src is None:
         raise BoardError("--file <path|-> is required for text payloads")
-    text = sys.stdin.read() if args.file == "-" else Path(args.file).read_text(encoding="utf-8")
+    text = sys.stdin.read() if src == "-" else Path(src).read_text(encoding="utf-8")
     text = text.strip("\n")
     if single and "\n" in text.strip():
         raise BoardError("payload must be a single line")

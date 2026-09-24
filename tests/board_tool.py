@@ -11,11 +11,16 @@ import importlib.util
 import sys
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[1]
 _spec = importlib.util.spec_from_file_location("board", ROOT / "tools" / "board.py")
 board = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(board)
+
+_tmp = tempfile.mkdtemp(prefix="board-payload-")
+tmp_txt = Path(_tmp) / "note.txt"
+tmp_txt.write_text("note line\n", encoding="utf-8")
 
 
 def write(path, lines):
@@ -232,6 +237,22 @@ def t8():
     # CRLF refusal
     todo.write_bytes("# x\r\n- [ ] **R?** `🟢 ⚪`\r\n".encode("utf-8"))
     expect_error(lambda: board.note(todo, "R", "t"), "CRLF")
+
+
+@case("payload reader honors the complete --notes-file wiring")
+def t9():
+    # the complete CLI carries its payload as args.notes_file; _payload must
+    # read it (it only ever looked at args.file and raised --file-required)
+    ns = SimpleNamespace(file=None, notes_file=None)
+    try:
+        board._payload(ns)
+        raise AssertionError("empty args must refuse")
+    except board.BoardError as e:
+        assert "--file" in str(e), e
+    ns = SimpleNamespace(file=None, notes_file=str(tmp_txt))
+    assert board._payload(ns) == "note line"
+    ns = SimpleNamespace(file=str(tmp_txt), notes_file=None)
+    assert board._payload(ns) == "note line"
 
 
 def main():

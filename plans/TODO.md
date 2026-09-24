@@ -87,8 +87,6 @@ Picks for the next session(s), roughly damage × imminence ÷ effort
 
 ## 5. Architecture / maintenance
 
-- [ ] **Deduplicate pitch/maths (4 copies each)** — CLUSTERS 1-3 ✅ 2026-09-24 (`a6b15c0` + `938bc6f`): (1) midi/frequency → `js/music-math.js` single source (audio re-exports the binding so ESM + windowed surfaces stay bound for tests/debug; ui's zen-glow noteMidi wraps it with the 69 fallback; practice's defensive freqOfId duplicate deleted; **parse.js keeps its own midiOf DELIBERATELY** — the transposer skill loads parse.js raw through a window-shim eval that strips exports but cannot carry imports); (2) grid-beats → shared tokenGridBeats, where the two copies had already DIVERGED (audio's fallback lost the 2/3 triplet factor; the parser pre-computes beats so it only bit synthetic durationless tokens — now impossible), practice's gridBeats dies with its three call sites; (3) quarter-seconds → shared quarterSecFor, ui's quarterSec keeps only its editor-reading wrapper. Remaining: PLAY/PAUSE DOM WRITES (audio.js vs ui.js) — last cluster of the item. `🟨 🟠 ⚙M`
-
 ## 6. Tests & CI
 
 - [ ] **Real-DSP validation for autoCorrelate** — CI uses synthetic frames only; record WAV fixtures and run the classifier offline against known pitches (`OCA_PRACTICE.testAC` already hooks it, practice.js:1218-1232). `🟨 ⚪ ⚙M`
