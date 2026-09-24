@@ -1896,8 +1896,6 @@ function stopMelody() {
   fadeMelodyBuses(audioCtx); // one setTargetAtTime decay per bus — the melody's audible cut
   if (melodyTimer) { clearTimeout(melodyTimer); melodyTimer = 0; }
   if (typeof freezeZenGlow === "function") freezeZenGlow();
-  const btn = document.getElementById("playMel");
-  if (btn) btn.textContent = "Play";
   clearHighlight();
   if (typeof cueFirstNote === "function") cueFirstNote();
   syncTransport();
@@ -1928,8 +1926,6 @@ function playMelody(fromIdx) {
   attachCtxStateWatch(audioCtx);
   if (audioCtx.state === "suspended") audioCtx.resume();
   melodyPlaying = true;
-  const btn = document.getElementById("playMel");
-  if (btn) btn.textContent = "Pause";
   syncTransport();
   resetMelodyBuses(audioCtx); // fresh bus generation for the upcoming voices
   scheduleMelody(audioCtx.currentTime + 0.05);
@@ -1946,8 +1942,6 @@ function pauseMelody() {
   fadeMelodyBuses(audioCtx); // one setTargetAtTime decay per bus — the melody's audible cut
   if (melodyTimer) { clearTimeout(melodyTimer); melodyTimer = 0; }
   if (typeof freezeZenGlow === "function") freezeZenGlow();
-  const btn = document.getElementById("playMel");
-  if (btn) btn.textContent = "Play";
   syncTransport();
 }
 
@@ -1958,8 +1952,6 @@ function resumeMelody() {
   attachCtxStateWatch(audioCtx);
   if (audioCtx.state === "suspended") audioCtx.resume();
   melodyPlaying = true;
-  const btn = document.getElementById("playMel");
-  if (btn) btn.textContent = "Pause";
   syncTransport();
   resetMelodyBuses(audioCtx); // fresh bus generation for the upcoming voices
   scheduleMelody(audioCtx.currentTime + 0.05);
