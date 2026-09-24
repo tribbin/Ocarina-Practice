@@ -144,6 +144,26 @@ function safeResume(ctx) {
     if (p && p.catch) p.catch(() => {});
   } catch (e) {}
 }
+
+// Autoplay policy/OS routing can suspend a RUNNING context mid-session
+// (tab backgrounded on phones, audio-endpoint takeover): the audio clock
+// freezes while the scheduler keeps timing against it and the UI would
+// keep claiming playback over silence. Mark the ctx once and watch it:
+// a suspension pauses the transport cleanly (grid position preserved, a
+// later Play resumes from the frozen beat); the context returning to
+// running NEVER restarts the melody by itself — the user resumes.
+function attachCtxStateWatch(ctx) {
+  if (!ctx || ctx.__stateWatched) return ctx;
+  ctx.__stateWatched = true;
+  try {
+    ctx.addEventListener("statechange", () => {
+      if (ctx.state === "suspended" && melodyPlaying && !melodyPaused) {
+        pauseMelody();
+      }
+    });
+  } catch (e) {}
+  return ctx;
+}
 // Exposed for the dev panel: params are tweaked in place; invalidateWave()
 // drops the cached PeriodicWave so the next note rebuilds it from the
 // current harmonic amplitudes.
@@ -707,6 +727,7 @@ function setVibratoEnabled(on) {
 function unlockAudio() {
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  attachCtxStateWatch(audioCtx);
     safeResume(audioCtx);
   } catch (e) {}
 }
@@ -1099,6 +1120,7 @@ function setNoteSink(fn) { noteSink = fn || null; }
 function setAuditionSink(fn) { auditionSink = fn || null; }
 function sharedAudioCtx() {
   audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  attachCtxStateWatch(audioCtx);
   return audioCtx;
 }
 
@@ -1155,6 +1177,7 @@ function playNote(id, durSec) {
 function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  attachCtxStateWatch(audioCtx);
     if (audioCtx.state === "suspended") safeResume(audioCtx);
     const ctx = audioCtx;
     ringOnset(id, when, intoSlide);
@@ -1831,6 +1854,7 @@ function liteMode() {
 function playTickAt(when, bag) {
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  attachCtxStateWatch(audioCtx);
     if (audioCtx.state === "suspended") safeResume(audioCtx);
     const ctx = audioCtx;
     let t0 = when == null ? ctx.currentTime : when;
@@ -1907,6 +1931,7 @@ function playMelody(fromIdx) {
   }
   if (!melodyTokens.length) return;
   audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  attachCtxStateWatch(audioCtx);
   if (audioCtx.state === "suspended") audioCtx.resume();
   melodyPlaying = true;
   const btn = document.getElementById("playMel");
@@ -1936,6 +1961,7 @@ function resumeMelody() {
   if (melodyPlaying || !melodyPaused || !melodyTokens.length) { melodyPaused = false; return; }
   melodyPaused = false;
   audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  attachCtxStateWatch(audioCtx);
   if (audioCtx.state === "suspended") audioCtx.resume();
   melodyPlaying = true;
   const btn = document.getElementById("playMel");
