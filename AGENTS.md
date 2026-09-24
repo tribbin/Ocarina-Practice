@@ -9,8 +9,10 @@ file sits at the repo root so every session finds it first.
 ## Session protocol
 
 1. **Open every session by reading `plans/TODO.md`.** Its bookkeeping is the
-   board: struck items with `✅ <date> <SHA>` are done; the hot list and the
-   latest session log say exactly where work stands. Never trust memory over
+   board: completed items (struck, `✅ <date> <SHA>`) move at once into
+   `plans/DONE.md`, the completed-work + session-log archive, so TODO.md
+   carries open work only; the hot list and the latest session-log entry say
+   exactly where work stands. Never trust memory over
    the board. Check `git log` too: Robin commits his own work between and
    during sessions; the branch tip is not what you left there.
 2. **`plans/IDEAS.txt` is the one file the AI never writes.** It is Robin's
