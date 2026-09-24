@@ -99,6 +99,28 @@ function showHiddenSongs() {
   return localStorage.getItem(SHOW_HIDDEN_KEY) === "1";
 }
 
+// Playable-on-chart fit for the instrument-switch song jump: every melody
+// token id must be ON the loaded chart — stricter than songOutOfRange's
+// out-of-compass count, which lets a between-lows-and-highs id the chart
+// never exposes (a black key on a all-white-key body) count as in range.
+function songFitsChart(id) {
+  const item = BUILTIN[id];
+  if (!item || !Array.isArray(window.NOTES) || !window.NOTES.length) return false;
+  for (const t of parse(String(item.body || ""))) {
+    if ((t.type === "note" || t.type === "tie") && t.id &&
+        !window.NOTES.includes(t.id)) return false;
+  }
+  return true;
+}
+
+// The library song currently in the editor, even when the range filter keeps
+// it out of the dropdown (#scale silently unselects — the ?song deep link
+// must keep loading it). loadLibraryItem is the only writer; the exact
+// editor-content contract ends where clearLibrarySelection fires (typed
+// text, note clicks, Clear, file load), and the tracker goes with it.
+let lastLoadedId = "";
+function loadedLibraryId() { return lastLoadedId; }
+
 function setShowHidden(v) {
   try { localStorage.setItem(SHOW_HIDDEN_KEY, v ? "1" : "0"); } catch (e) {}
 }
@@ -163,6 +185,10 @@ function fillLibrary(selectId) {
 }
 
 function clearLibrarySelection() {
+  // The exact-library-body contract ends here (typed text, note clicks,
+  // Clear, file load) — the hidden-song tracker must clear even when the
+  // dropdown selection is already empty (its early-return below).
+  lastLoadedId = "";
   const sel = document.getElementById("scale");
   if (!sel || !sel.value) return;
   sel.selectedIndex = -1;
@@ -397,6 +423,7 @@ function loadLibraryItem(id) {
   let tempo = 100;
   let swing = currentSwing();
   let tick;
+  let loadedId = "";
   if (BUILTIN[id]) {
     const item = BUILTIN[id];
     const body = String(item.body || "").replace(/^\s*#.*\n/, "");
@@ -404,6 +431,7 @@ function loadLibraryItem(id) {
     swing = item.swing != null ? item.swing : (swingFromText(item.body) || 0);
     tick = item.tick;
     document.getElementById("src").value = withPlayHeaders(body.trim(), item.name, tempo, swing);
+    loadedId = id;
   } else {
     const item = userLib()[id];
     if (item) {
@@ -411,8 +439,12 @@ function loadLibraryItem(id) {
       tempo = item.tempo || tempoFromText(item.body) || tempo;
       swing = item.swing != null ? item.swing : (swingFromText(item.body) != null ? swingFromText(item.body) : swing);
       tick = item.tick;
+      loadedId = id;
     }
   }
+  // Only traffic that actually loaded a body counts; an onchange with a
+  // missing id leaves the editor (and the tracker) as they were.
+  if (loadedId) lastLoadedId = loadedId;
   applySwing(swing);
   applySongTick(tick);
   if (typeof ensureOcarinaTemplate === "function") {
@@ -588,7 +620,9 @@ function wireLibrary() {
 }
 
 export { BUILTIN, applySwing, applyTempoPct, clearLibrarySelection, currentSwing,
-         fillLibrary, initBuiltin, libToast, loadLibraryItem, safeAlert, songTempo,
+         fillLibrary, initBuiltin, libToast, loadedLibraryId, loadLibraryItem,
+         safeAlert, songFitsChart,
+         songTempo,
          syncLibraryMenu, tempoPct, userLib, wireLibrary, setUserLib, slugName,
          uniqueUserId, showHiddenSongs, refreshGeneratedScales };
 

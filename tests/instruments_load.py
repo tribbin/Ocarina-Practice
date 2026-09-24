@@ -515,6 +515,179 @@ def main():
                                     f"!= {want_mode!r}")
                 page.close()
 
+            # 6 — wet instrument switch auto-selects the in-range family
+            # member (the library's same ladder the landing stubs walk):
+            # switching with a song loaded jumps to the family member that
+            # fits the NEW chart (base first, then variants alphabetically),
+            # stays put when the current member already fits, keeps the
+            # current song quietly when NOTHING fits, never touches typed
+            # text, and never starts transport from a wet switch.
+            print("== wet switch auto-selects the in-range family member", flush=True)
+            songs = json.loads((ROOT / "songs.json").read_text(encoding="utf-8"))
+
+            def body_head(key):
+                body = songs[key].get("body") or ""
+                line = next((ln for ln in body.splitlines()
+                             if ln.strip() and not ln.lstrip().startswith("#")), "")
+                return line.strip()[:30]
+
+            AUTO_STATE = """() => ({
+              inst: window.CURRENT_INSTRUMENT && window.CURRENT_INSTRUMENT.id,
+              sel: document.getElementById('scale').value,
+              selText: (document.getElementById('scale').selectedOptions[0]
+                        || {textContent: ''}).textContent,
+              label: (document.getElementById('libDdText') || {}).textContent || '',
+              title: document.getElementById('title').textContent,
+              src: document.getElementById('src').value,
+              playing: !!(window.isMelodyPlaying && window.isMelodyPlaying()),
+            })"""
+
+            def wait_wet(page, inst, wait_sel, failures, tag):
+                """Rendezvous: the new instrument is installed AND (when the
+                auto-select must land) the #scale select carries the song."""
+                cond = ("() => window.CURRENT_INSTRUMENT &&"
+                        " window.CURRENT_INSTRUMENT.id === '" + inst + "'"
+                        " && document.getElementById('scale').value === '" +
+                        wait_sel + "'")
+                try:
+                    page.wait_for_function(cond, timeout=15000)
+                except Exception:
+                    failures.append(f"{tag}: timed out waiting for "
+                                    f"inst={inst!r} sel={wait_sel!r}")
+                return page.evaluate(AUTO_STATE)
+
+            def run_leg(tag, goto_extra, goto_name, inst, wait_sel,
+                        want_song, want_head):
+                page = browser.new_page()
+                errs = []
+                page.on("pageerror", lambda e: errs.append(str(e)))
+                page.goto(base + goto_extra)
+                page.wait_for_function(BOOT_WAIT)
+                # The ?song load (or boot home tail) must land before the
+                # switch — the editor title is the rendezvous that works even
+                # when the song is range-hidden from the dropdown.
+                page.wait_for_function(
+                    "() => document.getElementById('title').textContent === "
+                    + json.dumps(goto_name), timeout=15000)
+                page.select_option("#instSel", inst)
+                st = wait_wet(page, inst, wait_sel, failures, tag)
+                if errs:
+                    failures.append(f"{tag}: page errors {errs}")
+                if st["inst"] != inst:
+                    failures.append(f"{tag}: instrument is {st['inst']!r}, "
+                                    f"expected {inst!r}")
+                if wait_sel and st["sel"] != wait_sel:
+                    failures.append(f"{tag}: #scale {st['sel']!r} != "
+                                    f"{wait_sel!r} (auto-select did not land)")
+                if want_song:
+                    name = songs[want_song].get("name") or want_song
+                    if st["selText"] != name:
+                        failures.append(f"{tag}: dropdown option text "
+                                        f"{st['selText']!r} != {name!r} "
+                                        "(dropdown must reflect the jump)")
+                    if st["title"] != name:
+                        failures.append(f"{tag}: title {st['title']!r} != {name!r}")
+                if want_head:
+                    if want_head not in st["src"]:
+                        failures.append(f"{tag}: #src lacks {want_head!r}")
+                if st["playing"]:
+                    failures.append(f"{tag}: a wet switch must not start "
+                                    "transport (isMelodyPlaying() true)")
+                # The label must always describe what the editor holds.
+                if not st["label"]:
+                    failures.append(f"{tag}: #libDdText label went empty")
+                page.close()
+
+            # a) current member does NOT fit the new chart → jump to the
+            #    fitting family member (botw-theme only fits the double alto;
+            #    on the triple both -bass and -down3 fit → base-first rule
+            #    then alphabetical lands on -bass).
+            run_leg("jump alto->bass", "?song=botw-theme",
+                    songs["botw-theme"].get("name") or "botw-theme",
+                    "ico-oak-leaf-bass-c-triple", "botw-theme-bass",
+                    "botw-theme-bass", body_head("botw-theme-bass"))
+            # b) current member already fits the new chart → stay put
+            #    (song-of-time fits every chart the 12-hole user can reach).
+            run_leg("stay when fitting", "?song=song-of-time",
+                    songs["song-of-time"].get("name") or "song-of-time",
+                    "ico-oak-leaf-bass-c-triple", "song-of-time",
+                    None, None)
+            # c) the reverse jump: a bass arrangement meets the 12-hole —
+            #    the ONLY fitting family member is the base.
+            run_leg("jump bass->alto", "?inst=ico-oak-leaf-bass-c-triple&song=eponas-song-bass",
+                    songs["eponas-song-bass"].get("name") or "eponas-song-bass",
+                    "oot-alto-c-12", "eponas-song",
+                    "eponas-song", body_head("eponas-song"))
+            # d) nothing fits the new chart → keep the current song and stay
+            #    quiet (botw family has no 12-hole member; #scale drops it
+            #    per today's filter rule, #src keeps the arrangement).
+            page = browser.new_page()
+            errs = []
+            page.on("pageerror", lambda e: errs.append(str(e)))
+            page.goto(base +
+                      "?inst=ico-oak-leaf-bass-c-triple&song=botw-theme-bass")
+            page.wait_for_function(BOOT_WAIT)
+            page.wait_for_function(
+                "() => document.getElementById('scale').value === 'botw-theme-bass'")
+            page.select_option("#instSel", "oot-alto-c-12")
+            try:
+                page.wait_for_function(
+                    "() => window.CURRENT_INSTRUMENT &&"
+                    " window.CURRENT_INSTRUMENT.id === 'oot-alto-c-12'",
+                    timeout=15000)
+                page.wait_for_timeout(300)
+            except Exception:
+                failures.append("no-fit: timed out on the instrument install")
+            nst = page.evaluate(AUTO_STATE)
+            if errs:
+                failures.append(f"no-fit keep: page errors {errs}")
+            if nst["inst"] != "oot-alto-c-12":
+                failures.append(f"no-fit keep: instrument {nst['inst']!r}")
+            if body_head("botw-theme-bass") not in nst["src"]:
+                failures.append("no-fit keep: the loaded arrangement must stay "
+                                "in the editor when no family member fits")
+            if not nst["label"]:
+                failures.append("no-fit keep: label must keep naming the "
+                                "loaded song")
+            if nst["playing"]:
+                failures.append("no-fit keep: a wet switch must not start "
+                                "transport (isMelodyPlaying() true)")
+            page.close()
+            # e) typed text is nobody's family: a wet switch must leave the
+            #    editor text and the no-selection dropdown alone.
+            page = browser.new_page()
+            errs = []
+            page.on("pageerror", lambda e: errs.append(str(e)))
+            page.goto(base)
+            page.wait_for_function(BOOT_WAIT)
+            page.wait_for_function(
+                "() => document.getElementById('scale').value === 'song-of-storms'")
+            typed = page.evaluate(TYPED, "Scratch Line")
+            page.select_option("#instSel", "ico-oak-leaf-bass-c-triple")
+            try:
+                page.wait_for_function(
+                    "() => window.CURRENT_INSTRUMENT &&"
+                    " window.CURRENT_INSTRUMENT.id ==="
+                    " 'ico-oak-leaf-bass-c-triple' && window.NOTES.length",
+                    timeout=15000)
+                page.wait_for_timeout(300)
+            except Exception:
+                failures.append("typed: timed out on the instrument install")
+            tst = page.evaluate(AUTO_STATE)
+            if typed != "Scratch Line":
+                failures.append(f"typed: typed title probe failed ({typed!r})")
+            if errs:
+                failures.append(f"typed: page errors {errs}")
+            if "C4 D4 E4" not in tst["src"]:
+                failures.append("typed: a wet switch must not replace typed "
+                                f"text, #src {tst['src'][:40]!r}")
+            if tst["sel"]:
+                failures.append("typed: #scale must stay unselected (no "
+                                "family jump off typed text)")
+            if tst["playing"]:
+                failures.append("typed: a wet switch must not start transport")
+            page.close()
+
             browser.close()
     finally:
         httpd.shutdown()

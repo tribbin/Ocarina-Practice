@@ -95,7 +95,7 @@ def expect_error(fn, needle=None):
 @case("complete moves item, strikes, sections correctly, blank-sandwiched")
 def t1():
     todo, done = sandbox()
-    msg = board.complete(todo, done, "Alpha bug")
+    msg = board.complete(todo, done, "Alpha bug", date="2026-09-24")
     assert "Alpha" in msg, msg
     tl = read(todo)
     assert not any("- [x] " in l for l in tl), "corpse left in TODO"
