@@ -278,3 +278,20 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   the report on the item; keys/URLs stay frozen in any case (permalink contract).
   Commit `33bd3fa`. The night queue advances to the extension units; meter said
   ~232K after this unit's read.
+
+- **2026-09-25 (night session 11, unit 5 + 6 — M1 closes; sw VERSION audit clean)** —
+  unit 5: the play/pause DOM-writes cluster resolved as a deletion (the #playMel
+  element does not exist anywhere; the round mirror replaced the header's text
+  squares — keyboard_widgets's squaresGone leg has pinned that absence all along),
+  all four vestigial textContent writes left audio.js; targeted suites green +
+  eslint. On the same unit the board tool itself gained its fix + pin: complete's
+  --notes-file payload flag reaches the payload reader now (it only ever looked at
+  the generic --file flag — refused complete's own flag in real use; sandbox case
+  t9 pins both shapes). Board: the M1 dedup item strikes into DONE with the closing
+  cluster shelf now EMPTY. Commits `504b42d` + `9a2ae0b`.
+  Unit 6 (the rule-15 audit): the four ordered units + unit 5 land across commits —
+  shipped-behavior changes since oco-pwa-v5: ONLY the wet-switch auto-select (unit a,
+  bumped VERSION to oco-pwa-v6 IN the same commit). Everything after v6 is tooling,
+  tests, board moves and the engine-unobservable dead-write deletion — no shipped
+  behavior, no further bump owed; the offline suite will verify the v6 cache on the
+  night's final sweep.
