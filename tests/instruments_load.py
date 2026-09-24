@@ -387,7 +387,6 @@ def main():
 
             # 4 — boot diagnostics: an unknown ?inst id and a duplicated
             # manifest id both report loudly in #err (append, never clobber)
-            # manifest id both report loudly in #err (append, never clobber)
             # while the boot itself still lands fail-soft. A FRESH context per
             # leg: the service worker installs during the earlier suites in a
             # shared context and would serve its precached instruments.json,
@@ -460,6 +459,61 @@ def main():
             ctx5.close()
             if errs:
                 failures.append(f"boot diagnostics: page errors {errs}")
+
+            # 5 — ?song / ?zen boot flows (T4's deep-link boots): a bare
+            # ?song loads on the manifest default and stays in the grid
+            # view; &zen drops the boot straight into zen via the CSS
+            # fallback (?nofs=1 pins the fallback in headless), the single
+            # view's live card up and the song still loaded — the paths
+            # the landing stubs and shared zen links ride.
+            print("== ?song / ?zen boot flows", flush=True)
+            songs = json.loads((ROOT / "songs.json").read_text(encoding="utf-8"))
+            head = (songs["eponas-song"].get("body") or "").strip().split("\n")[0][:30]
+            STATE = """() => ({
+              title: document.getElementById('title').textContent,
+              src: document.getElementById('src').value,
+              focus: document.getElementById('tabPanel').classList.contains('focus'),
+              zenfb: document.body.classList.contains('zen-fallback'),
+              mode: (document.querySelector('[aria-checked="true"].seg-btn')
+                     || { dataset: {} }).dataset.mode || null,
+              oor: document.querySelectorAll('.card.oor').length,
+            })"""
+            for tag, extra in (
+                    ("?song", "?song=eponas-song"),
+                    ("?song+zen", "?song=eponas-song&zen&nofs=1")):
+                page = browser.new_page()
+                errs = []
+                page.on("pageerror", lambda e: errs.append(str(e)))
+                page.goto(base + extra)
+                page.wait_for_function(BOOT_WAIT)
+                page.wait_for_function(
+                    "() => document.getElementById('scale').value === 'eponas-song'")
+                page.wait_for_timeout(1200)
+                st = page.evaluate(STATE)
+                if errs:
+                    failures.append(f"{tag} boot: page errors {errs}")
+                if st["title"] != "Epona's Song":
+                    failures.append(f"{tag} boot: title {st['title']!r} "
+                                    "!= Epona's Song")
+                if head not in st["src"]:
+                    failures.append(f"{tag} boot: #src lacks the body head {head!r}")
+                if st["oor"]:
+                    failures.append(f"{tag} boot: {st['oor']} out-of-range marks "
+                                    "on the 12-hole default")
+                if tag == "?song" and (st["focus"] or st["zenfb"]):
+                    failures.append(
+                        f"{tag} boot must stay out of zen "
+                        f"(focus={st['focus']} zen-fallback={st['zenfb']})")
+                if tag == "?song+zen" and not (st["focus"] and st["zenfb"]):
+                    failures.append(
+                        f"{tag} boot must land in fallback zen "
+                        f"(focus={st['focus']} zen-fallback={st['zenfb']})")
+
+                want_mode = "single" if tag == "?song+zen" else "grid"
+                if st["mode"] != want_mode:
+                    failures.append(f"{tag} boot: view mode {st['mode']!r} "
+                                    f"!= {want_mode!r}")
+                page.close()
 
             browser.close()
     finally:
