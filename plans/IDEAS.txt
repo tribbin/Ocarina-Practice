@@ -47,3 +47,11 @@ THEMES
 
 Additional 80s black audio-stack with square-row LED displays. The red understripe for headers can remain the same as other.
 Switching between themes in a way that signifies the color theme without showing it in the current theme during normal usage.
+
+BUGS
+
+So we now have 3 numbers for indicating sound processing performance issues... however, on my phone the counters stay at 0 when the 'ticks' (it's actually multiple consecutive ticks, but not yet a buzz) happen. When I flip my screen vertical<->horizontal it always happens. Seems that it is related to the visual processing.
+Can't reproduce on Windows desktop as of now.
+Are background visuals frozen in Zen? Are Zen visuals frozen in normal? Does it even matter when not visible?
+Can the audio process be prioritized over visuals?
+Would pre-calculating wave forms on song selection even help?
