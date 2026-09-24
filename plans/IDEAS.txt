@@ -48,3 +48,7 @@ THEMES
 
 Additional 80s black audio-stack with square-row LED displays. The red understripe for headers can remain the same as other.
 Switching between themes in a way that signifies the color theme without showing it in the current theme during normal usage.
+
+BUGS
+
+Flaky test: https://github.com/tribbin/Ocarina-Practice/actions/runs/35964730542
