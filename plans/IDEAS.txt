@@ -12,14 +12,6 @@ As you'd not see much of the backdrop anyway, we probably want a dedicated fulls
 
 We will brainstorm this some time.
 
-SEARCH ENGINE OPTIMIZATION
-
-So when Ocarina of Time for the Switch 2 comes out in November, people will receive dinky plastic ocarinas and will likely look for song online.
-I want the individual songs indexed by Google to one-click to the (especially) 12-hole ocarina page for that song.
-I want to postpone informing search crawlers until we have good PERMANENT links in order for these songs.
-Rule: When a direct-link exists, it should be a perma-link (content may change, but link must serve what the crawl expected).
-I want to control the 'theme' of our page and for links. A direct link to a song should have the song title added to the 'preview' and such.
-
 PERFORMANCE
 
 Give option to pre-calculate (wave forms of notes for) a song and cache them.
@@ -34,25 +26,11 @@ Add close-button top-right of the (non-Zen mode) practice/tuner to un-press the 
 It is not clear to the (new) user that they should start playing the song after pressing 'practice'. Can we inform the user either through a microphone icon in the blue button, instead of the note?
 I don't know what the (practice) 'history' function does, so I assume the user doesn't either.
 
-BRANDING
-
-Pondering calling it "Robin's Ocarina Practice", to make it more findable/relatable.
-
 OTHERS
 
-Use browser-builtin tooling like Lighthouse.
-Switching instruments will auto-switch to the same song with matching range, if it exists.
 Make the 12-hole 'complete' regarding Zelda Ocarina of Time game songs.
 
 THEMES
 
 Additional 80s black audio-stack with square-row LED displays. The red understripe for headers can remain the same as other.
 Switching between themes in a way that signifies the color theme without showing it in the current theme during normal usage.
-
-BUGS
-
-So we now have 3 numbers for indicating sound processing performance issues... however, on my phone the counters stay at 0 when the 'ticks' (it's actually multiple consecutive ticks, but not yet a buzz) happen. When I flip my screen vertical<->horizontal it always happens. Seems that it is related to the visual processing.
-Can't reproduce on Windows desktop as of now.
-Are background visuals frozen in Zen? Are Zen visuals frozen in normal? Does it even matter when not visible?
-Can the audio process be prioritized over visuals?
-Would pre-calculating wave forms on song selection even help?
