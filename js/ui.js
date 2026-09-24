@@ -1,6 +1,6 @@
 import { durLabel, isOutOfRange, parse, pretty, rangeCheck, spelledLabel,
          swingFromText, tempoFromText, titleFromText, withPlayHeaders } from "./parse.js";
-import { midiOf } from "./music-math.js";
+import { midiOf, quarterSecFor } from "./music-math.js";
 import { ocarinaSVG } from "./ocarina.js";
 import { audioCtx, audioPerfReset, audioPerfSnapshot, isMelodyPaused,
          isMelodyPlaying, liteMode, pauseMelody, playMelody, playNote,
@@ -484,7 +484,7 @@ function quarterSec() {
   // affects notes scheduled after the move.
   const ta = document.getElementById("src");
   const t = (ta && tempoFromText(ta.value)) || 100;
-  return 60 / Math.max(10, Math.min(400, t || 100));
+  return quarterSecFor(t);
 }
 
 function tokenSeconds(tokOrDur, dotted) {

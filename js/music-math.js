@@ -22,3 +22,21 @@ export function freqOf(id) {
   if (midi == null) return 440;
   return 440 * Math.pow(2, (midi - 69) / 12);
 }
+
+// Grid length of one notation token in beats: explicit `beats` wins (the
+// parser pre-computes it, triplets included), else dur-based fallback with
+// the full dotted/triplet chain (audio.js's copy had lost the 2/3 triplet
+// factor — divergence caught by the §5 M1 dedup). Bar/tempo/bass markers
+// carry no grid time.
+export function tokenGridBeats(tok) {
+  if (!tok || tok.type === "bar" || tok.type === "tempo" || tok.type === "bass") return 0;
+  return tok.beats ||
+    ((4 / (tok.dur || 4)) * (tok.dotted ? 1.5 : 1) * (tok.triplet ? 2 / 3 : 1));
+}
+
+// Seconds per quarter beat at `bpm`, clamped to the app's 10-400 guard.
+// Callers that read tempo from user text keep their own parsing wrapper
+// (ui.js quarterSec reads the editor; this is the shared arithmetic).
+export function quarterSecFor(bpm) {
+  return 60 / Math.max(10, Math.min(400, (+bpm) || 100));
+}

@@ -1,6 +1,6 @@
 ﻿import { parse } from "./parse.js";
 import { currentSwing, tempoPct } from "./library.js";
-import { freqOf } from "./music-math.js";
+import { freqOf, quarterSecFor, tokenGridBeats } from "./music-math.js";
 import { bumpHoverQuiet, clearHighlight, cueFirstNote, freezeZenGlow,
          highlightToken, isFocusMode, quarterSec, tokenSeconds, updateTransportUI } from "./ui.js";
 import { isPracticeActive } from "./practice.js";
@@ -230,10 +230,6 @@ function syncTransport() {
 // (the song's leading header or any inline "# tempo N" change). The tempo
 // slider is a RELATIVE playback speed (10–100%) applied at scheduling time
 // (see melodyQuarter uses in scheduleMelody), so it must not bake in here.
-function quarterSecFor(bpm) {
-  return 60 / Math.max(10, Math.min(400, (+bpm) || 100));
-}
-
 // Relative playback speed from the tempo slider (0.1–1 of the song tempo).
 // Guarded: audio.js also runs in tooling without the library/UI scripts.
 function tempoSpeed() {
@@ -241,10 +237,8 @@ function tempoSpeed() {
   return Math.max(0.1, Math.min(1, (tempoPct() || 100) / 100));
 }
 
-function tokenGridBeats(tok) {
-  if (!tok || tok.type === "bar" || tok.type === "tempo" || tok.type === "bass") return 0;
-  return tok.beats || ((4 / (tok.dur || 4)) * (tok.dotted ? 1.5 : 1));
-}
+// tokenGridBeats and quarterSecFor ride the music-math import — the
+// binding names keep the windowed compat surface and the ESM export list.
 
 function soundingGridBeats(tokens, idx) {
   let p = tokenGridBeats(tokens[idx]);
