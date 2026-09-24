@@ -124,6 +124,18 @@ keys and are never their own indexed pages.
   Every suffixed key must chain to an existing key once the suffix is
   stripped (variants hang off real bases; bases are forever). Content-shaping
   words (`short`, …) belong to the BASE slug, not the suffix list.
+- Grace-period markers (Robin, 2026-09-24): bodies that fall below the
+  12-hole floor take a **`-bass`** suffix and, when even the triple bass is
+  too high, **`-contrabass`** — the suffix list gains them at the
+  standardization pass (adding them now would orphan existing families
+  mid-rename). First application: the leaf bass songs
+  (`zelda-lullaby-bass`, `kokiri-forest-bass`); family heads that already
+  carry upper arrangements keep their names until the naming wave.
+- **Landing pages boot the ladder across the FAMILY** (gen_song_pages):
+  first fit through 12-hole > double alto C > triple bass C > contrabass;
+  the member booted is the base slug when it fits, else the first variant
+  that does — `/song/zelda/song-of-time/` boots `song-of-time-alto` on the
+  12-hole, never the bass body with range marks.
 - Enforced by `tests/shipped_songs.py` (fails CI on any violating key). The
   `-alt`/`-alto` spell split was fixed before first indexing (`major-alto`,
   `chromatic-alto`); nothing is indexed yet, so no alias table was needed.
