@@ -2,7 +2,7 @@ import { durLabel, isOutOfRange, parse, pretty, rangeCheck, spelledLabel,
          swingFromText, tempoFromText, titleFromText, withPlayHeaders } from "./parse.js";
 import { ocarinaSVG } from "./ocarina.js";
 import { audioCtx, audioPerfReset, audioPerfSnapshot, isMelodyPaused,
-         isMelodyPlaying, liteMode, pauseMelody, perf, playMelody, playNote,
+         isMelodyPlaying, liteMode, pauseMelody, playMelody, playNote,
          resumeMelody, setBassEnabled, setPerfAlertListener, setReverbEnabled,
          setVibratoEnabled, soundingGridBeats, stopMelody, togglePlayPause,
          unlockAudio } from "./audio.js";

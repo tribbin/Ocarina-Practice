@@ -549,7 +549,6 @@ import { currentSongId } from "./app.js";
     const targets = ["#tokens", "#focusTokens"]
       .concat(panel.classList.contains("in-card") ? [] : ["#sheet"])
       .map(s => document.querySelector(s)).filter(Boolean);
-    const dg = dbg();
     const pct = P.bar ? barFrac(P.bar) : 0;
     const live = new Set();
     for (const host of targets) {

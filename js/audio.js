@@ -1,6 +1,6 @@
-import { parse } from "./parse.js";
+﻿import { parse } from "./parse.js";
 import { currentSwing, tempoPct } from "./library.js";
-import { bumpHoverQuiet, clearHighlight, cueFirstNote, firstSoundIdx, freezeZenGlow,
+import { bumpHoverQuiet, clearHighlight, cueFirstNote, freezeZenGlow,
          highlightToken, isFocusMode, quarterSec, tokenSeconds, updateTransportUI } from "./ui.js";
 import { isPracticeActive } from "./practice.js";
 let audioCtx = null;
@@ -30,9 +30,9 @@ let lastHoldSec = 0.5; // sounding duration of the last scheduled note (for zen 
 
 // ---- Dev-tunable synthesis parameters -------------------------------------
 // The defaults are exactly the values that used to be hardcoded throughout
-// this file. The dev panel (js/debug.js — enable with `DEBUG=1` in the
+// this file. The dev panel (js/debug.js â€” enable with `DEBUG=1` in the
 // console) mutates these live and persists them to localStorage, so
-// synthesis code must READ these values per note — never bake them into a
+// synthesis code must READ these values per note â€” never bake them into a
 // closure or a cached node at build time.
 const AUDIO_DEFAULTS = {
   // == Pitch-keyed voice profile (measured-curve synthesis) ==
@@ -43,7 +43,7 @@ const AUDIO_DEFAULTS = {
   // anchor curves globally (by-ear brightening all notes at once).
   h2Mul: 1, h3Mul: 1, h4Mul: 1, h5Mul: 1,
   // Chamber "hard blow" drift: more open holes lose more air on big
-  // chambers, so the player blows harder — wind noise rebalances toward
+  // chambers, so the player blows harder â€” wind noise rebalances toward
   // the upper bands, slow wobble deepens and the attack overshoot grows,
   // rising toward the top of every chamber and resetting at each boundary
   // (the smallest chamber hardly shows it). 0 disables the drift.
@@ -57,7 +57,7 @@ const AUDIO_DEFAULTS = {
   wanderAmt: 1, wobbleAmt: 1,
   // Broadband wind/breath noise keyed to the measured noise bands.
   windAmt: 1,
-  // Tone lowpass: cutoff tracks the fundamental (lpMult × freq), capped at
+  // Tone lowpass: cutoff tracks the fundamental (lpMult Ã— freq), capped at
   // lpMax so high notes keep their harmonic tail (higher-bright edits here
   // are usually the fix if the top of the range sounds dull OR stringy).
   lpMult: 4.2, lpMax: 9000, lpQ: 0.7,
@@ -69,18 +69,18 @@ const AUDIO_DEFAULTS = {
   // notes (airFade), and its frequency ratio (slightly detuned octave).
   // The recordings show nothing measurable at that slot, so the level is 0.
   airLevel: 0.0, airFade: 0.75, airRatio: 2.01,
-  // Expressive vibrato/tremolo LFO: shared pitch+loudness wobble — belongs
+  // Expressive vibrato/tremolo LFO: shared pitch+loudness wobble â€” belongs
   // to Zen/focus mode like the reverb (gated per voice by vibratoEnabled,
   // on/off only switches what NEW notes get; live ones are left alone).
   // The reference recordings contain no periodic vibrato (slow intrinsic
   // wander only), which is why it is off in normal playback.
   vibRate: 5.5, vibDepth: 0.0035, vibHighFade: 0.4, tremDepth: 0.05,
   vibDelay: 0.35,
-  // Zen stereo chorus: sustained Zen notes split the core tone — clean LEFT,
+  // Zen stereo chorus: sustained Zen notes split the core tone â€” clean LEFT,
   // pitch-vibrato twin RIGHT (a douber-chorus); chiff/edge/wind stay center.
   // 0 = mono again, 1 = fully hard sides.
   zenPan: 0.9,
-  // Edge / windway whistle: recordings show no tonal content near 1.01-1.05×f0
+  // Edge / windway whistle: recordings show no tonal content near 1.01-1.05Ã—f0
   // (only a faint ~-40 dB island on D6), so the whistle sits just under that.
   edgeBase: 0.0008, edgeReg: 0.0005, edgeFade: 0.7,
   edgeDet: 0.012, edgeDetSpread: 0.008,
@@ -90,7 +90,7 @@ const AUDIO_DEFAULTS = {
   // chiffSize per chamber size) and the level scale stays small.
   chiffScale: 0.25, chiffBase: 0.075, chiffSize: 0.05,
   // Onset octave overtone ("blown on a bottle" bloom): level, the extra
-  // part scaling with attackEffort, noise/sine mix, and the decay length —
+  // part scaling with attackEffort, noise/sine mix, and the decay length â€”
   // recorded ~60-115 ms total (was 0.22-0.36 s).
   otBase: 0.00137, otEffort: 0.0011, otNoise: 0.35,
   otDurMax: 0.10, otDurEffort: 0.05,
@@ -103,15 +103,15 @@ const AUDIO_DEFAULTS = {
   // Practice-mode tuner gates (js/practice.js): in-tune zone (cents), onset
   // transient grace (wider cents for the first N ms of an attack), the
   // silence needed before a hit counts as a fresh articulation, how fast the
-  // fill bar drains when out of tune (× the fill rate), and the mic RMS the
+  // fill bar drains when out of tune (Ã— the fill rate), and the mic RMS the
   // detector treats as "not playing". Inside a chained (~) slide the same
   // silence/pitch wipe uses the much larger chainTravelMs instead, and that
-  // window also renews the arrival tolerance between zones — plenty of time
+  // window also renews the arrival tolerance between zones â€” plenty of time
   // to travel to (and settle onto) the next note. The separate-note gate in
   // practice mode: when a closed note could keep sounding straight into the
-  // next one (close pitch), the tone must dip once — to dipFrac of the
+  // next one (close pitch), the tone must dip once â€” to dipFrac of the
   // level it was holding (a tongued volume notch; full silence is the
-  // trivial case) — sustained for dipMs (~ one detection frame; the
+  // trivial case) â€” sustained for dipMs (~ one detection frame; the
   // reference is a running average of the hold level, so a short articulation
   // reads clearly while mic wobble cannot fake the drop).
   tuneCents: 20, transientCents: 60, transientMs: 150,
@@ -120,7 +120,7 @@ const AUDIO_DEFAULTS = {
 };
 const AUDIO_DEBUG = Object.assign({}, AUDIO_DEFAULTS);
 // Voice builders (playNoteAt/playTickAt) swallow any WebAudio failure so a
-// bad synth call can never break the page — but an ocarina that silently
+// bad synth call can never break the page â€” but an ocarina that silently
 // plays nothing is the worst failure mode for a practice tool. Record
 // count + site + cause; the debug panel surfaces it via OCA_DEBUG.voiceErrors().
 let voiceErrorCount = 0, lastVoiceError = "", voiceWarnAt = 0;
@@ -134,7 +134,7 @@ function recordVoiceError(site, e) {
   }
 }
 // resume() rejects under autoplay policy (no user gesture yet); never let
-// that surface as an unhandled-rejection error — the next real gesture
+// that surface as an unhandled-rejection error â€” the next real gesture
 // retries via unlockAudio.
 function safeResume(ctx) {
   try {
@@ -155,9 +155,9 @@ window.OCA_DEBUG = {
   // Alive hover/piano voices right now (debug panel + tests expose how much
   // audio machinery a stray script is building).
   liveVoiceCount() { return countAliveVoices(liveVoices); },
-  // "none" / "suspended" / "running" — the autoplay-policy state of the ctx.
+  // "none" / "suspended" / "running" â€” the autoplay-policy state of the ctx.
   audioState() { return audioCtx ? audioCtx.state : "none"; },
-  // Melody position on the scheduler's integer 96th-of-a-beat grid — the
+  // Melody position on the scheduler's integer 96th-of-a-beat grid â€” the
   // swing parity reads it; suites pin that the integer grid is held exactly.
   melodyPos96() { return melodyPos96; },
   // Transport diagnostics (suites + dev panel): how many melody-bag voices
@@ -166,13 +166,13 @@ window.OCA_DEBUG = {
   busAudit() { return { cutBusCount: cutBuses.size, retiredCount: retiredBuses.length }; },
   // Live audit helper: the full derived voice profile for a note id.
   profile(id) { return voiceProfileFor(id, freqOf(id)); },
-  // The installed per-ocarina tone model (instruments/<id>/tone.json) —
+  // The installed per-ocarina tone model (instruments/<id>/tone.json) â€”
   // null when the instrument has no fitted chambers yet (generic model).
   toneModel() { return TONE_MODEL; },
   // DEBUG panel "Induce lag": fakes audio-clock starvation. Seeds what
   // raisePerfAlert needs (a running ctx + one alive voice, the button click
   // itself is the user gesture), then loads the lag budget; the next
-  // watchdog tick (<0.5 s) consumes it — the exact path real starvation
+  // watchdog tick (<0.5 s) consumes it â€” the exact path real starvation
   // takes: glitch counter + Lite proposal.
   simulateLag() {
     try {
@@ -195,13 +195,13 @@ function syncTransport() {
 
 // Seconds per quarter note at the song's own 100% tempo for a given bpm
 // (the song's leading header or any inline "# tempo N" change). The tempo
-// slider is a RELATIVE playback speed (10–100%) applied at scheduling time
+// slider is a RELATIVE playback speed (10â€“100%) applied at scheduling time
 // (see melodyQuarter uses in scheduleMelody), so it must not bake in here.
 function quarterSecFor(bpm) {
   return 60 / Math.max(10, Math.min(400, (+bpm) || 100));
 }
 
-// Relative playback speed from the tempo slider (0.1–1 of the song tempo).
+// Relative playback speed from the tempo slider (0.1â€“1 of the song tempo).
 // Guarded: audio.js also runs in tooling without the library/UI scripts.
 function tempoSpeed() {
   if (typeof tempoPct !== "function") return 1;
@@ -234,8 +234,8 @@ function lastHoldIndex(tokens, idx) {
 }
 
 // Does the bar starting at `idx` have a sounding token at its start? Used to
-// gate the metronome tick. Genuinely empty bars — a trailing pause of whole
-// rests — stay quiet, since a lone downbeat click there sounds odd. But a tie
+// gate the metronome tick. Genuinely empty bars â€” a trailing pause of whole
+// rests â€” stay quiet, since a lone downbeat click there sounds odd. But a tie
 // token means the previous note is being HELD across the downbeat
 // ("G4/1 | -/1 | A4/1"): one connected sound spans the bar line, time keeps
 // passing, so the click must keep counting those bars too.
@@ -285,19 +285,19 @@ function makeReverbImpulse(ctx, seconds, decay) {
 }
 
 // ---------------------------------------------------------------------------
-// PERFORMANCE / HEADROOM METERS — diagnostics for the phone "clipping" (see
+// PERFORMANCE / HEADROOM METERS â€” diagnostics for the phone "clipping" (see
 // the perf dropdown in ui.js). The bus wiring below is deliberately STATIC:
 // the convolver stays in the graph even at wet = 0, because connect/
 // disconnect switching of the reverb mid-playback is believed to cause
-// audible cut-outs — Lite voice is the supported path on slow devices
-// instead. The meters exist to SEE the cost: output peak → headroom, how
+// audible cut-outs â€” Lite voice is the supported path on slow devices
+// instead. The meters exist to SEE the cost: output peak â†’ headroom, how
 // hard the output limiter is working, audio-clock stalls (underruns).
 // ---------------------------------------------------------------------------
 const perf = {
   wallBase: null, clockBase: null,
   glitches: 0,   // audio clock lagged the wall clock by >0.25 s in one window
   jumps: 0,      // audio clock suddenly leapt forward (context restart)
-  lag: 0,        // cumulative audio-clock lag budget (s) — sees slow/mild
+  lag: 0,        // cumulative audio-clock lag budget (s) â€” sees slow/mild
                  // starvation the per-window stall threshold misses (an
                  // underrun blanks buffer chunks while the clock keeps
                  // moving, so "stalls" can read 0 while clicks are audible)
@@ -310,7 +310,7 @@ let perfAlertListener = null;
 let perfLastAlert = -15000; // ms; first alert is never throttled
 
 // The UI registers a callback (ui.js: perfAlert) that gets called when a
-// glitch is suspected — it pulses the perf button and proposes Lite mode.
+// glitch is suspected â€” it pulses the perf button and proposes Lite mode.
 function setPerfAlertListener(fn) { perfAlertListener = fn; }
 
 function raisePerfAlert() {
@@ -323,7 +323,7 @@ function raisePerfAlert() {
 }
 
 // Voices that still have scheduled content ahead (bag entries prune
-// themselves once their `until` is past — see pruneBag).
+// themselves once their `until` is past â€” see pruneBag).
 function countAliveVoices(bag) {
   if (!audioCtx || !bag) return 0;
   const now = audioCtx.currentTime;
@@ -339,7 +339,7 @@ function getPerfTap(ctx) {
   if (perfAnalyser && perfAnalyser.context === ctx) return perfAnalyser;
   perfAnalyser = ctx.createAnalyser();
   perfAnalyser.fftSize = 1024;
-  return perfAnalyser; // metering only — never connected to the destination
+  return perfAnalyser; // metering only â€” never connected to the destination
 }
 
 // Watchdog: the audio clock normally tracks (even slightly leads) the wall
@@ -393,7 +393,7 @@ function audioPerfSnapshot() {
       if (v > peak) peak = v;
     }
     if (peak > perf.sessionPeak) perf.sessionPeak = peak;
-    p.cur = peak; // this analyser window's level — 0-ish after silence
+    p.cur = peak; // this analyser window's level â€” 0-ish after silence
   } else {
     p.cur = 0;
   }
@@ -451,7 +451,7 @@ function getReverbBus(ctx) {
   perfComps.push(limiter);
   // Pin the bus input at 2 channels with a forever-silent stereo feed: when
   // the first Zen chorus panner connects (or the connection's channel count
-  // changes later), a mono↔stereo topology switch can click. With the anchor
+  // changes later), a monoâ†”stereo topology switch can click. With the anchor
   // the bus is always stereo and mono voices just upmix silently.
   const anchor = ctx.createOscillator();
   anchor.type = "sine";
@@ -468,7 +468,7 @@ function getReverbBus(ctx) {
 
 // Lightweight output bus for Lite mode: a limiter + output gain, but NO
 // convolver. The reverb convolver (a 2.6s stereo impulse) convolves every
-// sample continuously and is one of the heaviest nodes on mobile — it runs
+// sample continuously and is one of the heaviest nodes on mobile â€” it runs
 // even when the wet level is 0. Lite voices route here to skip it entirely.
 let liteBus = null;
 function getLiteBus(ctx) {
@@ -491,8 +491,8 @@ function getLiteBus(ctx) {
 
 // Cut-safe melody bus: every melody-bag voice feeds this thin layer before the
 // output buses. Cutting the melody (stop / pause / practice swap) decays THIS
-// gain only — it carries its own single-event timeline (statically 1, set once
-// at creation), so the decay's start value is unambiguous — the exact static
+// gain only â€” it carries its own single-event timeline (statically 1, set once
+// at creation), so the decay's start value is unambiguous â€” the exact static
 // value, never a cancel-and-re-anchor guess: no cancelScheduledValues /
 // cancelAndHoldAtTime / .value reads anywhere on this path. Per-voice fades
 // still run underneath for hover/live cuts. Live-preview voices bypass this
@@ -512,26 +512,26 @@ function isMelodyBag(bag) { return bag === melodyBag || !!(bag && bag.melodyRout
 // Render-cut the melody buses as ONE continuous event per bus: an exponential
 // setTargetAtTime decay, scheduled a little AHEAD of the render cursor. Three
 // rules come straight from this bug's history:
-// 1. Never schedule at exactly .currentTime — events that land on/behind the
+// 1. Never schedule at exactly .currentTime â€” events that land on/behind the
 //    cursor execute as an instant step (the "speaker connect" pop; the same
 //    collapse playNoteAt already fights for note attacks with its +15 ms
 //    lead). A 30 ms lead buys the event safe headroom in front of the cursor.
-// 2. No .value writes at cut time — each raw write renders blockwise and was
+// 2. No .value writes at cut time â€” each raw write renders blockwise and was
 //    audible as individual clicks (the 10 ms staircase turned the pop into
 //    crackle). One continuous event replaces the whole staircase.
-// 3. Never cancel/re-anchor — the bus is statically 1 with no other
+// 3. Never cancel/re-anchor â€” the bus is statically 1 with no other
 //    automation, so the decay starts from the exact true value with no seam,
 //    and two cuts in a row chain smoothly (each event continues from the
 //    value the previous decay had reached).
 const CUT_LEAD = 0.03; // s ahead of the cursor when scheduling the decay
-const CUT_TAU = 0.035; // s time constant (~-60 dB after 6 tau ≈ 0.21 s)
+const CUT_TAU = 0.035; // s time constant (~-60 dB after 6 tau â‰ˆ 0.21 s)
 // Earliest safe source-stop horizon: strictly past the bus decay's end, so a
 // stopped oscillator can never sweep a still-sounding level.
 const melodyStopAt = ctx => ctx.currentTime + CUT_LEAD + 0.27;
 // Buses of already-cut generations. disconnect()ing a bus drops the whole
-// dead voice branch — but only once it is provably silent (voices are
+// dead voice branch â€” but only once it is provably silent (voices are
 // stopped at melodyStopAt), or the disconnect itself is a wave-abort click.
-const retiredBuses = []; // { bus, at } — at = audio time of the cut
+const retiredBuses = []; // { bus, at } â€” at = audio time of the cut
 function reapRetiredBuses(ctx) {
   if (!ctx) return;
   const now = ctx.currentTime;
@@ -566,7 +566,7 @@ function resetMelodyBuses(ctx) {
 
 // Called by the UI when Zen mode is entered/exited. Idempotent: safe to call
 // with the same state repeatedly. `reverbEnabled` is the single source of
-// truth — a lazily-created reverb bus reads it at build time, and any existing
+// truth â€” a lazily-created reverb bus reads it at build time, and any existing
 // wet gain is ramped here, so the flag and the live node can never disagree.
 function setReverbEnabled(on) {
   reverbEnabled = !!on;
@@ -596,7 +596,7 @@ function unlockAudio() {
 }
 
 // Real user activations only. pointerover used to be in the list "to warm up"
-// but is not a gesture on Safari/Firefox — its resume() only ever rejected.
+// but is not a gesture on Safari/Firefox â€” its resume() only ever rejected.
 ["pointerdown","keydown","touchstart"].forEach(ev =>
   document.addEventListener(ev, unlockAudio, {passive:true})
 );
@@ -693,7 +693,7 @@ function noteArticulation(id) {
 }
 
 // "Attack effort" (0..1) shaping the onset softness / pitch overshoot.
-// Larger (lower-numbered) chambers build air pressure more slowly → bigger
+// Larger (lower-numbered) chambers build air pressure more slowly â†’ bigger
 // overshoot and longer attack; within a chamber, MORE OPEN HOLES increase it
 // further. Returns ~0 for the smallest chamber fully closed, ~1 for the
 // largest chamber wide open.
@@ -704,7 +704,7 @@ function attackEffort(id, freq) {
 }
 
 // ---------------------------------------------------------------------------
-// PITCH-KEYED VOICE PROFILE — interpolated/extrapolated from the alto
+// PITCH-KEYED VOICE PROFILE â€” interpolated/extrapolated from the alto
 // recordings (analysis/alto-recordings-tone-data.json; tuner-verified C5 and
 // G6 takes, C5 = the shipped ideal tone). The low end (A3-B4, below any
 // measurement) is extrapolated conservatively: harmonics roughly 2x the C5
@@ -713,20 +713,20 @@ function attackEffort(id, freq) {
 //
 // Chamber model (from the player + fingerings.json): bigger chambers with
 // more open holes lose more air, so the player must blow harder toward the
-// top of every chamber — wind noise rebalances toward the upper bands, slow
+// top of every chamber â€” wind noise rebalances toward the upper bands, slow
 // wobble deepens and the attack overshoot grows. It resets at each chamber
 // boundary. The smallest (top) chamber hardly shows the drift at all, but it
 // carries the measured G6 "different character": a high formant with
 // H3 > H2 near 4.7 kHz that grows across chamber 3.
 //
 // Each table is keyed by f0 (Hz) and interpolated linearly in log2-f, with a
-// slope-clamped extrapolation (max ±1.5 octaves) outside the measured range.
+// slope-clamped extrapolation (max Â±1.5 octaves) outside the measured range.
 // ---------------------------------------------------------------------------
 const V_ANCHORS = {
   // Harmonic amplitudes re H1. Deliberately smooth pitch curves: the
   // measured D6 dip (H3 0.0027) in the recordings is an artifact of that
   // alto fingering (worst case of the LARGE chamber), not a feature to copy
-  // — on the triple, that pitch sits at the pure floor of chamber 3.
+  // â€” on the triple, that pitch sits at the pure floor of chamber 3.
   h2: [[220, 0.0095], [523.25, 0.00469], [1174, 0.0040], [1568, 0.0033]],
   h3: [[220, 0.0140], [523.25, 0.0076], [1174, 0.0090], [1568, 0.021]],
   h4: [[220, 0.0015], [523.25, 0.00077], [1174, 0.0008], [1568, 0.0096]],
@@ -742,7 +742,7 @@ const V_ANCHORS = {
   wobPct: [[220, 7.0], [523.25, 5.5], [1568, 4.9]],
   wobHz: [[220, 2.0], [523.25, 2.5], [1568, 4.5]],
   // Wind/breath noise band re H1 (dB): the measured bands around the tone.
-  // Low end is NOT conservative — the big bass chamber's hiss reads louder
+  // Low end is NOT conservative â€” the big bass chamber's hiss reads louder
   // to the player than the C5 extrapolation suggested.
   noiseLoDb: [[220, -22.0], [523.25, -25.9], [1174, -28.6], [1568, -29.4]],
   // Chamber-resonance bump sharpness of that noise: the bass chamber
@@ -751,7 +751,7 @@ const V_ANCHORS = {
   // A3 too: below C5 the bump must NOT keep narrowing (an overtight bump
   // hides the noise from the ear).
   noiseBumpQ: [[220, 6.0], [523.25, 9.0], [1568, 2.5]],
-  // Onset attack stretch vs C5 (measured attack time 20 → 35 ms up the range).
+  // Onset attack stretch vs C5 (measured attack time 20 â†’ 35 ms up the range).
   attackF: [[220, 0.9], [523.25, 1.0], [1174, 1.25], [1568, 1.75]],
 };
 
@@ -781,12 +781,12 @@ function vInterp(pts, f) {
 const db2lin = db => Math.pow(10, db / 20);
 
 // ---------------------------------------------------------------------------
-// PER-OCARINA TONE MODEL — instruments/<id>/tone.json: fitted per-chamber
+// PER-OCARINA TONE MODEL â€” instruments/<id>/tone.json: fitted per-chamber
 // anchors (3 recorded notes per chamber: near-low / middle / near-top on the
 // real ocarina). Rows carry the pitch-keyed voice tables (harmonics, level,
 // wander/wobble, wind bands, attack) plus the chamber's envelope constants
 // (chiff / overtone bloom / edge whistle). Ocarinas without data keep the
-// baked-in V_ANCHORS extrapolation below — byte-identical to the pre-tone
+// baked-in V_ANCHORS extrapolation below â€” byte-identical to the pre-tone
 // behaviour. Recording protocol and the schema live in instruments/README.md.
 // ---------------------------------------------------------------------------
 let TONE_MODEL = null; // { instrumentId, chambers: [{ ch, rows }] } | null
@@ -819,7 +819,7 @@ function toneRowsForChamber(ch) {
 
 // One pitch-keyed field of the chamber, interpolated at `freq` in log-f
 // between the fitted anchors (slope-clamped extrapolation at the chamber
-// edges — vInterp's own math). `fallback` may be the generic point-table OR
+// edges â€” vInterp's own math). `fallback` may be the generic point-table OR
 // a scalar: a missing field (or chamber) keeps the generic value per field.
 function toneVal(rows, key, fallback, freq) {
   if (rows) {
@@ -865,7 +865,7 @@ function toneEnvelopeFor(rows, freq) {
   };
 }
 
-// Everything a single note's voice needs, derived live (never cached — the
+// Everything a single note's voice needs, derived live (never cached â€” the
 // debug panel must be able to retune mid-session): the fitted per-chamber
 // anchors when the instrument's tone.json carries this chamber, else the
 // baked-in V_ANCHORS extrapolation + the chamber-size blow heuristics.
@@ -879,7 +879,7 @@ function voiceProfileFor(id, freq) {
   const chambers = (typeof CHAMBER !== "undefined" && CHAMBER) ? CHAMBER : null;
   const rows = toneRowsForChamber(chambers && chambers[id]);
   if (rows) {
-    // FITTED ocarina: the measured chamber speaks for itself — the generic
+    // FITTED ocarina: the measured chamber speaks for itself â€” the generic
     // hard-blow offsets drop out (the anchors already encode the real blow).
     return {
       h: [1,
@@ -960,7 +960,7 @@ function getWindBuffer(ctx) {
   return buf;
 }
 
-// Cached ocarina periodic waves — one per distinct harmonic set (the
+// Cached ocarina periodic waves â€” one per distinct harmonic set (the
 // pitch-keyed profile only changes smoothly), reused across notes instead of
 // rebuilding on every note. Keyed by the rounded harmonic values; invalidated
 // wholesale by the debug panel's invalidateWave().
@@ -1003,10 +1003,10 @@ function cutLive() {
 // ---------------------------------------------------------------------------
 // Hidden support notes (|[C2], |["Name",C2], [C2/4.] anywhere between bars):
 // each bracket plays ONE long, low supporting note with the modelled
-// instrument's own voice — playNoteAt, so it sounds exactly like playing the
+// instrument's own voice â€” playNoteAt, so it sounds exactly like playing the
 // note, chorus / reverb / wind layers included. Zen PLAYBACK only (never
 // practice, it would deafen the tuner); leaving Zen mid-note cuts the voices
-// via setBassEnabled(false) — see playSupportAt before scheduleMelody.
+// via setBassEnabled(false) â€” see playSupportAt before scheduleMelody.
 // ---------------------------------------------------------------------------
 
 // Live handles for the "leave Zen mid-playback" cut: every scheduled support
@@ -1023,7 +1023,7 @@ function setBassEnabled(on) {
 // Retire voices whose scheduled end time has passed: disconnect their head
 // sends so the browser can drop the whole finished branch from the graph, and
 // drop the JS references. Without this the bag closures keep every node of
-// every note alive for the whole song — 300+ finished voices still churning
+// every note alive for the whole song â€” 300+ finished voices still churning
 // their filters at the audio thread on slow phones (the meter read exactly
 // that as "Active voices").
 function pruneBag(bag) {
@@ -1050,10 +1050,10 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     if (audioCtx.state === "suspended") safeResume(audioCtx);
     const ctx = audioCtx;
     if (noteSink) try { noteSink(id, when, durSec, slideFromId, intoSlide); } catch (e) {}
-    // Late scheduling (a main-thread stall past the 0.3 s lookahead — GC/JIT
+    // Late scheduling (a main-thread stall past the 0.3 s lookahead â€” GC/JIT
     // bursts, worse on phones) hands a `when` already in the past. All gain/
     // pitch automation scheduled for the past collapses into one instant
-    // step: the whole attack executes as a jump to plateau level — audible
+    // step: the whole attack executes as a jump to plateau level â€” audible
     // as a click. Never start earlier than a small live lead; a late note
     // joins the grid late, it must not click.
     let t0 = when == null ? ctx.currentTime : when;
@@ -1065,17 +1065,17 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     const glide = slideFrom ? Math.min(Math.max(0.0125, dur * 0.0875), 0.0375) : 0; // fast bend (4x the old portamento)
     // A note flowing directly into a following ~ slide holds full level right
     // up to the junction, then crossfades briefly PAST it (the slide note
-    // begins at the same pitch, so the seam is inaudible — no gap, no re-blow).
+    // begins at the same pitch, so the seam is inaudible â€” no gap, no re-blow).
     const fadeOff = intoSlide ? 0.04 : 0;
     const stopOff = intoSlide ? tail * 2 : tail;
-    const rel = intoSlide ? 0.04 : Math.min(0.18, Math.max(0.05, dur * 0.35)); // ~40ms fade before a slide, else 50–180ms taper
+    const rel = intoSlide ? 0.04 : Math.min(0.18, Math.max(0.05, dur * 0.35)); // ~40ms fade before a slide, else 50â€“180ms taper
     const relStart = Math.max(0.02, dur - rel);
     // this voice (its layers and their tails through the output bus) counts
     // as site-made sound for practice-mode deafness
     markSystemSound(t0 + dur + stopOff);
 
     // Per-note voice profile (pitch-keyed harmonics, chamber-relative
-    // loudness, wobble/wind levels, attack shape) — derived live so the
+    // loudness, wobble/wind levels, attack shape) â€” derived live so the
     // debug panel can retune anything mid-session. `vp.en` carries the
     // FITTED per-chamber envelope spec (tone.json) when the instrument has
     // one; every field stands alone, so `x != null` falls back per field to
@@ -1086,7 +1086,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     const lpMult = EN.lpMult != null ? EN.lpMult : AUDIO_DEBUG.lpMult;
     const lpQ = EN.lpQ != null ? EN.lpQ : AUDIO_DEBUG.lpQ;
 
-    // LITE VOICE: a minimal 3-node voice (osc → lowpass → gain) for slow
+    // LITE VOICE: a minimal 3-node voice (osc â†’ lowpass â†’ gain) for slow
     // devices. Skips the air/edge/wander/chiff/vibrato/overtone layers and
     // the profile's slow-wander/wind layers so the audio thread isn't
     // overloaded (the main crackle cause). Same pitch, level and rough
@@ -1113,14 +1113,14 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       osc2.connect(lp2); lp2.connect(g); g.connect(isMelodyBag(bag) ? getMelodyCutBus(ctx, getLiteBus(ctx)) : getLiteBus(ctx));
       osc2.start(t0); osc2.stop(t0 + dur + stopOff);
       // until: absolute audio time past which nothing of this voice still
-      // sounds — lets pruneBag() retire finished voices (and let the browser
+      // sounds â€” lets pruneBag() retire finished voices (and let the browser
       // GC the whole branch from the audio graph).
       if (bag) bag.push({
         until: t0 + dur + stopOff + 0.08,
         stop() { try { osc2.stop(); } catch (e) {} },
         kill() { g.disconnect(); },
         fade() {
-          // Melody voices are faded by the cut-bus decay — no per-voice
+          // Melody voices are faded by the cut-bus decay â€” no per-voice
           // automation; sources are stopped strictly past the decay's end.
           if (isMelodyBag(bag)) {
             try { osc2.stop(melodyStopAt(ctx)); } catch (e) {}
@@ -1138,7 +1138,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       return;
     }
 
-    // Zen CHORUS: sustained Zen notes double the core tone — the clean core
+    // Zen CHORUS: sustained Zen notes double the core tone â€” the clean core
     // goes hard LEFT, a vibrato twin (pitch LFO only) hard RIGHT; chiff /
     // edge / wind / onset layers stay center mono (they are tiny anyway).
     // Uses the same envelope schedule on every send, and the reverb bus
@@ -1153,7 +1153,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // Nodes that must RAMP to zero (not just stop) when the note is cut
     // short (cutLive/fade): fast hover note-changes used to chop layers whose
     // gains sit at a steady level (wind/edge/chiff/overtone do not fade with
-    // master alone) — chopping mid-level is audible as a tick.
+    // master alone) â€” chopping mid-level is audible as a tick.
     const cutFades = [{ g: master, level: undefined }];
     // Master plateau level (dev-tunable) scaled by the note's profile level
     // curve (mild reproduction of the measured non-monotonic chamber
@@ -1163,9 +1163,9 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     const M = AUDIO_DEBUG.masterLevel * vp.levelLin;
     const preLevel = M * (0.05 / 0.26);   // breathy pre-tone (exactly 0.05 at default M)
     const toneLevel = M * (0.16 / 0.26);  // tone begins to speak (exactly 0.16 at default M)
-    // Tone speaks slightly after onset (breathy pre-tone → full), pairing with
+    // Tone speaks slightly after onset (breathy pre-tone â†’ full), pairing with
     // the pitch "catch up" bloom below for a soft ocarina attack. Larger
-    // chambers + more open holes build pressure slower → a longer, softer
+    // chambers + more open holes build pressure slower â†’ a longer, softer
     // attack (see attackEffort), stretched further by the profile's
     // measured attack-time curve. The big bass chamber is especially
     // demanding: the pure tone takes noticeably longer to reach full
@@ -1177,21 +1177,21 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     const t1 = t0 + speak * 0.5;
     const t2 = t0 + speak + 0.015;
     // Ensure the final "equilibrium" ramp has a real duration but also finishes
-    // BEFORE the release begins. When equilib≈0 (high chamber) t3 would equal t2
-    // (instant jump → click); when the note is short & high-effort (e.g. D5/16)
+    // BEFORE the release begins. When equilibâ‰ˆ0 (high chamber) t3 would equal t2
+    // (instant jump â†’ click); when the note is short & high-effort (e.g. D5/16)
     // an unclamped t3 would land after relStart, creating out-of-order gain
     // automation (another click). Clamp into (t2, relStart).
     const relStartT = t0 + relStart;
     const t3 = Math.min(relStartT - 0.005, Math.max(t2 + 0.015, t2 + equilib));
     // Measured attack-window overshoot (0.5-4.8 dB, hard blows worse):
     // right after the tone speaks, the level briefly busts above the plateau
-    // and settles back — a real "blown harder than it needs" tell.
+    // and settles back â€” a real "blown harder than it needs" tell.
     const osLin = slideFrom ? 1 : Math.pow(10, vp.osDb / 20);
     // The full note envelope, also reused verbatim by the Zen chorus sends.
     function schedEnv(g) {
       g.gain.setValueAtTime(0.0001, t0);
       if (slideFrom) {
-        // ~ Legato: the tone carries straight over from the previous note — no
+        // ~ Legato: the tone carries straight over from the previous note â€” no
         // breathy pre-tone or tongued attack; swell to full in ~35ms while the
         // glide leaves the previous pitch.
         g.gain.linearRampToValueAtTime(M, t0 + Math.min(0.035, dur * 0.4));
@@ -1226,7 +1226,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // Keep the cutoff a roughly FIXED MULTIPLE of the fundamental across the
     // whole range so the timbre stays consistently pure/hollow like a real
     // ocarina. A hard absolute cap (e.g. 2800) collapses cutoff/f on high
-    // notes, thinning the tone and — with the edge/air partials below — making
+    // notes, thinning the tone and â€” with the edge/air partials below â€” making
     // it read as a bowed string. A high ceiling only guards against aliasing.
     if (slideFrom) {
       // Timbre morphs WITH the glide so the landed note speaks with the same
@@ -1266,7 +1266,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     }
 
     const wave = getOcarinaWave(ctx, vp);
-    // The pitch automation (legato bend / catch-up bloom / release sag) —
+    // The pitch automation (legato bend / catch-up bloom / release sag) â€”
     // also used verbatim by the chorus twin so both sides land identically.
     function scheduleFreq(o) {
       if (slideFrom) {
@@ -1281,25 +1281,25 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
         o.frequency.exponentialRampToValueAtTime(freq, t0 + glide + settle);
       } else {
         // Airflow "catch up" onset: the pitch begins slightly flat and blooms
-        // to target with a tiny overshoot — a brief breath chiff, NOT a long
-        // pitch slide (that reads as brass). The pitch locks in fast (~15–30ms)
+        // to target with a tiny overshoot â€” a brief breath chiff, NOT a long
+        // pitch slide (that reads as brass). The pitch locks in fast (~15â€“30ms)
         // even on high-effort notes; effort mainly shapes the softer AMPLITUDE
         // attack (see `speak` above), not a long glide.
         const rise = Math.min(0.03, Math.max(0.01, dur * 0.12)) * (0.7 + 0.3 * effort);
-        const flat = 0.993 - 0.007 * effort;  // start pitch: 0.7%–1.4% flat
-        const over = 1.002 + 0.004 * effort;  // overshoot: 0.2%–0.6% sharp
+        const flat = 0.993 - 0.007 * effort;  // start pitch: 0.7%â€“1.4% flat
+        const over = 1.002 + 0.004 * effort;  // overshoot: 0.2%â€“0.6% sharp
         const overshootAt = t0 + rise;
         const settleAt = overshootAt + rise * 0.9;
         o.frequency.setValueAtTime(freq * flat, t0);            // starts flat (air slow)
         o.frequency.linearRampToValueAtTime(freq * over, overshootAt); // overshoot sharp
         o.frequency.exponentialRampToValueAtTime(freq, settleAt);      // settle to pitch
         // Release pitch sag: as breath pressure falls at the end of the note the
-        // pitch bends flat — a subtle downward "sigh". Scaled by effort/chamber
+        // pitch bends flat â€” a subtle downward "sigh". Scaled by effort/chamber
         // so bigger chambers sag a touch more. Only if the note is long enough to
         // have settled first, and never on a note that flows into a ~ slide
         // (the pitch must stay put until the glide takes over).
         if (!intoSlide && relStart > settleAt + 0.02) {
-          const sag = 0.01 + 0.008 * effort; // ~17–31 cents flat over the release
+          const sag = 0.01 + 0.008 * effort; // ~17â€“31 cents flat over the release
           o.frequency.setValueAtTime(freq, relStart);
           o.frequency.linearRampToValueAtTime(freq * (1 - sag), t0 + dur);
         }
@@ -1318,7 +1318,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // partial is a strong bowed-string cue, and a real ocarina is nearly a
     // pure sine up high, so it should recede there.
     const hiF = Math.max(0, Math.min(1, (freq - AUDIO_DEBUG.hiFrom) /
-      Math.max(60, AUDIO_DEBUG.hiTo - AUDIO_DEBUG.hiFrom))); // 0 below E5 → 1 by G6 (dev-tunable)
+      Math.max(60, AUDIO_DEBUG.hiTo - AUDIO_DEBUG.hiFrom))); // 0 below E5 â†’ 1 by G6 (dev-tunable)
     const air = ctx.createOscillator();
     air.type = "sine";
     if (slideFrom) {
@@ -1340,12 +1340,12 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     air.stop(t0 + dur + tail);
 
     // Slow INTRINSIC wander (the recordings' non-vibrato wobble): breath
-    // pressure meanders quasi-randomly, so ONE sine reads as obvious —
+    // pressure meanders quasi-randomly, so ONE sine reads as obvious â€”
     // two INCOMMENSURATE LFOs (triangle + sine at an inharmonic rate ratio,
     // per-note re-jittered so every note starts elsewhere) share the depth;
     // their sum is a meander, not a warble. Both modulations in phase with
     // each other per component: breath pressure moves pitch AND loudness
-    // together. Combined depth ≈ std×0.88 (sine-equivalent) — faithful to
+    // together. Combined depth â‰ˆ stdÃ—0.88 (sine-equivalent) â€” faithful to
     // the measured detrended std WITHOUT the earlier sine overshoot.
     const wobAmpGains = [];     // shared with the chorus twin's tremolo below
     if (vp.wanderC > 0.01 || vp.wobDepth > 0.0005) {
@@ -1360,7 +1360,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
         const wobPitch = ctx.createGain();  // pitch drift depth (Hz)
         const wobAmp = ctx.createGain();    // loudness wobble depth
         // Explicit ramp targets (never touch .value: that schedules an
-        // implicit event which would cancel the 0→depth ramp on live notes).
+        // implicit event which would cancel the 0â†’depth ramp on live notes).
         const pTarget = freq * (Math.pow(2, vp.wanderC * 1.2 * c.share / 1200) - 1);
         const aTarget = vp.wobDepth * 0.85 * c.share;
         // Settle in just after the attack so it doesn't smear the onset.
@@ -1378,7 +1378,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // Expressive vibrato ZEN MODE ONLY (vibratoEnabled, gated like the
     // reverb), and on sustained notes it runs as a stereo CHORUS: clean core
     // LEFT, vibrato twin RIGHT (see the chorus note above). The vibrato LFO
-    // therefore lives on the TWIN — the left side stays clean — and short
+    // therefore lives on the TWIN â€” the left side stays clean â€” and short
     // notes (no room for the vibrato entry) simply stay mono-centered.
     const lfoGain = ctx.createGain();     // pitch depth
     const tremGain = ctx.createGain();    // amplitude depth (in phase)
@@ -1442,7 +1442,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // fipple/vessel flute. It grows with blowing effort (reg). On high notes
     // this detuned, FM-wandering partial beats close to the fundamental and is
     // the main reason the top of the range reads as a bowed string, so its
-    // level, detune spread and wander all recede toward the top (hiF → 1).
+    // level, detune spread and wander all recede toward the top (hiF â†’ 1).
     // A fitted ocarina carries its own edge measurements per chamber
     // (hl.edge.level already includes the chamber's own growth).
     const edge = ctx.createOscillator();
@@ -1486,10 +1486,10 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     edge.start(t0); edge.stop(t0 + dur + tail);
     wander.start(t0); wander.stop(t0 + dur + tail);
 
-    // Broadband wind/breath noise (measured: the band 0.85–1.95×f0 sits at
-    // −26..−29 dB re H1, concentrated just above the tone by the chamber's
+    // Broadband wind/breath noise (measured: the band 0.85â€“1.95Ã—f0 sits at
+    // âˆ’26..âˆ’29 dB re H1, concentrated just above the tone by the chamber's
     // resonance). One looping noise source through the chamber bump and a
-    // steep post lowpass. Truly broadband — a hard blow must NEVER be tuned
+    // steep post lowpass. Truly broadband â€” a hard blow must NEVER be tuned
     // as a sustained pitched partial (the band-1 metric is blind to narrow
     // tones, so only the island detector can catch that mistake).
     if (vp.windBump > 1e-5) {
@@ -1503,7 +1503,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       windBp.Q.value = vp.windQ;
       // Steep noise lowpass: keeps the hiss hugging the tone instead of a
       // bright wash at the octave+ (the recordings show the upper noise
-      // bands dropping ~14+ dB by 4×f0).
+      // bands dropping ~14+ dB by 4Ã—f0).
       const windLp = ctx.createBiquadFilter();
       windLp.type = "lowpass";
       windLp.frequency.value = Math.min(ctx.sampleRate * 0.45, freq * WIND_SHAPE.noiseLpRatio);
@@ -1533,12 +1533,12 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // A measured ocarina replaces the size heuristics with its fitted
     // per-chamber values (eChiff), each standing alone.
     // A ~ slide note CONTINUES the previous note's breath, so it gets no chiff
-    // at all — no tongued burst at onset, no extra burst when the glide lands.
+    // at all â€” no tongued burst at onset, no extra burst when the glide lands.
     if (!slideFrom) {
       const { sizeF: chSize, openF: chOpen } = art;
       // Cap to the note's release start so the chiff always fades to zero before
       // `master` cuts the note. On short notes (fast 16ths) an uncapped chiff is
-      // still at high level when master fades at t0+dur → truncation click.
+      // still at high level when master fades at t0+dur â†’ truncation click.
       const chiffLen = Math.min(
         eChiff && eChiff.len != null ? eChiff.len
           : (AUDIO_DEBUG.chiffBase + chSize * AUDIO_DEBUG.chiffSize) * (0.85 + 0.15 * chOpen),
@@ -1548,7 +1548,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       // Use a resonant lowpass with a strongly chamber-dependent cutoff and a
       // wide spread so the timbres are clearly distinct, sweeping down as the
       // cavity focuses. `bright` spans ~4 octaves between largest & smallest.
-      const bright = Math.min(9, Math.pow(2, (1 - chSize) * 3.5 + chOpen * 1.2)); // ~1x (big) → capped ~9x
+      const bright = Math.min(9, Math.pow(2, (1 - chSize) * 3.5 + chOpen * 1.2)); // ~1x (big) â†’ capped ~9x
       const startHz = eChiff && eChiff.startHz != null ? Math.min(11000, eChiff.startHz)
         : Math.min(11000, 900 * bright); // broad/high at onset
       const endHz = eChiff && eChiff.endHz != null ? Math.min(9000, eChiff.endHz)
@@ -1557,7 +1557,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       chiffSrc.buffer = getChiffBuffer(ctx);
       const chiffHp = ctx.createBiquadFilter();
       chiffHp.type = "highpass";
-      chiffHp.frequency.value = Math.max(300, startHz / 7.5); // trim low rumble (the generic path's 120·bright ≡ startHz/7.5); floor keeps it airy not rumbly
+      chiffHp.frequency.value = Math.max(300, startHz / 7.5); // trim low rumble (the generic path's 120Â·bright â‰¡ startHz/7.5); floor keeps it airy not rumbly
       const chiffLp = ctx.createBiquadFilter();
       chiffLp.type = "lowpass";
       chiffLp.Q.value = 0.4; // non-resonant: avoids a chirp/ring on bright high-chamber sweeps
@@ -1585,7 +1585,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
 
     // Overblown-mode ONSET overtone ("blowing on a bottle"): when the jet first
     // hits the labium it is momentarily too fast and briefly excites the first
-    // overblown mode — around the octave above — before the airflow settles and
+    // overblown mode â€” around the octave above â€” before the airflow settles and
     // the fundamental takes over. Rendered as a BREATHY, pitched whistle: noise
     // through a bandpass centered on the octave (airy character) plus a faint
     // sine for pitch definition. It speaks at the onset and decays as the
@@ -1629,7 +1629,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       otNoise.connect(otBp); otBp.connect(otNoiseGain); otNoiseGain.connect(otGain);
       otNoise.start(t0 + otOff); otNoise.stop(t0 + otOff + otDur + 0.02);
 
-      // Sine overtone at the octave — the MAIN pitched voice of the transient,
+      // Sine overtone at the octave â€” the MAIN pitched voice of the transient,
       // a hair sharp sagging onto the true octave.
       const ot = ctx.createOscillator();
       ot.type = "sine";
@@ -1657,12 +1657,12 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       const stopN = (n, t) => { try { if (n) (t == null ? n.stop() : n.stop(t)); } catch (e) {} };
       // fade() ramps EVERY saved gain edge (master, chorus sends, air/edge/
       // wind/chiff/overtone gains) from its CURRENT scheduled value down to
-      // near-zero over 30 ms, THEN stops the sources — no component is cut
+      // near-zero over 30 ms, THEN stops the sources â€” no component is cut
       // mid-level. Live/hover voices only: melody cuts never come through
       // here (their audible fade lives on the cut buses; see fadeMelodyBuses).
       // Anchor = .value read (the computed plateau) re-pinned at the cancel
       // instant; this exact form is the one with a long click-free live/hover
-      // history — cancelAndHoldAtTime was tried here and popped on real
+      // history â€” cancelAndHoldAtTime was tried here and popped on real
       // hardware, so it stays out of this path.
       const rampFades = () => {
         const now = ctx.currentTime;
@@ -1682,7 +1682,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
           for (const p of panDisc) { try { p.disconnect(); } catch (e) {} }
         },
         fade() {
-          // For melody voices: NO per-voice gain automation at all — the
+          // For melody voices: NO per-voice gain automation at all â€” the
           // cut-bus decay owns the audible fade (one exponential event per
           // bus, scheduled ahead of the cursor; see fadeMelodyBuses). Only
           // the sources are stopped, strictly past the decay's end so a stop
@@ -1746,7 +1746,7 @@ function playTickAt(when, bag) {
       fade() {
         // A mid-tick cut needs NO gain writes: the tick's own envelope
         // (attack to 0.09 in 2 ms, exponential down to 0.0001 by t0+40 ms)
-        // always finishes before any reachable stop time — a cut scheduled
+        // always finishes before any reachable stop time â€” a cut scheduled
         // at now lands at earliest t0+50 ms, past the envelope's silent end,
         // so stopping there can never sweep a sounding level. A tick cut
         // before its start time simply never sounds.
@@ -1766,7 +1766,7 @@ function stopMelody() {
   if (audioCtx) markSystemSound(melodyStopAt(audioCtx)); // sources stop past the bus decay
   melodyBag.forEach(n => { try { (n.fade || n.stop)(); } catch (e) {} });
   melodyBag = [];
-  fadeMelodyBuses(audioCtx); // one setTargetAtTime decay per bus — the melody's audible cut
+  fadeMelodyBuses(audioCtx); // one setTargetAtTime decay per bus â€” the melody's audible cut
   if (melodyTimer) { clearTimeout(melodyTimer); melodyTimer = 0; }
   if (typeof freezeZenGlow === "function") freezeZenGlow();
   const btn = document.getElementById("playMel");
@@ -1815,7 +1815,7 @@ function pauseMelody() {
   if (audioCtx) markSystemSound(melodyStopAt(audioCtx)); // sources stop past the bus decay
   melodyBag.forEach(n => { try { (n.fade || n.stop)(); } catch (e) {} });
   melodyBag = [];
-  fadeMelodyBuses(audioCtx); // one setTargetAtTime decay per bus — the melody's audible cut
+  fadeMelodyBuses(audioCtx); // one setTargetAtTime decay per bus â€” the melody's audible cut
   if (melodyTimer) { clearTimeout(melodyTimer); melodyTimer = 0; }
   if (typeof freezeZenGlow === "function") freezeZenGlow();
   const btn = document.getElementById("playMel");
@@ -1842,20 +1842,9 @@ function togglePlayPause() {
   else playMelody();
 }
 
-function rewindMelody() {
-  const wasActive = melodyPlaying || melodyPaused;
-  stopMelody();
-  if (wasActive) { playMelody(0); return; }
-  const toks = parse(document.getElementById("src").value);
-  if (!toks.length) return;
-  if (typeof firstSoundIdx === "function" && typeof highlightToken === "function") {
-    highlightToken(firstSoundIdx(toks), null);
-  }
-}
-
 // Windowed lookahead scheduler. Instead of arming one timer per note ~80ms
 // ahead (where a single late/janky timer would schedule a note with no lead
-// time → audio-thread underrun → crackle), this pushes every note due within
+// time â†’ audio-thread underrun â†’ crackle), this pushes every note due within
 // SCHED_AHEAD out to the audio clock, then re-checks on a fixed short interval.
 // Audio timing is therefore decoupled from main-thread jitter.
 const SCHED_AHEAD = 0.3;  // schedule this far ahead of the audio clock (s)
@@ -1866,7 +1855,7 @@ const SCHED_TICK = 0.05;  // how often the scheduler wakes up (s)
 // Brackets are its notes written inline: [C3/2] a note, [-/2] a tie that
 // extends the running chain, [~G3/2] a glide into a pitch. This pre-pass
 // turns markers into statically anchored plan events so the melody walk can
-// fire them with the melody's own note semantics at the melody clock — no
+// fire them with the melody's own note semantics at the melody clock â€” no
 // hand-off state, no seams: an event's onset IS the melody time of the pivot
 // after its marker (first rest/note; bar/tempo/bass, ties transparent), and
 // a ring plus its extensions are ONE voice exactly like a melody tie chain.
@@ -1875,7 +1864,7 @@ const SCHED_TICK = 0.05;  // how often the scheduler wakes up (s)
 // Static plan built once in playMelody: { byAnchor: Map<idx, events[]>,
 // trailing, loopEvents, open }. Events (all in marker order per anchor):
 //   { anchorIdx, id, beats(null = durationless), ext, slide, slideFrom,
-//     intoSlide } — beats/ext are grid beats, composed at fire time with the
+//     intoSlide } â€” beats/ext are grid beats, composed at fire time with the
 // live quarter the same way melody notes are.
 let supportPlan = null;
 
@@ -1921,7 +1910,7 @@ function buildSupportPlan(tokens) {
     if (t.type === "tempo") continue; // transparent: markers ride past it
     if (t.type === "bass") {
       if (t.ext != null) {
-        // [-/N]: tie — extends the running chain's ring. Ties never sound on
+        // [-/N]: tie â€” extends the running chain's ring. Ties never sound on
         // their own and never fire; the chain may span melody rests (the
         // glue is the support track's own chain, not the melody's).
         if (last) last.ext += t.ext;
@@ -1938,7 +1927,7 @@ function buildSupportPlan(tokens) {
 
 // Seconds a durationless support spans: grid time from its anchor to the
 // NEXT bar line (an inline tempo change rebalances the tail via its own
-// quarter; an end-of-song measure drones to the last token) — the synthesized
+// quarter; an end-of-song measure drones to the last token) â€” the synthesized
 // fill the parallel track gets for a bracket with no notated length.
 function openSupportSpanSec(startIdx) {
   let beats = 0, q = melodyQuarter;
@@ -1953,7 +1942,7 @@ function openSupportSpanSec(startIdx) {
 
 // The support voice IS the modelled instrument voice (playNoteAt), so it
 // inherits chorus, reverb, wind/edge layers and the same tuning as playing
-// the note on the selected ocarinaZen playback only — the scheduler gates it.
+// the note on the selected ocarinaZen playback only â€” the scheduler gates it.
 // The bag IS the routing discriminator inside playNoteAt: a melody-bag voice
 // feeds the cut layer and stops on the melody's horizon, while anything else
 // fell off to the raw reverb bus and the legacy .value fade (the click-prone
@@ -1989,7 +1978,7 @@ function fireDueSupport(anchorIdx, when) {
 function fireSupportEvent(e, when) {
   let dur, slideFrom = null, intoSlide = false;
   if (e.beats == null) {
-    // Durationless: ring until the next bar (or the last token) — the
+    // Durationless: ring until the next bar (or the last token) â€” the
     // synthesized fill, timed live like the pre-track drones were.
     dur = openSupportSpanSec(e.anchorIdx);
     if (e.ext) dur += e.ext * melodyQuarter / tempoSpeed();
@@ -1999,7 +1988,7 @@ function fireSupportEvent(e, when) {
     slideFrom = e.slide ? e.slideFrom : null;
     intoSlide = !!e.intoSlide;
   }
-  // A new open-ended ring — and a glide taking over a sustained drone —
+  // A new open-ended ring â€” and a glide taking over a sustained drone â€”
   // retires the previous still-open ring (their spans would overlap through
   // the ring/glide otherwise). Plain bounded supports never cut anyone.
   if ((e.beats == null || e.slide) && supportPlan.open &&
@@ -2017,12 +2006,12 @@ function fireSupportEvent(e, when) {
 }
 
 // ---- shared highlight plan ------------------------------------------------
-// Every scheduled token used to carry its OWN setTimeout for highlightToken —
+// Every scheduled token used to carry its OWN setTimeout for highlightToken â€”
 // page-lifetime timers alive across the whole song length. The plan keeps
 // them queued by audio-clock position and fires them through ONE timer/rAF
 // pair: wakes only as work comes due, rAF for the near-term batches so
 // highlight throws land inside a frame instead of a timer clamp.
-const highlightPlan = [];   // { at, run } — at = performance.now()-based ms
+const highlightPlan = [];   // { at, run } â€” at = performance.now()-based ms
 let highlightTimer = 0;
 let highlightRaf = 0;
 
@@ -2052,7 +2041,7 @@ function flushHighlightPlan() {
 
 function queueHighlight(delayMs, run) {
   // The scheduler walks monotonic positions, but lookahead bursts can land a
-  // piece out of order — sort and re-arm so the next wake always targets the
+  // piece out of order â€” sort and re-arm so the next wake always targets the
   // earliest due item.
   highlightPlan.push({ at: performance.now() + Math.max(0, delayMs), run: run });
   if (highlightPlan.length > 1) {
@@ -2095,7 +2084,7 @@ function scheduleMelody(when) {
         if (supportPlan) {
           // A new loop: the previous drone must not leak in, and markers
           // parked past the last note (anchored at the token-list end) ring
-          // at each new pass's first pivot — armed here, flushed once there.
+          // at each new pass's first pivot â€” armed here, flushed once there.
           supportPlan.open = null;
           supportPlan.loopEvents = supportPlan.trailing.length ? supportPlan.trailing : null;
         }
@@ -2114,7 +2103,7 @@ function scheduleMelody(when) {
       } else {
         // Support markers trailing past the last note: give them their one
         // ring at the song's end (the plan anchors them at the token-list
-        // end). One-shot per playback — the armed flush consumes itself.
+        // end). One-shot per playback â€” the armed flush consumes itself.
         if (supportPlan && supportPlan.trailing.length && !supportPlan.endFired) {
           supportPlan.endFired = true;
           supportPlan.loopEvents = supportPlan.trailing;
@@ -2130,17 +2119,17 @@ function scheduleMelody(when) {
     }
     // Keep the grid time but never schedule in the past: a late timer hands
     // melodyNextTime already behind currentTime, and past automation
-    // collapses into instant steps (attack skipped → click; see playNoteAt).
+    // collapses into instant steps (attack skipped â†’ click; see playNoteAt).
     const noteWhen = Math.max(melodyNextTime, audioCtx.currentTime + 0.02);
     if (atBar && tickEnabled() && barHasNote(melodyTokens, melodyIdx)) playTickAt(noteWhen, melodyBag);
     const tok = melodyTokens[melodyIdx];
     // Pivot: a rest or a fresh note onset (ties stay part of the previous
-    // chain) is the moment the support plan's events anchored here fire —
+    // chain) is the moment the support plan's events anchored here fire â€”
     // at this token's exact melody-clock onset.
     if (supportPlan && (tok.type === "note" || tok.type === "rest"))
       fireDueSupport(melodyIdx, noteWhen);
     const step = Math.max(0.001, swungBeats(tok, melodyPos96) * melodyQuarter /
-                  tempoSpeed()); // tempo dial: % of the song's own speed (live — mid-song slider moves apply to upcoming notes)
+                  tempoSpeed()); // tempo dial: % of the song's own speed (live â€” mid-song slider moves apply to upcoming notes)
     melodyPos96 += Math.round(tokenGridBeats(tok) * 96);
     const pitched = (tok.type === "note" || tok.type === "tie") && NOTES.includes(tok.id);
     let didSound = false;
@@ -2188,7 +2177,7 @@ export { AUDIO_DEFAULTS, audioCtx, audioPerfReset, audioPerfSnapshot, cutLive, f
          unlockAudio, setNoteSink, setAuditionSink, sharedAudioCtx };
 
 // Classic-script compat surface (tests + dev console).
-// audioCtx is a let swapped on lazy creation, so the mirror is a live getter —
+// audioCtx is a let swapped on lazy creation, so the mirror is a live getter â€”
 // a plain assignment here would freeze the not-yet-created undefined.
 Object.defineProperty(window, "audioCtx", { get () { return audioCtx; } });
 window.sharedAudioCtx = sharedAudioCtx;

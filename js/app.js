@@ -1,4 +1,4 @@
-import { parse, titleFromText } from "./parse.js";
+import { titleFromText } from "./parse.js";
 import { installOcarinaTemplate, invalidateSvgHtml } from "./ocarina.js";
 import { installToneModel } from "./audio.js";
 import { BUILTIN, fillLibrary, initBuiltin, loadLibraryItem, refreshGeneratedScales,
