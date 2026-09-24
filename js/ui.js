@@ -1,5 +1,6 @@
 import { durLabel, isOutOfRange, parse, pretty, rangeCheck, spelledLabel,
          swingFromText, tempoFromText, titleFromText, withPlayHeaders } from "./parse.js";
+import { midiOf } from "./music-math.js";
 import { ocarinaSVG } from "./ocarina.js";
 import { audioCtx, audioPerfReset, audioPerfSnapshot, isMelodyPaused,
          isMelodyPlaying, liteMode, pauseMelody, playMelody, playNote,
@@ -568,10 +569,8 @@ function highlightToken(i, noteId, durSec, sounding) {
 // the body of the note, then fade out to the note's end so sustained notes
 // keep their light and short notes pulse briefly.
 function noteMidi(id) {
-  const m = String(id).match(/^([A-G]s?)(\d)$/);
-  if (!m) return 69;
-  const semi = {C:0,Cs:1,D:2,Ds:3,E:4,F:5,Fs:6,G:7,Gs:8,A:9,As:10,B:11};
-  return semi[m[1]] + (+m[2] + 1) * 12;
+  const n = midiOf(id);
+  return n == null ? 69 : n;   // A4 keeps unparsable ids mid-glow, as before
 }
 let zenGlowFadeTimer = 0;
 function pulseZenGlow(noteId, durSec) {

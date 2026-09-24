@@ -1,5 +1,6 @@
 ﻿import { parse } from "./parse.js";
 import { currentSwing, tempoPct } from "./library.js";
+import { freqOf } from "./music-math.js";
 import { bumpHoverQuiet, clearHighlight, cueFirstNote, freezeZenGlow,
          highlightToken, isFocusMode, quarterSec, tokenSeconds, updateTransportUI } from "./ui.js";
 import { isPracticeActive } from "./practice.js";
@@ -725,14 +726,6 @@ document.addEventListener("visibilitychange", () => {
   if (document.hidden) cutLive();
   else hushHovers();
 });
-
-function freqOf(id) {
-  const m = String(id).match(/^([A-G]s?)(\d)$/);
-  if (!m) return 440;
-  const semi = {C:0,Cs:1,D:2,Ds:3,E:4,F:5,Fs:6,G:7,Gs:8,A:9,As:10,B:11};
-  const midi = semi[m[1]] + (+m[2] + 1) * 12;
-  return 440 * Math.pow(2, (midi - 69) / 12);
-}
 
 // Per-chamber frequency ranges, cached from window.CHAMBER / window.NOTES.
 let chamberRanges = null;

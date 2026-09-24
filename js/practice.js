@@ -104,13 +104,6 @@ import { currentSongId } from "./app.js";
       (typeof AUDIO_DEFAULTS !== "undefined" ? AUDIO_DEFAULTS : {});
   }
 
-  function freqOfId(id) {
-    if (typeof freqOf === "function") return freqOf(id);
-    const m = String(id).match(/^([A-G]s?)(\d)$/);
-    if (!m) return 440;
-    const semi = { C: 0, Cs: 1, D: 2, Ds: 3, E: 4, F: 5, Fs: 6, G: 7, Gs: 8, A: 9, As: 10, B: 11 };
-    return 440 * Math.pow(2, (semi[m[1]] + (+m[2] + 1) * 12 - 69) / 12);
-  }
   function gridBeats(t) {
     if (!t || t.type === "bar" || t.type === "tempo" || t.type === "bass") return 0;
     return t.beats || ((4 / (t.dur || 4)) * (t.dotted ? 1.5 : 1) * (t.triplet ? 2 / 3 : 1));
@@ -150,7 +143,7 @@ import { currentSongId } from "./app.js";
   // in (slideFrom === previous pitch, playable, a NEW pitch) joins the
   // chain, and each hop's own ties are absorbed across bar lines too.
   function absorbHops(tokens, from, firstId) {
-    const zones = [freqOfId(firstId)];
+    const zones = [freqOf(firstId)];
     const names = [firstId];
     const zoneIdx = [from];
     let end = absorbTies(tokens, from, firstId);
@@ -163,7 +156,7 @@ import { currentSongId } from "./app.js";
       if (nt.type === "tie" || !nt.slide || !NOTES.includes(nt.id) ||
           nt.id === prevId || nt.slideFrom !== prevId) break;
       slide = true;
-      zones.push(freqOfId(nt.id));
+      zones.push(freqOf(nt.id));
       names.push(nt.id);
       zoneIdx.push(j);
       prevId = nt.id;
