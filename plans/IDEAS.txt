@@ -48,3 +48,5 @@ THEMES
 
 Additional 80s black audio-stack with square-row LED displays. The red understripe for headers can remain the same as other.
 Switching between themes in a way that signifies the color theme without showing it in the current theme during normal usage.
+
+Fix: â€ and Â characters that got committed by AI that replaced non-standard dashes.
