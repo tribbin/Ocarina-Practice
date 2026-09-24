@@ -26,6 +26,7 @@ Give option to pre-calculate (wave forms of notes for) a song and cache them.
 Show a pre-processing bar so the user can choose to await the pre-caching before starting.
 If the song plays, stop further pre-caching as you'd not want to put the extra strain on the device; pre-caching is specifically to prevent that.
 Minify JS and CSS on GitHub deploy.
+Should we use GitHub actions on deploy to make the large hole ocarina SVGs?
 
 LAYOUT
 
