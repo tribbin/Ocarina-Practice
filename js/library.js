@@ -11,9 +11,26 @@ let BUILTIN = {};
 function initBuiltin(songs) {
   BUILTIN = songs || {};
   window.BUILTIN = BUILTIN; // compat mirror (shipped-songs probes read it)
-  if (BUILTIN.chromatic && !BUILTIN.chromatic.body) {
-    BUILTIN.chromatic.body = NOTES.map(n => n.replace(/^([A-G])s/, "$1#")).join(" ");
-  }
+}
+
+const DISPLAY_ID = i => i.replace(/^([A-G])s/, "$1#");
+const BLACK_KEY = i => /^([A-G])s/.test(i);
+
+// The C-major and chromatic entries are TOOLS, not content: the library
+// synthesizes them for the LOADED chart and regenerates on every instrument
+// install, so they can never be out of range or drift from the fingerings
+// (nothing of them ships in songs.json).
+function refreshGeneratedScales(chartIds) {
+  const ids = Array.isArray(chartIds) ? chartIds : [];
+  BUILTIN.chromatic = {
+    name: "Chromatic", group: "Scales", tempo: 120,
+    body: ids.map(DISPLAY_ID).join(" "),
+  };
+  BUILTIN.major = {
+    name: "C major", group: "Scales", tempo: 120,
+    body: ids.filter(i => !BLACK_KEY(i)).map(DISPLAY_ID).join(" "),
+  };
+  window.BUILTIN = BUILTIN;
 }
 
 function userLib() {
@@ -553,7 +570,7 @@ function wireLibrary() {
 export { BUILTIN, applySwing, applyTempoPct, clearLibrarySelection, currentSwing,
          fillLibrary, initBuiltin, libToast, loadLibraryItem, safeAlert, songTempo,
          syncLibraryMenu, tempoPct, userLib, wireLibrary, setUserLib, slugName,
-         uniqueUserId, showHiddenSongs };
+         uniqueUserId, showHiddenSongs, refreshGeneratedScales };
 
 // Classic-script compat surface (tests + dev console).
 window.userLib = userLib; window.setUserLib = setUserLib; window.slugName = slugName;

@@ -75,6 +75,8 @@ def main():
         for key, song in SONGS.items():
             if gen.SUFFIX.search(key) or song.get("hidden"):
                 continue
+            if key.endswith("-bass") and key[:-5] in SONGS:
+                continue  # family -bass member rides its base page
             expected.append(("song", category_of(song.get("group")), key))
         expected = sorted("/".join(e) + "/index.html" for e in expected)
         got = sorted(str(p.relative_to(out1)).replace("\\", "/") for p in pages1)

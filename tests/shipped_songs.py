@@ -51,7 +51,8 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parent.parent
 HEADLESS = "--headed" not in sys.argv
 WAIT = ("typeof window.parse === 'function' && typeof window.BUILTIN !== 'undefined'"
-        " && BUILTIN && Object.keys(BUILTIN).length > 0")
+        " && BUILTIN && BUILTIN.major && BUILTIN.major.body"
+        " && BUILTIN.chromatic && BUILTIN.chromatic.body")
 
 SONGS = r"""
 async () => {

@@ -282,13 +282,10 @@ def main():
                     failures.append("parity: uninstalling must restore the generic "
                                     "profile bit-for-bit (incl. en === null)")
             page.close()
-            # 3 — per-song ocarina template selection (svgWhen): on the
-            # 12-hole Alto C the plain sarias-song body is out of range (so
-            # the dropdown stays empty — a stem-id match there can only be a
-            # linker/zen link case), making the in-range alto variant the
-            # id-path probe (its id carries the stem as prefix). The rule
-            # must ALSO fire by matching song title (hand-typed Saria's Song)
-            # and stay on the generic template for other titles.
+            # 3 — per-song ocarina template selection (svgWhen): the saria
+            # rule fires when the loaded song's TITLE matches (both by ?song
+            # deep link — exact id since the re-key — and by typing the
+            # title), and unrelated titles keep the generic template.
             print("== per-song ocarina template (svgWhen)", flush=True)
             page = browser.new_page()
             errs = []
@@ -334,7 +331,62 @@ def main():
                     f"template, got {byOtherTitle!r}")
             page.close()
 
+            # 3b — generated scales: the C-major and chromatic entries are
+            # NOT shipped data; the library synthesizes them for the LOADED
+            # chart (C-major = the chart minus black-key ids) and regenerates
+            # them when the instrument changes — zero out-of-range by
+            # construction, display tokens use the s→# convention.
+            print("== generated scales follow the loaded chart", flush=True)
+            page = browser.new_page()
+            errs = []
+            page.on("pageerror", lambda e: errs.append(str(e)))
+            page.goto(base)
+            page.wait_for_function(BOOT_WAIT)
+            page.wait_for_function(
+                "() => document.getElementById('scale').value === 'song-of-storms'")
+            st = page.evaluate(
+                "() => { const B = (typeof BUILTIN !== 'undefined' && BUILTIN) || {}; return"
+                        " { notes: window.NOTES,"
+                        " chrom: (B.chromatic || {}).body || null,"
+                        " major: (B.major || {}).body || null,"
+                        " chromGroup: (B.chromatic || {}).group,"
+                        " majorGroup: (B.major || {}).group }; }")
+            import re as _re
+            def to_disp(i):
+                return _re.sub(r"^([A-G])s", r"\1#", i)
+            if not st["chrom"] or not st["major"]:
+                failures.append("scales: BUILTIN.major/chromatic must be "
+                                "synthesized for the loaded chart")
+            elif st["chromGroup"] != "Scales" or st["majorGroup"] != "Scales":
+                failures.append(f"scales: wrong groups {st['chromGroup']!r}/{st['majorGroup']!r}")
+            else:
+                expect_chrom = " ".join(to_disp(n) for n in st["notes"])
+                expect_major = " ".join(to_disp(n) for n in st["notes"]
+                                        if not _re.match(r"^[A-G]s", n))
+                if st["chrom"] != expect_chrom:
+                    failures.append("scales: chromatic body must be the loaded "
+                                    "chart's ids in order, display-spelled")
+                if st["major"] != expect_major:
+                    failures.append("scales: major body must be the chart minus "
+                                    "black-key ids")
+            page.select_option("#instSel", "stein-double-alto-c")
+            old_chrom = st["chrom"]
+            page.wait_for_function(
+                "() => (BUILTIN.chromatic || {}).body !== " + json.dumps(old_chrom),
+                timeout=20000)
+            st2 = page.evaluate(
+                "() => ({ notes: window.NOTES,"
+                        " chrom: BUILTIN.chromatic.body, major: BUILTIN.major.body })")
+            expect_chrom2 = " ".join(to_disp(n) for n in st2["notes"])
+            expect_major2 = " ".join(to_disp(n) for n in st2["notes"]
+                                     if not _re.match(r"^[A-G]s", n))
+            if st2["chrom"] != expect_chrom2 or st2["major"] != expect_major2:
+                failures.append("scales: bodies must regenerate for the newly "
+                                "installed chart")
+            page.close()
+
             # 4 — boot diagnostics: an unknown ?inst id and a duplicated
+            # manifest id both report loudly in #err (append, never clobber)
             # manifest id both report loudly in #err (append, never clobber)
             # while the boot itself still lands fail-soft. A FRESH context per
             # leg: the service worker installs during the earlier suites in a

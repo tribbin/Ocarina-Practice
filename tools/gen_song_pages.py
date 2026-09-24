@@ -178,6 +178,10 @@ def main():
             continue  # variants ride the base page, not their own URL
         if song.get("hidden"):
             continue  # WIPs stay unpublished
+        if key.endswith("-bass") and key[:-5] in songs:
+            continue  # a family -bass member rides its base page (grace
+                      # period: unregistered marker); leaf -bass keys keep
+                      # their own page
         member, inst = pick_landing(key, songs, manifest, charts)
         stub = build_stub(html, key, songs[member], member,
                           category_of(song.get("group")), inst, site_prefix)

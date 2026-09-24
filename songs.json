@@ -1,45 +1,4 @@
 {
-  "major": {
-    "name": "C major",
-    "group": "Scales",
-    "tempo": 100,
-    "body": "A4 B4 C5 D5 E5 F5 G5 A5 B5 C6 D6 E6 F6 G6 A6 B6 C7"
-  },
-  "major-bass": {
-    "name": "C major (bass)",
-    "group": "Scales",
-    "tempo": 100,
-    "body": "A3 B3 C4 D4 E4 F4 G4 A4 B4 C5 D5 E5 F5 G5 A5 B5 C6 D6 E6 F6 G6"
-  },
-  "chromatic": {
-    "name": "Chromatic",
-    "group": "Scales",
-    "tempo": 100
-  },
-  "major-12": {
-    "name": "C major (12-hole)",
-    "group": "Scales",
-    "tempo": 100,
-    "body": "A4 B4 C5 D5 E5 F5 G5 A5 B5 C6 D6 E6 F6"
-  },
-  "chromatic-12": {
-    "name": "Chromatic (12-hole)",
-    "group": "Scales",
-    "tempo": 100,
-    "body": "A4 A#4 B4 C5 C#5 D5 D#5 E5 F5 F#5 G5 G#5 A5 A#5 B5 C6 C#6 D6 D#6 E6 F6"
-  },
-  "major-contrabass": {
-    "name": "C major (contrabass)",
-    "group": "Scales",
-    "tempo": 100,
-    "body": "B2 C3 D3 E3 F3 G3 A3 B3 C4 D4 E4 F4"
-  },
-  "chromatic-contrabass": {
-    "name": "Chromatic (contrabass)",
-    "group": "Scales",
-    "tempo": 100,
-    "body": "B2 C3 C#3 D3 D#3 E3 F3 F#3 G3 G#3 A3 A#3 B3 C4 C#4 D4 D#4 E4 F4"
-  },
   "song-of-time": {
     "name": "Song of Time",
     "group": "Zelda on Alto",
@@ -121,18 +80,6 @@
     "group": "Zelda on Bass",
     "tempo": 97,
     "body": "|[\"Opening\"] A5/4. B5/8 C6/4\n| A5 G5 F5\n| -/2 E5\n| D5/2. -/4 r/4\n| A5/4. B5/8 C6/4\n| A5 G5 F5\n| G5/2 A5\n| -/2.\n\n|[\"Slow opening\"] r/2 F4/8 C5/8\n| C5/8 D#4/8 F4/2\n| C5/8 G4/8 G#4 A#4\n| C5/8 F4/8 F5/4. D#5/8\n| C5/2 F4/8 D5/8\n| C5/2.\n| -/2 F4/8 D5/8\n| -/8 C5/8 -/2\n| -/2.\n\n# tempo 104\n|[\"Ramping up opening\"] C#5/4. D5/8 E5/4\n| C#5/4 B4/4 A4/4\n|  -/2 G#4\n| F#4/2.\n| C#5/4. D5/8 E5/4\n| C#5/4 B4/4 A4/4\n| B4/2 C#5/4\n| -/2 A3/8 E4/8\n| D#4/4. A#3/8 D4/8 D#4/8\n| F4/4. D#4/8 F4/8 A#4/8\n| C5/8t F4/8t G4/8t A#4 D5\n| D#5/2.\n| D5/8 D#5/8 F5/2\n| -/2 D#5/8t F5/8t G#5/8t\n| G5/2. | -/2.\n\n|[\"Main theme body\"] E5/8 A4/8 A5/4. G5/8\n| E5/2.\n| E5/8 G4/8 A4/2\n| E5/8 A#4/8 C5 D5\n| E5/8 A4/8 C6/4. B5/8\n| E5/2.\n| -/2 G5/8 F#5/8\n| -/8 E5/2 -/8\n\n|[\"Main theme body repeat\"] E5/8 A4/8 A5/4. G5/8\n| E5/2.\n| E5/8 G4/8 A4/2\n| E5/8 A#4/8 C5 D5\n| E5/8 A4/8 C6/4. B5/8\n| E5/2.\n| E5/4. F#5/8 G5\n| -/8 A5/2 -/8\n\n|[\"End\"] B4/8 G4/8 A4 A4/8 G4/8\n| B4/8 F#4/8 A4 D5/8 B4/8\n| A4/8 E5/8 E5/8 E5 C5/8\n| D5/8 A5/8 -/4 A4/8 B4/8\n| C5/4. D5/8 E5\n| D5 B5/2 r/1. A4/1. r/1.\n"
-  },
-  "major-alto": {
-    "name": "C major (alto)",
-    "group": "Scales",
-    "tempo": 100,
-    "body": "A4 B4 C5 D5 E5 F5 G5 A5 B5 C6 D6 E6 F6 G6 A6 B6 C7"
-  },
-  "chromatic-alto": {
-    "name": "Chromatic (alto)",
-    "group": "Scales",
-    "tempo": 100,
-    "body": "A4 A#4 B4 C5 C#5 D5 D#5 E5 F5 F#5 G5 G#5 A5 A#5 B5 C6 C#6 D6 D#6 E6 F6 F#6 G6 G#6 A6 A#6 B6 C7"
   },
   "zelda-lullaby-bass": {
     "name": "Zelda's Lullaby",

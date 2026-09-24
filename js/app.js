@@ -1,8 +1,8 @@
 import { parse, titleFromText } from "./parse.js";
 import { installOcarinaTemplate, invalidateSvgHtml } from "./ocarina.js";
 import { installToneModel } from "./audio.js";
-import { BUILTIN, fillLibrary, initBuiltin, loadLibraryItem, syncLibraryMenu,
-         userLib, wireLibrary } from "./library.js";
+import { BUILTIN, fillLibrary, initBuiltin, loadLibraryItem, refreshGeneratedScales,
+         syncLibraryMenu, userLib, wireLibrary } from "./library.js";
 import { buildKB, enterZenFromLink, render, setAppCss, wireUi } from "./ui.js";
 import { practiceInvalidate } from "./practice.js";
 import "./debug.js";
@@ -39,6 +39,9 @@ function installFingerings(fing) {
   window.DISPLAY = Object.fromEntries(fing.notes.map(n => [n.id, n.display]));
   window.CHAMBER = Object.fromEntries(fing.notes.map(n => [n.id, n.chamber]));
   window.COVER = Object.fromEntries(fing.notes.map(n => [n.id, n.covered]));
+  // The C-major/chromatic library entries live off the loaded chart —
+  // regenerate them for the newly installed instrument (never shipped data).
+  refreshGeneratedScales(window.NOTES);
   // Hole/chamber data feeds the card-svg memoization; a fresh fingering set
   // alone is enough to end every stored rendering.
   if (typeof invalidateSvgHtml === "function") invalidateSvgHtml();
@@ -267,10 +270,13 @@ async function boot() {
     const chosen = (instParam && INSTRUMENTS.find(i => i.id === instParam))
       || INSTRUMENTS.find(i => i.id === manifest.default) || INSTRUMENTS[0];
     if (!chosen) throw new Error("No instruments defined in instruments.json");
+    // initBuiltin runs BEFORE the first instrument install: the generated
+    // scale entries refresh off the chart mid-install and must mutate the
+    // final BUILTIN object, not one initBuiltin is about to replace.
+    initBuiltin(songs);
     await loadInstrument(chosen);
     fillInstrumentSelect(chosen.id);
     wireInstrumentPicker();
-    initBuiltin(songs);
     wireLibrary();
     wireUi();
     buildKB();
