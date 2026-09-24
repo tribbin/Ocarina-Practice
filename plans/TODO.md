@@ -125,8 +125,6 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
 
 - [ ] **Deduplicate octave/transpose-twinned song bodies (survey first)** — Robin: "Deduplicating songs (that only differ in octave/transpose) would be a nice touch." FIRST step is tooling only (his MIDI-boundary rule: no song-data work unsupervised): a `tools/` audit that proves which songs.json variants are exact octave shifts of one another (the dummy↔stein +12 pair is the precedent — see skills/song-transposing). Report the twin classes + per-class divergence spots; then decide WITH Robin whether variants keep hand-written bodies or derive from a base body at load (keys/URLs MUST stay frozen either way — the permalink contract). `🟨 🟡 ⚙M`
 
-- [ ] **Instrument switch auto-selects the same song in range** — when switching ocarinas manually, look up the current song's family variants and jump to the one that fits the new chart — the same ladder walk the landing stubs use (best-fit 12-hole > double alto > triple bass > contrabass); if nothing fits, keep the current song and stay quiet; no transport start from a wet switch. Lifted from IDEAS (OTHERS) 2026-09-24, Robin approves the build. Pin in `tests/instruments_load.py` or the library suite: switch with a song loaded, land on the fitting family member, dropdown reflects it. `🟨 🟠 ⚙S`
-
 
 
 > **Idle idea pool: `plans/IDEAS.txt`.** A live document Robin edits over time and ROBIN'S ALONE — the AI never writes it (it may be read, and only lifted into TODO.md when Robin explicitly asks). TODO carries no copy or summary: when an idea from it is picked up, read the FILE fresh at that moment; never rely on a remembered or transcribed version.
@@ -207,3 +205,26 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   standardization is HELD for its later-stage pass by Robin's call. Unchanged holds:
   no pushes, no MIDI implementation, no robots/sitemap, tick hunt parked,
   measurements/feel-checks need Robin.
+
+- **2026-09-25 (night session 11 opens; unit a — the wet-switch song jump)** — the ordered
+  away-work ran: instrument switches now auto-select the in-range family member (§9,
+  Robin-approved build). Red→green five-leg battery added to tests/instruments_load.py
+  (jump alto→bass, stay-when-fitting, jump bass→alto, no-fit-keeps-the-editor, typed-text
+  untouched; every leg also pins isMelodyPlaying() false — no transport starts from a wet
+  switch). Implementation: library.js songFitsChart (every melody token id must be ON the
+  chart — stricter than the OOR badge's compass count) + the load-path tracker
+  lastLoadedId/loadedLibraryId (loadLibraryItem writes; clearLibrarySelection clears —
+  the ?song deep-link case needs it because a range-hidden song sits in the editor with
+  the dropdown silently unselected, which is exactly where the first green attempt
+  stalled); app.js songFamilyRoot/songFamily walk the landing-stub family from the
+  SHORTEST existing prefix id and switchInstrument jumps on fillLibrary→loadLibraryItem
+  order, staying put when the current member fits or nothing fits. Member order mirrors
+  tools/gen_song_pages.py: base slug, then variants alphabetically. sw VERSION → v6
+  (rule 15). Sweep note: the full 30-suite sweep ran 29/30 with board_tool red on a
+  day-rollover time bomb (its own assertion hardcoded ✅ 2026-09-24, green for the last
+  time yesterday), defused by injecting complete's --date; board_tool 8/8 after; the
+  night's true app suites all green (instruments_load, library_hardening,
+  instrument_switch_race, render_pin...). Lint clean. Commit `4ddeb1f`.
+- Next (night queue): unit b — the R4 CI-side data validator suite; unit c — refactor4-domain
+  cutover prep; unit d — octave-twin audit tooling; then the extension items
+  (play/pause DOM-writes dedupe, sw VERSION audit, enlargeSmallHoles, print popup).

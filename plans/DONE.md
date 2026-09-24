@@ -220,6 +220,9 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 - [x] ~~**Generated scales Dropdown: location and order** — lifted from IDEAS 2026-09-24 (BUG: "Scales should be on top of list; first C-major and then chromatic").~~ ✅ 2026-09-24 `bee525c` — the whole Scales group opens the dropdown (above every song group and My songs), C major pinned before Chromatic inside it regardless of synthesis key order; red→green leg in `tests/library_hardening.py`; the custom libDd menu inherits the order (it mirrors the select's children). `🟨 🟠 ⚙S`
 - [x] ~~**Keyboard-shortcut help overlay** — Space is global but undocumented; list shortcuts.~~ ✅ 2026-09-23 `f2ba16e` — `?` ghost button + `?` key (never while typing) open a paper-card dialog of every gesture/key (Space pause/continue, Enter, arrows, Home/End, right-click add, tap-vs-hold), aria-modal frame, focus to close and back to opener on ✕/backdrop/Escape. `tests/sr_hints.py` pins all four paths. `🟢 🟠 ⚙S`
 
+- [x] ~~**Instrument switch auto-selects the same song in range** — when switching ocarinas manually, look up the current song's family variants and jump to the one that fits the new chart — the same ladder walk the landing stubs use (best-fit 12-hole > double alto > triple bass > contrabass); if nothing fits, keep the current song and stay quiet; no transport start from a wet switch. Lifted from IDEAS (OTHERS) 2026-09-24, Robin approves the build. Pin in `tests/instruments_load.py` or the library suite: switch with a song loaded, land on the fitting family member, dropdown reflects it. `🟨 🟠 ⚙S`~~ ✅ 2026-09-25 `4ddeb1f`
+
+
 > **Idle idea pool: `plans/IDEAS.txt`.** A live document Robin edits over time and ROBIN'S ALONE — the AI never writes it (it may be read, and only lifted into TODO.md when Robin explicitly asks). TODO carries no copy or summary: when an idea from it is picked up, read the FILE fresh at that moment; never rely on a remembered or transcribed version.
 
 ---
