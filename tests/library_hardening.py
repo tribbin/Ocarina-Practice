@@ -56,6 +56,33 @@ def main():
             page.goto(base)
             page.wait_for_function(LIB_WAIT)
 
+            # --- generated scales ordering (the IDEAS lift): the whole
+            # Scales group opens the dropdown — the beginner's tool set on
+            # top — and inside it C major comes before Chromatic ---
+            page.wait_for_function(
+                "() => { const s = document.getElementById('scale');"
+                " if (!s) return false;"
+                " const g = [...s.children].find"
+                "(n => n.tagName === 'OPTGROUP' && n.label === 'Scales');"
+                " return !!(g && g.children.length >= 2); }")
+            order = page.evaluate("""() => {
+              const sel = document.getElementById('scale');
+              const groups = [...sel.children]
+                .filter(n => n.tagName === 'OPTGROUP');
+              return { labels: groups.map(g => g.label),
+                       scales: (groups.find(g => g.label === 'Scales') ||
+                                { children: [] }).children[0]
+                        ? [...groups.find(g => g.label === 'Scales')
+                        .children].map(o => o.value) : [] };
+            }""")
+            if not order["labels"] or order["labels"][0] != "Scales":
+                failures.append("library order: the Scales group must open "
+                                f"the dropdown, got {order['labels']!r}")
+            if order["scales"] != ["major", "chromatic"]:
+                failures.append("library order: inside Scales, C major must "
+                                "come before Chromatic, got "
+                                f"{order['scales']!r}")
+
             # --- slugName: junk names must not collapse onto one id ---
             slugs = page.evaluate("""() => ({
               junk: slugName("!!!"),
