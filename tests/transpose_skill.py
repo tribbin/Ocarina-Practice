@@ -1,7 +1,7 @@
 ﻿# Unit tests for the song-transposing skill scripts (transpose.cjs /
 # verify_song.cjs). The scripts are node tools that eval the app's real
 # js/parse.js as the syntax oracle, so the suite drives them over a
-# synthetic songs.json in a temp sandbox and asserts on plain output â€”
+# synthetic songs.json in a temp sandbox and asserts on plain output —
 # no browser, no playwright. Skips (exit 0, named) when node or the
 # skill scripts are absent, so machine-less environments stay green.
 #
@@ -47,7 +47,7 @@ def run(cmd, cwd):
 
 def main():
     if shutil.which("node") is None:
-        print("SKIP transpose_skill (node absent â€” nothing to test)")
+        print("SKIP transpose_skill (node absent — nothing to test)")
         return 0
     if not (SCRIPTS / "transpose.cjs").exists() or not PARSE.exists():
         print("SKIP transpose_skill (skill scripts or parse.js absent)")
@@ -120,7 +120,7 @@ def main():
             failures.append(f"out-of-chart verdict wrong: {r.stdout.strip()}")
 
         # chart-pair invariant (Robin, 2026-09-23): a song fitting the bass
-        # double (A3-C6) always fits the alto double (A4-C7) at +1 octave â€”
+        # double (A3-C6) always fits the alto double (A4-C7) at +1 octave —
         # the alto chart IS the bass-double chart shifted 12 (28 notes both).
         r = run(["node", str(SCRIPTS / "transpose.cjs"),
                  "probe1", "+12", "probe4", "Alto Double", "Other"], sandbox)
