@@ -42,7 +42,6 @@ OTHERS
 Use browser-builtin tooling like Lighthouse.
 Switching instruments will auto-switch to the same song with matching range, if it exists.
 Make the 12-hole 'complete' regarding Zelda Ocarina of Time game songs.
-Have <key>-major and chromatic auto-generated for the selected instrument, instead of as 'songs'.
 
 THEMES
 

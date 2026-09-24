@@ -104,13 +104,32 @@ ZEN_CASES = [
 # source, spies playNoteAt, plays in Zen (enterZenFromLink → ?nofs=1 fallback,
 # no fullscreen permission needed) and collects the raw events. Tick 200 ms
 # before play: the previous run's scheduler timers must be dead.
+#
+# The read is a REAL rendezvous, not a fixed sleep: after the waitMs floor
+# (each case's historical duration barely past song length), poll every
+# 250 ms until the melody is actually over — the scheduler's auto-stop, or,
+# for loop cases, when every expected support pitch has fired its count —
+# under a +30 s ceiling past the floor. Sweep-load audio-clock lag must
+# SLOW the read instead of cutting the song's tail; a dead box fails
+# loudly instead of whispering "fired 0×" at a healthy page.
 RUN_DRIVER = """
 CASES => new Promise(resolve => {
   const runs = [];
+  const ctxs = [];
   let phase = 0;
+  const ctxAt = () => (window.audioCtx ? audioCtx.currentTime
+                       : (window.sharedAudioCtx ? sharedAudioCtx().currentTime : null));
+  const melodyAlive = () => {
+    try { return !!(window.OCA_DEBUG && OCA_DEBUG.melodyAlive()); }
+    catch (e) { return true; }
+  };
+  const melodyKnown = () => {
+    try { return !!(window.OCA_DEBUG && window.OCA_DEBUG.melodyAlive); }
+    catch (e) { return false; }
+  };
   const step = () => {
     if (phase >= CASES.length) {
-      resolve({ runs,
+      resolve({ runs, ctxs,
                 focus: document.getElementById('tabPanel').classList.contains('focus') });
       return;
     }
@@ -120,13 +139,37 @@ CASES => new Promise(resolve => {
     const cb = document.getElementById('loopMel');
     if (cb) cb.checked = !!c.loop;
     const events = [];
+    let t0 = 0;
     setNoteSink((id, when, dur, slideFrom, intoSlide) => {
       events.push({ id, when: when == null ? -1 : when, dur,
-                    slideFrom: slideFrom || null, intoSlide: !!intoSlide });
+                    slideFrom: slideFrom || null, intoSlide: !!intoSlide,
+                    fw: Math.round(performance.now() - t0) });
     });
     setTimeout(() => {
       playMelody();
-      setTimeout(() => { runs.push(events); step(); }, c.waitMs);
+      t0 = performance.now();
+      const tally = () => {
+        const t = {};
+        for (const e of events) t[e.id] = (t[e.id] || 0) + 1;
+        return t;
+      };
+      const start = performance.now();
+      const settled = () => {
+        if (c.supportWants) {
+          const t = tally();
+          return c.supportWants.every(x => (t[x[0]] || 0) >= x[1]);
+        }
+        return !melodyAlive() || !melodyKnown();
+      };
+      const poll = () => {
+        if (performance.now() - start < c.waitMs) { setTimeout(poll, 250); return; }
+        if (performance.now() - start < c.waitMs + 30000 && !settled()) {
+          setTimeout(poll, 250);
+          return;
+        }
+        runs.push(events); ctxs.push(ctxAt()); step();
+      };
+      setTimeout(poll, 250);
     }, 200);
   };
   enterZenFromLink();
@@ -213,15 +256,26 @@ def norm_event(e):
             e["slideFrom"], int(e["intoSlide"]))
 
 
-def check_support_events(name, events, wants, failures):
+def diag_event(e):
+    # Debug view on top of norm_event: fw = wall-clock ms since the play
+    # click — when (audio s) vs fw (wall ms) diverging exposes scheduler
+    # or audio-clock lag under load. No equivalence logic reads this.
+    return (e["id"], round(e["when"], 3), round(e["dur"], 4),
+            e["slideFrom"], int(e["intoSlide"]),
+            round(e.get("fw", -1)))
+
+
+def check_support_events(name, events, wants, failures, ctx_at=None):
     """wants: {pitch: {count, beats, rel(onset beats, ±0.04), slide?}}"""
     for pitch, want in wants.items():
         hits = [e for e in events if e["id"] == pitch]
         want_count = want.get("count", 1)
         if len(hits) != want_count:
             failures.append(f"{name}: {pitch} fired {len(hits)}×, want "
-                            f"{want_count} — the whole event list: "
-                            f"{[norm_event(e) for e in events]}")
+                            f"{want_count} — the whole event list "
+                            f"(id, when_s, dur_s, slide, intoSlide, fw_ms"
+                            f"{'' if ctx_at is None else f', ctxAt={ctx_at}'}): "
+                            f"{[diag_event(e) for e in events]}")
             if not hits:
                 continue
             hits = hits[:want_count]
@@ -375,14 +429,21 @@ def main():
                     " && window.NOTES && window.NOTES.length")
                 page._errs = []
                 page.on("pageerror", lambda e, p=page: p._errs.append(str(e)))
-                result = page.evaluate(RUN_DRIVER, [dict(src=case["src"], waitMs=case["wait_ms"],
-                                                         loop=case.get("loop", False))])
+                # Loop cases rendezvous on their expected fire counts
+                # (melody never ends); non-loop on the scheduler auto-stop.
+                payload = [dict(src=case["src"], waitMs=case["wait_ms"],
+                                loop=case.get("loop", False),
+                                supportWants=[[k, v.get("count", 1)]
+                                              for k, v in case["support"].items()])]
+                result = page.evaluate(RUN_DRIVER, payload)
                 if page._errs:
                     failures.append(f"{case['name']}: page errors {page._errs}")
                 if not result.get("focus"):
                     failures.append(f"{case['name']}: was not in focus mode")
                 events, _ = normalize(result["runs"][0])
-                check_support_events(case["name"], events, case["support"], failures)
+                ctxs = result.get("ctxs") or [None]
+                check_support_events(case["name"], events, case["support"],
+                                     failures, ctxs[0])
                 page.close()
 
 # 4 — gating: the same content must never fire outside Zen

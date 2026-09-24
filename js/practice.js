@@ -40,7 +40,7 @@
 // provider at window.__pracFrame = { hz, rms } (the same code paths run).
 import { parse } from "./parse.js";
 import { AUDIO_DEFAULTS, audioCtx, freqOf, quarterSecFor, stopMelody, syncTransport,
-         sysSoundUntilSec, unlockAudio } from "./audio.js";
+         sysSoundUntilSec, tokenGridBeats, unlockAudio } from "./audio.js";
 import { clearHighlight, freezeZenGlow, highlightToken, isFullscreen, isLiveTab,
          lastTokens, loopOn, noteMidi, quarterSec, updateTransportUI } from "./ui.js";
 import { PITCH_MIN_HZ, PITCH_MAX_HZ, autoCorrelate } from "./pitch-dsp.js";
@@ -104,17 +104,6 @@ import { currentSongId } from "./app.js";
       (typeof AUDIO_DEFAULTS !== "undefined" ? AUDIO_DEFAULTS : {});
   }
 
-  function freqOfId(id) {
-    if (typeof freqOf === "function") return freqOf(id);
-    const m = String(id).match(/^([A-G]s?)(\d)$/);
-    if (!m) return 440;
-    const semi = { C: 0, Cs: 1, D: 2, Ds: 3, E: 4, F: 5, Fs: 6, G: 7, Gs: 8, A: 9, As: 10, B: 11 };
-    return 440 * Math.pow(2, (semi[m[1]] + (+m[2] + 1) * 12 - 69) / 12);
-  }
-  function gridBeats(t) {
-    if (!t || t.type === "bar" || t.type === "tempo" || t.type === "bass") return 0;
-    return t.beats || ((4 / (t.dur || 4)) * (t.dotted ? 1.5 : 1) * (t.triplet ? 2 / 3 : 1));
-  }
   function centsOf(hz, target) {
     return hz > 0 && target > 0 ? 1200 * Math.log2(hz / target) : 999;
   }
@@ -150,7 +139,7 @@ import { currentSongId } from "./app.js";
   // in (slideFrom === previous pitch, playable, a NEW pitch) joins the
   // chain, and each hop's own ties are absorbed across bar lines too.
   function absorbHops(tokens, from, firstId) {
-    const zones = [freqOfId(firstId)];
+    const zones = [freqOf(firstId)];
     const names = [firstId];
     const zoneIdx = [from];
     let end = absorbTies(tokens, from, firstId);
@@ -163,7 +152,7 @@ import { currentSongId } from "./app.js";
       if (nt.type === "tie" || !nt.slide || !NOTES.includes(nt.id) ||
           nt.id === prevId || nt.slideFrom !== prevId) break;
       slide = true;
-      zones.push(freqOfId(nt.id));
+      zones.push(freqOf(nt.id));
       names.push(nt.id);
       zoneIdx.push(j);
       prevId = nt.id;
@@ -183,7 +172,7 @@ import { currentSongId } from "./app.js";
     let beats = 0;
     for (let k = i; k <= end; k++) {
       if (tokens[k].type === "bar" || tokens[k].type === "tempo" || tokens[k].type === "bass") continue;
-      beats += gridBeats(tokens[k]);
+      beats += tokenGridBeats(tokens[k]);
     }
     // Staccato: practice half the note's normal duration (melody is leading).
     const stac = tokens[i].staccato && end === i;
@@ -199,7 +188,7 @@ import { currentSongId } from "./app.js";
       let zb = 0;
       for (let j = from; j <= to; j++) {
         if (tokens[j].type === "bar" || tokens[j].type === "tempo" || tokens[j].type === "bass") continue;
-        zb += gridBeats(tokens[j]);
+        zb += tokenGridBeats(tokens[j]);
       }
       return zb * P.quarter * (stac ? 0.5 : 1);
     });
@@ -549,7 +538,6 @@ import { currentSongId } from "./app.js";
     const targets = ["#tokens", "#focusTokens"]
       .concat(panel.classList.contains("in-card") ? [] : ["#sheet"])
       .map(s => document.querySelector(s)).filter(Boolean);
-    const dg = dbg();
     const pct = P.bar ? barFrac(P.bar) : 0;
     const live = new Set();
     for (const host of targets) {
@@ -890,7 +878,7 @@ import { currentSongId } from "./app.js";
     if (t.type === "rest") {
       P.state = "rest";
       P.msgHoldUntil = 0; // no stale feedback may ride across a rest
-      P.restLeft = gridBeats(t) * P.quarter * 1000;
+      P.restLeft = tokenGridBeats(t) * P.quarter * 1000;
       try { if (typeof highlightToken === "function") highlightToken(i, null, undefined, false); } catch (e) {}
       return;
     }

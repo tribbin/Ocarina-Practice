@@ -11,9 +11,26 @@ let BUILTIN = {};
 function initBuiltin(songs) {
   BUILTIN = songs || {};
   window.BUILTIN = BUILTIN; // compat mirror (shipped-songs probes read it)
-  if (BUILTIN.chromatic && !BUILTIN.chromatic.body) {
-    BUILTIN.chromatic.body = NOTES.map(n => n.replace(/^([A-G])s/, "$1#")).join(" ");
-  }
+}
+
+const DISPLAY_ID = i => i.replace(/^([A-G])s/, "$1#");
+const BLACK_KEY = i => /^([A-G])s/.test(i);
+
+// The C-major and chromatic entries are TOOLS, not content: the library
+// synthesizes them for the LOADED chart and regenerates on every instrument
+// install, so they can never be out of range or drift from the fingerings
+// (nothing of them ships in songs.json).
+function refreshGeneratedScales(chartIds) {
+  const ids = Array.isArray(chartIds) ? chartIds : [];
+  BUILTIN.chromatic = {
+    name: "Chromatic", group: "Scales", tempo: 120,
+    body: ids.map(DISPLAY_ID).join(" "),
+  };
+  BUILTIN.major = {
+    name: "C major", group: "Scales", tempo: 120,
+    body: ids.filter(i => !BLACK_KEY(i)).map(DISPLAY_ID).join(" "),
+  };
+  window.BUILTIN = BUILTIN;
 }
 
 function userLib() {
@@ -86,6 +103,12 @@ function setShowHidden(v) {
   try { localStorage.setItem(SHOW_HIDDEN_KEY, v ? "1" : "0"); } catch (e) {}
 }
 
+// Robin's dropdown order for the generated scales (the IDEAS lift): the
+// whole Scales group opens the list — the beginner's tool set first — and
+// inside it C major (the chart minus black keys) comes before Chromatic,
+// regardless of the order the synthesizer happened to assign its keys.
+const SCALE_ORDER = ["major", "chromatic"];
+
 function fillLibrary(selectId) {
   const sel = document.getElementById("scale");
   const cur = selectId !== undefined ? selectId : sel.value;
@@ -94,8 +117,22 @@ function fillLibrary(selectId) {
   // Songs are hidden when statically flagged OR when they contain notes
   // outside the currently selected ocarina's range; both kinds are revealed
   // by the same "Show hidden songs" toggle.
+  const live = Object.keys(BUILTIN).filter(id => {
+    const item = BUILTIN[id];
+    return !((item.hidden || songOutOfRange(id) > 0) && !showHidden);
+  });
+  const scaleRank = id => {
+    const r = SCALE_ORDER.indexOf(id);
+    return r < 0 ? SCALE_ORDER.length : r;
+  };
+  const isScale = id => BUILTIN[id].group === "Scales";
+  const scaleIds = live.filter(isScale)
+    .map((id, ix) => ({ id, ix }))
+    .sort((a, b) => scaleRank(a.id) - scaleRank(b.id) || a.ix - b.ix)
+    .map(o => o.id);
+  const ordered = [...scaleIds, ...live.filter(id => !isScale(id))];
   const groups = {};
-  Object.keys(BUILTIN).forEach(id => {
+  ordered.forEach(id => {
     const item = BUILTIN[id];
     if ((item.hidden || songOutOfRange(id) > 0) && !showHidden) return;
     const gname = item.group || "Built-in";
@@ -553,7 +590,7 @@ function wireLibrary() {
 export { BUILTIN, applySwing, applyTempoPct, clearLibrarySelection, currentSwing,
          fillLibrary, initBuiltin, libToast, loadLibraryItem, safeAlert, songTempo,
          syncLibraryMenu, tempoPct, userLib, wireLibrary, setUserLib, slugName,
-         uniqueUserId, showHiddenSongs };
+         uniqueUserId, showHiddenSongs, refreshGeneratedScales };
 
 // Classic-script compat surface (tests + dev console).
 window.userLib = userLib; window.setUserLib = setUserLib; window.slugName = slugName;

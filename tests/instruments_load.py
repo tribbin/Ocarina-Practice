@@ -282,25 +282,22 @@ def main():
                     failures.append("parity: uninstalling must restore the generic "
                                     "profile bit-for-bit (incl. en === null)")
             page.close()
-            # 3 — per-song ocarina template selection (svgWhen): on the
-            # 12-hole Alto C the plain sarias-song body is out of range (so
-            # the dropdown stays empty — a stem-id match there can only be a
-            # linker/zen link case), making the in-range alto variant the
-            # id-path probe (its id carries the stem as prefix). The rule
-            # must ALSO fire by matching song title (hand-typed Saria's Song)
-            # and stay on the generic template for other titles.
+            # 3 — per-song ocarina template selection (svgWhen): the saria
+            # rule fires when the loaded song's TITLE matches (both by ?song
+            # deep link — exact id since the re-key — and by typing the
+            # title), and unrelated titles keep the generic template.
             print("== per-song ocarina template (svgWhen)", flush=True)
             page = browser.new_page()
             errs = []
             page.on("pageerror", lambda e: errs.append(str(e)))
-            page.goto(base + "?inst=oot-alto-c-12&song=sarias-song-alto&oot")
+            page.goto(base + "?inst=oot-alto-c-12&song=sarias-song&oot")
             page.wait_for_function(BOOT_WAIT)
             # FINGERINGS install precedes the library tail (the tone-model
             # round-trip comes after in loadInstrument): probing #scale/#src
             # can otherwise race the ?song load in.
             page.wait_for_function(
                 "() => document.getElementById('scale').value ==="
-                " 'sarias-song-alto'")
+                " 'sarias-song'")
             byId = page.evaluate(TPL_PROBE)
             page.goto(base + "?inst=oot-alto-c-12&oot")
             page.wait_for_function(BOOT_WAIT)
@@ -310,7 +307,7 @@ def main():
             # the id-path leg above does, before any typed probe.
             page.wait_for_function(
                 "() => document.getElementById('scale').value ==="
-                " 'song-of-storms-alto'")
+                " 'song-of-storms'")
             page.evaluate(TYPED, "Saria's Song")
             byTitle = page.evaluate(TPL_PROBE)
             page.evaluate(TYPED, "Zelda's Lullaby")
@@ -320,8 +317,8 @@ def main():
             if not str(byId.get("tpl") or "").endswith(
                     "ocarina-template-saria.svg"):
                 failures.append(
-                    "svgWhen: song id sarias-song-alto (stem sarias-song) "
-                    f"must select the saria template, got {byId!r}")
+                    "svgWhen: song id sarias-song must select the saria "
+                    f"template, got {byId!r}")
             if not str(byTitle.get("tpl") or "").endswith(
                     "ocarina-template-saria.svg"):
                 failures.append(
@@ -332,6 +329,60 @@ def main():
                 failures.append(
                     "svgWhen: an unrelated title must keep the generic "
                     f"template, got {byOtherTitle!r}")
+            page.close()
+
+            # 3b — generated scales: the C-major and chromatic entries are
+            # NOT shipped data; the library synthesizes them for the LOADED
+            # chart (C-major = the chart minus black-key ids) and regenerates
+            # them when the instrument changes — zero out-of-range by
+            # construction, display tokens use the s→# convention.
+            print("== generated scales follow the loaded chart", flush=True)
+            page = browser.new_page()
+            errs = []
+            page.on("pageerror", lambda e: errs.append(str(e)))
+            page.goto(base)
+            page.wait_for_function(BOOT_WAIT)
+            page.wait_for_function(
+                "() => document.getElementById('scale').value === 'song-of-storms'")
+            st = page.evaluate(
+                "() => { const B = (typeof BUILTIN !== 'undefined' && BUILTIN) || {}; return"
+                        " { notes: window.NOTES,"
+                        " chrom: (B.chromatic || {}).body || null,"
+                        " major: (B.major || {}).body || null,"
+                        " chromGroup: (B.chromatic || {}).group,"
+                        " majorGroup: (B.major || {}).group }; }")
+            import re as _re
+            def to_disp(i):
+                return _re.sub(r"^([A-G])s", r"\1#", i)
+            if not st["chrom"] or not st["major"]:
+                failures.append("scales: BUILTIN.major/chromatic must be "
+                                "synthesized for the loaded chart")
+            elif st["chromGroup"] != "Scales" or st["majorGroup"] != "Scales":
+                failures.append(f"scales: wrong groups {st['chromGroup']!r}/{st['majorGroup']!r}")
+            else:
+                expect_chrom = " ".join(to_disp(n) for n in st["notes"])
+                expect_major = " ".join(to_disp(n) for n in st["notes"]
+                                        if not _re.match(r"^[A-G]s", n))
+                if st["chrom"] != expect_chrom:
+                    failures.append("scales: chromatic body must be the loaded "
+                                    "chart's ids in order, display-spelled")
+                if st["major"] != expect_major:
+                    failures.append("scales: major body must be the chart minus "
+                                    "black-key ids")
+            page.select_option("#instSel", "stein-double-alto-c")
+            old_chrom = st["chrom"]
+            page.wait_for_function(
+                "() => (BUILTIN.chromatic || {}).body !== " + json.dumps(old_chrom),
+                timeout=20000)
+            st2 = page.evaluate(
+                "() => ({ notes: window.NOTES,"
+                        " chrom: BUILTIN.chromatic.body, major: BUILTIN.major.body })")
+            expect_chrom2 = " ".join(to_disp(n) for n in st2["notes"])
+            expect_major2 = " ".join(to_disp(n) for n in st2["notes"]
+                                     if not _re.match(r"^[A-G]s", n))
+            if st2["chrom"] != expect_chrom2 or st2["major"] != expect_major2:
+                failures.append("scales: bodies must regenerate for the newly "
+                                "installed chart")
             page.close()
 
             # 4 — boot diagnostics: an unknown ?inst id and a duplicated
@@ -408,6 +459,61 @@ def main():
             ctx5.close()
             if errs:
                 failures.append(f"boot diagnostics: page errors {errs}")
+
+            # 5 — ?song / ?zen boot flows (T4's deep-link boots): a bare
+            # ?song loads on the manifest default and stays in the grid
+            # view; &zen drops the boot straight into zen via the CSS
+            # fallback (?nofs=1 pins the fallback in headless), the single
+            # view's live card up and the song still loaded — the paths
+            # the landing stubs and shared zen links ride.
+            print("== ?song / ?zen boot flows", flush=True)
+            songs = json.loads((ROOT / "songs.json").read_text(encoding="utf-8"))
+            head = (songs["eponas-song"].get("body") or "").strip().split("\n")[0][:30]
+            STATE = """() => ({
+              title: document.getElementById('title').textContent,
+              src: document.getElementById('src').value,
+              focus: document.getElementById('tabPanel').classList.contains('focus'),
+              zenfb: document.body.classList.contains('zen-fallback'),
+              mode: (document.querySelector('[aria-checked="true"].seg-btn')
+                     || { dataset: {} }).dataset.mode || null,
+              oor: document.querySelectorAll('.card.oor').length,
+            })"""
+            for tag, extra in (
+                    ("?song", "?song=eponas-song"),
+                    ("?song+zen", "?song=eponas-song&zen&nofs=1")):
+                page = browser.new_page()
+                errs = []
+                page.on("pageerror", lambda e: errs.append(str(e)))
+                page.goto(base + extra)
+                page.wait_for_function(BOOT_WAIT)
+                page.wait_for_function(
+                    "() => document.getElementById('scale').value === 'eponas-song'")
+                page.wait_for_timeout(1200)
+                st = page.evaluate(STATE)
+                if errs:
+                    failures.append(f"{tag} boot: page errors {errs}")
+                if st["title"] != "Epona's Song":
+                    failures.append(f"{tag} boot: title {st['title']!r} "
+                                    "!= Epona's Song")
+                if head not in st["src"]:
+                    failures.append(f"{tag} boot: #src lacks the body head {head!r}")
+                if st["oor"]:
+                    failures.append(f"{tag} boot: {st['oor']} out-of-range marks "
+                                    "on the 12-hole default")
+                if tag == "?song" and (st["focus"] or st["zenfb"]):
+                    failures.append(
+                        f"{tag} boot must stay out of zen "
+                        f"(focus={st['focus']} zen-fallback={st['zenfb']})")
+                if tag == "?song+zen" and not (st["focus"] and st["zenfb"]):
+                    failures.append(
+                        f"{tag} boot must land in fallback zen "
+                        f"(focus={st['focus']} zen-fallback={st['zenfb']})")
+
+                want_mode = "single" if tag == "?song+zen" else "grid"
+                if st["mode"] != want_mode:
+                    failures.append(f"{tag} boot: view mode {st['mode']!r} "
+                                    f"!= {want_mode!r}")
+                page.close()
 
             browser.close()
     finally:

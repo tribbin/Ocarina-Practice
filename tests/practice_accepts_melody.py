@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 # Practice acceptance test: drives the REAL js/practice.js engine in a real
 # Chromium page with the pitches the 'play' transport would output, using the
 # page's built-in synthetic mic provider (?practiceTest=1 →
@@ -59,7 +59,7 @@ CASES = [
                "E5/16t F5/16t G5/16t A5/16t G5/16t F5/16t\n"
                "E5/8 -/8 D5/2 -/4 r/4 E5/2.")),
     dict(name="Song of Storms (Double Alto C) — chain songs, player model",
-         query="inst=stein-double-alto-c&song=song-of-storms-alto", mode="zones", src=None),
+         query="inst=stein-double-alto-c&song=song-of-storms", mode="zones", src=None),
 ]
 
 SCHEDULE_DRIVER = """

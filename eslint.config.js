@@ -2,9 +2,10 @@
 // globals on purpose, so there is intentionally NO no-undef: every file
 // shares top-level bindings through the global scope by design). First
 // flight rule set: hard-error rules only for defects that are definitely
-// bugs; no-unused-vars starts at warn (various intentionally-unused positional
-// args and caught errors live in the codebase) — tighten to error once CI
-// prints its first counts.
+// bugs; no-unused-vars started at warn (intentionally-unused positional
+// args and caught errors are still exempt) and was tightened to error once
+// the first CI counts settled and the last four unused bindings came out
+// (parse/rewindMelody/dg/perf, 2026-09-24).
 module.exports = [
   {
     files: ["js/**/*.js", "tests/**/*.js", "sw.js"],
@@ -68,8 +69,9 @@ module.exports = [
       "no-fallthrough": "error",
       "no-template-curly-in-string": "error",
       "no-prototype-builtins": "error",
-      // hygiene: surfaces counts in the CI log without failing the run
-      "no-unused-vars": ["warn", { args: "none", caughtErrors: "none" }]
+      // hygiene: unused bindings are defects now — args/caught-errors stay
+      // exempt (intentional positional args and guarded try/catch noise)
+      "no-unused-vars": ["error", { args: "none", caughtErrors: "none" }]
     }
   }
 ];

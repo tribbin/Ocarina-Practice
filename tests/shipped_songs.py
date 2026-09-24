@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 # Shipped-songs acceptance: every entry in songs.json must be fully playable.
 # Per song:
 #   - parses with ZERO "bad" chips (with junk-surfacing in place, any typo,
@@ -41,7 +41,7 @@ TRIPWIRE_BAD = [
 
 TRIPWIRE_OK = [
     "song-of-time",                # base
-    "song-of-time-alto",           # registered suffix, chains to a base
+    "chromatic-contrabass",        # registered suffix, chains to a base
     "concerning-hobbits-short-c",  # content marker then interval marker
     "botw-theme-down3",            # interval marker
 ]
@@ -51,7 +51,8 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parent.parent
 HEADLESS = "--headed" not in sys.argv
 WAIT = ("typeof window.parse === 'function' && typeof window.BUILTIN !== 'undefined'"
-        " && BUILTIN && Object.keys(BUILTIN).length > 0")
+        " && BUILTIN && BUILTIN.major && BUILTIN.major.body"
+        " && BUILTIN.chromatic && BUILTIN.chromatic.body")
 
 SONGS = r"""
 async () => {

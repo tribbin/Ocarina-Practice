@@ -1,6 +1,7 @@
-import { parse } from "./parse.js";
+﻿import { parse } from "./parse.js";
 import { currentSwing, tempoPct } from "./library.js";
-import { bumpHoverQuiet, clearHighlight, cueFirstNote, firstSoundIdx, freezeZenGlow,
+import { freqOf, quarterSecFor, tokenGridBeats } from "./music-math.js";
+import { bumpHoverQuiet, clearHighlight, cueFirstNote, freezeZenGlow,
          highlightToken, isFocusMode, quarterSec, tokenSeconds, updateTransportUI } from "./ui.js";
 import { isPracticeActive } from "./practice.js";
 let audioCtx = null;
@@ -143,6 +144,26 @@ function safeResume(ctx) {
     if (p && p.catch) p.catch(() => {});
   } catch (e) {}
 }
+
+// Autoplay policy/OS routing can suspend a RUNNING context mid-session
+// (tab backgrounded on phones, audio-endpoint takeover): the audio clock
+// freezes while the scheduler keeps timing against it and the UI would
+// keep claiming playback over silence. Mark the ctx once and watch it:
+// a suspension pauses the transport cleanly (grid position preserved, a
+// later Play resumes from the frozen beat); the context returning to
+// running NEVER restarts the melody by itself — the user resumes.
+function attachCtxStateWatch(ctx) {
+  if (!ctx || ctx.__stateWatched) return ctx;
+  ctx.__stateWatched = true;
+  try {
+    ctx.addEventListener("statechange", () => {
+      if (ctx.state === "suspended" && melodyPlaying && !melodyPaused) {
+        pauseMelody();
+      }
+    });
+  } catch (e) {}
+  return ctx;
+}
 // Exposed for the dev panel: params are tweaked in place; invalidateWave()
 // drops the cached PeriodicWave so the next note rebuilds it from the
 // current harmonic amplitudes.
@@ -164,6 +185,18 @@ window.OCA_DEBUG = {
   // are alive right now and how many cut bus generations exist / were cut.
   melodyAlive() { return countAliveVoices(melodyBag); },
   busAudit() { return { cutBusCount: cutBuses.size, retiredCount: retiredBuses.length }; },
+  // Spike watch (the single-frame "tick" hunt): the pure classifier pinned
+  // by the suites, the recent state cards, and a synthetic entry so the
+  // perf-panel row can be probed without waiting for a real tick.
+  spikeClassify(win) { return spikeClassify(win); },
+  spikeWatch() { return perf.spikeLog.slice(); },
+  spikeCount() { return perf.spikes; },
+  spikeFake() {
+    perf.spikes++;
+    perf.spikeLog.push({ fake: true, t: audioCtx ? audioCtx.currentTime : -1,
+                         jump: 1, lite: liteMode(), onsets: [] });
+    if (perf.spikeLog.length > 24) perf.spikeLog.shift();
+  },
   // Live audit helper: the full derived voice profile for a note id.
   profile(id) { return voiceProfileFor(id, freqOf(id)); },
   // The installed per-ocarina tone model (instruments/<id>/tone.json) —
@@ -197,10 +230,6 @@ function syncTransport() {
 // (the song's leading header or any inline "# tempo N" change). The tempo
 // slider is a RELATIVE playback speed (10–100%) applied at scheduling time
 // (see melodyQuarter uses in scheduleMelody), so it must not bake in here.
-function quarterSecFor(bpm) {
-  return 60 / Math.max(10, Math.min(400, (+bpm) || 100));
-}
-
 // Relative playback speed from the tempo slider (0.1–1 of the song tempo).
 // Guarded: audio.js also runs in tooling without the library/UI scripts.
 function tempoSpeed() {
@@ -208,10 +237,8 @@ function tempoSpeed() {
   return Math.max(0.1, Math.min(1, (tempoPct() || 100) / 100));
 }
 
-function tokenGridBeats(tok) {
-  if (!tok || tok.type === "bar" || tok.type === "tempo" || tok.type === "bass") return 0;
-  return tok.beats || ((4 / (tok.dur || 4)) * (tok.dotted ? 1.5 : 1));
-}
+// tokenGridBeats and quarterSecFor ride the music-math import — the
+// binding names keep the windowed compat surface and the ESM export list.
 
 function soundingGridBeats(tokens, idx) {
   let p = tokenGridBeats(tokens[idx]);
@@ -303,6 +330,9 @@ const perf = {
                  // moving, so "stalls" can read 0 while clicks are audible)
   sessionPeak: 0, // max |sample| at the output since the last reset
   snapBuf: null,
+  spikes: 0,     // single-frame waveform steps (spike watch, see below)
+  spikeLog: [],  // recent spike state cards (cap 24)
+  spikeBuf: null,
 };
 let perfAnalyser = null;
 let perfComps = [];   // the buses' DynamicsCompressors, for .reduction reads
@@ -380,6 +410,7 @@ function audioPerfSnapshot() {
   p.hoverVoices = countAliveVoices(liveVoices);
   p.glitches = perf.glitches;
   p.jumps = perf.jumps;
+  p.spikes = perf.spikes;
   p.reverb = reverbEnabled;
   p.lite = liteMode();
   if (perfAnalyser && perfAnalyser.context === audioCtx) {
@@ -410,6 +441,105 @@ function audioPerfSnapshot() {
 }
 
 function audioPerfReset() { perf.sessionPeak = 0; }
+
+// ---------------------------------------------------------------------------
+// SPIKE WATCH — Robin's 2026-09-24 field report: sporadic single-frame
+// "ticks" (a one-sample waveform jump that leaves the CURRENT note silent
+// while playback continues), Lite-invariant, invisible to the clock-lag
+// watchdog above (a one-sample discontinuity never approaches its 0.3 s
+// criterion), engine-timing sensitive (Chrome repros, VS Code's embedded
+// Chromium never did). Class: a parameter-automation seam re-anchored
+// mid-note, not CPU starvation. The detector rides the post-limiter tap:
+// a pure classifier flags one ISOLATED sample-plane step (attack ramps,
+// smooth tones and sub-floor micro steps must pass through untouched);
+// onset/stop windows already marked by markSystemSound are subtracted.
+// Each hit logs a state card into the perf panel so the next field catch
+// names its own seam.
+// ---------------------------------------------------------------------------
+
+// The classifier is pure so the suites can pin its judgement tables.
+// Isolation is the load-bearing rule, and a STEP has two shapes: the value
+// jumps to a NEW level and stays (ONE delta above threshold — the
+// jump-to-silence that kills the current note), or a single sample swings
+// out and back (a MIRRORED PAIR of adjacent deltas, up-then-down). Anything
+// editing several adjacent samples is a slope (attack ramp class): several
+// above-threshold deltas in a row → not a spike. The absolute floor keeps
+// silence-level jitter (inaudible) from counting.
+function spikeClassify(win) {
+  if (!(win && win.length > 4)) return null;
+  const deltas = new Array(win.length - 1);
+  for (let i = 0; i < deltas.length; i++) {
+    deltas[i] = win[i + 1] - win[i];
+  }
+  const mags = deltas.map(Math.abs);
+  const ordered = mags.slice().sort((a, b) => a - b);
+  const med = ordered[Math.floor(ordered.length / 2)];
+  const thr = Math.max(0.04, med * 8);
+  const hot = [];
+  for (let i = 0; i < mags.length; i++) {
+    if (mags[i] > thr) hot.push(i);
+  }
+  if (hot.length === 1) {
+    return { i: hot[0], jump: mags[hot[0]], level: med };
+  }
+  if (hot.length === 2 && hot[1] === hot[0] + 1 &&
+      Math.sign(deltas[hot[0]]) !== Math.sign(deltas[hot[1]])) {
+    // one-sample excursion: up-then-down (or down-then-up)
+    const j = Math.max(mags[hot[0]], mags[hot[1]]);
+    return { i: hot[0], jump: j, level: med };
+  }
+  return null;
+}
+
+// Recent playNoteAt onsets (id + scheduled audio time + slide flag) so a
+// spike card can point at the voice that was starting when it hit.
+const onsetRing = [];
+function ringOnset(id, when, intoSlide) {
+  onsetRing.push({ id, at: when == null ? -1 : Math.round(when * 1000) / 1000, into: !!intoSlide });
+  if (onsetRing.length > 8) onsetRing.shift();
+}
+
+// 20 ms sampling: the analyser window is fftSize (1024) samples ≈ 23 ms at
+// 44.1 kHz, so consecutive reads overlap and no sample escapes coverage.
+// Cost is one 1024-float read + a linear scan per tick.
+setInterval(() => {
+  if (!audioCtx || audioCtx.state !== "running" || !perfAnalyser) return;
+  const now = audioCtx.currentTime;
+  const winDur = perfAnalyser.fftSize / audioCtx.sampleRate;
+  if (now - winDur < sysSoundUntil) return;   // onset/stop seam windows
+  if (perf.spikeLog.length && now - perf.spikeLog[perf.spikeLog.length - 1].t < 0.2) {
+    return;                                    // one card per tick event
+  }
+  if (perf.spikeBuf == null || perf.spikeBuf.length !== perfAnalyser.fftSize) {
+    perf.spikeBuf = new Float32Array(perfAnalyser.fftSize);
+  }
+  perfAnalyser.getFloatTimeDomainData(perf.spikeBuf);
+  const hit = spikeClassify(perf.spikeBuf);
+  if (!hit) return;
+  const sr = audioCtx.sampleRate;
+  const t = now - (perf.spikeBuf.length - 2 - hit.i) / sr;
+  if (perf.spikeLog.length && t - perf.spikeLog[perf.spikeLog.length - 1].t < 0.2) {
+    return;
+  }
+  perf.spikes++;
+  perf.spikeLog.push({
+    t: Math.round(t * 1000) / 1000,
+    jump: Math.round(hit.jump * 1000) / 1000,
+    mel96: melodyPos96,
+    lite: liteMode(),
+    onsets: onsetRing.slice(-3).map(o =>
+      o.id + "@" + o.at + (o.into ? "~" : "")),
+  });
+  if (perf.spikeLog.length > 24) perf.spikeLog.shift();
+  // A spike is never a normal sound: name it in the console, throttled so a
+  // burst of neighbors cannot spam the pasted #err digests.
+  const last = perf.spikeLog[perf.spikeLog.length - 1];
+  const took = new Date(performance.now()).toISOString().slice(11, 19);
+  console.warn("spike watch: single-frame step at audio-clock t=" + t.toFixed(3) +
+               " s (jump " + last.jump + ") — card: " +
+               JSON.stringify({ mel96: last.mel96, lite: last.lite,
+                                onsets: last.onsets, wall: took }));
+}, 20);
 
 // Lazily build (and return) the reverb bus. All melodic voices connect here
 // instead of straight to ctx.destination, so the wet level can be toggled.
@@ -591,6 +721,7 @@ function setVibratoEnabled(on) {
 function unlockAudio() {
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  attachCtxStateWatch(audioCtx);
     safeResume(audioCtx);
   } catch (e) {}
 }
@@ -610,14 +741,6 @@ document.addEventListener("visibilitychange", () => {
   if (document.hidden) cutLive();
   else hushHovers();
 });
-
-function freqOf(id) {
-  const m = String(id).match(/^([A-G]s?)(\d)$/);
-  if (!m) return 440;
-  const semi = {C:0,Cs:1,D:2,Ds:3,E:4,F:5,Fs:6,G:7,Gs:8,A:9,As:10,B:11};
-  const midi = semi[m[1]] + (+m[2] + 1) * 12;
-  return 440 * Math.pow(2, (midi - 69) / 12);
-}
 
 // Per-chamber frequency ranges, cached from window.CHAMBER / window.NOTES.
 let chamberRanges = null;
@@ -991,6 +1114,7 @@ function setNoteSink(fn) { noteSink = fn || null; }
 function setAuditionSink(fn) { auditionSink = fn || null; }
 function sharedAudioCtx() {
   audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  attachCtxStateWatch(audioCtx);
   return audioCtx;
 }
 
@@ -1047,8 +1171,10 @@ function playNote(id, durSec) {
 function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  attachCtxStateWatch(audioCtx);
     if (audioCtx.state === "suspended") safeResume(audioCtx);
     const ctx = audioCtx;
+    ringOnset(id, when, intoSlide);
     if (noteSink) try { noteSink(id, when, durSec, slideFromId, intoSlide); } catch (e) {}
     // Late scheduling (a main-thread stall past the 0.3 s lookahead — GC/JIT
     // bursts, worse on phones) hands a `when` already in the past. All gain/
@@ -1722,6 +1848,7 @@ function liteMode() {
 function playTickAt(when, bag) {
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  attachCtxStateWatch(audioCtx);
     if (audioCtx.state === "suspended") safeResume(audioCtx);
     const ctx = audioCtx;
     let t0 = when == null ? ctx.currentTime : when;
@@ -1798,6 +1925,7 @@ function playMelody(fromIdx) {
   }
   if (!melodyTokens.length) return;
   audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  attachCtxStateWatch(audioCtx);
   if (audioCtx.state === "suspended") audioCtx.resume();
   melodyPlaying = true;
   const btn = document.getElementById("playMel");
@@ -1827,6 +1955,7 @@ function resumeMelody() {
   if (melodyPlaying || !melodyPaused || !melodyTokens.length) { melodyPaused = false; return; }
   melodyPaused = false;
   audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  attachCtxStateWatch(audioCtx);
   if (audioCtx.state === "suspended") audioCtx.resume();
   melodyPlaying = true;
   const btn = document.getElementById("playMel");
@@ -1840,17 +1969,6 @@ function togglePlayPause() {
   if (melodyPlaying) pauseMelody();
   else if (melodyPaused) resumeMelody();
   else playMelody();
-}
-
-function rewindMelody() {
-  const wasActive = melodyPlaying || melodyPaused;
-  stopMelody();
-  if (wasActive) { playMelody(0); return; }
-  const toks = parse(document.getElementById("src").value);
-  if (!toks.length) return;
-  if (typeof firstSoundIdx === "function" && typeof highlightToken === "function") {
-    highlightToken(firstSoundIdx(toks), null);
-  }
 }
 
 // Windowed lookahead scheduler. Instead of arming one timer per note ~80ms

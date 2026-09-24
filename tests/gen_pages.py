@@ -75,6 +75,8 @@ def main():
         for key, song in SONGS.items():
             if gen.SUFFIX.search(key) or song.get("hidden"):
                 continue
+            if key.endswith("-bass") and key[:-5] in SONGS:
+                continue  # family -bass member rides its base page
             expected.append(("song", category_of(song.get("group")), key))
         expected = sorted("/".join(e) + "/index.html" for e in expected)
         got = sorted(str(p.relative_to(out1)).replace("\\", "/") for p in pages1)
@@ -102,14 +104,32 @@ def main():
                 failures.append(f"{rel}: og/title missing the song name")
             if f'song={member}&inst={inst}' not in stub:
                 failures.append(f"{rel}: seed must carry song={member}&inst={inst}")
+            # The og/meta social set: every stub carries the full preview
+            # card (site name/type/description + the generated icon) so a
+            # bare link preview names the song AND has an image.
+            if '<meta property="og:type" content="website" />' not in stub:
+                failures.append(f"{rel}: og:type missing")
+            if '<meta property="og:site_name" content="Ocarina Practice" />' not in stub:
+                failures.append(f"{rel}: og:site_name missing")
+            name_m = SONGS[member].get("name") or key
+            desc_m = (f"Play {name_m} on the ocarina: hole-fingering tab, "
+                      f"playback and practice with the built-in tuner.")
+            if f'<meta property="og:description" content="{desc_m}" />' not in stub:
+                failures.append(f"{rel}: og:description missing/wrong")
+            if ('<meta property="og:image" '
+                    'content="/Ocarina-Practice/icon-512.png" />') not in stub:
+                failures.append(f"{rel}: og:image missing/wrong")
+            if '<meta name="twitter:card" content="summary" />' not in stub:
+                failures.append(f"{rel}: twitter:card missing")
             if "../../../" in stub:
                 failures.append(f"{rel}: depth-relative refs survive under <base>")
-        # Ladder pin: Song of Time's bass body never fits the 12-hole, so its
-        # landing boots the alto arrangement on the 12-hole — the fix for the
-        # "wrong song of time" live find.
-        if want_landing.get("song-of-time") != ("song-of-time-alto", "oot-alto-c-12"):
+        # Ladder pin: after the re-key the Song-of-Time BASE carries the
+        # 12-hole-fitting arrangement (the old -alto body) and the bass body
+        # lives in song-of-time-bass, so the family walk prefers the base —
+        # the original "wrong song of time" live find must stay fixed.
+        if want_landing.get("song-of-time") != ("song-of-time", "oot-alto-c-12"):
             failures.append(f"landing pin song-of-time: {want_landing.get('song-of-time')!r} "
-                            "(want (song-of-time-alto, oot-alto-c-12))")
+                            "(want (song-of-time, oot-alto-c-12) on the re-keyed base)")
         if not (out1 / ".nojekyll").exists():
             failures.append(".nojekyll missing from staging")
 

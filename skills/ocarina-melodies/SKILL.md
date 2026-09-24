@@ -104,6 +104,10 @@ sheets at a glance:
   white keys fit the C fingering with no accidentals.
 - Songs with out-of-range notes for the current ocarina vanish from the
   dropdown (auto-hidden); the "Show hidden songs" toggle reveals them.
+- **C major and chromatic are generated tools, not shipped entries**: the
+  library synthesizes them for the LOADED chart on every instrument install
+  (chromatic = the chart's ids in order, major = minus black keys) — they
+  are never in songs.json and get no public landing pages.
 
 ## Song slugs — the frozen link contract (locked 2026-09-24)
 
