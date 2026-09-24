@@ -10,7 +10,9 @@
 # service worker), a rel=canonical to itself, song-titled og/meta for
 # preview bots, and a tiny pre-boot seed that turns the clean path into
 # the app's existing ?song=<key>&inst=<chosen> query. <chosen> follows the
-# fitting ladder below so every landing page boots playable.
+# fitting ladder below so every landing page boots playable: the seed
+# names the FAMILY member that fits the ladder's chosen instrument (the
+# base slug when it fits, else the first variant that does).
 #
 # Output is a STAGING tree: nothing here deploys by itself. The deploy
 # workflow (.github/workflows/deploy-site.yml) runs this generator and
@@ -39,7 +41,10 @@ LADDER = ["oot-alto-c-12", "stein-double-alto-c",
           "ico-oak-leaf-bass-c-triple", "ico-contrabass-11-c"]
 
 _N = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
-_NN = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+# Chart ids are s-spelled (Fs4/As4) — emitting display sharps ('F#4') made
+# every accidental note fail the chart membership test (the all-white-key
+# Song of Time-alto boot masked the bug until the every-URL boot read).
+_NN = ["C", "Cs", "D", "Ds", "E", "F", "Fs", "G", "Gs", "A", "As", "B"]
 
 
 def body_note_ids(body):
@@ -74,6 +79,39 @@ def pick_default_inst(note_ids, manifest, charts):
     return fits[0] if fits else manifest_insts[0]
 
 
+def family_members(key, songs):
+    # A song family: the base slug plus every registered-suffix variant
+    # that chains to it. The BASE boots when it fits the chosen instrument;
+    # otherwise the first variant that does (base keeps the clean URL,
+    # arrangements carry the playable body).
+    fam = [k for k in songs if k == key or k.startswith(key + "-")]
+    return sorted(fam, key=lambda k: (k != key, k))
+
+
+def fits_chart(key, body, inst, charts):
+    ids = body_note_ids(body or "")
+    chart = charts.get(inst)
+    return bool(chart) and all(n in chart for n in ids)
+
+
+def pick_landing(key, songs, manifest, charts):
+    # Robin's ladder, walked across the FAMILY: first instrument (12-hole >
+    # double alto C > triple bass C > contrabass) that ANY member fits; the
+    # member booted there prefers the base slug, then variants
+    # alphabetically. Beyond the ladder, manifest order may serve.
+    members = family_members(key, songs)
+    manifest_insts = [i["id"] for i in manifest["instruments"]]
+    for inst in [i for i in LADDER if i in manifest_insts] + \
+                [i for i in manifest_insts if i not in LADDER]:
+        for m in members:
+            if fits_chart(m, songs[m].get("body"), inst, charts):
+                return m, inst
+    default_id = next((i["id"] for i in manifest["instruments"]
+                       if i["id"] == manifest.get("default")),
+                      manifest["instruments"][0]["id"])
+    return members[0], default_id
+
+
 def category_of(group):
     g = (group or "").lower()
     if "zelda" in g:
@@ -85,7 +123,7 @@ def category_of(group):
     return re.sub(r"[^a-z0-9-]+", "-", g.split()[0]).strip("-") or "other"
 
 
-def build_stub(html, key, song, cat, inst, site_prefix):
+def build_stub(html, key, song, member, cat, inst, site_prefix):
     # <base href> re-roots EVERY relative reference — head links, the module
     # src AND the app's runtime fetches (songs.json / instruments.json /
     # css text / manifest-driven instrument files) and the service-worker
@@ -108,7 +146,7 @@ def build_stub(html, key, song, cat, inst, site_prefix):
         f'<meta property="og:url" content="{canonical}" />\n')
     script = "<script type=\"module\" src="
     seed = ('<script>if (!location.search) history.replaceState(null, "", '
-            f'location.pathname + "?song={key}&inst={inst}");</script>\n  ')
+            f'location.pathname + "?song={member}&inst={inst}");</script>\n  ')
     # static <title> tells preview bots what the page is; the app may
     # retitle after boot (runtime JS wins where it runs).
     html = re.sub(r"<title>.*?</title>",
@@ -140,10 +178,9 @@ def main():
             continue  # variants ride the base page, not their own URL
         if song.get("hidden"):
             continue  # WIPs stay unpublished
-        inst = pick_default_inst(body_note_ids(song.get("body") or ""),
-                                 manifest, charts)
-        stub = build_stub(html, key, song, category_of(song.get("group")),
-                          inst, site_prefix)
+        member, inst = pick_landing(key, songs, manifest, charts)
+        stub = build_stub(html, key, songs[member], member,
+                          category_of(song.get("group")), inst, site_prefix)
         p = out / "song" / category_of(song.get("group")) / key / "index.html"
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(stub, encoding="utf-8", newline="\n")
