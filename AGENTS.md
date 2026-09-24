@@ -51,6 +51,9 @@ file sits at the repo root so every session finds it first.
 
 7. **Report CI runs and pushes by SHA/trigger/job only — never attribute to
    an actor.** ("Robin pushed" is out; "push at `<sha>`, job #N" is in.)
+   Purchasing details (registrars, prices, shopping context) never enter
+   commits, the board or docs either — this is a public repo; registration
+   facts live outside Git by Robin's call (2026-09-24).
 8. Pushes, merges, PRs, branch create/delete, remote cleanup: **Robin's
    operations.** Amend only your own unpushed commits, same concern only.
 9. **Commit titles:** one dense informative sentence in the repo's style —
