@@ -140,10 +140,23 @@ def build_stub(html, key, song, member, cat, inst, site_prefix):
                   '<meta name="description" content="' + desc + '" />',
                   html, count=1)
     canonical = f"{site_prefix}/song/{cat}/{key}/"
+    # The full preview-card set: og:type/site_name/description give bots the
+    # surrounding identity, og:image (the generated PWA icon, sized) gives
+    # link previews something to render, twitter:card pins the summary
+    # layout. URLs carry the site prefix as a path — matching canonical/
+    # og:url; a fully-qualified image would need a pinned domain (none yet).
     stub_meta = (
         f'<link rel="canonical" href="{canonical}" />\n'
         f'<meta property="og:title" content="{name} — Ocarina Practice" />\n'
-        f'<meta property="og:url" content="{canonical}" />\n')
+        f'<meta property="og:url" content="{canonical}" />\n'
+        f'<meta property="og:type" content="website" />\n'
+        f'<meta property="og:site_name" content="Ocarina Practice" />\n'
+        f'<meta property="og:description" content="{desc}" />\n'
+        f'<meta property="og:image" content="{site_prefix}/icon-512.png" />\n'
+        f'<meta property="og:image:width" content="512" />\n'
+        f'<meta property="og:image:height" content="512" />\n'
+        f'<meta property="og:image:alt" content="Ocarina Practice icon" />\n'
+        f'<meta name="twitter:card" content="summary" />\n')
     script = "<script type=\"module\" src="
     seed = ('<script>if (!location.search) history.replaceState(null, "", '
             f'location.pathname + "?song={member}&inst={inst}");</script>\n  ')
@@ -151,7 +164,9 @@ def build_stub(html, key, song, member, cat, inst, site_prefix):
     # retitle after boot (runtime JS wins where it runs).
     html = re.sub(r"<title>.*?</title>",
                   f"<title>{name} — Ocarina Practice</title>", html, count=1)
-    html = html.replace("<head>", "<head>\n  " + stub_meta, 1)
+    # og block sits at the END of <head>: the shell's charset/meta keep
+    # their original head-start positions (charset stays in the first KB).
+    html = html.replace("</head>", "  " + stub_meta + "</head>", 1)
     html = html.replace(script, seed + script, 1)
     return html
 
