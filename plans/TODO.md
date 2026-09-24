@@ -113,7 +113,7 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
 
 - [ ] **Recording & A/B compare** — record mic during practice, replay against synth reference, pitch-curve overlay (WAV tap already exists in debug export). `🟢 🟡 ⚙L`
 
-- [ ] **Standardize shipped songs to the conventions in `skills/ocarina-melodies/SKILL.md`** — barline at the START of wrapped lines (cosmetic; parser reads `|` positionally today, so all shipped bodies bar-at-line-end parse identically), named sections where players want headers, per-song house conventions. Robin plants this as a later-stage pass — "very useful to players." Use verify/shipped_songs suites as gates; no playback changes expected. `🟢 ⚪ ⚙M`
+- [ ] **Standardize shipped songs to the conventions in `skills/ocarina-melodies/SKILL.md`** — barline at the START of wrapped lines (cosmetic; parser reads `|` positionally today, so all shipped bodies bar-at-line-end parse identically), named sections where players want headers, per-song house conventions. Robin plants this as a later-stage pass — "very useful to players." Use verify/shipped_songs suites as gates; no playback changes expected. 2026-09-24: Robin confirmed this stays HELD for its later-stage pass — the hands-off night does not touch shipped song bodies; revisit when he wants it. `🟢 ⚪ ⚙M`
 
 - [ ] **MIDI import to tabs in-app** — `.grok/midi-to-ocarina-tab/scripts/mid2tab.py` already converts MIDI→tab notation; bake into "Load file" as JS. `🟢 🟡 ⚙M`
 
@@ -196,3 +196,14 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   before claiming green, board current per unit, session log per unit, all helds
   respected (no audible changes; tick hunt parked until Robin's phone research;
   feel-checks need his devices).
+- **2026-09-24 (session 10, part 4 — the night's queue extended)** — Robin confirmed
+  the extension since the four ordered units may finish early: after the ordered list
+  the night continues with (5) §5 M9's last cluster (play/pause DOM-writes dedupe —
+  mechanical, suite-covered), (6) the rule-15 sw-VERSION audit (sweep commits since
+  `oco-pwa-v5` for shipped behavior, bump if stale, offline suite green), (7) §4 P7
+  enlargeSmallHoles precompute, (8) §3 print-popup `document.write` → DOM injection,
+  re-checking the eslint warning count as a rider on whatever code unit touches.
+  Stretch pick with hours left: §9 F6 transpose (inaudible, suite-covered). §9 F4
+  standardization is HELD for its later-stage pass by Robin's call. Unchanged holds:
+  no pushes, no MIDI implementation, no robots/sitemap, tick hunt parked,
+  measurements/feel-checks need Robin.
