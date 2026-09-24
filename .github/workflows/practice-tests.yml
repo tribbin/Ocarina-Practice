@@ -36,6 +36,8 @@ jobs:
         run: python tools/board.py verify
       - name: Run board tool tests (stdlib)
         run: python tests/board_tool.py
+      - name: Run data-shape validator (instruments/songs/fingerings)
+        run: python tests/data_validator.py
       - name: Install Playwright + Chromium
         run: |
           pip install playwright
