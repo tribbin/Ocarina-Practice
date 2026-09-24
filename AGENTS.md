@@ -39,7 +39,13 @@ file sits at the repo root so every session finds it first.
 6. **Granted autonomy covers**: obvious defects, suite-green changes, TODO
    bookkeeping, housekeeping. **Not covered**: audible behavior, UX/design
    pivots (e.g. which surface owns which mechanism), anything where Robin's
-   intent is genuinely unknown.
+   intent is genuinely unknown. **Away-work continuation (Robin, 2026-09-24):
+   when Robin leaves the session running with an open-ended grant (at work,
+   busy elsewhere), the session does not idle after one unit — it keeps
+   picking up open problems from the board (respecting every held item) and
+   runs until rule 18's context limit says wrap. Robin may interject on a
+   break to steer: his call lands at the next natural checkpoint — the
+   current unit closes out green, committed and logged before the pivot.**
 
 ## Attribution, repo hygiene, commit style
 
