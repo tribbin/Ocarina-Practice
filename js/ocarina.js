@@ -142,7 +142,24 @@ function tagOcarinaParts(svg) {
   });
 }
 
+// The enlarge pass is pure per epoch (template/fingering installs bump the
+// same svg epoch that clears the output cache; hole geometry attributes are
+// untouched by the styling pass). A plan precompute is impossible — the pass
+// is SEQUENTIAL, an enlarged hole changes its neighbors' constraints — but
+// recording the settled attribute writes on the first big-view miss and
+// replaying them verbatim on later misses is bit-identical: the O(holes²)
+// neighborhood pass runs once per instrument/template, not per card render.
+// Moves are recorded by element index (document order is stable), not hole
+// id, so id quirks cannot mis-route a write.
+let enlargePlan = null;
+
 function enlargeSmallHoles(svg) {
+  const holesEl = svg.querySelectorAll("[data-hole]");
+  if (enlargePlan && enlargePlan.clock === svgClock &&
+      enlargePlan.fing === window.FING) {
+    for (const m of enlargePlan.moves) holesEl[m.i].setAttribute(m.a, m.v);
+    return;
+  }
   const holeMeta = (window.FING && FING.holes) || {};
   const isSmall = hid => !!(holeMeta[hid] && holeMeta[hid].small);
   const geom = el => {
@@ -153,10 +170,11 @@ function enlargeSmallHoles(svg) {
     const rx = +el.getAttribute("rx") || 0, ry = +el.getAttribute("ry") || 0;
     return { x:+el.getAttribute("cx"), y:+el.getAttribute("cy"), r:Math.max(rx, ry), rx, ry };
   };
-  const holes = [...svg.querySelectorAll("[data-hole]")].filter(el => {
-    const hid = el.getAttribute("data-hole") || "";
-    return hid && el.style.visibility !== "hidden";
-  }).map(el => ({ el, hid: el.getAttribute("data-hole"), ...geom(el) }));
+  const holes = [...holesEl]
+    .map((el, idx) => ({ el, idx, hid: (el.getAttribute("data-hole") || ""),
+                         ...geom(el) }))
+    .filter(h => h.hid && h.el.style.visibility !== "hidden");
+  const moves = [];
   const GAP = 0.55;
   for (const h of holes) {
     if (!isSmall(h.hid)) continue;
@@ -173,13 +191,21 @@ function enlargeSmallHoles(svg) {
     if (maxR <= h.r) continue;
     const s = maxR / h.r;
     if (h.el.tagName.toLowerCase() === "circle") {
-      h.el.setAttribute("r", (h.r * s).toFixed(4));
+      const v = (h.r * s).toFixed(4);
+      moves.push({ i: h.idx, a: "r", v });
     } else {
-      h.el.setAttribute("rx", ((h.rx || h.r) * s).toFixed(4));
-      h.el.setAttribute("ry", ((h.ry || h.r) * s).toFixed(4));
+      moves.push({ i: h.idx, a: "rx", v: ((h.rx || h.r) * s).toFixed(4) },
+                 { i: h.idx, a: "ry", v: ((h.ry || h.r) * s).toFixed(4) });
+    }
+    if (h.el.tagName.toLowerCase() === "circle") {
+      h.el.setAttribute("r", moves[moves.length - 1].v);
+    } else {
+      h.el.setAttribute("rx", moves[moves.length - 2].v);
+      h.el.setAttribute("ry", moves[moves.length - 1].v);
     }
     h.r *= s;
   }
+  enlargePlan = { clock: svgClock, fing: window.FING, moves };
 }
 
 export { installOcarinaTemplate, invalidateSvgHtml, ocarinaSVG };
