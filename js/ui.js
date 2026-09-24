@@ -1973,6 +1973,7 @@ function perfUpdateRows(s) {
     row("Headroom to clipping", head == null ? "—" : fmtDb(head) + " dB", headCls),
     row("Limiter gain reduction", lim <= -0.5 ? fmtDb(lim) + " dB (working)" : "inactive"),
     row("Clock stalls (underruns)", String(s.glitches) + (s.glitches >= 3 ? " ⚠" : "")),
+    row("Signal spikes (ticks)", String(s.spikes || 0) + (s.spikes > 0 ? " ⚠" : "")),
     row("Clock jumps (restarts)", String(s.jumps)),
     row("Active voices (melody)", String(s.voices) + " + " + s.hoverVoices + " hover"),
     row("Sample rate", s.sampleRate + " Hz"),
