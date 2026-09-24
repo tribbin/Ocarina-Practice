@@ -104,12 +104,13 @@ def main():
                 failures.append(f"{rel}: seed must carry song={member}&inst={inst}")
             if "../../../" in stub:
                 failures.append(f"{rel}: depth-relative refs survive under <base>")
-        # Ladder pin: Song of Time's bass body never fits the 12-hole, so its
-        # landing boots the alto arrangement on the 12-hole — the fix for the
-        # "wrong song of time" live find.
-        if want_landing.get("song-of-time") != ("song-of-time-alto", "oot-alto-c-12"):
+        # Ladder pin: after the re-key the Song-of-Time BASE carries the
+        # 12-hole-fitting arrangement (the old -alto body) and the bass body
+        # lives in song-of-time-bass, so the family walk prefers the base —
+        # the original "wrong song of time" live find must stay fixed.
+        if want_landing.get("song-of-time") != ("song-of-time", "oot-alto-c-12"):
             failures.append(f"landing pin song-of-time: {want_landing.get('song-of-time')!r} "
-                            "(want (song-of-time-alto, oot-alto-c-12))")
+                            "(want (song-of-time, oot-alto-c-12) on the re-keyed base)")
         if not (out1 / ".nojekyll").exists():
             failures.append(".nojekyll missing from staging")
 

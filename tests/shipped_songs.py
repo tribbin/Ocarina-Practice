@@ -1,18 +1,18 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 # Shipped-songs acceptance: every entry in songs.json must be fully playable.
 # Per song:
 #   - parses with ZERO "bad" chips (with junk-surfacing in place, any typo,
 #     stray text or malformed token in a body shows up here)
 #   - melody notes (incl. tie continuations) fit AT LEAST ONE shipped
-#     ocarina's range — a song no shipped ocarina can fully play is flagged
+#     ocarina's range â€” a song no shipped ocarina can fully play is flagged
 #     (bracket/support pitches are synth drones, deliberately out of range,
 #     so they are excluded from this rule)
 #   - metadata sane: non-empty body (chromatic generates its own), name,
-#     tempo 10–400, URL-safe id (ids are ?song= deep-link params)
+#     tempo 10â€“400, URL-safe id (ids are ?song= deep-link params)
 #   - the FROZEN slug contract (Robin, 2026-09-24): a key is a base slug
 #     (lowercase-hyphen ASCII) or a variant that ends in a REGISTERED suffix
 #     (arrangement/ocarina markers and content markers) and chains to an
-#     existing key with that suffix stripped — variants hang off real bases
+#     existing key with that suffix stripped â€” variants hang off real bases
 #     so public link space grows without ever renaming a base
 #
 #   python3 tests/shipped_songs.py      # headless & silent
@@ -26,7 +26,7 @@ from pathlib import Path
 
 # Registered trailing suffixes (the closed list; extend ONLY here): ocarina
 # markers (alto, 12, contrabass) and transposition/interval markers (c,
-# upN/downN). Content-shaping words (short, part...) are part of BASE slugs —
+# upN/downN). Content-shaping words (short, part...) are part of BASE slugs â€”
 # 'concerning-hobbits-short' is its own base, the -c copy chains to it.
 SUFFIX = re.compile(r"-(alto|12|contrabass|c|up\d+|down\d+)$")
 
@@ -41,7 +41,7 @@ TRIPWIRE_BAD = [
 
 TRIPWIRE_OK = [
     "song-of-time",                # base
-    "song-of-time-alto",           # registered suffix, chains to a base
+    "chromatic-contrabass",        # registered suffix, chains to a base
     "concerning-hobbits-short-c",  # content marker then interval marker
     "botw-theme-down3",            # interval marker
 ]
@@ -141,7 +141,7 @@ def main():
                     failures.append(f"slug checker rejects good shape {good!r}: {v}")
 
             if not songs:
-                failures.append("no songs found in BUILTIN — initBuiltin ran?")
+                failures.append("no songs found in BUILTIN â€” initBuiltin ran?")
             for sid, s in sorted(songs.items()):
                 if s["bodyEmpty"]:
                     failures.append(f"{sid}: empty body (only 'chromatic' may "
@@ -157,7 +157,7 @@ def main():
                 if not s["name"]:
                     failures.append(f"{sid}: missing display name")
                 if s["tempo"] is None or not (10 <= s["tempo"] <= 400):
-                    failures.append(f"{sid}: tempo out of 10–400: {s['tempo']!r}")
+                    failures.append(f"{sid}: tempo out of 10â€“400: {s['tempo']!r}")
                 v = slug_violation(sid, all_keys, {})
                 if v:
                     failures.append(f"{sid}: {v}")

@@ -284,7 +284,7 @@ async function boot() {
     } else {
       // First visit territory: the Alto C's own Song of Storms is the home
       // song; fall back to the major scale if the id is ever missing.
-      const home = BUILTIN["song-of-storms-alto"] ? "song-of-storms-alto" : "major";
+      const home = BUILTIN["song-of-storms"] ? "song-of-storms" : "major";
       fillLibrary(home);
       loadLibraryItem(home);
     }

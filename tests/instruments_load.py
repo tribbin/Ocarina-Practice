@@ -293,14 +293,14 @@ def main():
             page = browser.new_page()
             errs = []
             page.on("pageerror", lambda e: errs.append(str(e)))
-            page.goto(base + "?inst=oot-alto-c-12&song=sarias-song-alto&oot")
+            page.goto(base + "?inst=oot-alto-c-12&song=sarias-song&oot")
             page.wait_for_function(BOOT_WAIT)
             # FINGERINGS install precedes the library tail (the tone-model
             # round-trip comes after in loadInstrument): probing #scale/#src
             # can otherwise race the ?song load in.
             page.wait_for_function(
                 "() => document.getElementById('scale').value ==="
-                " 'sarias-song-alto'")
+                " 'sarias-song'")
             byId = page.evaluate(TPL_PROBE)
             page.goto(base + "?inst=oot-alto-c-12&oot")
             page.wait_for_function(BOOT_WAIT)
@@ -310,7 +310,7 @@ def main():
             # the id-path leg above does, before any typed probe.
             page.wait_for_function(
                 "() => document.getElementById('scale').value ==="
-                " 'song-of-storms-alto'")
+                " 'song-of-storms'")
             page.evaluate(TYPED, "Saria's Song")
             byTitle = page.evaluate(TPL_PROBE)
             page.evaluate(TYPED, "Zelda's Lullaby")
@@ -320,8 +320,8 @@ def main():
             if not str(byId.get("tpl") or "").endswith(
                     "ocarina-template-saria.svg"):
                 failures.append(
-                    "svgWhen: song id sarias-song-alto (stem sarias-song) "
-                    f"must select the saria template, got {byId!r}")
+                    "svgWhen: song id sarias-song must select the saria "
+                    f"template, got {byId!r}")
             if not str(byTitle.get("tpl") or "").endswith(
                     "ocarina-template-saria.svg"):
                 failures.append(

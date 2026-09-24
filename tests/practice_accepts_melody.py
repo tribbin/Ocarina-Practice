@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 # Practice acceptance test: drives the REAL js/practice.js engine in a real
 # Chromium page with the pitches the 'play' transport would output, using the
-# page's built-in synthetic mic provider (?practiceTest=1 →
+# page's built-in synthetic mic provider (?practiceTest=1 â†’
 # window.__pracFrame = { hz, rms } replaces capture; js/practice.js readFrame).
 #
 # Two modes:
@@ -9,19 +9,19 @@
 #     soundingGridBeats, ties carried, tempo headers honored) fed open-loop.
 #     Only valid for slide-free melodies: strict play acceptance is the
 #     property under test.
-#   - zones: closed-loop player model — the driver sounds whichever pitch the
+#   - zones: closed-loop player model â€” the driver sounds whichever pitch the
 #     tuner currently demands (P.bar.zones[P.zonesNear]) and goes silent
 #     whenever the engine demands a fresh attack. Used for ~ chain songs:
 #     the pure play timeline feeds each hop for exactly its notated tone,
 #     but the detector's smoothing needs a couple of ticks to read a new
 #     pitch in-tune after a step change, so a real player (like the driver)
-#     holds each pitch until the reading line advances — the per-zone
+#     holds each pitch until the reading line advances â€” the per-zone
 #     75%-of-own-tone rule then absorbs that settle lag via every zone's
 #     freed quarter.
 #
 # Assertions per case: the song completes, the reading line never moves
 # backwards, and "await" (the restart gate) never occurs after the first
-# bar — i.e. consecutive notes flow without any forced silence.
+# bar â€” i.e. consecutive notes flow without any forced silence.
 #
 #   pip install playwright && playwright install chromium
 #   python3 tests/practice_accepts_melody.py          # runs headless & silent
@@ -43,23 +43,23 @@ FIRST_BAR_SAFE_IDX = 5  # past the first bar (fresh-entry await is allowed there
 HEADLESS = "--headed" not in sys.argv
 
 CASES = [
-    dict(name="C major scale — strict play-output schedule",
+    dict(name="C major scale â€” strict play-output schedule",
          query="", mode="schedule", src=None),
-    dict(name="Ties · dots · staccato · rests · triplets · inline tempo — strict",
+    dict(name="Ties Â· dots Â· staccato Â· rests Â· triplets Â· inline tempo â€” strict",
          query="", mode="schedule",
-         src=( "# T · ties dots staccato rests triplets tempo\n"
+         src=( "# T Â· ties dots staccato rests triplets tempo\n"
                "# tempo 120\n"
                "E5/1 -/1 D5/2t E5/2t F5/2t\n"
                "C6/4! D6/4! E6/2 r/4 F6/1\n"
                "# tempo 90\n"
                "A5/2. -/2 G5/1")),
-    dict(name="Dense triplet-16ths + tie chains — player model",
+    dict(name="Dense triplet-16ths + tie chains â€” player model",
          query="", mode="zones",
-         src=( "# T · dense triplets\n"
+         src=( "# T Â· dense triplets\n"
                "E5/16t F5/16t G5/16t A5/16t G5/16t F5/16t\n"
                "E5/8 -/8 D5/2 -/4 r/4 E5/2.")),
-    dict(name="Song of Storms (Double Alto C) — chain songs, player model",
-         query="inst=stein-double-alto-c&song=song-of-storms-alto", mode="zones", src=None),
+    dict(name="Song of Storms (Double Alto C) â€” chain songs, player model",
+         query="inst=stein-double-alto-c&song=song-of-storms", mode="zones", src=None),
 ]
 
 SCHEDULE_DRIVER = """
@@ -93,7 +93,7 @@ SRC => new Promise(resolve => {
   let awaitLate = false;
   // The arbiter waits for the session to be SEEN engaged before the stop
   // signal means anything: on a slow CI box the first poll tick can race the
-  // engage (pick '?song' renders, transport syncs) and read inactive — a
+  // engage (pick '?song' renders, transport syncs) and read inactive â€” a
   // 0-completion instant stop that is a measurement artifact, not a case fail
   // (bit a CI run to flake exactly like this). Two consecutive inactive
   // reads AFTER engagement are the only end-of-case signal.
@@ -186,15 +186,15 @@ def main():
                 # Wait for the app's REAL readiness, not just the practice
                 # module: OCA_PRACTICE exists at script-parse time, but
                 # window.NOTES (fingerings the schedule driver needs) is
-                # installed asynchronously by boot() after its JSON fetches —
+                # installed asynchronously by boot() after its JSON fetches â€”
                 # racing it in CI's cold cache threw early evals.
                 page.wait_for_function(
                     "typeof OCA_PRACTICE !== 'undefined' && !!OCA_PRACTICE"
                     " && window.NOTES && window.NOTES.length")
                 driver = SCHEDULE_DRIVER if case["mode"] == "schedule" else ZONES_DRIVER
                 print(f"\n== {case['name']}"
-                      f"\n   feeding mic frames in real time — no audio, no"
-                      f" window; this takes ~15-45 s per case…", flush=True)
+                      f"\n   feeding mic frames in real time â€” no audio, no"
+                      f" window; this takes ~15-45 s per caseâ€¦", flush=True)
                 t_case = time.monotonic()
                 result = page.evaluate(driver, case.get("src") or "")
                 print(f"   done in {time.monotonic() - t_case:.1f} s"
