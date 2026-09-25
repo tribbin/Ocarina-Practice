@@ -21,7 +21,6 @@ From here on:
   preserved below exactly as they stood. Declined items (e.g. §9 F2 section
   looping) are archived WITH their revival notes.
 
-
 Working doc for tracking improvements between AI sessions, committed under
 `plans/` so it follows the repo across every machine, partition and clone. It carries
 working notes, not shipped documentation. The idle
@@ -148,7 +147,6 @@ survive) and pinned by the new MOUNTED boot leg in tests/gen_pages.py
 (instrument switch, library switch, typed replacement all resolve to the
 mount root).
 
-
 ## 2. Robustness / error handling
 
 - [x] ~~**Silent empty catches swallow synth failures** — `playNoteAt` wraps the entire voice builder in `try { … } catch (e) {}` (zero feedback), same in `playTickAt` and `simulateLag`, plus ~a dozen bare try/catch through audio/hover/position code. Log at least once per session into `#err` or a debug counter. (audio.js:975→1633, audio.js:1683, audio.js:131)~~ ✅ 2026-09-22 `4480fab` — `recordVoiceError(site, e)` records count+site+cause with a 1 s throttled console warn; exposed as `OCA_DEBUG.voiceErrors()/clearVoiceErrors()` (the debug panel can read it); wired into both playNoteAt and playTickAt. The small teardown/hover try/catches stay by design (they guard benign node-stop races); `simulateLag` already lives behind the debug panel. Verified by `tests/voice_error_visibility.py` (in CI).
@@ -175,13 +173,11 @@ restarts — the user resumes. `tests/audio_state.py` (in CI, red first).
 
 - [x] ~~**No schema validation of data files** — REFRAMED 2026-09-24 with Robin: the shape is a CI-side pure-stdlib validator suite — no loud runtime boot gate for hand-tuned data (a malformed manifest already breaks CI's offline suite, but only accidentally). The suite validates instruments.json / songs.json / fingerings.json structure AND cross-references (declared files exist, tone paths either exist or are the deliberate 404s, unique ids, chart-range sanity) and fails CI naming the offending path/class. The original loud-boot-gate idea stays archived in DONE §2 — revive only if data ever becomes user-supplied. `🟧 🟡 ⚙M`~~ ✅ 2026-09-25 `f62ede5`
 
-
 ## 3. Security (low today — matters if data files become user-supplied)
 
 - [x] ~~**innerHTML surface audit (~35 uses)** — flag risky-but-reachable spots: `${name}` from instruments.json interpolated into innerHTML in range warning (ui.js:344-346); instrument template SVG claimed as trusted because it's fetched and used via `clone.outerHTML`/`tpl.innerHTML = svgText` — if a template SVG ever carried `on*` attributes they activate in HTML context (ocarina.js:60, ocarina.js:8). Sanitize SVG (strip `script`/`on*`) before install.~~ ✅ 2026-09-23 `0d4be18` — **template safety:** `sanitizeSvgTemplate` at the single install choke point (DOMParser svg root; script/foreignObject dropped; on* handlers stripped; javascript:/data: hrefs dropped; unparsable text installs NOTHING — and `ensureOcarinaTemplate` marks the path consumed on failure so a bad template cannot live-lock the render loop, a regression the fail branch nearly introduced). **innerHTML audit result:** the remaining ~35 uses interpolate parser-constrained chirps (note ids/durations — char-limited by the parser) or the user's own typed text (self-xss only, by Robin's threat model), both title-assignments are engine-escaped; the one data-file→innerHTML path (range warning: manifest type/version + fingerings DISPLAY range) now goes through the new `escHtml`. `tests/svg_sanitized.py` (in CI): hostile template payload driven through a real boot, unparsable-template fallback, poisoned manifest name rendered as text. `🟨 🟡 ⚙M`
 
 - [x] ~~**Print popup `document.write(html)`** — title already HTML-escaped; keep consistent when touching. (ui.js:827-845) `🟢 ⚪ ⚙S`~~ ✅ 2026-09-25 `94f6ddc`
-
 
 ## 4. Performance
 
@@ -192,7 +188,6 @@ restarts — the user resumes. `tests/audio_state.py` (in CI, red first).
 - [x] ~~**Reverb impulse generated with Math.random on main thread at first bus** — first-load only; fine, just a note. (audio.js:219-230, audio.js:367)~~ ✅ 2026-09-23 — already covered by the README "Accepted by design" paragraph (§2 R9); nothing further to do. `🟢 ⚪ ⚙S`
 
 - [x] ~~**enlargeSmallHoles is O(holes²) per card render** — (ocarina.js:92-110) `🟢 ⚪ ⚙S`~~ ✅ 2026-09-25 `7a580ee`
-
 
 ## 5. Architecture / maintenance
 
@@ -214,7 +209,6 @@ restarts — the user resumes. `tests/audio_state.py` (in CI, red first).
   (transport_schedule, keyboard_widgets, audio_state, spike_watch) + eslint;
   engine-unobservable (null-guarded) so no red phase existed. M1 fully closed.
 
-
 ## 6. Tests & CI
 
 - [x] ~~**parse.js edge-case unit tests (pure JS, cheap)** — accidentals/octave shift (Db→Cs logic parse.js:103-107), octave inheritance, `/0`, 10th octave (`C10` silently drops the `0`), `!` normalization (parse.js:8), `withPlayHeaders`/`withTempoLine`/`withTitleAndTempo`, `titleFromText`/`swingFromText`, inline `# tempo` mid-song, triplet/dotted beat math tolerances.~~ ✅ 2026-09-22 `9cdab5d` — `tests/parse_edges.py` (in CI, ~40 assertions). Found + fixed two silent data-loss bugs: multi-digit octave (`C10` became C1 — now no token, digit-boundary `(?!\d)`) and inline `# tempo N` swallowing the rest of its line (scanner rewinds; other comments keep whole-line swallow). Locked gotcha → new TODO item below.
@@ -233,8 +227,6 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 
 - [x] ~~**General readability (contrast) sweep — "a general test of readability of every component"** — Robin, 2026-09-25, prompted by a visible HiFi problem; wanted a general non-roster detector. `🟨 🟡 ⚙M`~~ ✅ 2026-09-25 `a529fd0` — tests/readability.py (in CI): a full-DOM scanner, not a roster — per look (plain/hyrule/hifi) and per state (base with collapsed blocks opened, floating tuner, zen, zen+tuner in-card, theme menu, help overlay, library dropdown, save dialog, audio performance pop, ?debug=1 panel) it walks every visible element that paints its own text or a button glyph, composites the real background chain (rgba stops blended), and holds WCAG 4.5/3.0 by size. Every state must MEASURE something (pass-by-nothing fails loudly — the class Robin caught with the song-library miss). The scanner found and the same commit fixed: the HiFi light-sheet internals, a HYRULE theme-menu class, the piano now-key label, --token-pause, and the Hyrule dbg heading. Note field for the next session: state minimums are distinct-path caps (35 base / 12 zen / small popups) — re-tune if a state's content changes.
 
-
-
 ## 7. Accessibility & UX
 
 - [x] ~~**Piano keys are click-only `<div>`s** — no button semantics, no keyboard, no aria-label (title attr only). Make them buttons with aria-labels + keyboard. (ui.js:770-799)~~ ✅ 2026-09-22 `3094ad7` — role=button + aria-labels + roving tabindex (one tab stop), arrows (L/R chromatic, U/D octave, Home/End), Enter/Space audition; clicks move the anchor. Kept as styled `div`s with role=button (zero CSS/theme risk vs real `<button>`s). `tests/keyboard_widgets.py` in CI.
@@ -246,8 +238,6 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 - [x] ~~**Info screen links the GitHub issues page** — Robin, IDEAS 2026-09-25: add a link to https://github.com/tribbin/Ocarina-Practice/issues on the info/help screen so users can report problems. Static link, no behavior; render/sr pins updated where they enumerate that screen. `🟢 🟡 ⚙S`~~ ✅ 2026-09-25 `720373e` — shipped with the landed-crawler lifts in the same `720373e` (session6, PR #12): the help dialog's .help-meta colophon carries the GitHub issues link (target=_blank rel=noopener); no render/sr pin enumerates the help screen, so none needed the update the item anticipated
 
 - [x] ~~**The playback swing dial lives under practice's silent-dials contract (`.dial-off`) like the tempo dial** — Robin, live 2026-09-25: on the main site the swing slider was 'not disabled like tempo' during practice; the cause is that the idea never became code (commit `1766fad` was Robin planting the IDEAS line, not an implementation — the IDEAS-cleanup record had wrongly counted it shipped). Fix: the swing row joins the playback-only dim family (opacity .18 + pointer-events none via ui.js updateTransportUI, beside tempo/focus-tempo), red→green `b86ddf3` with tests/practice_dials.py pinning engage-inert/disengage-restore/re-engage; sw VERSION → oco-pwa-v14. `🟨 🟠 ⚙S`~~ ✅ 2026-09-25 `b86ddf3` — red first, landed with the dim-family toggle; his phone eyeball after merge+deploy is the deciding pass per the field-check class — the wake-lock play+practice hold was separately CONFIRMED live the same day
-
-
 
 ## 8. Housekeeping
 
@@ -278,12 +268,6 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 - [x] ~~**Landed-crawler URL semantics: leaving a stub path never plays different content under it** — Robin, IDEAS 2026-09-25 (verbatim intent): when a user lands on a `/song/…` page via search and then switches song or instrument (or otherwise loads different content), the URL must "refer to the root of the domain with the ? GET vars" — `/?song=<key>&inst=<id>` (or bare `/?` when nothing library-identifiable is loaded) — "as you don't want someone to play a different song under a specific path". The landing page's OWN seed keeps its clean path (that is the canonical for that song); only SUBSEQUENT switches move to the root. Also: "make clicking the site title direct to the entry-point of the domain" — the header title becomes a plain link to `/` (its href must carry the serving prefix / stay relative so the artifact stays mount-agnostic). Touches only history.replaceState + header markup; no audio, no editor semantics; gen_pages boot legs gain the switch-assert (switch → URL becomes root+query, and the SW-era deep-link tests already cover the ?var side). `🟨 🟠 ⚙S`~~ ✅ 2026-09-25 `720373e` — shipped in `720373e` on session6 (merged via PR #12): later warm switches resolve to the site root with ?song=&inst= (root read off the pathname, mount-agnostic), typed/cleared/file loads go to bare root after the dropdown drops, boot deep-links stay gated behind markUrlLanded forever, the site title is `header h1 > a[href='./']` under the <base>; gen_pages pins seed-path/title-anchor/switch-root+vars/typed-bare-root on all 8 stub boots; sw VERSION → oco-pwa-v7, superseded by the session12 v13 chain
 
 - [x] ~~**Deduplicate octave/transpose-twinned song bodies (survey first)** — Robin: "Deduplicating songs (that only differ in octave/transpose) would be a nice touch." FIRST step is tooling only (his MIDI-boundary rule: no song-data work unsupervised): a `tools/` audit that proves which songs.json variants are exact octave shifts of one another (the dummy↔stein +12 pair is the precedent — see skills/song-transposing). Report the twin classes + per-class divergence spots; then decide WITH Robin whether variants keep hand-written bodies or derive from a base body at load (keys/URLs MUST stay frozen either way — the permalink contract). ﻿Night survey 2026-09-25 (tools/audit_twins.py `33bd3fa`, report-only, no bodies touched): **5 octave twins** â€” song-of-time/-bass, song-of-storms/-bass, sarias-song/-bass, eponas-song/-bass (every -bass arrangement is its alto base's melody one octave DOWN, modulo nothing: barlines, rests, continuations, slides, durations and accents all carried over) and botw-theme/-down3 (also -12). **3 uniform non-octave twins** â€” concerning-hobbits-short/-c (shift -2), botw-theme/-bass (shift -9), botw-theme-bass/-down3 (shift -3; the two bass arrangements are a uniform -3 apart). **No other twins**: all cross pairs are NOT-ALIGNED (different token counts), and kokiri-forest-bass refuses every verdict until its stray lowercase `g4/4` token is resolved (tool refuses on unreadable shapes by construction). So: the four -bass bodies and botw's -down3 are PROVEN derivable-at-load candidates (keys/URLs stay frozen either way per the permalink contract); the three non-octave twins are shift-derivable too; kokiri is a potential fifth body once its stray token is explained â€” that one needs Robin's eyes before any claim. Kokiri held verdict resolved 2026-09-25 at 098115d: the stray lowercase g4/4 was a typo (parse.js uppercases note letters — it played identically all along); the audit now runs refusal-free across all 15 shipped songs and kokiri-forest is NOT-ALIGNED against everything (the renamed leaf is no twin), so the census stands at 8 proven twins. Robin calls 2026-09-25: DERIVE ALL 8 at load (five octave twins + three uniform non-octave shifts), keys/URLs frozen; transpose fork resolves TOKEN-LEVEL (editor text untouched, display/playback shifted). Remaining: the at-load derivation build. `🟨 🟡 ⚙M`~~ ✅ 2026-09-25 `eee3bbe` — Dedup SHIPPED 2026-09-25 eee3bbe — Robin's batch answers became the final census: 5 derives records ship (song-of-time-bass, song-of-storms-bass, sarias-song-bass all -12; botw-theme-down3 -12; concerning-hobbits-short-c -2), folded at load byte-equal by tests/twin_derive.py fixtures; the byte-identity test drove the theory discovery — octave shifts CARRY the base letter (Bb5→Bb4) because eponas mixes flat- and sharp-side spellings per section — so the flats flag died; HELD hand-written: botw-theme-bass (key-name labels + line split) and eponas-song-bass (A2 label), both Robin's calls; kokiri is no twin. The audit now prints provenance lines and keeps the 5+3 census refusal-free. 
-
-
-
-
-
-
 
 > **Idle idea pool: `plans/IDEAS.txt`.** A live document Robin edits over time and ROBIN'S ALONE — the AI never writes it (it may be read, and only lifted into TODO.md when Robin explicitly asks). TODO carries no copy or summary: when an idea from it is picked up, read the FILE fresh at that moment; never rely on a remembered or transcribed version.
 
@@ -722,4 +706,3 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
   set completion as the joint content jam (the November anchor). Helds remain: MIDI
   implementation only as tooling, robots/sitemap post-verification stages builds lean on
   the live gate.
-

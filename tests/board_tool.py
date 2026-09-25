@@ -278,6 +278,51 @@ def t10():
     assert not ok and any("open item inside the session log" in r for r in report), report
 
 
+def max_blank_run(lines):
+    run = best = 0
+    for l in lines:
+        run = run + 1 if l == "" else 0
+        best = max(best, run)
+    return best
+
+
+@case("add/complete never accumulate blank lines (the IDEAS claim, real)")
+def t11():
+    todo, done = sandbox()
+    board.add(todo, 1, "- [ ] **B1 bug** — stacked one. `🟨 🟡 ⚙S`")
+    board.add(todo, 1, "- [ ] **B2 bug** — stacked two. `🟨 🟡 ⚙S`")
+    board.add(todo, 1, "- [ ] **B3 bug** — stacked three. `🟨 🟡 ⚙S`")
+    tl = read(todo)
+    sec1 = next(i for i, l in enumerate(tl) if l.startswith("## 1. "))
+    sec2 = next(i for i, l in enumerate(tl) if l.startswith("## 2. "))
+    run = inner_best = 0
+    for l in tl[sec1:sec2]:
+        run = run + 1 if l == "" else 0
+        inner_best = max(inner_best, run)
+    assert inner_best == 1, (
+        f"§1 carries a {inner_best}-blank run after three adds — the "
+        "structural moves must never accumulate empty lines")
+    board.complete(todo, done, "Alpha bug", date="2026-09-26")
+    assert max_blank_run(read(todo)) == 1 and max_blank_run(read(done)) == 1, (
+        "complete must leave whole-file single blanks on both sides")
+
+
+@case("verify flags double-blank runs; affected writes self-collapse them")
+def t12():
+    todo, done = sandbox()
+    board.tag(todo, "Beta bug", "minor", "later", "m")  # fixture Beta ships tagless
+    lines = read(todo)
+    sec1 = next(i for i, l in enumerate(lines) if l.startswith("## 1. "))
+    lines.insert(sec1 + 2, "")
+    write(todo, lines)
+    ok, report = board.verify(todo, done)
+    assert not ok and any("blank line" in r for r in report), report
+    # a write over a doubled board collapses the runs (self-healing)
+    board.add(todo, 1, "- [ ] **Heal bug** — written over doubles. `🟨 🟡 ⚙S`")
+    assert max_blank_run(read(todo)) == 1, (
+        "a structural write must leave the file with single blanks")
+
+
 def main():
     failed = []
     for name, fn in CASES:
