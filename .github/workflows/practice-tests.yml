@@ -1,6 +1,6 @@
-# Practice acceptance gate: the "play output accepted by practice" suite
+# Practice battery: the console-hygiene scan, the full suite set
 # (headless Chromium mic frames via the page's ?practiceTest=1 provider)
-# runs on every push/PR/manual dispatch. Deployment itself stays with
+# and the lint pair run on every push/manual dispatch. Deployment itself stays with
 # GitHub Pages' built-in branch deployment ("Deploy from a branch"): it
 # ships on every push to main without this workflow, so these runs are a
 # health check — NOT a deploy gate (flip the workflow to an Actions-based
@@ -23,7 +23,7 @@ permissions:
 
 jobs:
   practice-tests:
-    name: practice accepts the play output
+    name: the practice battery (suites + lint)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -103,5 +103,11 @@ jobs:
         run: python tests/theme_toggle.py
       - name: Run transposer skill script tests
         run: python tests/transpose_skill.py
+      - name: Run wake-lock lifecycle tests
+        run: python tests/wake_lock.py
+      - name: Run practice close/mic layout tests
+        run: python tests/practice_close.py
+      - name: Run readability contrast sweep
+        run: python tests/readability.py
       - name: Run song-stub page generator contract tests
         run: python tests/gen_pages.py

@@ -45,6 +45,7 @@ import { clearHighlight, freezeZenGlow, highlightToken, isFullscreen, isLiveTab,
          lastTokens, loopOn, noteMidi, quarterSec, updateTransportUI } from "./ui.js";
 import { PITCH_MIN_HZ, PITCH_MAX_HZ, autoCorrelate } from "./pitch-dsp.js";
 import { currentSongId } from "./app.js";
+import { wakeHold, wakeDrop } from "./wakelock.js";
 (function () {
   "use strict";
 
@@ -254,11 +255,15 @@ import { currentSongId } from "./app.js";
     panel.className = "prac-panel noprint";
     panel.hidden = true;
     panel.innerHTML =
+      '<button type="button" class="prac-close" title="Close practice (un-press)" aria-label="Close practice mode">' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6 18 18M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>' +
+      '</button>' +
       '<div class="prac-row1"><span class="prac-note">—</span>' +
       '<span class="prac-status"></span></div>' +
       '<div class="prac-scale"><div class="prac-zone"></div><div class="prac-mark"></div></div>' +
       '<div class="prac-track"><div class="prac-fill"></div></div>' +
       '<div class="prac-history" hidden></div>';
+    els.close = panel.querySelector(".prac-close");
     els.note = panel.querySelector(".prac-note");
     els.status = panel.querySelector(".prac-status");
     els.scale = panel.querySelector(".prac-scale");
@@ -269,7 +274,11 @@ import { currentSongId } from "./app.js";
     els.history = panel.querySelector(".prac-history");
     // No Pause/Skip/Restart/End here: the transports own mode control, and
     // clicking any token re-anchors the practice. The panel is a pure tuner
-    // display (draggable by its face).
+    // display (draggable by its face) — with the one affordance Robin asked
+    // for: a top-right close that UN-PRESSES practice in full (stop, not the
+    // pause many-transports do). Hidden in zen: the in-card strip is the
+    // card's own, and leaving zen is the route back.
+    els.close.onclick = () => stopPractice();
     makeDraggable(panel);
     panelHost().appendChild(panel);
     return panel;
@@ -1139,6 +1148,7 @@ import { currentSongId } from "./app.js";
     recordPracticeRun();
     P.completed = true;
     P.paused = true; // frozen at the end; Resume wraps to the first note
+    wakeDrop("practice"); // the run ended — the phone may sleep again
     clearOverlays(); // the last note's bar ends with the song
     if (panel) panel.hidden = true; // neutral: no tuner
     zenGlowOff();
@@ -1235,6 +1245,7 @@ import { currentSongId } from "./app.js";
     const start = nextPitchedIdx((typeof fromIdx === "number") ? fromIdx : 0);
     if (start < 0) { P.err = "No playable notes in this melody."; renderPanel(); return; }
     enterIdx(start, true); // a new session starts with a real articulation
+    wakeHold("practice"); // genuinely practicing now — the screen stays up
     if (!TEST && !NOMIC) {
       // First open per session: drive out mid-note — defer until the last
       // voice is fully stopped (fade 30 ms + source stop 50 ms + slack) so
@@ -1265,6 +1276,7 @@ import { currentSongId } from "./app.js";
 
   function stopPractice() {
     P.active = false; P.paused = false; P.completed = false; P.bar = null;
+    wakeDrop("practice"); // un-pressed: the phone may sleep again
     P.doneHz = null; // no completed tone to compare the next session against
     P.holdRms = 0;
     // Leave the card's meta band immediately: the parked/hidden tuner must
@@ -1302,6 +1314,8 @@ import { currentSongId } from "./app.js";
     P.paused = !P.paused;
     P.last = performance.now();
     acDropFrames(); // in-flight frames must not step the paused machine
+    // The wake lock follows the tuner: a paused session lets the phone sleep.
+    if (P.paused) wakeDrop("practice"); else wakeHold("practice");
     // Disengaged (paused) = neutral: the tuner never shows while practice is
     // not running. Paused in the card band must ALSO leave the band — the
     // empty middle column would otherwise pull the note symbols inward.
@@ -1318,6 +1332,7 @@ import { currentSongId } from "./app.js";
   function practiceFrom(idx) {
     if (!P.active) return;
     P.paused = false; P.completed = false;
+    wakeHold("practice"); // a manual re-anchor resumes practicing
     enterIdx(nextPitchedIdx(idx), true); // manual re-anchor = a fresh start here
     renderPanel();
     syncTransportAny();

@@ -43,3 +43,7 @@ BUGS
 
 Telephones go to sleep mode (blacking screen) during play; can we keep it active like when playing a youtube video?
 Current behavior is a problem for people practicing.
+
+When CSS changes, a deep refresh is needed. Can we version it, just like the app, so it will retrieve the fresh one on releases?
+
+Swing should be disabled (like tempo) when practice is enabled.
