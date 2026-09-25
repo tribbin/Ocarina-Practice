@@ -22,8 +22,6 @@ Should we use GitHub actions on deploy to make the large hole ocarina SVGs?
 
 LAYOUT
 
-Add close-button top-right of the (non-Zen mode) practice/tuner to un-press the practice. This will feel natural/familiar instintively for many users.
-It is not clear to the (new) user that they should start playing the song after pressing 'practice'. Can we inform the user either through a microphone icon in the blue button, instead of the note?
 I don't know what the (practice) 'history' function does, so I assume the user doesn't either.
 
 OTHERS
@@ -34,16 +32,10 @@ When a song 'overwrites' default about tick on/off, that should not change the u
 
 THEMES
 
-Additional 80s black audio-stack with square-row LED displays. The red understripe for headers can remain the same as other.
-Switching between themes in a way that signifies the color theme without showing it in the current theme during normal usage.
-
 Let's add theming (colors/preview/backdrop/...) to both the main page and song-links, that will show up when people paste a link in social media and for web searches.
 
 BUGS
 
-Telephones go to sleep mode (blacking screen) during play; can we keep it active like when playing a youtube video?
-Current behavior is a problem for people practicing.
-
 When CSS changes, a deep refresh is needed. Can we version it, just like the app, so it will retrieve the fresh one on releases?
 
-Swing should be disabled (like tempo) when practice is enabled.
+On phone (relatively small vertical screen) the note bar is very much lagging, as in, moving too slowly towards the center as a note is highlighted. It even leaves the screen partially.

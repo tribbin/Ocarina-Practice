@@ -255,6 +255,29 @@ def t9():
     assert board._payload(ns) == "note line"
 
 
+@case("verify guards the session-log order and content")
+def t10():
+    todo, done = sandbox()
+    board.tag(todo, "Beta bug", "minor", "later", "m")  # fixture Beta ships tagless
+    ok, report = board.verify(todo, done)
+    assert ok, report
+    # appended-order violation: a later-dated entry sitting above an older one
+    # (neither hand-placing nor a future log-add may produce this)
+    lines = read(todo)
+    z = lines.index("- **2026-09-25 (session Z)** — newest entry.")
+    lines.insert(z, "- **2026-09-26 (session W)** — mis-placed above older entries.")
+    write(todo, lines)
+    ok, report = board.verify(todo, done)
+    assert not ok and any("date" in r for r in report), report
+    # an open item must not live inside the session log section
+    todo, done = sandbox()
+    lines = read(todo)
+    lines.append("- [ ] **Stray item** — must not live in the log. `🟢 ⚪`")
+    write(todo, lines)
+    ok, report = board.verify(todo, done)
+    assert not ok and any("open item inside the session log" in r for r in report), report
+
+
 def main():
     failed = []
     for name, fn in CASES:

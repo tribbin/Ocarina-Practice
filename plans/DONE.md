@@ -227,6 +227,12 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 - [x] ~~**prefers-reduced-motion only covers zen halo** — gate token pulse, zen wave, toasts too. (app.css:906-915)~~ ✅ 2026-09-22 `a130f88` — gate block moved to file end (later-position tie would have lost otherwise); range-warn + perf-alert pulses die, zen wave keeps opacity-only fade (new reduce keyframes), focus-token swell/transition freeze. Toasts诊 have no motion (nothing to gate). NEW `tests/reduced_motion.py` (in CI): probes identical class-chain stand-ins in BOTH emulated modes so selector rot can't pass silently.
 - [x] ~~**title-only tooltips** — several affordances exist only as `title` (e.g. "click = play from here"); invisible to touch/AT. Add visible hints or aria-describedby. (ui.js:626)~~ ✅ 2026-09-23 `3bb5bfa` — one shared `#sr-gesture-hints` block (index.html, `.sr-only` style in app.css) named by `aria-describedby` from every activatable token chip (roles + junk pills) and every playable piano key (white + black); text covers tap-vs-hold on touch, right-click add, and the fix-or-remove instruction. Bonus AT fix in the same pass: out-of-range chips wear a real label now — "Play from B3 — below this ocarina's range (…), the note itself can't be played" — instead of the RANGE being title-only. Titles stay for desktop hover. NEW `tests/sr_hints.py` (in CI). `🟨 🟡 ⚙S`
 
+- [x] ~~**Info screen links the GitHub issues page** — Robin, IDEAS 2026-09-25: add a link to https://github.com/tribbin/Ocarina-Practice/issues on the info/help screen so users can report problems. Static link, no behavior; render/sr pins updated where they enumerate that screen. `🟢 🟡 ⚙S`~~ ✅ 2026-09-25 `720373e` — shipped with the landed-crawler lifts in the same `720373e` (session6, PR #12): the help dialog's .help-meta colophon carries the GitHub issues link (target=_blank rel=noopener); no render/sr pin enumerates the help screen, so none needed the update the item anticipated
+
+- [x] ~~**The playback swing dial lives under practice's silent-dials contract (`.dial-off`) like the tempo dial** — Robin, live 2026-09-25: on the main site the swing slider was 'not disabled like tempo' during practice; the cause is that the idea never became code (commit `1766fad` was Robin planting the IDEAS line, not an implementation — the IDEAS-cleanup record had wrongly counted it shipped). Fix: the swing row joins the playback-only dim family (opacity .18 + pointer-events none via ui.js updateTransportUI, beside tempo/focus-tempo), red→green `b86ddf3` with tests/practice_dials.py pinning engage-inert/disengage-restore/re-engage; sw VERSION → oco-pwa-v14. `🟨 🟠 ⚙S`~~ ✅ 2026-09-25 `b86ddf3` — red first, landed with the dim-family toggle; his phone eyeball after merge+deploy is the deciding pass per the field-check class — the wake-lock play+practice hold was separately CONFIRMED live the same day
+
+
+
 ## 8. Housekeeping
 
 - [x] ~~**Favicon + meta description + theme-color missing** in index.html.~~ ✅ 2026-09-22 `9cfccfb` — favicon.svg (ocarina glyph, app palette) + link + meta description + theme-color.
@@ -252,6 +258,9 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 - [x] ~~**Practice layout pair: tuner close button + mic-icon practice button** — Robin, IDEAS LAYOUT: "Add close-button top-right of the (non-Zen mode) practice/tuner to un-press the practice" + "inform the user through a microphone icon in the blue button, instead of the note". `🟢 🟡 ⚙S`~~ ✅ 2026-09-25 `b106cba` — .prac-close on the floating tuner (stopPractice full un-press; hidden on zen's in-card strip), row1 reserves the corner under the ✕ for the status prose/engine glyph (Robin live-tested the overlap mid-session — fixed at 30px reservation); ♪ retired on BOTH transports (#mirrorPractice, #practiceFocusBtn) for the g-mic svg, titles/aria kept. tests/practice_close.py (red→green, CI-registered): one ✕ per floating tuner, close un-presses + hides + un-presses aria, re-engage carries one ✕ again, both buttons mic-glyph/no-text/title kept. sw VERSION → oco-pwa-v9. FIELD CHECK: Robin confirmed close works; the glyph look (and the ✕ placement after the fix) awaits his next eyeball.
 
 - [x] ~~**HiFi theme (the 80s black audio-stack) + theme switcher menu** — Robin, IDEAS THEMES 2026-09-25: "Additional 80s black audio-stack with square-row LED displays. The red understripe for headers can remain the same as other." + "Switching between themes in a way that signifies the color theme without showing it in the current theme during normal usage." Named "HiFi" (code hifi) by Robin at the batch. `🟨 🟡 ⚙M`~~ ✅ 2026-09-25 `bccb4f8` — FIRST PASS LANDED, retunable by design: theme combo now a menu (button opens a neutral popover listing Plain/Hyrule/HiFi in one uniform ink — Escape/outside/pick close; picks apply+persist "oco-theme"+re-render); themeBtn reads the ACTIVE look still. HiFi = data-theme="hifi": black chassis tokens, LED-amber mono dial numerals, square-segment LED rows on the tuner scale/track/fill, red header understripe untouched, chamber/token symbology untouched, ?hifi param outranks saved. theme_toggle.py rewritten for the menu contract (red→green, CI step exists). sw VERSION → oco-pwa-v10. FIELD CHECK FOR ROBIN: the whole look is his to retune — LED colors, chassis shades, row geometry are first-pass guesses; the "square-row" idiom currently shows on the practice tuner's meters only (perf-pop meters and the stats line stay token-styled for now). **FOLLOWUP same day `a529fd0`:** Robin live-verified the chassis-paint shape, then the general readability scan (§6, the song-library and "there's more" pushes) found the light-sheet internals the first pass inverted — the shape that stayed: paper/ink plain, chassis painted per-surface (the OoT pattern); menu ink per face (light on the dark menu, dark on the selected paper strip), light card face + dur, dark kbd ink, zen button dark on the LED red, --key-now-label token, --token-pause one step darker (4.5 bar), Hyrule dbg heading green; sw VERSION → oco-pwa-v12. **STEERED HIDDEN same day (`4c4456c`, sw v13):** Robin: branch close but not merge-ready yet ("minor issues and subjective problems we'll correct later") — the HiFi theme goes hidden until finished: the menu lists only Plain/Hyrule, and ?hifi explores it exactly like the old ?oot hidden era; saved hifi choices still rule; theme_toggle rewritten for the hidden contract.
+
+- [x] ~~**Landed-crawler URL semantics: leaving a stub path never plays different content under it** — Robin, IDEAS 2026-09-25 (verbatim intent): when a user lands on a `/song/…` page via search and then switches song or instrument (or otherwise loads different content), the URL must "refer to the root of the domain with the ? GET vars" — `/?song=<key>&inst=<id>` (or bare `/?` when nothing library-identifiable is loaded) — "as you don't want someone to play a different song under a specific path". The landing page's OWN seed keeps its clean path (that is the canonical for that song); only SUBSEQUENT switches move to the root. Also: "make clicking the site title direct to the entry-point of the domain" — the header title becomes a plain link to `/` (its href must carry the serving prefix / stay relative so the artifact stays mount-agnostic). Touches only history.replaceState + header markup; no audio, no editor semantics; gen_pages boot legs gain the switch-assert (switch → URL becomes root+query, and the SW-era deep-link tests already cover the ?var side). `🟨 🟠 ⚙S`~~ ✅ 2026-09-25 `720373e` — shipped in `720373e` on session6 (merged via PR #12): later warm switches resolve to the site root with ?song=&inst= (root read off the pathname, mount-agnostic), typed/cleared/file loads go to bare root after the dropdown drops, boot deep-links stay gated behind markUrlLanded forever, the site title is `header h1 > a[href='./']` under the <base>; gen_pages pins seed-path/title-anchor/switch-root+vars/typed-bare-root on all 8 stub boots; sw VERSION → oco-pwa-v7, superseded by the session12 v13 chain
+
 
 
 
@@ -625,4 +634,73 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
   locs exact). Sweep 31/31 (258 s). sw.js untouched — no VERSION bump. The discovery
   session's rule-13 lesson also landed earlier today as `3930d42` (the dip red cured,
   merged with PR #10, CI green at `36116579188`/`36117318584`).
+
+- **2026-09-25 (post-flip stretch — the gate goes green, the IDEAS lifts land on the board)** —
+  Robin merged `domain-switch` as PR #11 (`4f44099`) and re-fired the deploy
+  (`36125302883`, 29 s): the post-flip acceptance gate PASSED — `verify_site --origin
+  https://ocarina-practice.com --boot 8` = 20 live checks, 8/8 stubs booting right song/
+  right ocarina at prefix `/`, robots.txt + sitemap.xml serving and enumerating exactly
+  home + the stub set. Per Robin's rule the permalink contract is LIVE. The F7 item
+  carries the gate record; its residual rows are Lighthouse, SERP observation (November
+  anchor) and Robin's manual Search Console verification + sitemap submission. Robin
+  updated IDEAS meanwhile (commit `521f7e2` mobile-sleep; two new flip-adjacent entries)
+  and asked for the first IDEAS-cleanout check — end to end against the board/code
+  nothing was done, the file untouched. Then "Check updated IDEAS and TODO and select
+  some work": the two flip-adjacent IDEAS entries lifted as board items — §9 "Landed-
+  crawler URL semantics: leaving a stub path never plays different content under it"
+  (switches resolve to root + ?song=&inst=, seed keeps its canonical path, title click →
+  root entry) and §7 "Info screen links the GitHub issues page". Hot list refreshed
+  (gate-green rows retired from the wording; lifts head the stack). This bookkeeping
+  batch (notes/lifts/log/hot) is plans-only; app work next on Robin's word for the
+  branch.
+
+- **2026-09-25 (session 6 branch — the two IDEAS lifts built: landed-crawler URLs + title link + issues link)** —
+  built on Robin's granted `session6` placeholder (renamed by him whenever; the bookkeeping
+  commit `fc70465` first moved OFF main onto session6 and main rewound to the merge tip per
+  the new placeholder-branch rule, now in AGENTS rule 8). RED→GREEN: gen_pages boot legs
+  first (red on all three behaviors), then the implementation — the landing SEED keeps its
+  clean canonical path (pinned), the site title is `header h1 > a[href='./']` (mount-agnostic
+  via <base>: root on the domain, /Ocarina-Practice on a project-page mount), a warm library
+  switch resolves the URL to the SITE ROOT with ?song=&inst= (derived from the current
+  pathname minus its /song/ tail — mount-agnostic by construction), a typed/cleared/file-
+  loaded replacement goes to BARE root (the rewrite runs after the dropdown drops so a stale
+  song name can never ride it), boot's own deep-link loads are gated by markUrlLanded() so
+  they keep the landing path forever. Hooks: library.js loadLibraryItem tail +
+  clearLibrarySelection (+ the idempotent root early-exit), app.js boot tail + the
+  switchInstrument same-song path (instrument change alone rewrites). The help dialog gained
+  the .help-meta colophon with the GitHub issues link (target=_blank rel=noopener). sw.js
+  VERSION → oco-pwa-v7 (rule 15; the offline suite rode the sweep green). Lint clean
+  (eslint + html-validate, node 22 restored to /tmp/opencode/node for the box). Full sweep
+  31/31 (262 s).
+
+- **2026-09-25 (intended-instrument landed; Robin's model pinned)** — the songs.json `intended` field + the intended-aware landing walk shipped red-first (sandbox v12 validator class + the BotW pin), BotW seeds the -bass body on the triple from the clean URL after merge+deploy. Robin's followups pinned the semantics on the item: the instrument-tagged entries are the versions and keep their keys (no rekey, no -bass deletion), the non-specific URL is the intended-instrument's entry point when defined, the ladder rules otherwise, and the clean page titles what plays. IDEAS line left the scratchpad; the open board item carries future per-song values as Robin's musical calls. Sweep 31/31 (262 s) covered the data+generator+validator+pins; no sw bump (data+tooling only).
+
+- **2026-09-25 (session 11 wrap — the intended exemplars land, CI stops double-running, the next batch planted)** —
+  after the PR-copy canon was pinned to Robin's named PRs (#3 sentence-tagged links, #9
+  approved second shape — commit `80be46d`, the bare-SHA-plus-URL form named as the drift),
+  Robin reshaped the intended-instrument story to its final understanding: the exemplar run
+  needed not a body rewrite but the non-specific URL landing the intended version — BotW
+  confirmed as-built (base declares intended=triple; the family walk seeds botw-theme-bass
+  on the triple), and Kokiri's clean URL manufactured by REKEYING the leaf kokiri-forest-bass
+  → kokiri-forest (byte-identical body; Robin kept the "(bass)" tag naming for the entry;
+  intended=triple; `d99eeaa` — the old URL retires mid-trial-period, SKILL.md's leaf example
+  updated, sweeps 31/31 twice). The PR pipeline's double-run diagnosed and cured: the bare
+  push: trigger fired both a push and a pull_request run per PR-commit — push now rides
+  main only (`cb253cb`), and Robin's fossil job-title complaint joins the board as the
+  next-session item (verify taut him: a tag span must be a code span). SAME-DAY CORRECTION
+  (Robin's single-run shape, `fe92c8b`): instead of push→main-only, the pull_request trigger
+  is DROPPED and bare push fires the battery once per commit on every branch — an open PR
+  recognizes the head SHA's run by job name; main's post-merge run is the shield; the traded
+  piece is the merge-commit pre-validation. Branch session6 ends
+  at `cb253cb` (10 commits) — PR copy already drafted for Robin per the canon; next session
+  opens from the proposed batch in the log.
+- Next (session 12 opening batch, proposed — Robin confirms/picks): (1) the phone wake-lock
+  (his committed IDEAS bugs entry; Screen Wake Lock API on play/practice, release on stop;
+  field-check on his phone); (2) the openers: CI fossil job-title rename + the SEO
+  Lighthouse pass (both small, one commit each); (3) the 80s LED theme sketch as the fun
+  centerpiece (IDEAS themes; first-pass tunable, joint design); (4) the LAYOUT quick pair
+  (practice-close button + the mic-icon inform), his field-check class; (5) the 12-hole OoT
+  set completion as the joint content jam (the November anchor). Helds remain: MIDI
+  implementation only as tooling, robots/sitemap post-verification stages builds lean on
+  the live gate.
 

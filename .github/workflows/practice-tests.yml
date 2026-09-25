@@ -107,6 +107,8 @@ jobs:
         run: python tests/wake_lock.py
       - name: Run practice close/mic layout tests
         run: python tests/practice_close.py
+      - name: Run playback-dial dim (swing joins tempo) tests
+        run: python tests/practice_dials.py
       - name: Run readability contrast sweep
         run: python tests/readability.py
       - name: Run song-stub page generator contract tests
