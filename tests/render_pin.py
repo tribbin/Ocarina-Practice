@@ -23,8 +23,13 @@ from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parent.parent
 HEADLESS = "--headed" not in sys.argv
+# Tail guard: a typed body typed before boot's tail lands gets REPLACED by
+# loadLibraryItem's home song (the practice_dip 2026-09-25 red class) — so
+# wait until #scale options exist (filled only by the tail) before probing.
 WAIT = ("window.NOTES && window.NOTES.length"
-        " && typeof parse === 'function'")
+        " && typeof parse === 'function'"
+        " && (function () { const s = document.getElementById('scale');"
+        " return s && s.options.length > 0; })()")
 
 # Pinned against the Triple Bass C explicitly: the default instrument now
 # boots the 12-hole Alto C (the app's home instrument), whose A4–F6 range

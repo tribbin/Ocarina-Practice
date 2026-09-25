@@ -187,10 +187,18 @@ def main():
                 # module: OCA_PRACTICE exists at script-parse time, but
                 # window.NOTES (fingerings the schedule driver needs) is
                 # installed asynchronously by boot() after its JSON fetches —
-                # racing it in CI's cold cache threw early evals.
+                # racing it in CI's cold cache threw early evals. The tail
+                # guard (the practice_dip 2026-09-25 CLI red): OCA_PRACTICE
+                # already exists while boot still owes its fillLibrary/
+                # loadLibraryItem tail, whose practiceInvalidate kills a
+                # session started mid-boot — #scale options are filled only
+                # by that tail, so their existence proves boot is behind us.
                 page.wait_for_function(
                     "typeof OCA_PRACTICE !== 'undefined' && !!OCA_PRACTICE"
-                    " && window.NOTES && window.NOTES.length")
+                    " && window.NOTES && window.NOTES.length"
+                    " && (function () { const s ="
+                    " document.getElementById('scale');"
+                    " return s && s.options.length > 0; })()")
                 driver = SCHEDULE_DRIVER if case["mode"] == "schedule" else ZONES_DRIVER
                 print(f"\n== {case['name']}"
                       f"\n   feeding mic frames in real time — no audio, no"

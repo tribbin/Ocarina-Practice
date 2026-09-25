@@ -56,13 +56,14 @@ first circle → urgency, last letter → effort.
 ## Hot list (importance across all types)
 
 Picks for the next session(s), roughly damage × imminence ÷ effort
-(refreshed 2026-09-24 during the DONE split):
+(refreshed 2026-09-25: hot row 1's schema-validation question closed when the
+reframed R4 data validator shipped `f62ede5`; the flake family's third member
+got its class cure the same day):
 
 | Item | Section |
 |---|---|
-| Schema validation of instruments/songs/fingerings on boot — **superseded by §9 F1** (the SW-derived precache makes a bad manifest entry break CI's offline suite; Robin may not want a loud-boot gate for his hand-tuned data) — reconfirm intent before building | §2 R4 |
 | Robin-field feedback stack: PWA install + airplane-mode practice (§9 F1), theme/help/title-bar eyeball, history line, new highlight-plan playback eyeball, dip dipMs/dipFrac by ear (§4 P2's retuned gate) | feel checks |
-| §9 feature stack: instrument auto-switch song, octave-twin dedup survey, transpose, recording — MIDI work only as tooling supporting Robin (section looping declined 2026-09-24 — archived in DONE §9; robots/sitemap are the post-switch invite — the permalink contract is not live until go-live + robots.txt) | §9 |
+| §9 feature stack: octave-twin dedup decision (survey done, held for Robin), transpose (held for Robin — text-vs-token fork on the item), recording — MIDI work only as tooling supporting Robin (section looping declined 2026-09-24 — archived in DONE §9; robots/sitemap are the post-switch invite — the permalink contract is not live until go-live + robots.txt) | §9 |
 | **Search-engine perma-links BEFORE the November Switch-2 OoT launch** — the one deadline-bound item in the pool (slug freeze → per-song static stubs → og/meta → robots on verification; ~5 weeks) | §9 |
 
 ---
@@ -89,7 +90,7 @@ Picks for the next session(s), roughly damage × imminence ÷ effort
 
 - [ ] **debug.js coverage** — nothing tested; low value. `🟢 ⚪`
 
-Currently covered (don't lose this): practice acceptance (4 cases strict+closed-loop), practice dip gate (hold-through blocked, silence/50%-notch dips pass, 75% duck shut, legato free), practice seat across view rebuilds + zen-entry stopMelody + overlay zen-only seats, console-hygiene boot scan (4 boots; allowlist = manifest-declared tone misses), support-bracket battery incl. bit-identical melody-vs-support equivalence + Zen timing/gating, instrument load/tone-model install per manifest (incl. svgWhen id/title paths + boot diagnostics in per-leg fresh contexts), render pin (chips/grid/scroll-band/highlight/focus-restore + typed-render debounce contract), svg clone coordinates, debug panel build-on-open contract, transport scheduler arithmetic/cut-bus/lite, practice history, template safety, theme toggle, offline SW boot+swap, ac worker parity, swing grid, sr hints, spike watch (the tick hunt). CI = push/PR/manual, explicitly not a deploy gate. (.github/workflows/practice-tests.yml — console-hygiene + 24 suite steps + eslint + html-validate; local run-all counted 25 green on 2026-09-23 on the Linux partition and again on the Windows partition — partition sweep red 24/25 until the runner's UTF-8 child-env fix, see session log ~2026-09-23) NOTE: practice_accepts flaked ONE strict case under full-sweep load 2026-09-23, green twice standalone afterward and in the diag run — watch it, the arbiter hardening already took one such race; support_accepts flaked the same class 2026-09-24 (fixed wall-clock read window vs audio-clock lag under sweep CPU contention) and got the class cure: the read is now a real rendezvous with wall-fire stamps + ctx snapshots `335c4b4`)
+Currently covered (don't lose this): practice acceptance (4 cases strict+closed-loop), practice dip gate (hold-through blocked, silence/50%-notch dips pass, 75% duck shut, legato free), practice seat across view rebuilds + zen-entry stopMelody + overlay zen-only seats, console-hygiene boot scan (4 boots; allowlist = manifest-declared tone misses), support-bracket battery incl. bit-identical melody-vs-support equivalence + Zen timing/gating, instrument load/tone-model install per manifest (incl. svgWhen id/title paths + boot diagnostics in per-leg fresh contexts), render pin (chips/grid/scroll-band/highlight/focus-restore + typed-render debounce contract), svg clone coordinates, debug panel build-on-open contract, transport scheduler arithmetic/cut-bus/lite, practice history, template safety, theme toggle, offline SW boot+swap, ac worker parity, swing grid, sr hints, spike watch (the tick hunt). CI = push/PR/manual, explicitly not a deploy gate. (.github/workflows/practice-tests.yml — console-hygiene + 24 suite steps + eslint + html-validate; local run-all counted 25 green on 2026-09-23 on the Linux partition and again on the Windows partition — partition sweep red 24/25 until the runner's UTF-8 child-env fix, see session log ~2026-09-23) NOTE: practice_accepts flaked ONE strict case under full-sweep load 2026-09-23, green twice standalone afterward and in the diag run — watch it, the arbiter hardening already took one such race; support_accepts flaked the same class 2026-09-24 (fixed wall-clock read window vs audio-clock lag under sweep CPU contention) and got the class cure: the read is now a real rendezvous with wall-fire stamps + ctx snapshots `335c4b4`). **Third member 2026-09-25 (CLI run `36110497803`, job 107992645371): practice_dip's leg A stalled the full 15 s timeout at maxIdx 0** — same SHA the local sweep had green; a DIFFERENT injury inside the same family: the suite's rendezvous (OCA_PRACTICE+NOTES) unlocks INSIDE loadInstrument (the stretch between installFingerings and boot's tail), where fillLibrary/loadLibraryItem(home) → practiceInvalidate is still owed — a session started mid-boot died when the tail landed; the stall reproduces at will with CDP network latency, cured by the rule-13 real rendezvous: the #scale options guard (filled only by the tail; a rAF poll never resolves mid-synchronous-block) plus a state card (started/st/ix/frames) on every driver resolve so a future stall names itself. The same tail guard rode into every suite that starts practice or needs typed editor text to survive boot (practice_accepts_melody, practice_zen_return, practice_history, keyboard_widgets, render_pin); library_hardening already waited a stronger post-tail signal (the Scales OPTGROUP), instrument_switch_race covers the race as its subject, playback-only suites are immune (practiceInvalidate stops practice, never play). Full sweep 31/31 green after the cure.
 
 ## 7. Accessibility & UX
 
@@ -316,3 +317,27 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   (the joint flip): merge/push order is Robin's; his manual checklist lives on the
   SEO item; the post-flip gate is `python tools/verify_site.py --origin
   https://ocarina-practice.com`.
+
+- **2026-09-25 (CLI red diagnosis — the flake family's third member, cured by the rule-13 rendezvous)** —
+  Robin's push of the session5 stack CI-fired red on practice_dip's FIRST leg only
+  (run `36110497803`, job 107992645371, head `a802f10`): a 15 s timeout with the session
+  flat at maxIdx 0, and the four subsequent assert lines were phantom consequences of the
+  blind timeout resolve. Standalone local: green — so a race, not a regression. Fresh
+  diagnosis: the suite's rendezvous (OCA_PRACTICE+NOTES) unlocks INSIDE loadInstrument
+  (NOTES lands at installFingerings, but ensureOcarinaTemplate + the allowlisted tone.json
+  404 still pend), and boot then owes fillLibrary(home)+loadLibraryItem(home) →
+  practiceInvalidate — a session engaged mid-boot is killed by the tail a beat later; under
+  CI's cold load the window lost for the first time in the family's history. Repro'd at
+  will with CDP Emulation network latency (throwaway, deleted after); cured test-side ONLY:
+  the #scale-options tail guard appended to practice_dip's rendezvous (options are filled
+  only by the tail; a rAF poll can never resolve mid-synchronous-block — so the guard proves
+  loadLibraryItem completed) + a state card (started/st/ix/frames) on every resolve. Same
+  tail guard rode into practice_accepts_melody, practice_zen_return (3 legs),
+  practice_history, keyboard_widgets and render_pin (the last needs typed editor text to
+  survive the tail, others start practice). Not touched: library_hardening (already waits
+  the Scales OPTGROUP — a post-tail signal), instrument_switch_race (the race is its
+  subject), playback-only suites (practiceInvalidate stops practice, never play). Red→green:
+  stall under latency with the old rendezvous, healthy engage under the same latency with
+  the new one. Board: §6's flake note extended, hot row 1 dropped (the validator shipped
+  `f62ede5`), hot list refresh dated. Full sweep 31/31 green (227 s). No app code touched →
+  NO sw VERSION bump (rule 15). Queued for Robin's next push to session5.

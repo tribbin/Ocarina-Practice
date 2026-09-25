@@ -65,9 +65,10 @@ DIP_DRIVER = """
   OCA_PRACTICE.start();
   let sawDip = false, dipSince = 0, notchLeft = 0, awaitLate = false;
   let silentAfterArm = false;
-  let maxIdx = 0;
+  let maxIdx = 0, framesSent = 0;
   const feed = setInterval(() => {
     const P = OCA_PRACTICE._p;
+    ++framesSent;
     if (P.state === "await" && P.idx > 0) awaitLate = true;
     if (P.idx > maxIdx) maxIdx = P.idx;
     if (P.state === "dip") {
@@ -107,7 +108,9 @@ DIP_DRIVER = """
       OCA_PRACTICE.stop();
       resolve({ completed: false, sawDip: true, blocked: true,
                 seg0: segNow, maxIdx: maxIdx, awaitLate: awaitLate,
-                silentAfterArm: silentAfterArm });
+                silentAfterArm: silentAfterArm,
+                started: started, st: P.state, ix: P.idx,
+                frames: framesSent });
       return;
     }
     if (!OCA_PRACTICE.active() || P.paused) {
@@ -116,7 +119,9 @@ DIP_DRIVER = """
       clearInterval(feed); clearInterval(poll);
       resolve({ completed: !!P.completed, sawDip: sawDip, blocked: false,
                 seg0: -1, maxIdx: maxIdx, awaitLate: awaitLate,
-                silentAfterArm: silentAfterArm });
+                silentAfterArm: silentAfterArm,
+                started: started, st: P.state, ix: P.idx,
+                frames: framesSent });
       return;
     }
   }, 100);
@@ -125,7 +130,9 @@ DIP_DRIVER = """
     OCA_PRACTICE.stop();
     resolve({ completed: false, timeout: true, sawDip: sawDip,
               maxIdx: maxIdx, awaitLate: awaitLate,
-              silentAfterArm: silentAfterArm });
+              silentAfterArm: silentAfterArm,
+              started: started, st: P.state, ix: P.idx,
+              frames: framesSent });
   }, OPT.obey ? 20000 : 15000);
 })
 """
@@ -191,6 +198,19 @@ def main():
                 page.wait_for_function(
                     "typeof OCA_PRACTICE !== 'undefined' && !!OCA_PRACTICE"
                     " && window.NOTES && window.NOTES.length")
+                # REAL rendezvous (the 2026-09-25 CLI red, job 107992645371):
+                # OCA_PRACTICE+NOTES already exist INSIDE loadInstrument, while
+                # boot still owes its tail (fillLibrary(home) +
+                # loadLibraryItem(home) → practiceInvalidate). Starting
+                # practice in that gap means boot's tail kills the session a
+                # beat after engage — the first leg stalled all 15 s at
+                # maxIdx 0 under CI load. The #scale options are filled only
+                # by boot's tail, and a rAF-observed state can never resolve
+                # mid-synchronous-block, so options>0 proves the whole tail
+                # (and with it boot) is behind us: nothing later invalidates.
+                page.wait_for_function(
+                    "document.getElementById('scale') &&"
+                    " document.getElementById('scale').options.length > 0")
                 r = page.evaluate(DIP_DRIVER, opt)
                 page.close()
                 print(f"== {name}: {r!r}", flush=True)

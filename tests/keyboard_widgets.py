@@ -22,10 +22,15 @@ from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parent.parent
 HEADLESS = "--headed" not in sys.argv
+# Tail guard (practice_dip 2026-09-25 red): boot's tail invalidates an active
+# practice session — the button flow must only run once the tail is behind us.
+# #scale options are filled only by that tail, so they prove it completed.
 BOOT_WAIT = ("window.NOTES && window.NOTES.length"
              " && typeof playNote === 'function'"
              " && typeof isMelodyPlaying === 'function'"
-             " && window.OCA_DEBUG")
+             " && window.OCA_DEBUG"
+             " && (function () { const s = document.getElementById('scale');"
+             " return s && s.options.length > 0; })()")
 
 
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
