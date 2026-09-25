@@ -13,11 +13,11 @@
 // instantly from cache while a background refetch keeps the cache current,
 // so a deployed update is live on the SECOND visit. skipWaiting/claim makes
 // the new worker take over right away.
-const VERSION = "oco-pwa-v14";
+const VERSION = "oco-pwa-v19";
 const CORE = [
   "index.html",
   "manifest.webmanifest",
-  "css/app.css",
+  "css/app.css?v=css-v1",
   "favicon.svg",
   "js/parse.js",
   "js/music-math.js",

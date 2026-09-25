@@ -12,7 +12,12 @@
 # DOMAIN-ROOT serving (the 2026-09-25 flip): robots.txt + generated
 # sitemap.xml round out the crawler stage, and the legacy project-page
 # mount stays pinned by a string-contract leg (--site-prefix's
-# parameter-ness, ready to retire with its stage).
+# parameter-ness, ready to retire with its stage) PLUS its own mounted
+# boot: the landed-crawler rewrites must resolve to the MOUNT root, not
+# the domain root — the relocatability the <base> injection promised
+# through load time must hold through the whole session (2026-09-25:
+# STUB_PATH's rewrite dropped its mount prefix, invisible on the
+# root-serving domain that deployed over it).
 
 import http.server
 import json
@@ -33,6 +38,11 @@ sys.path.insert(0, str(REPO / "tools"))
 import gen_song_pages as gen
 
 SONGS = json.loads((REPO / "songs.json").read_text(encoding="utf-8"))
+# Deriving twins materialize first (board §9 2026-09-25): the ladder and
+# every chart-fit must read the same bodies the generator materializes —
+# the byte-equal loader output is pinned by tests/twin_derive.py.
+from melody_transpose import materialize
+materialize(SONGS)
 MANIFEST = json.loads((REPO / "instruments.json").read_text(encoding="utf-8"))
 CHARTS = {i["id"]: gen.chart_ids(i["id"], MANIFEST) for i in MANIFEST["instruments"]}
 
@@ -390,16 +400,93 @@ def main():
         finally:
             httpd.shutdown()
 
-    if failures:
-        print("FAIL gen_pages:", len(failures))
-        for f in failures:
-            print("  -", f)
-        return 1
-    print(f"PASS gen_pages: {len(pages1)} landing stubs — every base URL boots "
-          "its ladder-chosen arrangement with ZERO out-of-range marks, clean "
-          "console; sitemap enumerates home + the exact stub set; robots.txt "
-          "serves its Sitemap pointer")
-    return 0
+        # MOUNTED rewrite leg (the relocatability promise, booted): the
+        # artifact serves under a path prefix exactly like the legacy GH
+        # Pages project mount, its stub generated with the matching
+        # --site-prefix; a later switch must land on the MOUNT root with
+        # the ? GET vars — never the domain root.
+        site4 = Path(td) / "artifact4"
+        run_gen(out := Path(td) / "site4", "--site-prefix", "/mp",
+                "--origin", SITE_ORIGIN)
+        shutil.copytree(out, site4, dirs_exist_ok=True)
+        assemble_like_the_workflow(site4)
+
+        class Mounted(http.server.SimpleHTTPRequestHandler):
+            def __init__(self, *a, **kw):
+                super().__init__(*a, directory=str(site4), **kw)
+
+            def translate_path(self, path):
+                if path.startswith("/mp/"):
+                    path = path[len("/mp"):]
+                return super().translate_path(path)
+
+            def log_message(self, *a):
+                pass
+
+        httpd2 = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Mounted)
+        threading.Thread(target=httpd2.serve_forever, daemon=True).start()
+        port2 = httpd2.server_address[1]
+        base2 = f"http://127.0.0.1:{port2}"
+
+        try:
+            with sync_playwright() as p2:
+                browser2 = p2.chromium.launch(headless=True)
+                page4 = browser2.new_page()
+                try:
+                    page4.goto(f"{base2}/mp/song/zelda/botw-theme/",
+                               wait_until="load")
+                    page4.wait_for_function(
+                        "document.querySelector('#instSel')"
+                        " && document.querySelector('#scale').value"
+                        " === 'botw-theme-bass'", timeout=20000)
+                    # instrument change: mount root + vars (not domain root)
+                    page4.select_option("#instSel", "stein-double-alto-c",
+                                        force=True)
+                    page4.wait_for_function(
+                        "location.pathname === '/mp/'"
+                        " && location.search.indexOf('song=') >= 0"
+                        " && location.search.indexOf('inst=') >= 0",
+                        timeout=20000)
+                    # library song change: same mount root, no stale vars
+                    page4.select_option("#scale", "major", force=True)
+                    page4.wait_for_function(
+                        "location.pathname === '/mp/'"
+                        " && location.search.indexOf('song=major') >= 0",
+                        timeout=20000)
+                    # typed replacement: bare mount root
+                    page4.evaluate(
+                        "() => { const ta ="
+                        " document.getElementById('src');"
+                        " ta.value = '# typed\\nA4/4 A4/4';"
+                        " ta.dispatchEvent(new Event('input',"
+                        " { bubbles: true })); }")
+                    page4.wait_for_function(
+                        "location.pathname === '/mp/'"
+                        " && location.search.indexOf('song=') < 0",
+                        timeout=20000)
+                    page4.close()
+                except Exception as e:
+                    failures.append(f"mounted rewrite leg failed: {e}")
+                    try:
+                        page4.close()
+                    except Exception:
+                        pass
+                browser2.close()
+        finally:
+            httpd2.shutdown()
+
+        if failures:
+            print("FAIL gen_pages:", len(failures))
+            for f in failures:
+                print("  -", f)
+            return 1
+        print(f"PASS gen_pages: {len(pages1)} landing stubs — every base URL "
+              "boots its ladder-chosen arrangement with ZERO out-of-range "
+              "marks, clean console; sitemap enumerates home + the exact "
+              "stub set; robots.txt serves its Sitemap pointer; the mounted "
+              "stub rewrites land on the mount root (instrument switch, "
+              "song switch, typed replacement)")
+        return 0
 
 
 if __name__ == "__main__":

@@ -8,8 +8,57 @@ const LIB_KEY = "oco-bass-c-library";
 const SHOW_HIDDEN_KEY = "oco-bass-c-show-hidden";
 let BUILTIN = {};
 
+// Derivation engine (board §9 2026-09-25): the proven twin bodies leave
+// songs.json and materialize here from base body + uniform shift. The
+// byte-identity proofs shaped the rule (tools/melody_transpose.py is the
+// shared twin): an octave shift CARRIES the base letter and accidental
+// verbatim (Bb5 -12 is Bb4, never A#4), any other shift respells from
+// exact MIDI through the sharp table. '# ...' header lines verbatim,
+// [' ... '] bracket spans stashed out and restored (authored label
+// content never machine-moved). tests/twin_derive.py freezes the retired
+// hand bodies as fixtures: a base-body edit makes those fixtures fail on
+// purpose, forcing a revisit of the derivation.
+const DERIVE_SHARP = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+const DERIVE_PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+function deriveBody(base, shift) {
+  const stash = [];
+  const line = (l) => {
+    if (/^\s*#/.test(l)) return l;
+    return l
+      .replace(/\[[^\]]*\]/g, m => {
+        stash.push(m);
+        return "\u0001" + (stash.length - 1) + "\u0001";
+      })
+      .replace(/([A-G])([#bs]?)(\d)/g, (m, L, acc, oct) => {
+        if (shift % 12 === 0)
+          return L + (acc || "") + (parseInt(oct, 10) + shift / 12);
+        const a = (acc === "#" || acc === "s") ? 1 : acc === "b" ? -1 : 0;
+        const midi = (parseInt(oct, 10) + 1) * 12 + DERIVE_PC[L] + a + shift;
+        return DERIVE_SHARP[((midi % 12) + 12) % 12] +
+          (Math.floor(midi / 12) - 1);
+      });
+  };
+  const out = base.split("\n").map(line).join("\n");
+  return out.replace(/\u0001(\d+)\u0001/g, (m, i) => stash[+i]);
+}
+
 function initBuiltin(songs) {
   BUILTIN = songs || {};
+  // The derivation pass: entries declaring a derives record materialize
+  // their body from the base + shift; the record itself leaves BUILTIN so
+  // the published shape stays name/group/tempo/body/... (shipped-songs
+  // probes read exactly that). One level only — bases never derive.
+  for (const id of Object.keys(BUILTIN)) {
+    const d = BUILTIN[id].derives;
+    if (!d || typeof d !== "object") continue;
+    const base = BUILTIN[d.key];
+    const body = BUILTIN[id].body;
+    if (base && !base.derives &&
+        !(typeof body === "string" && body.trim())) {
+      BUILTIN[id].body = deriveBody(String(base.body || ""), d.shift | 0);
+    }
+    delete BUILTIN[id].derives;
+  }
   window.BUILTIN = BUILTIN; // compat mirror (shipped-songs probes read it)
 }
 
@@ -193,24 +242,33 @@ function fillLibrary(selectId) {
 // when nothing library-identifiable is loaded). Mount-agnostic by
 // construction: the root is the current pathname minus its /song/ tail, so
 // both a domain-root and a project-page mount land on their own root.
+// Once the session HAS left a deep path, the ?song= var must keep tracking
+// the playing song: a later library load lands on the root where the stub
+// matcher is empty, and the vars refresh in place (extras such as theme
+// params survive; only song= and inst= are rewritten).
 // markUrlLanded() gates the rewrites: the boot's own deep-link load may
 // only ever KEEP the landing path — the brain of the seed.
 let urlLanded = false;
 function markUrlLanded() { urlLanded = true; }
-const STUB_PATH = /\/song\/[^/]+\/[^/]+\/$/;
+const STUB_PATH = /^(.*\/)?song\/[^/]+\/[^/]+\/$/;
 function rewriteLanderUrl() {
   if (!urlLanded) return;
   const m = location.pathname.match(STUB_PATH);
-  if (!m) return;
-  const root = m[1] || "/";
+  const root = m ? (m[1] || "/") : location.pathname;
   const sel = document.getElementById("scale");
   const song = (sel && sel.value) || lastLoadedId || "";
   const pick = document.getElementById("instSel");
   const inst = (pick && pick.value) || "";
-  const q = [];
-  if (song) q.push("song=" + encodeURIComponent(song));
-  if (inst) q.push("inst=" + encodeURIComponent(inst));
-  history.replaceState(null, "", root + (q.length ? "?" + q.join("&") : ""));
+  let q = new URLSearchParams(location.search);
+  q.delete("song");
+  q.delete("inst");
+  if (song) q.set("song", song);
+  if (inst) q.set("inst", inst);
+  q = "?" + q.toString();
+  if (q === "?") q = "";
+  const next = root + q;
+  if (next !== location.pathname + location.search)
+    history.replaceState(null, "", next);
 }
 
 function clearLibrarySelection() {
@@ -443,9 +501,28 @@ function applySongTick(v) {
   const cb = document.getElementById("tickMel");
   if (cb) {
     cb.checked = !!v;
-    cb.dispatchEvent(new Event("change")); // the tick button mirrors the carrier
+    cb.dataset.autoTick = "1"; // the visual mirror, never the pref write
+    cb.dispatchEvent(new Event("change"));
+    delete cb.dataset.autoTick;
   }
 }
+
+// Tick preference store (Robin, IDEAS 2026-09-25): a song's tick
+// declaration is a PER-SONG SESSION OVERRIDE — applying it must never
+// write the use preference (applySongTick's autoTick guard keeps the
+// visual mirror separate); the preference is only the user's own click
+// on either channel (ui.js), and songs without a declaration boot the
+// stored preference when one exists.
+const TICK_KEY = "oco-bass-c-tick";
+function userTickPref() {
+  let raw = null;
+  try { raw = localStorage.getItem(TICK_KEY); } catch (e) { raw = null; }
+  return raw === "0" ? false : raw === "1" ? true : null;
+}
+function setUserTickPref(v) {
+  try { localStorage.setItem(TICK_KEY, v ? "1" : "0"); } catch (e) {}
+}
+window.userTickPref = userTickPref; window.setUserTickPref = setUserTickPref;
 
 function loadLibraryItem(id) {
   if (typeof stopMelody === "function") stopMelody();
@@ -485,7 +562,11 @@ function loadLibraryItem(id) {
   // boot's own loads arrive pre-mark and keep their landing path.
   try { rewriteLanderUrl(); } catch (e) {}
   applySwing(swing);
-  applySongTick(tick);
+  // The tick contract (Robin, IDEAS 2026-09-25): the song's own tick is a
+  // per-song session override; without one the stored preference applies
+  // (in-session state carries when nothing is stored — applySongTick(null)
+  // returns before touching the carrier).
+  applySongTick(tick != null ? tick : userTickPref());
   if (typeof ensureOcarinaTemplate === "function") {
     ensureOcarinaTemplate().then(() => render());
   } else {

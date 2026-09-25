@@ -30,6 +30,8 @@ Make the 12-hole 'complete' regarding Zelda Ocarina of Time game songs.
 
 When a song 'overwrites' default about tick on/off, that should not change the use-preference. So when switching back to a song without override, whatever the user had as preference is applied. However, clicking the click button during the override changes (or confirms) the user preference.
 
+For discussion: Should the URL always represent the instrument+song for sharing? It currently retains the deep-link data even when you have a completely different instrument and song selected after 'landing'. Probably ? URL vars for speed and flexibility?
+
 THEMES
 
 Let's add theming (colors/preview/backdrop/...) to both the main page and song-links, that will show up when people paste a link in social media and for web searches.
@@ -39,3 +41,5 @@ BUGS
 When CSS changes, a deep refresh is needed. Can we version it, just like the app, so it will retrieve the fresh one on releases?
 
 On phone (relatively small vertical screen) the note bar is very much lagging, as in, moving too slowly towards the center as a note is highlighted. It even leaves the screen partially.
+
+It seems the bookkeeping tool is building up emtpy lines in TODO and DONE.
