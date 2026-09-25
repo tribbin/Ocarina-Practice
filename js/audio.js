@@ -4,6 +4,7 @@ import { freqOf, quarterSecFor, tokenGridBeats } from "./music-math.js";
 import { bumpHoverQuiet, clearHighlight, cueFirstNote, freezeZenGlow,
          highlightToken, isFocusMode, quarterSec, tokenSeconds, updateTransportUI } from "./ui.js";
 import { isPracticeActive } from "./practice.js";
+import { wakeHold, wakeDrop } from "./wakelock.js";
 let audioCtx = null;
 let liveVoices = [];
 let melodyBag = [];
@@ -1888,6 +1889,7 @@ function isMelodyPaused() { return melodyPaused; }
 
 function stopMelody() {
   melodyPlaying = false;
+  wakeDrop("melody"); // the transport died: the phone may sleep again
   dropHighlightPlan();
   melodyPaused = false;
   if (audioCtx) markSystemSound(melodyStopAt(audioCtx)); // sources stop past the bus decay
@@ -1926,6 +1928,7 @@ function playMelody(fromIdx) {
   attachCtxStateWatch(audioCtx);
   if (audioCtx.state === "suspended") audioCtx.resume();
   melodyPlaying = true;
+  wakeHold("melody"); // screen stays up while the song plays (Robin 2026-09-25)
   syncTransport();
   resetMelodyBuses(audioCtx); // fresh bus generation for the upcoming voices
   scheduleMelody(audioCtx.currentTime + 0.05);
@@ -1935,6 +1938,7 @@ function pauseMelody() {
   if (!melodyPlaying) return;
   melodyPlaying = false;
   melodyPaused = true;
+  wakeDrop("melody"); // paused = the phone may sleep again
   dropHighlightPlan(); // highlights of a paused transport never fire
   if (audioCtx) markSystemSound(melodyStopAt(audioCtx)); // sources stop past the bus decay
   melodyBag.forEach(n => { try { (n.fade || n.stop)(); } catch (e) {} });
@@ -1952,6 +1956,7 @@ function resumeMelody() {
   attachCtxStateWatch(audioCtx);
   if (audioCtx.state === "suspended") audioCtx.resume();
   melodyPlaying = true;
+  wakeHold("melody"); // resume = screen stays up again
   syncTransport();
   resetMelodyBuses(audioCtx); // fresh bus generation for the upcoming voices
   scheduleMelody(audioCtx.currentTime + 0.05);
