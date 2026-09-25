@@ -989,6 +989,16 @@ h2#title {
   font: 13px/1.3 inherit;
 }
 .lib-dd-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Favorites pin affordance (Robin's election, 2026-09-26): a dim star on
+   every row; pinned rows light it with the accent. Named hit-target so a
+   quick pointer never has to be precise. */
+.lib-dd-star {
+  flex: 0 0 auto; padding: 4px 6px; margin: -2px -4px -2px 2px;
+  font-size: 13px; line-height: 1; cursor: pointer; user-select: none;
+  color: var(--muted); border-radius: 6px;
+}
+.lib-dd-star:hover { background: rgba(127,127,140,.18); }
+.lib-dd-star.pinned { color: var(--accent); }
 .lib-dd-oor {
   flex: 0 0 auto; font-size: 11px; font-weight: 700; line-height: 1;
   color: #fff; background: var(--accent); border-radius: 99px; padding: 3px 7px;

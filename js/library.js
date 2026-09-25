@@ -174,6 +174,32 @@ function setShowHidden(v) {
   try { localStorage.setItem(SHOW_HIDDEN_KEY, v ? "1" : "0"); } catch (e) {}
 }
 
+// Library favorites (Robin's election, 2026-09-26): the pinned songs own a
+// FIRST optgroup in the dropdown ("Favorites"), persisted separately from
+// the user library and keyed by the same ids (both built-in and My-songs
+// ids eligible). The picker stays free: pinning only reorders, it never
+// loads or selects.
+const FAV_KEY = "oco-bass-c-favs";
+function userFavs() {
+  let out = [];
+  try {
+    const raw = localStorage.getItem(FAV_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    if (Array.isArray(arr)) out = arr.filter(x => typeof x === "string");
+  } catch (e) {}
+  return out;
+}
+function setUserFavs(ids) {
+  try { localStorage.setItem(FAV_KEY, JSON.stringify(ids)); } catch (e) {}
+}
+function toggleFav(id) {
+  const ids = userFavs();
+  const i = ids.indexOf(id);
+  if (i >= 0) ids.splice(i, 1); else ids.push(id);
+  setUserFavs(ids);
+  return i < 0;
+}
+
 // Robin's dropdown order for the generated scales (the IDEAS lift): the
 // whole Scales group opens the list — the beginner's tool set first — and
 // inside it C major (the chart minus black keys) comes before Chromatic,
@@ -202,30 +228,47 @@ function fillLibrary(selectId) {
     .sort((a, b) => scaleRank(a.id) - scaleRank(b.id) || a.ix - b.ix)
     .map(o => o.id);
   const ordered = [...scaleIds, ...live.filter(id => !isScale(id))];
+  // One pass over the whole corpus: builtin group rows (favorites excluded —
+  // they get their own first group), then My songs (same exclusion).
+  const favs = userFavs();
+  const isFav = id => favs.includes(id);
   const groups = {};
+  const mkOpt = (id, name) => {
+    const o = document.createElement("option");
+    o.value = id;
+    o.textContent = name;
+    return o;
+  };
   ordered.forEach(id => {
     const item = BUILTIN[id];
-    if ((item.hidden || songOutOfRange(id) > 0) && !showHidden) return;
+    if (isFav(id)) return;
     const gname = item.group || "Built-in";
     if (!groups[gname]) {
       groups[gname] = document.createElement("optgroup");
       groups[gname].label = gname;
       sel.appendChild(groups[gname]);
     }
-    const o = document.createElement("option");
-    o.value = id;
-    o.textContent = item.hidden ? (item.name || id) + " (hidden)" : (item.name || id);
-    groups[gname].appendChild(o);
+    groups[gname].appendChild(mkOpt(id, item.hidden ? (item.name || id) + " (hidden)" : (item.name || id)));
   });
   const user = userLib();
-  const ids = Object.keys(user).filter(id => showHidden || songOutOfRange(id) === 0);
-  if (ids.length) {
+  const userIds = Object.keys(user).filter(id => showHidden || songOutOfRange(id) === 0);
+  if (userIds.length) {
     const g2 = document.createElement("optgroup"); g2.label = "My songs";
-    ids.forEach(id => {
-      const o = document.createElement("option"); o.value = id; o.textContent = user[id].name || id; g2.appendChild(o);
+    userIds.forEach(id => {
+      if (!isFav(id)) g2.appendChild(mkOpt(id, user[id].name || id));
     });
-    sel.appendChild(g2);
+    if (g2.children.length) sel.appendChild(g2);
   }
+  // The Favorites group is FIRST, in pin order, over both corpora — a song
+  // is rendered exactly once.
+  const favGroup = document.createElement("optgroup");
+  favGroup.label = "Favorites";
+  const pinned = favs.filter(id => ordered.includes(id) || userIds.includes(id));
+  for (const id of pinned) {
+    const item = BUILTIN[id] || user[id];
+    favGroup.appendChild(mkOpt(id, item && item.hidden ? (item.name || id) + " (hidden)" : (item && item.name) || id));
+  }
+  if (pinned.length) sel.insertBefore(favGroup, sel.firstChild);
   // Keep the selection if it survived the filter; otherwise drop it so the
   // dropdown cannot keep pointing at a song that is currently hidden.
   if (cur && [...sel.options].some(o => o.value === cur)) sel.value = cur;
@@ -404,6 +447,29 @@ function libraryOptionEl(opt, cur) {
     b.setAttribute("aria-label", opt.textContent + " — " + oor + " " + noun + " out of range");
   }
   if (opt.value === cur) b.setAttribute("aria-selected", "true");
+  // The pin affordance: a span (a nested <button> would be invalid HTML
+  // inside this role=option button). Pure pointer affordance for the
+  // favorites pin — the row's keyboard path stays untouched.
+  const star = document.createElement("span");
+  const pinnedNow = userFavs().includes(opt.value);
+  star.className = "lib-dd-star" + (pinnedNow ? " pinned" : "");
+  star.tabIndex = -1;
+  star.textContent = pinnedNow ? "\u2605" : "\u2606";
+  star.setAttribute("aria-hidden", "true");
+  star.title = pinnedNow ? "Remove from favorites" : "Pin to favorites";
+  star.addEventListener("click", e => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleFav(opt.value);
+    const selEl = document.getElementById("scale");
+    if (selEl) fillLibrary(selEl.value);
+    const menu = document.getElementById("libDdMenu");
+    if (menu && !menu.hidden) {
+      const row = menu.querySelector('.lib-dd-opt[data-value="' + CSS.escape(opt.value) + '"] .lib-dd-star');
+      if (row) row.focus();
+    }
+  });
+  b.appendChild(star);
   b.addEventListener("click", e => {
     e.preventDefault();
     e.stopPropagation();

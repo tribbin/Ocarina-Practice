@@ -121,6 +121,8 @@ jobs:
         run: python tests/readability.py
       - name: Run HiFi retune batch tests
         run: python tests/hifi_retune.py
+      - name: Run library favorites pinning tests
+        run: python tests/library_favorites.py
       - name: Run song-stub page generator contract tests
         run: python tests/gen_pages.py
       - name: Run zen note-bar glide tests
