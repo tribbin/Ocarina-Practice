@@ -56,35 +56,17 @@ first circle → urgency, last letter → effort.
 ## Hot list (importance across all types)
 
 Picks for the next session(s), roughly damage × imminence ÷ effort
-(refreshed 2026-09-25, session 14: the deep-link contract is SEALED with
-its mounted boot leg, the twins derive at load, the tick contract and the
-stylesheet token shipped, the spike watch pairs the flip — the SEO
-applications and the feel-check stack are now the hot edges):
+(refreshed 2026-09-25, session 15: the hands-off night landed the SEO pair,
+the zen note-bar re-seat, the board-tooling pair and two report-only audits
+on the `session15` branch — push/merge and the deciding passes are next):
 
 | Item | Section |
 |---|---|
-| SEO-guides APPLICATIONS when Robin picks (shell rel=canonical recommended, JSON-LD, stub cross-links) — his call per candidate | §9 |
-**Session 15's opening batch, confirmed (Robin, 2026-09-25 night):** a
-HANDS-OFF session (sleeping) on `session15` only — the standing rules
-hold (no main commits, nothing audible or UX-visible ships without his
-field check, every unit lands green + committed + logged, wrap before
-the context action line). Confirmed order: (1) the SEO applications —
-shell `rel="canonical" href="/"` + a WebApplication JSON-LD block
-(applicationCategory **EducationalApplication**, operatingSystem "Any",
-browserRequirements, offers price "0"; description = the existing meta
-description VERBATIM; no per-stub JSON-LD, no cross-links today);
-(2) the vertical-screen Zen note-bar unit — INVESTIGATE AND BUILD
-whatever fits (the phone field check decides in the morning);
-(3) board-tooling units (the empty-lines verify+fix, the CI-noise
-quieting); (4) the URL-reflects-selection audit (report-only); (5) the
-perf-ideas report (waveform pre-cache / minify / SVG-gen); wrap at the
-report-only wall. Morning deck: PR copy per canon + the field-check
-list in the session log. Feel checks and the tick hunt stay HIS field
-work whenever he's near.
-| Feel checks on his phone/device: HiFi retune knobs (?hifi), tuner ✕/mic glyph, history-line clarity, token-chips touch feel; small-screens brainstorm when he's near | feel checks |
+| **Field checks on `session15`'s batch** (the deciding passes): the zen note-bar glide on his phone vertical screen (~67 ms step settle headless; the 160 ms bound is HIS retune call), the SEO pair post-merge (canonical + JSON-LD on the shell, spot a stub head), the standing stack (HiFi retune knobs `?hifi`, tuner ✕/mic glyph, history line, chip touch feel), the twin-songs ears pass, the tick-override click feel | feel checks |
 | The next audio-tick field catch now names itself: spike cards carry the ambient ring (flip/resize + ages) — after his next orientation-flip session a firing card names the plane, counters-0 silence proves the device level | §2 |
-| Robin's field pass over the shipped batch: derived bodies (5 songs) boot byte-identical — his ears confirm the twin songs play as ever; the tick contract's click-during-override feel is his deciding pass | §9 / IDEAS |
+| SEO leftovers stay UNLECTED (per-stub JSON-LD, cross-links, Breadcrumb/MusicComposition) and the URL/perf reports await his picks — nothing else blocks | §9 |
 | Future merge-prone base-body edits now trip tests/twin_derive.py fixtures on purpose — the derivation revisit is a Robin meeting per edit | §9 |
+| Intended-instrument per-song landing default: the field semantics shipped; per-song values are Robin's musical calls to plant over time | §9 |
 
 ---
 
@@ -110,7 +92,7 @@ work whenever he's near.
 
 - [ ] **debug.js coverage** — nothing tested; low value. `🟢 ⚪`
 
-Currently covered (don't lose this): practice acceptance (4 cases strict+closed-loop), practice dip gate (hold-through blocked, silence/50%-notch dips pass, 75% duck shut, legato free), practice seat across view rebuilds + zen-entry stopMelody + overlay zen-only seats, console-hygiene boot scan (4 boots; allowlist = manifest-declared tone misses), support-bracket battery incl. bit-identical melody-vs-support equivalence + Zen timing/gating, instrument load/tone-model install per manifest (incl. svgWhen id/title paths + boot diagnostics in per-leg fresh contexts), render pin (chips/grid/scroll-band/highlight/focus-restore + typed-render debounce contract), svg clone coordinates, debug panel build-on-open contract, transport scheduler arithmetic/cut-bus/lite, practice history, template safety, theme toggle, offline SW boot+swap, ac worker parity, swing grid, sr hints, spike watch (the tick hunt). CI = push/PR/manual, explicitly not a deploy gate. (.github/workflows/practice-tests.yml — console-hygiene + 24 suite steps + eslint + html-validate; local run-all counted 25 green on 2026-09-23 on the Linux partition and again on the Windows partition — partition sweep red 24/25 until the runner's UTF-8 child-env fix, see session log ~2026-09-23) NOTE: practice_accepts flaked ONE strict case under full-sweep load 2026-09-23, green twice standalone afterward and in the diag run — watch it, the arbiter hardening already took one such race; support_accepts flaked the same class 2026-09-24 (fixed wall-clock read window vs audio-clock lag under sweep CPU contention) and got the class cure: the read is now a real rendezvous with wall-fire stamps + ctx snapshots `335c4b4`). **Third member 2026-09-25 (CLI run `36110497803`, job 107992645371): practice_dip's leg A stalled the full 15 s timeout at maxIdx 0** — same SHA the local sweep had green; a DIFFERENT injury inside the same family: the suite's rendezvous (OCA_PRACTICE+NOTES) unlocks INSIDE loadInstrument (the stretch between installFingerings and boot's tail), where fillLibrary/loadLibraryItem(home) → practiceInvalidate is still owed — a session started mid-boot died when the tail landed; the stall reproduces at will with CDP network latency, cured by the rule-13 real rendezvous: the #scale options guard (filled only by the tail; a rAF poll never resolves mid-synchronous-block) plus a state card (started/st/ix/frames) on every driver resolve so a future stall names itself. The same tail guard rode into every suite that starts practice or needs typed editor text to survive boot (practice_accepts_melody, practice_zen_return, practice_history, keyboard_widgets, render_pin); library_hardening already waited a stronger post-tail signal (the Scales OPTGROUP), instrument_switch_race covers the race as its subject, playback-only suites are immune (practiceInvalidate stops practice, never play). Full sweep 31/31 green after the cure.
+Currently covered (don't lose this): practice acceptance (4 cases strict+closed-loop), practice dip gate (hold-through blocked, silence/50%-notch dips pass, 75% duck shut, legato free), practice seat across view rebuilds + zen-entry stopMelody + overlay zen-only seats, console-hygiene boot scan (4 boots; allowlist = manifest-declared tone misses), support-bracket battery incl. bit-identical melody-vs-support equivalence + Zen timing/gating, instrument load/tone-model install per manifest (incl. svgWhen id/title paths + boot diagnostics in per-leg fresh contexts), render pin (chips/grid/scroll-band/highlight/focus-restore + typed-render debounce contract), svg clone coordinates, debug panel build-on-open contract, transport scheduler arithmetic/cut-bus/lite, practice history, template safety, theme toggle, offline SW boot+swap, ac worker parity, swing grid, sr hints, spike watch (the tick hunt), the session-14 batch (wake lock lifecycle, tick-override semantics, asset-version token equality, twin-derivation byte-identity, transposer skill, practice dials), and the session-15 additions (SEO shell shape + zero-per-stub JSON-LD, zen note-bar glide five-legger, suite-server teardown hardening, board-tool empty-run linting). CI = push/PR/manual, explicitly not a deploy gate. (.github/workflows/practice-tests.yml — console-hygiene + 41 suite steps + eslint + html-validate + board verify; local run-all counted 42 green on the Linux partition 2026-09-25 after the suite-server migration; earlier: 38 on 2026-09-25 session 14, 34 on session 12 — see DONE) NOTE: practice_accepts flaked ONE strict case under full-sweep load 2026-09-23, green twice standalone afterward and in the diag run — watch it, the arbiter hardening already took one such race; support_accepts flaked the same class 2026-09-24 (fixed wall-clock read window vs audio-clock lag under sweep CPU contention) and got the class cure: the read is now a real rendezvous with wall-fire stamps + ctx snapshots `335c4b4`). **Third member 2026-09-25 (CLI run `36110497803`, job 107992645371): practice_dip's leg A stalled the full 15 s timeout at maxIdx 0** — same SHA the local sweep had green; a DIFFERENT injury inside the same family: the suite's rendezvous (OCA_PRACTICE+NOTES) unlocks INSIDE loadInstrument (the stretch between installFingerings and boot's tail), where fillLibrary/loadLibraryItem(home) → practiceInvalidate is still owed — a session started mid-boot died when the tail landed; the stall reproduces at will with CDP network latency, cured by the rule-13 real rendezvous: the #scale options guard (filled only by the tail; a rAF poll never resolves mid-synchronous-block) plus a state card (started/st/ix/frames) on every driver resolve so a future stall names itself. The same tail guard rode into every suite that starts practice or needs typed editor text to survive boot (practice_accepts_melody, practice_zen_return, practice_history, keyboard_widgets, render_pin); library_hardening already waited a stronger post-tail signal (the Scales OPTGROUP), instrument_switch_race covers the race as its subject, playback-only suites are immune (practiceInvalidate stops practice, never play). Full sweep 31/31 green after the cure.
 
 - [ ] **Suite servers print BrokenPipeError tracebacks into CI logs (the IDEAS CI paste, pruned; run `36187303217` job `108243773139`, pr 15 — passed anyway)** — browser teardown mid-GET races `copyfileobj` inside the suite-facing ThreadingHTTPServer (e.g. tests/instruments_load.py:30); the suites themselves pass, so the console noise is the defect: quiet the expected-teardown class in the suite-server pattern without hiding real failures. `🟨 🟠 ⚙S`
 
@@ -144,9 +126,9 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
 
 - [ ] **SEO guides application pass** — Robin IDEAS 2026-09-25: "Read this and apply where appropriate" — https://support.google.com/webmasters/answer/9128669 and https://developers.google.com/search/docs/fundamentals/seo-starter-guide. Opener = read-then-audit against the artifact (robots.txt/sitemap.xml/song stubs/og tabs already serving; the sitemap set is now frozen-permanent, the domain Search-Console-verified), reporting what applies (title/meta/OG policy, structured data, internal linking, crawl directives) — DONE 2026-09-25 session 14 as a report (the artifact already meets most of the guides; candidates: shell rel=canonical, JSON-LD variants, stub cross-links). Robin's picks LANDED 2026-09-25 `8370dd7` (session 15 unit 1): shell rel=canonical `/` + one WebApplication JSON-LD (EducationalApplication / OS "Any" / browserRequirements / free Offer, description verbatim from the meta); build_stub strips both from stubs (one canonical per page, zero per-stub JSON-LD), pinned by tests/seo_shell.py (CI-registered); sw v20. Not elected today: per-stub JSON-LD, cross-links, Breadcrumb/MusicComposition variants. `🟨 🟠 ⚙M`
 
-- [ ] **URL always reflects selection — discussion (the IDEAS discussion line, now pruned)** — the shipped rewriter (`ff53abb`) already moves every later content change to root+vars; the discussion residuals: typed text (bare root), user-saved songs, whether ANY non-library state belongs in the URL; REPORT-ONLY audit, Robin picks any extension. Handed for a hands-on session. `🟢 ⚪ ⚙S`
+- [ ] **URL always reflects selection — discussion (the IDEAS discussion line, now pruned)** — the shipped rewriter (`ff53abb`) already moves every later content change to root+vars; the discussion residuals: typed text (bare root), user-saved songs, whether ANY non-library state belongs in the URL; REPORT-ONLY audit, Robin picks any extension. Handed for a hands-on session. Reported 2026-09-25 (session 15, report-only): the rewriter covers the library truth completely now — boot keeps its landing path; builtin AND user-saved picks land on root+?song=&inst= (a user id degrades to the fallback load cross-device, faithful in-session); instrument switches refresh the vars in place; typed/Clear/file-load leave bare root and typed text autosaves NOWHERE (session-only — bare root says so honestly). Non-library state (display mode, zen, tempo/swing/tick, practice, perf) stays OUT of the URL by design: identity + theme extras ride along, shareability is the contract. Extensions (a typed-text seed param, content-hash song URLs) are picks for Robin if ever wanted — the full audit table is in the session-15 log. `🟢 ⚪ ⚙S`
 
-- [ ] **Waveform pre-cache for songs + deploy minify/SVG-generation (the IDEAS perf block, now pruned)** — pre-calculate note waveforms per song with a progress bar and stop-on-playback (the pre-cache exists to prevent playback-time strain); GitHub-actions minify of JS/CSS on deploy; GitHub-actions generation of the large hole SVGs. Robin picks which become units (the pre-cache is the one with real device value). `🟨 ⚪ ⚙M`
+- [ ] **Waveform pre-cache for songs + deploy minify/SVG-generation (the IDEAS perf block, now pruned)** — pre-calculate note waveforms per song with a progress bar and stop-on-playback (the pre-cache exists to prevent playback-time strain); GitHub-actions minify of JS/CSS on deploy; GitHub-actions generation of the large hole SVGs. Robin picks which become units (the pre-cache is the one with real device value). Reported 2026-09-25 (session 15, report-only) — none of the three warrants a build today: (1) waveform pre-cache: the strain it targeted is already healed by the shipped caches (ocWaveCache keys PeriodicWaves by harmonic set, chiffBuf/windBuf cache the noise buffers, the Lite voice covers CPU-strained devices); what remains per note is osc + envelope automation (sub-ms) — a per-song pre-warm UI (progress bar + stop-on-playback) buys nothing measurable; if Robins phone shows a FIRST-note hiccup in the perf panel, the cheap half-measure is a versioned-wave warm at song load, not a pre-cache feature. (2) deploy minify: js/ is 387 KB raw but already 124 KB gzipped in transfer (Pages gzips automatically); minify would claw back maybe 25-30 KB gzip-total while destroying production stacks and console diagnostics (OCA_DEBUG readability, landing pages debug). Lighthouse mobile perf sits 95-96 — no parse-time pain on the evidence; revisit only if a throttling run shows otherwise. (3) hole-SVG generation in CI: the templates are ~10 KB each (92 KB across instruments, gzip-cheap) and the app NEEDS the client-side assembly for live hole state — static generation would add dead files, no transfer win. Full numbers table in the session-15 log. `🟨 ⚪ ⚙M`
 
 > **Idle idea pool: `plans/IDEAS.txt`.** A live document Robin edits over time and ROBIN'S ALONE — the AI never writes it (it may be read, and only lifted into TODO.md when Robin explicitly asks). TODO carries no copy or summary: when an idea from it is picked up, read the FILE fresh at that moment; never rely on a remembered or transcribed version.
 
@@ -316,3 +298,97 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   SEO applications = his picks; shipped-songs standardization (later-
   stage pass), MIDI-as-tooling boundary, small-screens, WAV-export
   worklet reframe, real-DSP validation all stand.
+
+- **2026-09-25 (session 15 — the hands-off night: the SEO pair ships, the zen note bar re-seats, the board tooling hardens, two reports delivered)** —
+  Robin confirmed the five-unit batch and slept; the standing rules held (no
+  main commits, nothing audible/UX-visible without his field check, every unit
+  green + committed + logged). Landed on the `session15` branch, five units:
+  (1) `8370dd7` **SEO applications** (Robin's elected pair): shell rel=canonical
+      href="/" (the pinned domain serves at root — robots.txt names the
+      sitemap there) + ONE WebApplication JSON-LD (EducationalApplication,
+      OS "Any", browserRequirements, a free Offer with priceCurrency,
+      description VERBATIM from the shell meta — one-description policy).
+      Consequence handled in-commit: build_stub copies the whole head, so
+      both new elements would have ridden into every stub — the generator
+      strips them (each stub keeps exactly ONE canonical, its song path, and
+      ZERO JSON-LD); tests/seo_shell.py (CI-registered, pure python) pins
+      the shell shape and the no-per-stub carryover against a freshly
+      generated staging tree; sw v20. Not elected today: per-stub JSON-LD,
+      cross-links, Breadcrumb/MusicComposition variants.
+  (2) `b15d2ce` **the zen note bar re-seated** (Robin's field catch): the
+      headless 6x-throttle measurement named the seat BEFORE any build —
+      the browser-native smooth scroll (UA animation settles ~200 ms per
+      note step, ~500 ms per jump, and every per-note re-issue restarts it
+      mid-flight; the rejected trace trailed 655 px after nine 130 ms-apart
+      advances). scrollFocusStripTo now keeps the sheet's proven glide
+      contract (≤160 ms eased rAF, far jumps snap, a wheel grab cancels);
+      the stale "smooth is cheap" comment corrected; tests/zen_notebar.py
+      pins five legs red-first at a 390x844 phone viewport; app-path
+      after-measure: 67 ms step settle, ~0 px trail; sw v21.
+      **HELD for Robin's phone field check** — the deciding pass; the 160 ms
+      bound may read too quick on the device and he retunes if so.
+  (3) `a566a0e` + `24a2b2b` **the empty-lines claim VERIFIED REAL and fixed**
+      (_insert_line stacked one blank per move beside an item's trailing
+      blank — 11-blank runs stood in the live TODO, a 4-blank run appeared
+      after three sandbox adds): writes collapse blank runs now (the
+      single-blanks invariant, self-healing on every move), verify lints any
+      run on both files with line numbers, the live board normalized once
+      (whitespace-only diff); board_tool 12/12 with the accumulation leg and
+      the run-lint leg red-first; the §8 item moved into DONE via the tool.
+  (4) `c40991e` **the CI BrokenPipe noise quieted at the pattern**: all 34
+      browser suites carried the byte-identical server block; the shared
+      tests/suite_server.py owns it now — handle_error swallows ONLY the
+      ConnectionError family (mid-response browser close, the paste of run
+      36187303217 job 108243773139) and forwards everything else to the
+      loud default; all 34 suites import start_server, gen_pages borrows
+      the hardened server for its staged Mount handlers; tests/
+      suite_hardened.py (CI-registered) pins both directions: a mid-GET
+      abort stays silent and the server serves on, a real handler defect
+      still prints. The migration caught its own splice casualty
+      (zen_notebar's _server() def sat inside the replaced span — named by
+      the unused-import scan, fixed before commit).
+  (5) Report-only pair (no code): the **URL audit** (the rewriter covers the
+      library truth completely — boot keeps its landing path; builtin AND
+      user-saved picks land on root+?song=&inst=, user ids ride as-is and
+      degrade to the fallback load cross-device; instrument switches refresh
+      vars in place; typed/Clear/file-load leave bare root, typed text
+      autosaves NOWHERE so bare root is honest; non-library state stays OUT
+      by design — identity + theme extras is the shareable contract) and
+      the **perf report** (none of the three ideas warrants a build: the
+      waveform strain is already healed by ocWaveCache/chiff/windBuf + the
+      Lite voice; minify claws ~25-30 KB gzip-total (387 KB JS raw → 124 KB
+      gzipped transfer) and costs production stacks + console diagnostics —
+      Lighthouse mobile 95-96 shows no parse pain; hole-SVG CI-gen would add
+      dead files, the client assembly is live behavior). Both notes ride
+      their items.
+  Sweeps: 42/42 at the wrap (the migration verified across the whole set);
+  lint (eslint@9 + html-validate@8) clean after each unit that touched
+  html/js; board verify green throughout; sw VERSION oco-pwa-v19 → v21.
+  **Morning deck for Robin:**
+  - PR copy per canon below; his paste.
+  - FIELD-CHECK list (the deciding passes): (a) the zen note-bar glide on
+    his phone vertical screen (~67 ms step settle measured; the 160 ms
+    bound may need his retune); (b) the audio-tick hunt stays his field
+    work (spike cards carry the ambient ring since session 14 — the next
+    flip names its plane); (c) the twin-songs ears pass (boot byte-identical,
+    his ears confirm); (d) the standing stack: HiFi retune knobs (?hifi),
+    tuner ✕/mic glyph look, history-line clarity, token-chip touch feel.
+  - Post-merge+deploy: the shell gains rel=canonical + the JSON-LD; spot
+    any stub's head for its single song-path canonical and zero JSON-LD.
+  PR copy (canon #9 shape — `##` sections, dense sentences, SHA-linked):
+
+## Shell SEO pair
+- The shell gains rel=canonical "/" and one WebApplication JSON-LD (EducationalApplication, OS "Any", browserRequirements, a free Offer, description verbatim from the meta), while the stub generator strips both from every song page so each stub keeps exactly one canonical — its own song path — and zero JSON-LD ([`8370dd7`](https://github.com/tribbin/Ocarina-Practice/commit/8370dd7)).
+
+## Zen note bar on small screens
+- The focus strip stops handing its per-note centering to the browser's native smooth scroll (measured: ~200 ms settle per step, restarts trailing 655 px under sustained advances) and glides with the sheet's bounded rAF contract instead — ≤160 ms eased, far jumps snap, a wheel grab cancels ([`b15d2ce`](https://github.com/tribbin/Ocarina-Practice/commit/b15d2ce)).
+
+## Board tooling
+- The board tool stops accumulating empty lines (11-blank runs stood in the live TODO): every structural write collapses blank runs to the single-blanks invariant, verify lints any run, and the live board is normalized once ([`a566a0e`](https://github.com/tribbin/Ocarina-Practice/commit/a566a0e)).
+
+## Suite server
+- The byte-identical server block in 34 test suites moves into one hardened place whose handle_error swallows only the connection-teardown family — the BrokenPipe traceback racks under a passing battery end — and stays loud for real handler failures ([`c40991e`](https://github.com/tribbin/Ocarina-Practice/commit/c40991e)).
+
+## Tests and infrastructure
+- New suites, CI-registered in the same commits: tests/seo_shell.py (shell shape + zero per-stub JSON-LD), tests/zen_notebar.py (five glide legs at a phone viewport), tests/suite_hardened.py (teardown silent, defects loud), plus board_tool's accumulation and run-lint legs.
+- Full local sweep 42/42 green at the wrap on the Linux partition; lint (eslint@9, html-validate@8) clean; the hardened suite server is exercised by every browser suite in the sweep. CI runs the same suites (a health check, not a deploy gate).
