@@ -195,7 +195,8 @@ window.OCA_DEBUG = {
   spikeFake() {
     perf.spikes++;
     perf.spikeLog.push({ fake: true, t: audioCtx ? audioCtx.currentTime : -1,
-                         jump: 1, lite: liteMode(), onsets: [] });
+                         jump: 1, lite: liteMode(), onsets: [],
+                         ambient: ambientContext(performance.now()) });
     if (perf.spikeLog.length > 24) perf.spikeLog.shift();
   },
   // Live audit helper: the full derived voice profile for a note id.
@@ -500,6 +501,41 @@ function ringOnset(id, when, intoSlide) {
   if (onsetRing.length > 8) onsetRing.shift();
 }
 
+// Ambient context ring, paired with the spike cards the same way: the
+// field hunt's newest evidence (Robin, phone) couples the ticks to a
+// screen-orientation flip — the flip fires them EVERY time, the three perf
+// counters stay at 0, and the ticks arrive in runs. Marking the flips (and
+// the resize bursts that trail them) lets the next spike card pair itself
+// with the flip — naming the seam's plane — while a card that stays silent
+// while the phone still hops proves the discontinuity lives below the
+// analyser (device level). Resize burst throttled; markers age out at 4 s.
+const ambientRing = [];
+let lastResizeMark = 0;
+function markAmbient(kind) {
+  if (kind === "resize") {
+    const w = performance.now();
+    if (w - lastResizeMark < 800) return;
+    lastResizeMark = w;
+  }
+  ambientRing.push({ kind, wall: performance.now() });
+  if (ambientRing.length > 8) ambientRing.shift();
+}
+function ambientContext(now) {
+  const out = [];
+  for (const a of ambientRing) {
+    if (now - a.wall > 4000) continue;
+    out.push({ kind: a.kind, agoMs: Math.max(0, Math.round(now - a.wall)) });
+    if (out.length === 3) break;
+  }
+  return out.reverse();
+}
+try {
+  window.addEventListener("orientationchange", () => markAmbient("flip"));
+  if (screen.orientation)
+    screen.orientation.addEventListener("change", () => markAmbient("flip"));
+  window.addEventListener("resize", () => markAmbient("resize"));
+} catch (e) {}
+
 // 20 ms sampling: the analyser window is fftSize (1024) samples ≈ 23 ms at
 // 44.1 kHz, so consecutive reads overlap and no sample escapes coverage.
 // Cost is one 1024-float read + a linear scan per tick.
@@ -530,6 +566,7 @@ setInterval(() => {
     lite: liteMode(),
     onsets: onsetRing.slice(-3).map(o =>
       o.id + "@" + o.at + (o.into ? "~" : "")),
+    ambient: ambientContext(performance.now()),
   });
   if (perf.spikeLog.length > 24) perf.spikeLog.shift();
   // A spike is never a normal sound: name it in the console, throttled so a
@@ -539,7 +576,8 @@ setInterval(() => {
   console.warn("spike watch: single-frame step at audio-clock t=" + t.toFixed(3) +
                " s (jump " + last.jump + ") — card: " +
                JSON.stringify({ mel96: last.mel96, lite: last.lite,
-                                onsets: last.onsets, wall: took }));
+                                onsets: last.onsets, wall: took,
+                                ambient: last.ambient }));
 }, 20);
 
 // Lazily build (and return) the reverb bus. All melodic voices connect here

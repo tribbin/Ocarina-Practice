@@ -163,6 +163,44 @@ def main():
                 failures.append(f"plumbing: page errors {errs}")
             page.close()
 
+            # 3 — the ambient context ring: the newest field evidence pairs
+            # the ticks with a screen-orientation flip (the three perf
+            # counters stay at 0), so a spike card must carry the recent
+            # flip/resize markers and how long ago they fired — the next
+            # field tick then pairs itself with the flip (naming the plane)
+            # or, staying silent while the phone hops, proves the device
+            # level.
+            page = browser.new_page()
+            errs = []
+            page.on("pageerror", lambda e: errs.append(str(e)))
+            page.goto(base)
+            page.wait_for_function(BOOT_WAIT)
+            r3 = page.evaluate("""
+() => {
+  // the phone's flip: the legacy event fires (resize follows in the wild)
+  window.dispatchEvent(new Event('orientationchange'));
+  window.dispatchEvent(new Event('resize'));
+  OCA_DEBUG.spikeFake();
+  const cards = OCA_DEBUG.spikeWatch();
+  return cards[cards.length - 1];
+}
+""")
+            amb = (r3 or {}).get("ambient")
+            if not isinstance(amb, list):
+                failures.append(f"the spike card must carry an ambient "
+                                f"marker list, got {amb!r}")
+            else:
+                kinds = {a.get("kind") for a in amb if isinstance(a, dict)}
+                if "flip" not in kinds:
+                    failures.append(f"the orientation flip must land in the "
+                                    f"card's context, got kinds {kinds}")
+                if not any("agoMs" in a for a in amb if isinstance(a, dict)):
+                    failures.append(f"ambient markers must carry agoMs "
+                                    f"ages, got {amb!r}")
+            if errs:
+                failures.append(f"ambient: page errors {errs}")
+            page.close()
+
             browser.close()
     finally:
         httpd.shutdown()
@@ -173,8 +211,9 @@ def main():
         return 1
     print("\nPASS: isolated one-sample steps are classified (smooth tones, "
           "steep ramps and micro steps stay silent; the jump-to-silence "
-          "signature fires), spike cards record and the perf panel carries "
-          "the 'Signal spikes (ticks)' row.")
+          "signature fires), spike cards record with their ambient context "
+          "(flip/resize markers ride the next card) and the perf panel "
+          "carries the 'Signal spikes (ticks)' row.")
     return 0
 
 
