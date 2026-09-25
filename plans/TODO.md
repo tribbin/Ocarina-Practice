@@ -66,7 +66,7 @@ verified — redirect correctness is the hot edge; handoff prepped below):
 | Audio-tick spike detector per §2's detection plan (debug-only instrumentation; the next field tick then names its own seam) | §2 |
 | Small app units from IDEAS: CSS fresh-on-release (version the css URL; it is also perf's render-blocking drag), tick-override semantics (semantics written in IDEAS) | IDEAS |
 | §9 decisions waiting on Robin: octave-twin dedup verdict (5 proven + 3 shift-derivable; kokiri stray token needs his eyes), transpose text-vs-token fork, recording / library search when he wants them | §9 |
-| Feel checks on his phone/device: wake-lock play+practice, HiFi retune knobs (?hifi), tuner ✕/mic glyph, history-line clarity, token-chips touch feel; small-screens brainstorm when he's near | feel checks |
+| Feel checks on his phone/device: HiFi retune knobs (?hifi), tuner ✕/mic glyph, history-line clarity, token-chips touch feel; small-screens brainstorm when he's near (wake-lock play+practice CONFIRMED live 2026-09-25 — screen stayed awake; wake-lock's held check closes) | feel checks |
 
 ---
 
@@ -104,6 +104,7 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 - [ ] **Token chips: long-press-to-listen on touch** ✅ 2026-09-22 `ab4ce0c` — hold rides the SAME 260 ms dwell as mouse/keyboard (`hoverPreview`): touch-down highlights, planted dwell auditions (once), completed hold swallows the follow-up tap (no transport start), quick taps keep native play-from-here, drift/pinch cancels silently. Pressing keeps `-webkit-touch-callout`/selection off. Pinned in `tests/keyboard_widgets.py` (touch section, playNote-call oracle — voice counts inflate from lingering nodes). Robin's feel-check on a real device still open. `🟨 🟠 ⚙S`
 
 - [ ] **Collapse buttons + misc** — §1 B7 was completed long ago; see `plans/DONE.md` §1 for what it covered and pick the misc remainder on touch. `🟢 🟡 ⚙S`
+
 
 
 ## 8. Housekeeping
@@ -218,9 +219,19 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   its kind). Live Lighthouse re-check post-deploy rode the same note (mobile
   perf 95 / CLS 0; desktop 99; residuals: render-blocking stylesheet +
   #themeBtn label mismatch; the BP -1 is the expected §1 tone.json 404).
-  This session stays package-mode per Robin: tool fix + board state +
-  handoff, no app work — the opening batch is proposed below for the fresh
-  session.
+  This session opened package-mode per Robin (tool fix + board state +
+  handoff); later field streams still pulled two units in:
+  — Robin CONFIRMED the wake lock live (play AND practice kept his phone's
+  screen awake — the held field check closes);
+  — Robin reported the live defect that the practice-mode swing slider was
+  'not disabled like tempo', which exposed my earlier mis-read — `1766fad`
+  was Robin planting the IDEAS idea line, never an implementation, so the
+  IDEAS-cleanup message wrongly called it shipped — and the behavior is
+  NOW real: the swing row joins playback's silent-dials contract
+  (`.dial-off` dim + inert beside tempo/focus-tempo) via `b86ddf3` red→green
+  (`tests/practice_dials.py`, CI-registered, sw v14), completing on the
+  board with his post-merge phone eyeball as the deciding pass.
+  The opening batch for the fresh session is proposed below.
 - Next (session 14 opening batch, proposed — Robin confirms/picks): (1) the
   §1 deep-link instrument-change redirect defect — reproduce on a live
   /song/ stub (his device or headless against the deployed site), then
@@ -234,5 +245,5 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   written). Helds all stand: twin-dedup verdict (kokiri stray token needs
   his eyes), transpose text-vs-token fork, shipped-songs standardization
   (later-stage pass), MIDI-as-tooling boundary, small-screens brainstorm,
-  and the feel-check stack (wake-lock phone, HiFi retune knobs, ✕/mic
-  glyph, history line, token chips).
+  and the feel-check stack (HiFi retune knobs, ✕/mic glyph, history line,
+  token chips).

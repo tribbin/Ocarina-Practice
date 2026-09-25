@@ -229,6 +229,9 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 
 - [x] ~~**Info screen links the GitHub issues page** — Robin, IDEAS 2026-09-25: add a link to https://github.com/tribbin/Ocarina-Practice/issues on the info/help screen so users can report problems. Static link, no behavior; render/sr pins updated where they enumerate that screen. `🟢 🟡 ⚙S`~~ ✅ 2026-09-25 `720373e` — shipped with the landed-crawler lifts in the same `720373e` (session6, PR #12): the help dialog's .help-meta colophon carries the GitHub issues link (target=_blank rel=noopener); no render/sr pin enumerates the help screen, so none needed the update the item anticipated
 
+- [x] ~~**The playback swing dial lives under practice's silent-dials contract (`.dial-off`) like the tempo dial** — Robin, live 2026-09-25: on the main site the swing slider was 'not disabled like tempo' during practice; the cause is that the idea never became code (commit `1766fad` was Robin planting the IDEAS line, not an implementation — the IDEAS-cleanup record had wrongly counted it shipped). Fix: the swing row joins the playback-only dim family (opacity .18 + pointer-events none via ui.js updateTransportUI, beside tempo/focus-tempo), red→green `b86ddf3` with tests/practice_dials.py pinning engage-inert/disengage-restore/re-engage; sw VERSION → oco-pwa-v14. `🟨 🟠 ⚙S`~~ ✅ 2026-09-25 `b86ddf3` — red first, landed with the dim-family toggle; his phone eyeball after merge+deploy is the deciding pass per the field-check class — the wake-lock play+practice hold was separately CONFIRMED live the same day
+
+
 
 ## 8. Housekeeping
 
