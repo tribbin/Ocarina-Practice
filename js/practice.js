@@ -415,6 +415,26 @@ import { wakeHold, wakeDrop } from "./wakelock.js";
     const ch = window.CHAMBER ? CHAMBER[id] : 1;
     return "var(--ch" + (ch || 1) + ")";
   }
+  // The HiFi LED rows read in whole segments (Robin 2026-09-26): a fill's
+  // edge must JUMP between the 10px segment pitch, not glide across it. This
+  // is the one disciplined write path for every fill width (tuner fill, zone
+  // slices, token/card overlays); outside HiFi it is a plain passthrough.
+  // Window-seam at the bottom of the module: tests/hifi_retune.py pins the
+  // quantization both sides of the theme flip.
+  function hifiLed() {
+    return document.documentElement.dataset.theme === "hifi";
+  }
+  function setFillWidth(el, fracPct) {
+    if (hifiLed()) {
+      const host = el.parentElement;
+      const w = host && host.getBoundingClientRect().width;
+      if (w > 0) {
+        const cells = Math.floor((fracPct / 100) * w / 10);
+        fracPct = (cells * 10 / w) * 100;
+      }
+    }
+    el.style.width = fracPct + "%";
+  }
   // Chain bars draw the track as one section per zone: N cells, each with
   // its own credit-filled inner bar (colored by that zone's chamber).
   // Single-note bars keep one slice; returns true when slice mode was used.
@@ -438,7 +458,8 @@ import { wakeHold, wakeDrop } from "./wakelock.js";
           const cell = document.createElement("div");
           cell.style.cssText = "flex:1 1 0;position:relative;overflow:hidden;height:100%;background:" + cellBg;
           const inner = document.createElement("div");
-          inner.style.cssText = "position:absolute;left:0;top:0;bottom:0;width:0%;transition:width .1s linear";
+          inner.style.cssText = "position:absolute;left:0;top:0;bottom:0;width:0%" +
+            (hifiLed() ? "" : ";transition:width .1s linear");
           cell.appendChild(inner);
           el.appendChild(cell);
         }
@@ -448,7 +469,7 @@ import { wakeHold, wakeDrop } from "./wakelock.js";
         const need = bar.segTargets ? bar.segTargets[k] : 0;
         const frac = need > 0 ? Math.max(0, Math.min(1, seg / need)) : 0;
         const inner = cell.firstChild;
-        inner.style.width = (frac * 100) + "%";
+        setFillWidth(inner, frac * 100);
         inner.style.background = (el === els.fill && panel.classList.contains("in-card"))
           ? "currentColor"
           : zoneHexFor(bar.names[k]);
@@ -529,7 +550,7 @@ import { wakeHold, wakeDrop } from "./wakelock.js";
       const inCard = panel.classList.contains("in-card");
       const pct = barFrac(P.bar) * 100;
       if (!fillSlices(els.fill, P.bar)) {
-        els.fill.style.width = pct + "%";
+        setFillWidth(els.fill, pct);
         els.fill.style.background = inCard ? "currentColor"
           : ((P.state === "fill" && barFilled(P.bar) > 0) || P.state === "hit"
             ? zoneHex() : (barFilled(P.bar) > 0 ? "var(--accent)" : "transparent"));
@@ -568,7 +589,7 @@ import { wakeHold, wakeDrop } from "./wakelock.js";
       }
       bar.style.background = P.state === "fill" || P.state === "hit" ? zoneHex() : "var(--accent)";
       bar.style.opacity = P.state === "fill" || P.state === "hit" || pct > 0 ? "1" : "0.35";
-      if (!fillSlices(bar, P.bar)) bar.style.width = (pct * 100) + "%";
+      if (!fillSlices(bar, P.bar)) setFillWidth(bar, pct * 100);
       else bar.style.width = "100%";
     }
     for (const [el, bar] of Array.from(fillBars)) {
@@ -1417,6 +1438,9 @@ import { wakeHold, wakeDrop } from "./wakelock.js";
     history: practiceHistory,
     // transport anchors: where practice currently stands (token idx)
     posIdx: () => P.idx,
+    // fill-width seam (tests/hifi_retune.py): the HiFi LED quantization is
+    // pinned from both sides of the theme flip through this writer.
+    fillWidth: setFillWidth,
     // the tone practice expects RIGHT NOW (frontier zone's token — the live
     // tab seeds from it while a session is active)
     spot: practiceSpotToken,

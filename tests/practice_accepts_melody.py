@@ -28,10 +28,7 @@
 #   python3 tests/practice_accepts_melody.py --headed # watch it in a window
 
 
-import http.server
-import socketserver
 import sys
-import threading
 import time
 from pathlib import Path
 
@@ -155,19 +152,7 @@ SRC => new Promise(resolve => {
 """
 
 
-class QuietHandler(http.server.SimpleHTTPRequestHandler):
-    def __init__(self, *a, **kw):
-        super().__init__(*a, directory=str(ROOT), **kw)
-
-    def log_message(self, *a):  # silence the per-request console spam
-        pass
-
-
-def start_server():
-    socketserver.ThreadingTCPServer.allow_reuse_address = True
-    httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), QuietHandler)
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    return httpd, httpd.server_address[1]
+from suite_server import start_server
 
 
 def main():

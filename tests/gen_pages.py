@@ -29,6 +29,11 @@ import tempfile
 import threading
 import urllib.request
 from pathlib import Path
+
+# gen_pages serves a STAGING tree under scoped Mount handlers; it borrows
+# only the hardened SERVER class (teardown-silent handle_error) from the
+# shared helper.
+from suite_server import SuiteServer
 from xml.etree import ElementTree
 
 from playwright.sync_api import sync_playwright
@@ -234,7 +239,7 @@ def main():
             def log_message(self, *a):
                 pass
 
-        httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Mount)
+        httpd = SuiteServer(("127.0.0.1", 0), Mount)
         threading.Thread(target=httpd.serve_forever, daemon=True).start()
         port = httpd.server_address[1]
         base = f"http://127.0.0.1:{port}"
@@ -423,7 +428,7 @@ def main():
             def log_message(self, *a):
                 pass
 
-        httpd2 = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Mounted)
+        httpd2 = SuiteServer(("127.0.0.1", 0), Mounted)
         threading.Thread(target=httpd2.serve_forever, daemon=True).start()
         port2 = httpd2.server_address[1]
         base2 = f"http://127.0.0.1:{port2}"

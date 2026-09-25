@@ -12,88 +12,18 @@ As you'd not see much of the backdrop anyway, we probably want a dedicated fulls
 
 We will brainstorm this some time.
 
-PERFORMANCE
-
-Give option to pre-calculate (wave forms of notes for) a song and cache them.
-Show a pre-processing bar so the user can choose to await the pre-caching before starting.
-If the song plays, stop further pre-caching as you'd not want to put the extra strain on the device; pre-caching is specifically to prevent that.
-Minify JS and CSS on GitHub deploy.
-Should we use GitHub actions on deploy to make the large hole ocarina SVGs?
-
 LAYOUT
 
-I don't know what the (practice) 'history' function does, so I assume the user doesn't either.
+I've never seen a practice history while I have completed some songs during testing. I might be wrong, but I think it does not show. Check coe before I'm gonna play-test to produce it.
 
 OTHERS
 
 Make the 12-hole 'complete' regarding Zelda Ocarina of Time game songs.
 
-When a song 'overwrites' default about tick on/off, that should not change the use-preference. So when switching back to a song without override, whatever the user had as preference is applied. However, clicking the click button during the override changes (or confirms) the user preference.
-
-For discussion: Should the URL always represent the instrument+song for sharing? It currently retains the deep-link data even when you have a completely different instrument and song selected after 'landing'. Probably ? URL vars for speed and flexibility?
-
 THEMES
 
 Let's add theming (colors/preview/backdrop/...) to both the main page and song-links, that will show up when people paste a link in social media and for web searches.
 
-BUGS
+SONGS
 
-When CSS changes, a deep refresh is needed. Can we version it, just like the app, so it will retrieve the fresh one on releases?
-
-On phone (relatively small vertical screen) the note bar is very much lagging, as in, moving too slowly towards the center as a note is highlighted. It even leaves the screen partially.
-
-It seems the bookkeeping tool is building up emtpy lines in TODO and DONE.
-
-Errors during testing, but passed anyway: https://github.com/tribbin/Ocarina-Practice/actions/runs/36187303217/job/108243773139?pr=15
-
-== per-folder boot battery
-   ico-oak-leaf-bass-c-triple
-   stein-double-alto-c
-   oot-alto-c-12
-----------------------------------------
-Exception occurred during processing of request from ('127.0.0.1', 41470)
-Traceback (most recent call last):
-  File "/opt/hostedtoolcache/Python/3.13.15/x64/lib/python3.13/socketserver.py", line 697, in process_request_thread
-    self.finish_request(request, client_address)
-    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.13.15/x64/lib/python3.13/socketserver.py", line 362, in finish_request
-    self.RequestHandlerClass(request, client_address, self)
-    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/Ocarina-Practice/Ocarina-Practice/tests/instruments_load.py", line 30, in __init__
-    super().__init__(*a, directory=str(ROOT), **kw)
-    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.13.15/x64/lib/python3.13/http/server.py", line 687, in __init__
-    super().__init__(*args, **kwargs)
-    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.13.15/x64/lib/python3.13/socketserver.py", line 766, in __init__
-    self.handle()
-    ~~~~~~~~~~~^^
-  File "/opt/hostedtoolcache/Python/3.13.15/x64/lib/python3.13/http/server.py", line 451, in handle
-    self.handle_one_request()
-    ~~~~~~~~~~~~~~~~~~~~~~~^^
-  File "/opt/hostedtoolcache/Python/3.13.15/x64/lib/python3.13/http/server.py", line 439, in handle_one_request
-    method()
-    ~~~~~~^^
-  File "/opt/hostedtoolcache/Python/3.13.15/x64/lib/python3.13/http/server.py", line 694, in do_GET
-    self.copyfile(f, self.wfile)
-    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.13.15/x64/lib/python3.13/http/server.py", line 896, in copyfile
-    shutil.copyfileobj(source, outputfile)
-    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.13.15/x64/lib/python3.13/shutil.py", line 204, in copyfileobj
-    fdst_write(buf)
-    ~~~~~~~~~~^^^^^
-  File "/opt/hostedtoolcache/Python/3.13.15/x64/lib/python3.13/socketserver.py", line 845, in write
-    self._sock.sendall(b)
-    ~~~~~~~~~~~~~~~~~~^^^
-BrokenPipeError: [Errno 32] Broken pipe
-----------------------------------------
-   ico-contrabass-11-c
-   dummy-bass-c-double
-   (5 instruments, 3 declare tone.json)
-== tone model install / interpolate / fallback
-== per-song ocarina template (svgWhen)
-== generated scales follow the loaded chart
-== ?song / ?zen boot flows
-== wet switch auto-selects the in-range family member
-PASS: every ocarina boots from its folder; tone plumbing installs, interpolates and falls back per field.
+Wind Waker - Outset Island

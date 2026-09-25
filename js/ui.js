@@ -515,8 +515,8 @@ function highlightToken(i, noteId, durSec, sounding) {
   document.querySelectorAll(".tok.now, .card.now, .rest.now, .key.now").forEach(el => el.classList.remove("now"));
   for (const el of (tokByI.get(String(i)) || [])) el.classList.add("now");
   // The focus strip is the reading line in Zen — keep it moving even in Lite
-  // (smooth scrolling is browser-native and cheap; Lite still skips the
-  // sheet auto-scroll and the glow below). Practice mode follows it too: the
+  // (the rAF glide only touches scrollLeft; Lite still skips the sheet
+  // auto-scroll and the glow below). Practice mode follows it too: the
   // reading line should track the note the player is about to hit.
   if (isMelodyPlaying() ||
       (typeof isPracticeActive === "function" && isPracticeActive())) {
@@ -684,6 +684,31 @@ function animatedScrollTo(wrap, target) {
   sheetScrollRaf = requestAnimationFrame(step);
 }
 
+let stripScrollRaf = 0;
+// The zen reading line (focus strip) keeps the sheet's scroll contract (Field
+// catch 2026-09-25: on a small vertical phone screen the strip was visibly
+// behind and the current token drifted off the edge). The cause was the
+// browser-native smooth scroll: its UA animation settles ~200 ms per step
+// and ~500 ms per jump, and every per-note re-issue restarted that
+// decelerating animation from wherever it stood, so the bar fell behind
+// in time under fast songs. Same cure as the sheet: the app's own bounded rAF glide
+// (<=160 ms, eased), restarted cleanly per new target. Mirrored in
+// tests/zen_notebar.py.
+function animatedStripScrollTo(strip, target) {
+  if (stripScrollRaf) cancelAnimationFrame(stripScrollRaf);
+  const from = strip.scrollLeft, dist = target - from;
+  if (Math.abs(dist) < 1) { strip.scrollLeft = target; stripScrollRaf = 0; return; }
+  const dur = Math.max(60, Math.min(160, Math.abs(dist) / 2));
+  const t0 = performance.now();
+  const ease = x => 1 - Math.pow(1 - x, 3);
+  const step = now => {
+    const p = Math.min(1, (now - t0) / dur);
+    strip.scrollLeft = from + dist * ease(p);
+    stripScrollRaf = p < 1 ? requestAnimationFrame(step) : 0;
+  };
+  stripScrollRaf = requestAnimationFrame(step);
+}
+
 function scrollFocusStripTo(i) {
   const strip = document.getElementById("focusTokens");
   if (!strip || !strip.offsetParent) return;
@@ -692,9 +717,14 @@ function scrollFocusStripTo(i) {
   const s = strip.getBoundingClientRect();
   const c = el.getBoundingClientRect();
   const delta = (c.left + c.width / 2) - (s.left + s.width / 2);
-  // Big jumps (e.g. loop wrap back to the start) snap instantly; small steps glide.
-  const behavior = Math.abs(delta) > s.width ? "auto" : "smooth";
-  strip.scrollTo({ left: Math.max(0, strip.scrollLeft + delta), behavior });
+  const target = Math.max(0, strip.scrollLeft + delta);
+  // Big jumps (e.g. loop wrap back to the start) snap instantly; the rest glides.
+  if (Math.abs(delta) > strip.clientWidth) {
+    if (stripScrollRaf) { cancelAnimationFrame(stripScrollRaf); stripScrollRaf = 0; }
+    strip.scrollLeft = target;
+    return;
+  }
+  animatedStripScrollTo(strip, target);
 }
 
 function clearHighlight() {
@@ -1512,6 +1542,8 @@ function wireFocusControls() {
       const d = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
       if (!d) return;
       e.preventDefault();
+      // The user grabbed the strip: a running glide stops (they own it now).
+      if (stripScrollRaf) { cancelAnimationFrame(stripScrollRaf); stripScrollRaf = 0; }
       strip.scrollLeft += d;
     }, { passive: false });
   }
@@ -2161,3 +2193,7 @@ window.isFullscreen = isFullscreen; window.enterZenFromLink = enterZenFromLink;
 window.resetLiveTab = resetLiveTab; window.setAppCss = setAppCss;
 window.setDisplayMode = setDisplayMode;
 window.setHoverProbe = setHoverProbe;
+// Test seam for the focus-strip centering contract (tests/zen_notebar.py):
+// the zen note bar must glide with the app's own bounded rAF scroll and
+// never hand the pace to the browser's native smooth scroll.
+window.scrollFocusStripTo = scrollFocusStripTo;

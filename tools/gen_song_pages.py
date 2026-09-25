@@ -137,6 +137,15 @@ def category_of(group):
 
 
 def build_stub(html, key, song, member, cat, inst, site_prefix, origin):
+    # The shell's OWN SEO pair (canonical "/" + the WebApplication JSON-LD)
+    # must not ride along: build_stub copies the whole head, and a stub
+    # page keeps exactly ONE canonical (its song path) and ZERO JSON-LD
+    # (no per-stub application block). Strip both before the stub block
+    # below re-adds them in the stub's shape.
+    html = re.sub(r'<link rel="canonical" href="[^"]*" ?/>\s*\n?', "", html,
+                  count=1)
+    html = re.sub(r'<script type="application/ld\+json">.*?</script>\n?',
+                  "", html, count=1, flags=re.DOTALL)
     # <base href> re-roots EVERY relative reference — head links, the module
     # src AND the app's runtime fetches (songs.json / instruments.json /
     # css text / manifest-driven instrument files) and the service-worker

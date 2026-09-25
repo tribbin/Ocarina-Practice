@@ -8,10 +8,7 @@
 #
 #   python3 tests/offline_pwa.py      # headless & silent
 
-import http.server
-import socketserver
 import sys
-import threading
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
@@ -22,19 +19,7 @@ WAIT = ("window.NOTES && window.NOTES.length"
         " && typeof parse === 'function'")
 
 
-class QuietHandler(http.server.SimpleHTTPRequestHandler):
-    def __init__(self, *a, **kw):
-        super().__init__(*a, directory=str(ROOT), **kw)
-
-    def log_message(self, *a):
-        pass
-
-
-def start_server():
-    socketserver.ThreadingTCPServer.allow_reuse_address = True
-    httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), QuietHandler)
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    return httpd, httpd.server_address[1]
+from suite_server import start_server
 
 
 def main():

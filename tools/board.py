@@ -51,10 +51,25 @@ def _read_lines(path):
 
 
 def _write_lines(path, lines):
+    # Structural writes leave the file with single blank lines: capped runs
+    # here are exactly the accumulation the tool grew over time (the IDEAS
+    # report, 2026-09-25 — insert seams stacked one blank per move). Every
+    # write self-heals the file, so no run can survive a move; verify flags
+    # anything still standing.
+    lines = _collapse_blank_runs(lines)
     text = "\n".join(lines)
     if not text.endswith("\n"):
         text += "\n"
     path.write_bytes(text.encode("utf-8"))
+
+
+def _collapse_blank_runs(lines):
+    out = []
+    for l in lines:
+        if l == "" and out and out[-1] == "":
+            continue
+        out.append(l)
+    return out
 
 
 def _payload(args, single=False):
@@ -259,6 +274,19 @@ def verify(todo, done_path):
             bad.append(msg)
 
     reg(not any(l.startswith("- [x] ") for l in tl), "TODO: struck corpse present")
+    run = 0
+    for i, l in enumerate(tl):
+        run = run + 1 if l == "" else 0
+        if run > 1:
+            bad.append(f"TODO:{i + 1}: {run} consecutive blank lines — the "
+                       "board carries single blanks (a structural write "
+                       "collapses this; hand edits must not re-stack)")
+    run = 0
+    for i, l in enumerate(dl):
+        run = run + 1 if l == "" else 0
+        if run > 1:
+            bad.append(f"DONE:{i + 1}: {run} consecutive blank lines — the "
+                       "board carries single blanks")
     items = _items(tl)
     for t in items:
         if t["bare"]:
