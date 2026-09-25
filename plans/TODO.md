@@ -126,8 +126,6 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 
 Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
 
-- [ ] **Board tool allegedly accumulates empty lines in TODO/DONE (the IDEAS report, now pruned)** — verify first (full file scans + verify's lint), fix red-first in tools/board.py + tests/board_tool.py if real, otherwise record "not real" with the evidence in a completion note. `🟨 🟠 ⚙S`
-
 ## 9. Functional ideas (features)
 
 - [ ] **Recording & A/B compare** — record mic during practice, replay against synth reference, pitch-curve overlay (WAV tap already exists in debug export). `🟢 🟡 ⚙L`
