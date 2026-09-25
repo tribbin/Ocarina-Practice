@@ -316,6 +316,40 @@ def main():
                     "debounce: after the settle the strip must reflect the "
                     "typed melody (it still reads the old one)")
 
+            # --- print popup: the popup carries the printable document
+            # (title, sheet, blob origin) — the same bytes the Download
+            # button saves, whatever sink produces it.
+            with page.expect_popup() as pop:
+                page.evaluate("() => document.getElementById('print').click()")
+            popup = pop.value
+            try:
+                popup.wait_for_load_state("load", timeout=15000)
+                if not popup.url.startswith("blob:") and \
+                        "file" not in popup.url:
+                    failures.append(
+                        f"print: popup origin unexpected ({popup.url})")
+                ptitle = popup.title()
+                psheet = popup.evaluate(
+                    "() => ({sheet: !!document.getElementById('sheet'),"
+                    " cards: document.querySelectorAll('#sheet .card').length,"
+                    " h1: (document.querySelector('h1') || {textContent:''})"
+                    " .textContent})")
+                if not psheet["sheet"]:
+                    failures.append(f"print: popup lacks the sheet ({psheet})")
+                elif psheet["cards"] <= 0:
+                    failures.append("print: popup sheet has no cards")
+                if "Debounced" not in ptitle:
+                    failures.append(
+                        f"print: popup title {ptitle!r} lacks the song title")
+                if psheet["h1"] != ptitle:
+                    failures.append(
+                        f"print: popup heading {psheet['h1']!r} != doc title "
+                        f"{ptitle!r}")
+            except Exception as e:
+                failures.append(f"print: popup probe failed {e}")
+            finally:
+                popup.close()
+
             if errs:
                 failures.append(f"page errors {errs}")
             browser.close()
