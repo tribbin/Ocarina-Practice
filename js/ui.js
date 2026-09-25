@@ -1262,14 +1262,19 @@ function wireUi() {
     });
   }
   document.getElementById("print").onclick = () => {
-    const html = printableHtml();
-    const w = window.open("", "_blank");
+    // The popup carries the SAME printable bytes the Download button saves,
+    // as a blob URL: document.write is a deprecated sink, and the blob
+    // keeps the standards-mode doctype a direct DOM build would lose.
+    const url = URL.createObjectURL(
+      new Blob([printableHtml()], { type: "text/html" }));
+    const w = window.open(url, "_blank");
     if (w) {
-      w.document.write(html);
-      w.document.close();
       w.focus();
       setTimeout(() => { try { w.print(); } catch (e) {} }, 250);
+      // Same-tick revoke can abort loads in some engines; drain later.
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
     } else {
+      URL.revokeObjectURL(url);
       safeAlert("Popup blocked — use Download tabs instead.");
     }
   };

@@ -32,6 +32,12 @@ jobs:
         run: npx --yes eslint@9 js/
       - name: Validate HTML structure
         run: npx --yes html-validate@8 index.html
+      - name: Board structure verify (plans board)
+        run: python tools/board.py verify
+      - name: Run board tool tests (stdlib)
+        run: python tests/board_tool.py
+      - name: Run data-shape validator (instruments/songs/fingerings)
+        run: python tests/data_validator.py
       - name: Install Playwright + Chromium
         run: |
           pip install playwright

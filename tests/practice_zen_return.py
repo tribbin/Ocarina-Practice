@@ -204,7 +204,10 @@ def main():
             page.goto(base + "?practiceTest=1")
             page.wait_for_function(
                 "typeof OCA_PRACTICE !== 'undefined' && !!OCA_PRACTICE"
-                " && window.NOTES && window.NOTES.length")
+                " && window.NOTES && window.NOTES.length"
+                " && (function () { const s ="
+                " document.getElementById('scale');"
+                " return s && s.options.length > 0; })()")
             r = page.evaluate(SCROLL_DRIVER, SONG)
             page.close()
             print(f"== mode round-trip: {r['active']!r}  idle card: {r['idleCard']!r}", flush=True)
@@ -233,7 +236,10 @@ def main():
             page.goto(base + "?practiceTest=1")
             page.wait_for_function(
                 "typeof OCA_PRACTICE !== 'undefined' && !!OCA_PRACTICE"
-                " && window.NOTES && window.NOTES.length")
+                " && window.NOTES && window.NOTES.length"
+                " && (function () { const s ="
+                " document.getElementById('scale');"
+                " return s && s.options.length > 0; })()")
             r = page.evaluate(STOPMELODY_DRIVER, SONG)
             page.close()
             print(f"== stopMelody during practice: {r!r}", flush=True)
@@ -254,7 +260,10 @@ def main():
             page.goto(base + "?practiceTest=1")
             page.wait_for_function(
                 "typeof OCA_PRACTICE !== 'undefined' && !!OCA_PRACTICE"
-                " && window.NOTES && window.NOTES.length")
+                " && window.NOTES && window.NOTES.length"
+                " && (function () { const s ="
+                " document.getElementById('scale');"
+                " return s && s.options.length > 0; })()")
             r = page.evaluate(OVERLAY_LEG, SONG)
             page.close()
             print(f"== overlay seats: {r!r}", flush=True)

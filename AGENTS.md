@@ -9,17 +9,23 @@ file sits at the repo root so every session finds it first.
 ## Session protocol
 
 1. **Open every session by reading `plans/TODO.md`.** Its bookkeeping is the
-   board: struck items with `✅ <date> <SHA>` are done; the hot list and the
-   latest session log say exactly where work stands. Never trust memory over
+   board: completed items (struck, `✅ <date> <SHA>`) move at once into
+   `plans/DONE.md`, the completed-work + session-log archive, so TODO.md
+   carries open work only; the hot list and the latest session-log entry say
+   exactly where work stands. Never trust memory over
    the board. Check `git log` too: Robin commits his own work between and
    during sessions; the branch tip is not what you left there.
 2. **`plans/IDEAS.txt` is the one file the AI never writes.** It is Robin's
    live scratchpad — read it at the moment an idea is picked up; never
    transcribe or summarize it anywhere (a stale copy is a wrong copy). Lift
    an idea into TODO.md only when Robin explicitly asks.
-3. **Keep the TODO current as you go, not at the end:** completed items
-   struck with date + SHA; findings placed in their type-sections; datd
-   session-log entries describe what was done. Sessions must be able to die
+3. **Keep the TODO current as you go, not at the end:** completed items MOVE
+   into `plans/DONE.md` (struck, `✅ <date> <SHA>`) at the moment they
+   complete; findings placed in their type-sections; dated
+   session-log entries describe what was done. Structural board moves
+   (complete/add/note/tag/log) run through `python tools/board.py`
+   (`verify` lints both files' shape); prose edits stay hand-made.
+   Sessions must be able to die
    at any minute without losing a thread.
 
 ## Questions: batch early, then self-sustain

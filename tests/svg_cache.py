@@ -113,6 +113,26 @@ def main():
                     "toggling big-holes back off must restore the exact "
                     "previous card svg")
 
+            # The enlarge plan replays recorded attribute writes for big-view
+            # cards of DIFFERENT covered sets in the same epoch; a re-render
+            # of the same covered set must reproduce the replay's svg
+            # bit-identically (the plan's purity).
+            MELODY2 = "# SVG pin 2\n\nA4 B4 C5 A4"
+            svgBig1 = page.evaluate(TOGGLE_BIG)     # big on, MELODY2 rendered
+            svgBig2 = page.evaluate(TYPE, MELODY2)  # replayed-plan card
+            svgBig2b = page.evaluate(TYPE, MELODY2) # replay of the replay
+            if not svgBig2 or svgBig2 != svgBig2b:
+                failures.append(
+                    "two big-view renders of the same covered set (the "
+                    "recorded plan's replay path) must be bit-identical")
+            if not svgBig1:
+                failures.append("big-view render after re-entering vanished")
+            svgRestored = page.evaluate(TOGGLE_BIG)  # big off again
+            if svgRestored != svg2:
+                failures.append(
+                    "leaving the replay block must restore the exact "
+                    "previous card svg")
+
             # Instrument swap: different hole set/template, then back.
             page.select_option("#instSel", "ico-oak-leaf-bass-c-triple")
             page.wait_for_function(

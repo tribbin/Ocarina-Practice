@@ -1,8 +1,9 @@
 import { titleFromText } from "./parse.js";
 import { installOcarinaTemplate, invalidateSvgHtml } from "./ocarina.js";
 import { installToneModel } from "./audio.js";
-import { BUILTIN, fillLibrary, initBuiltin, loadLibraryItem, refreshGeneratedScales,
-         syncLibraryMenu, userLib, wireLibrary } from "./library.js";
+import { BUILTIN, fillLibrary, initBuiltin, loadedLibraryId, loadLibraryItem,
+         refreshGeneratedScales, songFitsChart, syncLibraryMenu, userLib,
+         wireLibrary } from "./library.js";
 import { buildKB, enterZenFromLink, render, setAppCss, wireUi } from "./ui.js";
 import { practiceInvalidate } from "./practice.js";
 import "./debug.js";
@@ -216,15 +217,62 @@ function fillInstrumentSelect(selectedId) {
   }
 }
 
+// Song family walking, mirroring tools/gen_song_pages.py family_members()
+// from the other side: a family is a root id plus every id that chains to
+// it via "-suffix" hops. The root of a loaded arrangement is the SHORTEST
+// existing id it sits under ("song-of-time-bass" roots to "song-of-time"),
+// so "-bass" arrangements find the alto base even though "-bass" is not in
+// the registered variant-suffix list; a solo arrangement is its own root.
+function songFamilyRoot(id) {
+  if (!BUILTIN[id]) return "";
+  let root = id;
+  for (const key of Object.keys(BUILTIN)) {
+    if (id !== key && id.startsWith(key + "-") &&
+        (root === id || key.length < root.length)) root = key;
+  }
+  return root;
+}
+
+function songFamily(id) {
+  const root = songFamilyRoot(id);
+  if (!root) return [];
+  return [root, ...Object.keys(BUILTIN)
+    .filter(k => k !== root && k.startsWith(root + "-")).sort()];
+}
+
+// The wet instrument-switch song jump: with a built-in song loaded, land on
+// the family member that fits the NEWLY installed chart — the current song
+// stays when it already fits and when nothing fits at all. Typed and user
+// songs are in no family and are always kept. Returning the same id is
+// "stay quiet"; the caller pairs a different id with loadLibraryItem, whose
+// stop-path (never a transport start) is the whole motion of the swap.
+function autoSongInRange(prevId) {
+  if (!prevId || !BUILTIN[prevId]) return prevId;
+  if (songFitsChart(prevId)) return prevId;
+  for (const member of songFamily(prevId)) {
+    if (songFitsChart(member)) return member;
+  }
+  return prevId;
+}
+
 async function switchInstrument(inst) {
+  // The dropdown value can be empty while a built-in song still sits in the
+  // editor (range-hidden deep links — #scale unselects them): the load-path
+  // tracker backs the id up so the family jump still knows what is there.
+  const prevSong = currentSongId() || loadedLibraryId() || "";
   const installed = await loadInstrument(inst);
   if (installed === false) return;   // a newer switch superseded this one
   // The ocarina swap may invalidate the workout targets: end any practice
   // session so the next engagement starts fresh on the new instrument.
   if (typeof practiceInvalidate === "function") try { practiceInvalidate(); } catch (e) {}
   buildKB();
-  if (typeof fillLibrary === "function") fillLibrary();
+  // Library rebuild first (it owns the dropdown selection), then the body
+  // swap for a family jump — the same fillLibrary/loading order as boot.
+  const newSong = autoSongInRange(prevSong);
+  if (typeof fillLibrary === "function") fillLibrary(newSong);
   else if (typeof syncLibraryMenu === "function") syncLibraryMenu();
+  if (newSong !== prevSong && typeof loadLibraryItem === "function")
+    loadLibraryItem(newSong);
   if (typeof render === "function") render();
 }
 

@@ -23,8 +23,13 @@ from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parent.parent
 HEADLESS = "--headed" not in sys.argv
+# Tail guard: a typed body typed before boot's tail lands gets REPLACED by
+# loadLibraryItem's home song (the practice_dip 2026-09-25 red class) — so
+# wait until #scale options exist (filled only by the tail) before probing.
 WAIT = ("window.NOTES && window.NOTES.length"
-        " && typeof parse === 'function'")
+        " && typeof parse === 'function'"
+        " && (function () { const s = document.getElementById('scale');"
+        " return s && s.options.length > 0; })()")
 
 # Pinned against the Triple Bass C explicitly: the default instrument now
 # boots the 12-hole Alto C (the app's home instrument), whose A4–F6 range
@@ -315,6 +320,40 @@ def main():
                 failures.append(
                     "debounce: after the settle the strip must reflect the "
                     "typed melody (it still reads the old one)")
+
+            # --- print popup: the popup carries the printable document
+            # (title, sheet, blob origin) — the same bytes the Download
+            # button saves, whatever sink produces it.
+            with page.expect_popup() as pop:
+                page.evaluate("() => document.getElementById('print').click()")
+            popup = pop.value
+            try:
+                popup.wait_for_load_state("load", timeout=15000)
+                if not popup.url.startswith("blob:") and \
+                        "file" not in popup.url:
+                    failures.append(
+                        f"print: popup origin unexpected ({popup.url})")
+                ptitle = popup.title()
+                psheet = popup.evaluate(
+                    "() => ({sheet: !!document.getElementById('sheet'),"
+                    " cards: document.querySelectorAll('#sheet .card').length,"
+                    " h1: (document.querySelector('h1') || {textContent:''})"
+                    " .textContent})")
+                if not psheet["sheet"]:
+                    failures.append(f"print: popup lacks the sheet ({psheet})")
+                elif psheet["cards"] <= 0:
+                    failures.append("print: popup sheet has no cards")
+                if "Debounced" not in ptitle:
+                    failures.append(
+                        f"print: popup title {ptitle!r} lacks the song title")
+                if psheet["h1"] != ptitle:
+                    failures.append(
+                        f"print: popup heading {psheet['h1']!r} != doc title "
+                        f"{ptitle!r}")
+            except Exception as e:
+                failures.append(f"print: popup probe failed {e}")
+            finally:
+                popup.close()
 
             if errs:
                 failures.append(f"page errors {errs}")

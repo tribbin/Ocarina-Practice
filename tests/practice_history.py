@@ -17,8 +17,14 @@ from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parent.parent
 HEADLESS = "--headed" not in sys.argv
+# The tail guard: #scale options are filled only by boot's tail
+# (fillLibrary+loadLibraryItem → practiceInvalidate), so waiting for them
+# proves boot is behind us — a session started mid-boot dies when the tail
+# lands (the practice_dip CLI red of 2026-09-25, job 107992645371).
 TEST_WAIT = ("window.NOTES && window.NOTES.length"
-             " && typeof parse === 'function' && window.OCA_PRACTICE")
+             " && typeof parse === 'function' && window.OCA_PRACTICE"
+             " && (function () { const s = document.getElementById('scale');"
+             " return s && s.options.length > 0; })()")
 
 
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
