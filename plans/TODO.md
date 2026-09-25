@@ -133,6 +133,7 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
 
 
 
+
 > **Idle idea pool: `plans/IDEAS.txt`.** A live document Robin edits over time and ROBIN'S ALONE — the AI never writes it (it may be read, and only lifted into TODO.md when Robin explicitly asks). TODO carries no copy or summary: when an idea from it is picked up, read the FILE fresh at that moment; never rely on a remembered or transcribed version.
 
 ---
