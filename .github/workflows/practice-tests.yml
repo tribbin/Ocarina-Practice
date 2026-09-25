@@ -119,5 +119,7 @@ jobs:
         run: python tests/readability.py
       - name: Run song-stub page generator contract tests
         run: python tests/gen_pages.py
+      - name: Run zen note-bar glide tests
+        run: python tests/zen_notebar.py
       - name: Run SEO shell (canonical + JSON-LD) tests
         run: python tests/seo_shell.py
