@@ -77,13 +77,9 @@ Picks for the next session(s), roughly damage × imminence ÷ effort
 
 ## 3. Security (low today — matters if data files become user-supplied)
 
-- [ ] **Print popup `document.write(html)`** — title already HTML-escaped; keep consistent when touching. (ui.js:827-845) `🟢 ⚪ ⚙S`
-
 ## 4. Performance
 
 - [ ] **Deprecated createScriptProcessor for WAV export** — also taps the reverb bus into a second destination chain, so the dry bus sounds at limiter-bypassed level during capture (debug-only). **Reframed ⚪ backlog**: the AudioWorklet replacement means module loading + a new file for a debug-only tool; revisit only when a worklet exists elsewhere in the app or the tap misbehaves on a real device. (debug.js WAV export) `🟨 ⚪ ⚙M`
-
-- [ ] **enlargeSmallHoles is O(holes²) per card render** — (ocarina.js:92-110) `🟢 ⚪ ⚙S`
 
 ## 5. Architecture / maintenance
 
@@ -113,7 +109,7 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
 
 - [ ] **MIDI import to tabs in-app** — `.grok/midi-to-ocarina-tab/scripts/mid2tab.py` already converts MIDI→tab notation; bake into "Load file" as JS. `🟢 🟡 ⚙M`
 
-- [ ] **Transpose** — shift melody ±semitones in parse/eval to fit other-key ocarinas. `🟢 🟡 ⚙M`
+- [ ] **Transpose** — shift melody ±semitones in parse/eval to fit other-key ocarinas. ﻿Stretch pick F6 transpose HELD for Robin 2026-09-25 (night): the placement was the granted call, but building touched a mid-flight fork the night cannot decide â€” text-level shift (the transposer skill's proven semantics reused on the editor text) vs a token-level shift inside parse/eval (original text untouched, displayed/rendered tokens moved): the second changes what the user SEES vs what the editor HOLDS while saved bodies keep original pitches â€” a surface/feel decision with audible consequences, exactly Robin's field-check class. Budget ruled too: one more unit + full sweep would have hit the watch line with the closing bookkeeping unlanded (rule 18). Worked around: nothing blocks on it; the twin-survey report (Dedup item, same night) plus the transposer skill already carry the shift semantics for any future build. `🟢 🟡 ⚙M`
 
 - [ ] **Library search / favorites / pinning** — flat dropdown gets unwieldy as personal library grows. `🟢 🟡 ⚙M`
 
@@ -295,3 +291,28 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   tests, board moves and the engine-unobservable dead-write deletion — no shipped
   behavior, no further bump owed; the offline suite will verify the v6 cache on the
   night's final sweep.
+
+- **2026-09-25 (night session 11, units 7-8 + the wrap)** — unit 7: enlargeSmallHoles
+  got its O(holes²) cure as record-and-replay (the sequential pass makes a plan
+  precompute impossible — an enlarged hole changes neighbors' constraints — but the
+  settled attribute writes record on the first big-view miss and replay by element
+  index verbatim; bit-identical because hole geometry never touches the styling pass
+  and the plan keys on the same svg epoch that clears the output cache). svg_cache
+  gained the replay-purity leg; exact-restore pins stayed green. Commit `7a580ee`.
+  Unit 8: the print popup rides a blob URL carrying the SAME bytes Download saves —
+  document.write's deprecated sink gone without losing the standards-mode doctype;
+  render_pin gained the popup contract leg (red on about:blank before, green after).
+  Commit `94f6ddc`. FULL SWEEP 31/31 (235 s) after all units, offline_pwa green on
+  the v6 cache; eslint clean (zero warnings). The evening re-deploy Robin triggered
+  landed the fresh artifact mid-night and the live probe is green (unit c). The
+  stretch pick F6 transpose is HELD for Robin — text-shift vs token-shift is a
+  surface/feel fork with audible consequences (the note explains it on the item), and
+  the budget rule: one more unit + sweep would cross the watch line with closings
+  undone. Board: §4 P7 and §3 print-popup items strike DONE (14 open items). NO
+  pushes made tonight (Robin's ops) — session5 carries the whole night's stack
+  (a→8): `4ddeb1f` auto-select, `6c7ef6f`, `f62ede5` validator, `9ad9142`,
+  `a62dc97` verify_site, `974e91b`, `33bd3fa` twin audit, `a8726ef`, `504b42d`
+  M1 close, `9a2ae0b`, `4deb6cb`, `7a580ee`, `94f6ddc` + this wrap. Next session
+  (the joint flip): merge/push order is Robin's; his manual checklist lives on the
+  SEO item; the post-flip gate is `python tools/verify_site.py --origin
+  https://ocarina-practice.com`.
