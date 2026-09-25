@@ -99,12 +99,21 @@ def fits_chart(key, body, inst, charts):
 
 
 def pick_landing(key, songs, manifest, charts):
-    # Robin's ladder, walked across the FAMILY: first instrument (12-hole >
-    # double alto C > triple bass C > contrabass) that ANY member fits; the
-    # member booted there prefers the base slug, then variants
-    # alphabetically. Beyond the ladder, manifest order may serve.
+    # Robin's intended-instrument override (2026-09-25): a song may declare
+    # the ocarina it was WRITTEN for ("some songs are really not made for
+    # the alto") — songs.json's `intended` field. When the declared chart is
+    # in the manifest and ANY family member fits it, that instrument lands
+    # with its best member (base first, then variants alphabetically). The
+    # ladder walk below still rules everything else — and any song whose
+    # intended chart fits nothing in the family (a bad id is validated away)
+    # falls back to the ladder, never dead-ends.
     members = family_members(key, songs)
     manifest_insts = [i["id"] for i in manifest["instruments"]]
+    intended = (songs.get(key) or {}).get("intended")
+    if intended and intended in manifest_insts:
+        for m in members:
+            if fits_chart(m, songs[m].get("body"), intended, charts):
+                return m, intended
     for inst in [i for i in LADDER if i in manifest_insts] + \
                 [i for i in manifest_insts if i not in LADDER]:
         for m in members:

@@ -193,6 +193,15 @@ def main():
         if want_landing.get("song-of-time") != ("song-of-time", "oot-alto-c-12"):
             failures.append(f"landing pin song-of-time: {want_landing.get('song-of-time')!r} "
                             "(want (song-of-time, oot-alto-c-12) on the re-keyed base)")
+        # Intended-instrument pin (Robin, 2026-09-25): BotW is really a bass
+        # piece — the declared intended instrument must OUT-RANK the ladder
+        # (the alto base would otherwise win on ladder order alone) and land
+        # the best family member for it.
+        if want_landing.get("botw-theme") != ("botw-theme-bass",
+                                              "ico-oak-leaf-bass-c-triple"):
+            failures.append(f"landing pin botw-theme: {want_landing.get('botw-theme')!r} "
+                            "(want (botw-theme-bass, ico-oak-leaf-bass-c-triple) — "
+                            "the declared intended instrument must outrank the ladder)")
         if not (out1 / ".nojekyll").exists():
             failures.append(".nojekyll missing from staging")
 

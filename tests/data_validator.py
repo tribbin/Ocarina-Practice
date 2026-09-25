@@ -202,10 +202,19 @@ class V:
                                 or not isinstance(rng.get("high"), str)):
             self.err(label, "bad-range", "range needs low/high strings")
 
+    def _manifest_ids(self):
+        # Instrument ids, fronting the intended-instrument check; an
+        # unreadable manifest here stays silent — the instruments() pass
+        # reports that defect properly, this side only hosts cross-checks.
+        m = load_json(self.root / "instruments.json", [], "instruments.json")
+        return {i["id"].strip() for i in (m.get("instruments") or [])} \
+            if isinstance(m, dict) else set()
+
     def songs(self):
         s = load_json(self.root / "songs.json", self.errors, "songs.json")
         if s is None or not isinstance(s, dict):
             return
+        known = self._manifest_ids()
         for key, item in s.items():
             if not isinstance(item, dict):
                 self.err("songs.json", "bad-shape", f"{key} is not an object")
@@ -225,6 +234,19 @@ class V:
                     self.err("songs.json", "bad-field", f"{key}: {field} must be a number")
             if "group" in item and not isinstance(item["group"], str):
                 self.err("songs.json", "bad-field", f"{key}: group must be a string")
+            # The intended-instrument declaration (Robin, 2026-09-25): a
+            # song may name the ocarina it was WRITTEN for — the landing
+            # stub seeds that instrument when any family member fits its
+            # chart; anything that names or types a wrong instrument is a
+            # data defect, not a runtime surprise.
+            if "intended" in item:
+                intended = item["intended"]
+                if not isinstance(intended, str):
+                    self.err("songs.json", "bad-intended",
+                             f"{key}: intended must be an instrument id string")
+                elif known and intended not in known:
+                    self.err("songs.json", "bad-intended",
+                             f"{key}: intended {intended!r} is no manifest instrument id")
 
 
 def validate(root):
@@ -436,6 +458,26 @@ def v11():
         write(tmp, "instruments.json",
               GOOD_MANIFEST.replace('"default": "alpha"', '"default": "ghost"'))
         expect_hits(validate(tmp), "ghost", "bad-default")
+
+
+@case("intended instrument: optional, string, manifest-known")
+def v12():
+    with tempfile.TemporaryDirectory() as td:
+        tmp = good_sandbox(td)
+        # a declared known instrument id passes
+        write(tmp, "songs.json", GOOD_SONGS.replace(
+            '"group": "Other",', '"group": "Other", "intended": "alpha",', 1))
+        errs = validate(tmp)
+        if errs:
+            raise AssertionError(f"declared intended refused: {errs}")
+        # an id outside the manifest is refused
+        write(tmp, "songs.json", GOOD_SONGS.replace(
+            '"group": "Other",', '"group": "Other", "intended": "beta",', 1))
+        expect_hits(validate(tmp), "intended", "bad-intended")
+        # a non-string is refused
+        write(tmp, "songs.json", GOOD_SONGS.replace(
+            '"group": "Other",', '"group": "Other", "intended": 3,', 1))
+        expect_hits(validate(tmp), "intended", "bad-intended")
 
 
 def main():
