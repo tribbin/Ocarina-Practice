@@ -193,24 +193,33 @@ function fillLibrary(selectId) {
 // when nothing library-identifiable is loaded). Mount-agnostic by
 // construction: the root is the current pathname minus its /song/ tail, so
 // both a domain-root and a project-page mount land on their own root.
+// Once the session HAS left a deep path, the ?song= var must keep tracking
+// the playing song: a later library load lands on the root where the stub
+// matcher is empty, and the vars refresh in place (extras such as theme
+// params survive; only song= and inst= are rewritten).
 // markUrlLanded() gates the rewrites: the boot's own deep-link load may
 // only ever KEEP the landing path — the brain of the seed.
 let urlLanded = false;
 function markUrlLanded() { urlLanded = true; }
-const STUB_PATH = /\/song\/[^/]+\/[^/]+\/$/;
+const STUB_PATH = /^(.*\/)?song\/[^/]+\/[^/]+\/$/;
 function rewriteLanderUrl() {
   if (!urlLanded) return;
   const m = location.pathname.match(STUB_PATH);
-  if (!m) return;
-  const root = m[1] || "/";
+  const root = m ? (m[1] || "/") : location.pathname;
   const sel = document.getElementById("scale");
   const song = (sel && sel.value) || lastLoadedId || "";
   const pick = document.getElementById("instSel");
   const inst = (pick && pick.value) || "";
-  const q = [];
-  if (song) q.push("song=" + encodeURIComponent(song));
-  if (inst) q.push("inst=" + encodeURIComponent(inst));
-  history.replaceState(null, "", root + (q.length ? "?" + q.join("&") : ""));
+  let q = new URLSearchParams(location.search);
+  q.delete("song");
+  q.delete("inst");
+  if (song) q.set("song", song);
+  if (inst) q.set("inst", inst);
+  q = "?" + q.toString();
+  if (q === "?") q = "";
+  const next = root + q;
+  if (next !== location.pathname + location.search)
+    history.replaceState(null, "", next);
 }
 
 function clearLibrarySelection() {
