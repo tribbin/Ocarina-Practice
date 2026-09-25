@@ -104,21 +104,36 @@ html[data-theme="hifi"] {
 }
 html[data-theme="hifi"] body { background: #0b0b0d; color: #e6e4de; }
 html[data-theme="hifi"] header.app { background: #0b0b0d; color: #e6e4de; }
-html[data-theme="hifi"] header.app button.ghost {
-  color: #fff; border-color: rgba(255,255,255,.45);
-}
-/* Dark chassis means the chrome glyphs go white-ink exactly as the Hyrule
-   look's ghosts/transports do (their --ink is dark there too); the light-ink
-   surfaces keep the --panel:#fff light-sheet trick (help card, save dialog):
-   their text is the app's --ink dark again, and the bright LED red still
-   passes with dark ink on it. The perf pop keeps its cream face with a local
-   dark --muted (the pop's own recipe from the Hyrule fix). */
+/* Robin, 2026-09-26 retune: ONE dark-amber chrome for the page-chassis
+   button family (#160a04 face) with a thin white line while a control
+   rests; every ENGAGED face (#56300d). The segment row and the instrument
+   select follow the same recipe — no white surfaces on the black chassis —
+   and the zen call-to-action drops the bright LED red for a deeper one
+   (#b32317, white text). */
 html[data-theme="hifi"] button.ghost,
-html[data-theme="hifi"] .t-btn {
-  color: #fff; border-color: rgba(255,255,255,.45);
+html[data-theme="hifi"] .t-btn,
+html[data-theme="hifi"] .lib-dd-btn,
+html[data-theme="hifi"] button#bigSmall,
+html[data-theme="hifi"] .seg-btn,
+html[data-theme="hifi"] .mode-seg {
+  background: #160a04; color: #fff;
+  border-color: rgba(255,255,255,.45);
 }
+html[data-theme="hifi"] .lib-dd-btn { background: #160a04 !important; }
+html[data-theme="hifi"] .seg-btn.on,
 html[data-theme="hifi"] .t-btn.play.is-playing,
-html[data-theme="hifi"] .t-btn.loop.on { color: var(--ink); }
+html[data-theme="hifi"] .t-btn.loop.on,
+html[data-theme="hifi"] button#bigSmall[aria-pressed="true"] {
+  background: #56300d; color: #fff;
+}
+html[data-theme="hifi"] .lib-dd-btn[aria-expanded="true"] {
+  background: #56300d !important;
+}
+html[data-theme="hifi"] button.ghost:hover,
+html[data-theme="hifi"] .t-btn:hover,
+html[data-theme="hifi"] .seg-btn:hover {
+  background: #25150a;
+}
 html[data-theme="hifi"] .help-card,
 html[data-theme="hifi"] .lib-dialog-card { --panel: #fff; }
 /* Accent-as-TEXT on a light sheet: the bright LED red only reads on black;
@@ -151,8 +166,14 @@ html[data-theme="hifi"] .lib-dd-opt:hover,
 html[data-theme="hifi"] .lib-dd-opt:focus-visible,
 html[data-theme="hifi"] .lib-dd-opt[aria-selected="true"] { color: var(--ink); }
 html[data-theme="hifi"] .lib-dd-opt.has-oor .lib-dd-name { color: #ffb648; }
-html[data-theme="hifi"] button#zen { color: var(--ink); }
-html[data-theme="hifi"] button#bigSmall { color: #fff; border-color: rgba(255,255,255,.45); }
+html[data-theme="hifi"] button#zen { background: #b32317; color: #fff; }
+/* The segment row and the instrument select: the same no-white recipe. */
+html[data-theme="hifi"] .inst-sel {
+  background: #160a04; color: #fff;
+  border-color: rgba(255,255,255,.45);
+}
+html[data-theme="hifi"] .inst-sel:hover { background: #25150a; }
+html[data-theme="hifi"] .inst-sel option { background: #160a04; color: #e6e4de; }
 /* The chart's "Enlarge small holes" button and the card's meta line ride the
    dark panel; the hint kbd chips keep dark ink on their cream chip face. */
 html[data-theme="hifi"] .card { color: #e6e4de; }
@@ -169,6 +190,10 @@ html[data-theme="hifi"] .prac-track {
 html[data-theme="hifi"] .prac-fill {
   background: repeating-linear-gradient(90deg, #3ee07f 0 6px, rgba(62,224,127,.25) 6px 10px);
   box-shadow: 0 0 10px rgba(62,224,127,.35);
+}
+html[data-theme="hifi"] .prac-fill,
+html[data-theme="hifi"] .prac-tok-fill {
+  transition: none;  /* LED rows fill in whole segments (Robin 2026-09-26) */
 }
 html[data-theme="hifi"] .dial-row > span:last-child,
 html[data-theme="hifi"] .dial-row .dial-val,

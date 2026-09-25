@@ -119,6 +119,8 @@ jobs:
         run: python tests/practice_dials.py
       - name: Run readability contrast sweep
         run: python tests/readability.py
+      - name: Run HiFi retune batch tests
+        run: python tests/hifi_retune.py
       - name: Run song-stub page generator contract tests
         run: python tests/gen_pages.py
       - name: Run zen note-bar glide tests
