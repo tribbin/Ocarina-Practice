@@ -180,3 +180,28 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   31/31 (262 s).
 
 - **2026-09-25 (intended-instrument landed; Robin's model pinned)** — the songs.json `intended` field + the intended-aware landing walk shipped red-first (sandbox v12 validator class + the BotW pin), BotW seeds the -bass body on the triple from the clean URL after merge+deploy. Robin's followups pinned the semantics on the item: the instrument-tagged entries are the versions and keep their keys (no rekey, no -bass deletion), the non-specific URL is the intended-instrument's entry point when defined, the ladder rules otherwise, and the clean page titles what plays. IDEAS line left the scratchpad; the open board item carries future per-song values as Robin's musical calls. Sweep 31/31 (262 s) covered the data+generator+validator+pins; no sw bump (data+tooling only).
+
+- **2026-09-25 (session 11 wrap — the intended exemplars land, CI stops double-running, the next batch planted)** —
+  after the PR-copy canon was pinned to Robin's named PRs (#3 sentence-tagged links, #9
+  approved second shape — commit `80be46d`, the bare-SHA-plus-URL form named as the drift),
+  Robin reshaped the intended-instrument story to its final understanding: the exemplar run
+  needed not a body rewrite but the non-specific URL landing the intended version — BotW
+  confirmed as-built (base declares intended=triple; the family walk seeds botw-theme-bass
+  on the triple), and Kokiri's clean URL manufactured by REKEYING the leaf kokiri-forest-bass
+  → kokiri-forest (byte-identical body; Robin kept the "(bass)" tag naming for the entry;
+  intended=triple; `d99eeaa` — the old URL retires mid-trial-period, SKILL.md's leaf example
+  updated, sweeps 31/31 twice). The PR pipeline's double-run diagnosed and cured: the bare
+  push: trigger fired both a push and a pull_request run per PR-commit — push now rides
+  main only (`cb253cb`), and Robin's fossil job-title complaint joins the board as the
+  next-session item (verify taut him: a tag span must be a code span). Branch session6 ends
+  at `cb253cb` (10 commits) — PR copy already drafted for Robin per the canon; next session
+  opens from the proposed batch in the log.
+- Next (session 12 opening batch, proposed — Robin confirms/picks): (1) the phone wake-lock
+  (his committed IDEAS bugs entry; Screen Wake Lock API on play/practice, release on stop;
+  field-check on his phone); (2) the openers: CI fossil job-title rename + the SEO
+  Lighthouse pass (both small, one commit each); (3) the 80s LED theme sketch as the fun
+  centerpiece (IDEAS themes; first-pass tunable, joint design); (4) the LAYOUT quick pair
+  (practice-close button + the mic-icon inform), his field-check class; (5) the 12-hole OoT
+  set completion as the joint content jam (the November anchor). Helds remain: MIDI
+  implementation only as tooling, robots/sitemap post-verification stages builds lean on
+  the live gate.
