@@ -74,9 +74,22 @@ file sits at the repo root so every session finds it first.
    describe the change and why, quotable in a PR description. No emoji.
    Shipped code comments carry **no references to the local planning docs**
    (code-to-code references are fine; TODO §-refs belong in TODO.md only).
-10. PR descriptions follow the established shape: `##` one-line summary,
-    plain section headers, bullets as commit titles linked to their SHAs
-    (current repo slug), test-infrastructure section last.
+10. PR descriptions follow the established shape (canon: PR #10COPY session5). Robin pastes the
+    text; render must be clean on first try:
+    - First lines: the tagline (one plain line, no heading), then
+      `## Summary` — the ONLY markdown heading in the body; under it one
+      plain paragraph (no bullets).
+    - Units are section titles as PLAIN lines (no `##`/`**`), each followed
+      by bullets in the exact form
+      `- <short SHA> — <dense sentence describing the commit's what & why>`
+      GitHub autolinks bare short SHAs — NEVER paste raw commit URLs in
+      parentheses (that is the drift Robin kept seeing).
+    - Small notes ride plain bullets (`- sw VERSION audit: …`,
+      `- Held for Robin: …`).
+    - LAST section: the plain line `Test infrastructure` (suites
+      registered/extended with their pins, defusals, the full-sweep
+      statement + "CI runs the same suites — a health check, not a deploy
+      gate"). No emoji, no file trees, no generated-with sign-offs.
 
 ## Tests & verification
 
