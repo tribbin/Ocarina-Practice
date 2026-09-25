@@ -193,7 +193,11 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   updated, sweeps 31/31 twice). The PR pipeline's double-run diagnosed and cured: the bare
   push: trigger fired both a push and a pull_request run per PR-commit — push now rides
   main only (`cb253cb`), and Robin's fossil job-title complaint joins the board as the
-  next-session item (verify taut him: a tag span must be a code span). Branch session6 ends
+  next-session item (verify taut him: a tag span must be a code span). SAME-DAY CORRECTION
+  (Robin's single-run shape, `fe92c8b`): instead of push→main-only, the pull_request trigger
+  is DROPPED and bare push fires the battery once per commit on every branch — an open PR
+  recognizes the head SHA's run by job name; main's post-merge run is the shield; the traded
+  piece is the merge-commit pre-validation. Branch session6 ends
   at `cb253cb` (10 commits) — PR copy already drafted for Robin per the canon; next session
   opens from the proposed batch in the log.
 - Next (session 12 opening batch, proposed — Robin confirms/picks): (1) the phone wake-lock
