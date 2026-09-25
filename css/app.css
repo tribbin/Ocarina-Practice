@@ -115,6 +115,7 @@ html[data-theme="hifi"] .t-btn,
 html[data-theme="hifi"] .lib-dd-btn,
 html[data-theme="hifi"] button#bigSmall,
 html[data-theme="hifi"] .seg-btn,
+html[data-theme="hifi"] .icon-btn,
 html[data-theme="hifi"] .mode-seg {
   background: #160a04; color: #fff;
   border-color: rgba(255,255,255,.45);
@@ -123,7 +124,10 @@ html[data-theme="hifi"] .lib-dd-btn { background: #160a04 !important; }
 html[data-theme="hifi"] .seg-btn.on,
 html[data-theme="hifi"] .t-btn.play.is-playing,
 html[data-theme="hifi"] .t-btn.loop.on,
-html[data-theme="hifi"] button#bigSmall[aria-pressed="true"] {
+html[data-theme="hifi"] button#bigSmall[aria-pressed="true"],
+html[data-theme="hifi"] button.ghost[aria-pressed="true"],
+html[data-theme="hifi"] button.ghost[aria-expanded="true"],
+html[data-theme="hifi"] #tickBtn.on {
   background: #56300d; color: #fff;
 }
 html[data-theme="hifi"] .lib-dd-btn[aria-expanded="true"] {

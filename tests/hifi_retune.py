@@ -61,10 +61,27 @@ PROBE = """
     const s = getComputedStyle(el);
     return { bg: s.backgroundColor, col: s.color, td: s.transitionDuration };
   };
+  const tick = document.getElementById('tickBtn');
+  const wasOn = tick.classList.contains('on');
+  const wasPressed = tick.getAttribute('aria-pressed');
+  // the tick boots ENGAGED (aria-pressed AND .on): the resting read must
+  // clear both signals and restore them
+  const tickResting = (() => {
+    tick.classList.remove('on');
+    if (wasPressed !== null) tick.setAttribute('aria-pressed', 'false');
+    const s = cs(tick);
+    tick.classList.add('on');
+    if (wasPressed !== null) tick.setAttribute('aria-pressed', wasPressed);
+    return s;
+  })();
+  const tickEngaged = cs(tick);
+  tick.classList.toggle('on', wasOn);
   const out = {
     seg: cs(seg), modeSeg: cs(modeSeg),
     fill: cs(fill), tokFill: cs(tokFill),
     zen: cs(document.getElementById('zen')),
+    tickResting, tickEngaged,
+    iconBtn: cs(document.getElementById('print')),
     instSel: (() => {
       const el = document.getElementById('instSel');
       const s = getComputedStyle(el);
@@ -94,7 +111,7 @@ def main():
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
-            page.goto(base)
+            page.goto(base + "?plain")
             page.wait_for_function(BOOT_WAIT)
             plain = page.evaluate(PROBE)
             page2 = browser.new_page()
@@ -129,6 +146,16 @@ def main():
                 failures.append(f"hifi zen CTA: {hifi['zen']['bg']} (want #b32317)")
             if hifi["zen"]["col"] != "rgb(255, 255, 255)":
                 failures.append(f"hifi zen CTA text: {hifi['zen']['col']} (want white)")
+            # 3b. every chrome surface follows the amber guideline: the tick
+            # toggle and the icon buttons (share/print/download/fullscreen)
+            if hifi["tickResting"]["bg"] != "rgb(22, 10, 4)":
+                failures.append(f"tick resting face under hifi: {hifi['tickResting']['bg']} (want #160a04)")
+            if hifi["tickEngaged"]["bg"] != "rgb(86, 48, 13)":
+                failures.append(f"tick engaged face under hifi: {hifi['tickEngaged']['bg']} (want #56300d)")
+            if plain["tickEngaged"]["bg"] not in ("rgb(28, 20, 15)", "rgb(28,20,15)"):
+                failures.append(f"plain tick engaged must keep the toggle vocab, got {plain['tickEngaged']['bg']}")
+            if hifi["iconBtn"]["bg"] != "rgb(22, 10, 4)":
+                failures.append(f"icon buttons under hifi: {hifi['iconBtn']['bg']} (want #160a04)")
             # 4. glide gates: LED rows snap under hifi, keep the glide on plain
             for k, name in (("fill", ".prac-fill"), ("tokFill", ".prac-tok-fill")):
                 if hifi[k]["td"] != "0s":

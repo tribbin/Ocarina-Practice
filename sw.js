@@ -17,7 +17,7 @@ const VERSION = "oco-pwa-v24";
 const CORE = [
   "index.html",
   "manifest.webmanifest",
-  "css/app.css?v=css-v2",
+  "css/app.css?v=css-v3",
   "favicon.svg",
   "js/parse.js",
   "js/music-math.js",
