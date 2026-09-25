@@ -1217,8 +1217,21 @@ function wireUi() {
     }
   };
   if (tickBtn && tickCb) {
-    tickBtn.onclick = () => { tickCb.checked = !tickCb.checked; syncTickBtn(); };
-    tickCb.addEventListener("change", syncTickBtn);
+    // The preference write (Robin, IDEAS 2026-09-25 — click during an
+    // override changes or confirms it): USER channels only. Song-load
+    // applications dispatch change with the autoTick guard set and must
+    // never store.
+    const tickPrefTouch = () => {
+      if (tickCb.dataset.autoTick) return;
+      if (typeof window.setUserTickPref === "function")
+        window.setUserTickPref(tickCb.checked);
+    };
+    tickBtn.onclick = () => {
+      tickCb.checked = !tickCb.checked;
+      syncTickBtn();
+      tickPrefTouch();
+    };
+    tickCb.addEventListener("change", () => { syncTickBtn(); tickPrefTouch(); });
     syncTickBtn();
   }
   const pracFocusBtn = document.getElementById("practiceFocusBtn");

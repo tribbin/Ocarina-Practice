@@ -501,9 +501,28 @@ function applySongTick(v) {
   const cb = document.getElementById("tickMel");
   if (cb) {
     cb.checked = !!v;
-    cb.dispatchEvent(new Event("change")); // the tick button mirrors the carrier
+    cb.dataset.autoTick = "1"; // the visual mirror, never the pref write
+    cb.dispatchEvent(new Event("change"));
+    delete cb.dataset.autoTick;
   }
 }
+
+// Tick preference store (Robin, IDEAS 2026-09-25): a song's tick
+// declaration is a PER-SONG SESSION OVERRIDE — applying it must never
+// write the use preference (applySongTick's autoTick guard keeps the
+// visual mirror separate); the preference is only the user's own click
+// on either channel (ui.js), and songs without a declaration boot the
+// stored preference when one exists.
+const TICK_KEY = "oco-bass-c-tick";
+function userTickPref() {
+  let raw = null;
+  try { raw = localStorage.getItem(TICK_KEY); } catch (e) { raw = null; }
+  return raw === "0" ? false : raw === "1" ? true : null;
+}
+function setUserTickPref(v) {
+  try { localStorage.setItem(TICK_KEY, v ? "1" : "0"); } catch (e) {}
+}
+window.userTickPref = userTickPref; window.setUserTickPref = setUserTickPref;
 
 function loadLibraryItem(id) {
   if (typeof stopMelody === "function") stopMelody();
@@ -543,7 +562,11 @@ function loadLibraryItem(id) {
   // boot's own loads arrive pre-mark and keep their landing path.
   try { rewriteLanderUrl(); } catch (e) {}
   applySwing(swing);
-  applySongTick(tick);
+  // The tick contract (Robin, IDEAS 2026-09-25): the song's own tick is a
+  // per-song session override; without one the stored preference applies
+  // (in-session state carries when nothing is stored — applySongTick(null)
+  // returns before touching the carrier).
+  applySongTick(tick != null ? tick : userTickPref());
   if (typeof ensureOcarinaTemplate === "function") {
     ensureOcarinaTemplate().then(() => render());
   } else {
