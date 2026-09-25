@@ -18,9 +18,11 @@
   --key: #faf7f2;
   --key-line: #c9b8a4;
   --key-label: #7a6552;
-  /* Rest / bar / tempo tokens — symbology, same in every theme. */
+  /* Rest / bar / tempo tokens — symbology, same in every theme.
+     --token-pause is the one symbology value the general scan moved: its
+     original tan left the white pause glyph at 4.14 (needed 4.5). */
   --token-neutral: #c9b8a4;
-  --token-pause: #8a7a6a;
+  --token-pause: #7d6e5e;
   --rest-ink: #7a6552;
   --ch-line-empty: #ddd4c8;
   --warn-bg: #fbe9e5;
@@ -31,6 +33,9 @@
   --key-now-ring: #c45c26;
   --key-now-black: #6b4a32;
   --key-now-black-ring: #e8c07a;
+  /* The piano's now-key carries its own label ink: the shared --key-label is
+     the rest-state brown, which slid to 3.85 on the warm now-key. */
+  --key-now-label: #5a4936;
 }
 /* Hidden Hyrule Field theme: enable with ?oot
    Dark saturated grass from hyrule.jpg so white type reads; fingering cards
@@ -57,19 +62,24 @@ html[data-theme="oot"] {
   --key-now-ring: #2d8a18;
   --key-now-black: #145c10;
   --key-now-black-ring: #b8f090;
+  --key-now-label: #1a3a12;
   --menu: #0a3a0a;
 }
 /* HiFi (Robin's naming, 2026-09-25 — code "hifi"): the 80s black audio-stack
-   first pass Robin asked for — black chassis panels, LED-amber dial numerals,
-   square-segment LED bars for the tuner meter and the practice fill; the red
-   header understripe stays as every other theme's. Chamber colors (--ch1..3)
-   and the token/rest symbology stay the fingering-data truth, untouched. */
+   first pass Robin asked for. Shape mirrors the proven Hyrule pattern: paper
+   and ink STAY the plain light-sheet values (chips, dialogs, zen buttons and
+   the editor all read them as light-on-chrome), while the black chassis is
+   painted here explicitly — body/header/heads/panels/zen dark, LED-amber dial
+   numerals, square-segment LED rows on the tuner meter and the practice fill.
+   The red header understripe stays as every other theme's; chamber colors
+   (--ch1..3) and the token/rest symbology stay the fingering-data truth. */
 html[data-theme="hifi"] {
+  background: #0b0b0d;
   --clay: #d9a441;
   --clay-dark: #e8b45a;
-  --ink: #e6e4de;
-  --paper: #0b0b0d;
-  --paper-2: #131316;
+  --ink: #1c140f;
+  --paper: #f6efe6;
+  --paper-2: #efe4d4;
   --line: #2a2a30;
   --accent: #ff4d3a;
   --good: #3ee07f;
@@ -77,9 +87,6 @@ html[data-theme="hifi"] {
   --head: #0e0e11;
   --muted: #98969d;
   --oca-bg: #f3e6d6;
-  --key: #141418;
-  --key-line: #2e2e36;
-  --key-label: #b7b5ad;
   --ch-line-empty: #3a3a42;
   --zen: #060607;
   --zen-btn: #1d1d22;
@@ -88,11 +95,71 @@ html[data-theme="hifi"] {
   --key-now-black: #123a24;
   --key-now-black-ring: #e8b45a;
   --menu: #14141a;
+  /* The general readability scan's per-surface notes: dark cards need light
+     text on their own face (the .cd .dur asserts --ink), the piano's now-key
+     label goes light, dark heads need light dial ink and white chrome
+     buttons. --rest-ink keeps the plain value: the rest strip paints the
+     cream --oca-bg face, dark ink reads there. */
+  --key-now-label: #e6e4de;
 }
-html[data-theme="hifi"] header.app { background: var(--paper); color: var(--ink); }
+html[data-theme="hifi"] body { background: #0b0b0d; color: #e6e4de; }
+html[data-theme="hifi"] header.app { background: #0b0b0d; color: #e6e4de; }
 html[data-theme="hifi"] header.app button.ghost {
   color: #fff; border-color: rgba(255,255,255,.45);
 }
+/* Dark chassis means the chrome glyphs go white-ink exactly as the Hyrule
+   look's ghosts/transports do (their --ink is dark there too); the light-ink
+   surfaces keep the --panel:#fff light-sheet trick (help card, save dialog):
+   their text is the app's --ink dark again, and the bright LED red still
+   passes with dark ink on it. The perf pop keeps its cream face with a local
+   dark --muted (the pop's own recipe from the Hyrule fix). */
+html[data-theme="hifi"] button.ghost,
+html[data-theme="hifi"] .t-btn {
+  color: #fff; border-color: rgba(255,255,255,.45);
+}
+html[data-theme="hifi"] .t-btn.play.is-playing,
+html[data-theme="hifi"] .t-btn.loop.on { color: var(--ink); }
+html[data-theme="hifi"] .help-card,
+html[data-theme="hifi"] .lib-dialog-card { --panel: #fff; }
+/* Accent-as-TEXT on a light sheet: the bright LED red only reads on black;
+   its deep-red sibling keeps the hierarchy on the cream/white surfaces and
+   passes the thresholds (the help card's dt terms paint --accent). */
+html[data-theme="hifi"] .help-rows dt { color: #b32317; }
+html[data-theme="hifi"] .lib-dialog-row button.lib-dialog-ok { color: var(--ink); }
+html[data-theme="hifi"] .perf-pop { --muted: #241d14; }
+/* The dev panel's amber note chips need the dark ink against them (the light
+   --paper text only works on the grey dbg buttons). */
+html[data-theme="hifi"] #dbgPanel .dbg-note { color: var(--ink); }
+/* Dark heads: the dial labels assert --ink (dark on the dark head) — light
+   ink here, exactly the Hyrule .tempo-lab treatment. */
+html[data-theme="hifi"] .tempo-lab { color: #e6e4de; }
+/* The library chrome sits on the dark head: white ink like the ghosts. The
+   button rule is !important in its own definition, so the override matches. */
+html[data-theme="hifi"] .lib-dd-btn {
+  background: rgba(255,255,255,.08) !important; color: #fff !important;
+  border-color: rgba(255,255,255,.35);
+}
+html[data-theme="hifi"] .lib-dd-menu {
+  background: var(--menu); color: var(--paper);
+}
+/* The option rows assert --ink themselves: the dark menu gets light ink,
+   while the states that paint a LIGHT face (hover / focus / the current
+   selection's paper strip) go back to the dark --ink. Out-of-range names
+   swap the accent for the amber LED, which reads on both faces. */
+html[data-theme="hifi"] .lib-dd-opt { color: var(--paper); }
+html[data-theme="hifi"] .lib-dd-opt:hover,
+html[data-theme="hifi"] .lib-dd-opt:focus-visible,
+html[data-theme="hifi"] .lib-dd-opt[aria-selected="true"] { color: var(--ink); }
+html[data-theme="hifi"] .lib-dd-opt.has-oor .lib-dd-name { color: #ffb648; }
+html[data-theme="hifi"] button#zen { color: var(--ink); }
+html[data-theme="hifi"] button#bigSmall { color: #fff; border-color: rgba(255,255,255,.45); }
+/* The chart's "Enlarge small holes" button and the card's meta line ride the
+   dark panel; the hint kbd chips keep dark ink on their cream chip face. */
+html[data-theme="hifi"] .card { color: #e6e4de; }
+/* The duration symbol asserts --ink on the card's own (dark) face unless a
+   chamber meta already owns it with white — light ink where it rides dark. */
+html[data-theme="hifi"] .card .dur { color: #e6e4de; }
+html[data-theme="hifi"] kbd { color: #241d14; }
 /* Square-row LED displays: the tuner's tuning scale and the bar fill become
    squared segment rows; the dial value readouts are LED-amber monospace. */
 html[data-theme="hifi"] .prac-scale,
@@ -112,15 +179,19 @@ html[data-theme="hifi"] #focusTempoVal {
   font-variant-numeric: tabular-nums; letter-spacing: .04em;
 }
 /* The theme menu (Robin's pick): a neutral popover that names the themes —
-   it signifies the color theme without showing it in the current theme. */
+   it signifies the color theme without showing it in the current theme. The
+   sheet takes the dark-theme menu recipe where one exists (--menu), and the
+   two dark looks must ink the items light (their --ink stays dark). */
 .theme-wrap { position: relative; display: inline-flex; }
 .theme-menu {
   position: absolute; right: 0; top: calc(100% + 6px); z-index: 60;
-  min-width: 132px; background: var(--panel); color: var(--ink);
+  min-width: 132px; background: var(--menu, var(--panel)); color: var(--ink);
   border: 1px solid var(--line); border-radius: 10px;
   box-shadow: 0 8px 24px rgba(0,0,0,.25); padding: 4px;
   display: flex; flex-direction: column;
 }
+html[data-theme="oot"] .theme-menu,
+html[data-theme="hifi"] .theme-menu { color: var(--paper); }
 .theme-menu[hidden] { display: none; }
 .theme-menu button {
   text-align: left; padding: 7px 12px; border: 0; border-radius: 7px;
@@ -303,6 +374,9 @@ html[data-theme="oot"] #dbgPanel .dbg-note:hover {
   background: #12500e;
   color: #fff;
 }
+/* The dbg heading's green was 4.17 on the deep-green chassis (the plain
+   --clay); the theme's own readable green clears the bar. */
+html[data-theme="oot"] #dbgPanel .dbg-head b { color: #4fd44a; }
 header.app {
   background: var(--ink); color: var(--paper);
   padding: 14px 20px;
@@ -676,6 +750,10 @@ kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1p
   width: 100%; min-height: 74px; resize: vertical; border: 0;
   font: 15px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   padding: 10px 12px; background: var(--paper);
+  /* An author color is not a nitpick: the UA default (black) is invisible the
+     moment a theme paints the editor sheet dark — the readability sweep found
+     HiFi's editor text at ratio 1.07 because nothing here owned the color. */
+  color: var(--ink);
   /* straight rectangle inside the block — sub-section edges carry the rounding */
   border-radius: 0;
 }
@@ -980,6 +1058,7 @@ h2#title {
 }
 .card.now { box-shadow: 0 0 0 3px var(--ink); }
 .key.now { box-shadow: inset 0 0 0 3px var(--key-now-ring); background: var(--key-now); }
+.key.now > .n { color: var(--key-now-label); }
 
 /* Fullscreen tablature */
 #tabPanel:fullscreen,
