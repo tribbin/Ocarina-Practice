@@ -374,3 +374,240 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 - **2026-09-24 (session 9, part 8 — domain groundwork + the serving-contract switch)** — `ocarina-practice.com` bought. Privacy facts worth keeping: public whois carries GDPR-redacted registrant data (EU registrars must redact — no paid privacy product needed) and the free GitHub domain verification is the takeover guard, so a paid 'domain guard' bundle is not required. Landed `e7718bc`: CNAME in the artifact, `--site-origin` in the generator (default the domain) with absolute canonical/og and root base href, suite re-pinned against a root mount; README names the domain. Robin's cutover checklist (push → deploy → DNS → Pages flip → HTTPS → verify domain → re-probe) logged in the plan item. Fall-back to project-page serving preserved behind the old knobs. Standing convention: purchasing details (registrars, prices) never enter commits or the board — this public repo serves strangers too.
 - **2026-09-24 (session 9 wrap — the privacy rewrite + the parked domain branch + M1 finished)** — (1) Robin: purchasing details had entered the domain commits' titles and board text — the four-commit tail (0f811ae..21c84bf) was REWRITTEN (all own unpushed commits): IDEAS.txt stashed both times, tree reset to 8c3c89b, the tail replayed as c96965a (sanitized part 7) → e7718bc (the domain serving contract, labels identical) → fd9f6dd/rebased + AGENTS rule-7 purchasing-privacy rule. Lesson harder than the LF incident: the reset --hard ATE the uncommitted M1 cluster 2/3 edits (the snapshot covered TODO/CNAME/workflow/tools/tests/README but not js/*) — rebuilt exactly from the session's own edit record and re-verified 29/29; NEVER reset a dirty tree without a full-diff snapshot. (2) Execution order on Robin's "you decide": the domain serving contract is PARKED on branch `refactor4-domain` (tip `e7718bc`) — refactor4 (tip `938bc6f`, five commits ahead) is mergeable NOW and keeps the live landing stubs healthy at the /Ocarina-Practice path while the .com finishes provisioning; the domain branch merges right before (or with) the Pages custom-domain flip. Old amended-away commits linger only in local reflog until expiry, never pushed. (3) Suite state: 29/29 on the rebased tip; gen_pages pins the project-page contract on this branch and the root/domain contract on the parked branch. (4) Robin's next session: refinement pass + a DONE-file split of completed TODO items.
 - **2026-09-24 (session 9, part 3 — the batch answers + the tick hunt)** — Robin's steering round folded in: (1) mojibake restore confirmed unnecessary to flatten ("don't care as long as it does not affect functionality"), held item RESOLVED on the board; (2) **§9 F2 section looping DECLINED**, entry kept for a possible revival; (3) robots/sitemap staging re-explained in-channel (doors stay shut until the corrected stubs verify live — his crawl rule); (4) §2 R5 AudioContext lifecycle explained in-channel (suspension mid-session stalls the audio clock while the scheduler keeps timing against it — UI keeps claiming playback), still awaiting his build/no-build call; (5) his field reports of **sporadic single-frame ticks (current note silenced after each, Lite-invariant on his phone, perf screen always silent)** became a NEW §2 item with a ranked suspect list (AudioParam event-timeline re-anchoring of a live envelope first — the cancel/implicit-ramp neighborhoods with their real-hardware history) and a debug-only spike detector plan that will name the seam once Robin catches the next one. (Field confirms 2026-09-24: playback CONTINUES at the next note — voice-seam class; the same song does NOT reproduce consistently — a timing race, not a per-note mapping error; observed on MAIN — pre-existing shipped behavior, independent of the refactor4 chain; repro ~every 2 playbacks of Concerning Hobbits short in Google Chrome, not reproducible in VS Code's embedded browser — an engine-timing sensitive race.) No app code this part; board only.
+
+- **2026-09-24 (session 10 opens — the DONE-file split, rename-first)** — Robin pulled
+  main (refactor4 merged at `df6a3c0`) and forked `session5`; the logged DONE-file split
+  executed with his rename-first refinement: the OLD TODO.md wholesale became
+  `plans/DONE.md` (byte-identical snapshot — only the H1 heading and a preamble changed;
+  the session log through session 9 and every struck item preserved with zero reassembly
+  risk, including frozen declared-non-authoritative copies of the 17 then-open items),
+  and the open work was extracted back out into this fresh TODO (17 open items, standing
+  conventions + color legend, a 4-row hot list renumbered). Batch answers applied: full
+  purge on the TODO side, DONE as sections+log mirror, cross-refs point back, AGENTS
+  rule 1 now names DONE.md. Future convention: a completed item moves into DONE.md at
+  the same bookkeeping moment it completes; this log retires entries once the next
+  session has opened from them. Plans-only commit — no app code touched, no sw VERSION
+  bump, suites not run.
+- Next (session 9's logged shape): the refinement pass across the open board; then the
+  feel-check stack (hot row 2), §9 feature picks (row 3), and the SEO deadline row 4.
+- **2026-09-24 (session 10, part 2 — the board went scriptable)** — Spar with Robin
+  folded into `tools/board.py` (stdlib, both partitions) owning the structural moves:
+  `complete` (strike + ✅ date/SHA + insert into DONE's matching § head, refuses
+  ambiguous or absent title prefixes and strikethrough-marked bodies), `add`
+  (single-line item, before §9's standing blockquote, duplicate-title guard), `note`
+  (in-place finding before the trailing tag span), `tag` (ASCII words —
+  severe/moderate/minor/cosmetic/measure × next/soon/later/idle × s/m/l — re-score the
+  span), `log-add`, `log-retire` (moves all but the newest entry into DONE's log), and
+  `verify` (single-line items + tags grammar, no corpse in TODO / no frozen open item
+  in DONE, heads 1–9 both files, unnumbered hot rows, log stub present). DONE lost its
+  17 frozen open-item copies (the rename-first cost — completing R4 would have collided
+  with its own twin); the hot list dropped row numbers (no renumber obligation); the
+  log stub went generic; AGENTS rule 3 synced to move-at-completion and names the tool;
+  `verify` + `tests/board_tool.py` (8 pure-stdlib sandbox cases) registered in CI
+  before the Playwright install. First dogfood ran green: A6 long-press's missing tag
+  span set to `🟨 🟠 ⚙S` via the tool. First real tool bugs caught by the same setup:
+  `_items` used an undefined list name, the test registry's decorator returned the
+  wrapper function (0/0 cases until spotted). CRLF/`\r` inputs refused everywhere.
+- Next: refinement pass across the open board may lean on the tool everywhere; new
+  findings ride `note`, re-scorings ride `tag`, completions ride `complete` (TODO line
+  leaves, DONE gains the struck archive row).
+- **2026-09-24 (session 10, part 3 — refinement round + tonight's hands-off orders)** —
+  Robin live on the batch: (1) BRANDING settled — the product stays "Ocarina Practice"
+  (og:site_name already right); the "branch or stash" holding the code-switch he
+  remembers is `refactor4-domain` (tip `e7718bc`, parked until the flip). (2) §2 R4
+  re-framed to the CI-side validator shape — item text updated. (3) The IDEAS BUGS
+  block lifted into §2 R10 via `board note` (orientation-flip repro on the phone,
+  multi-tick bursts, visual-processing suspicion, the waveform question; the spike
+  watch has not met the phone yet) — that IDEAS block is now clear for Robin to delete,
+  as are its SEO block, Lighthouse line and BRANDING line. (4) New §9 F-items lifted:
+  instrument switch auto-selects the in-range song (approved build) and the
+  octave/transpose twin-bodies dedup (Robin's "nice touch" — SURVEY-only tooling first).
+  (5) TONIGHT'S HANDS-OFF ORDERS, run until the context rule says wrap: no pushes
+  (Robin's ops); no MIDI implementation (tooling-for-Robin only); no SEO feature stages
+  (robots/sitemap wait until the domain-switch WORK finishes; the switch itself is
+  TOMORROW'S JOINT session — Robin: the flip has never succeeded solo, so nights prep
+  only). Unit order: (a) instrument-switch auto-select song, built + pinned; (b) the
+  R4 CI-side data validator suite (pure stdlib, registered in CI); (c) refactor4-domain
+  diff summary + the F8 cutover checklist kept current + a live-verify tooling probe
+  (prep for tomorrow's joint switch); (d) the octave-twin dedup audit tooling (report
+  only, no song-data edits). Every unit: red→green where behavior changes, full sweep
+  before claiming green, board current per unit, session log per unit, all helds
+  respected (no audible changes; tick hunt parked until Robin's phone research;
+  feel-checks need his devices).
+- **2026-09-24 (session 10, part 4 — the night's queue extended)** — Robin confirmed
+  the extension since the four ordered units may finish early: after the ordered list
+  the night continues with (5) §5 M9's last cluster (play/pause DOM-writes dedupe —
+  mechanical, suite-covered), (6) the rule-15 sw-VERSION audit (sweep commits since
+  `oco-pwa-v5` for shipped behavior, bump if stale, offline suite green), (7) §4 P7
+  enlargeSmallHoles precompute, (8) §3 print-popup `document.write` → DOM injection,
+  re-checking the eslint warning count as a rider on whatever code unit touches.
+  Stretch pick with hours left: §9 F6 transpose (inaudible, suite-covered). §9 F4
+  standardization is HELD for its later-stage pass by Robin's call. Unchanged holds:
+  no pushes, no MIDI implementation, no robots/sitemap, tick hunt parked,
+  measurements/feel-checks need Robin.
+
+- **2026-09-25 (night session 11 opens; unit a — the wet-switch song jump)** — the ordered
+  away-work ran: instrument switches now auto-select the in-range family member (§9,
+  Robin-approved build). Red→green five-leg battery added to tests/instruments_load.py
+  (jump alto→bass, stay-when-fitting, jump bass→alto, no-fit-keeps-the-editor, typed-text
+  untouched; every leg also pins isMelodyPlaying() false — no transport starts from a wet
+  switch). Implementation: library.js songFitsChart (every melody token id must be ON the
+  chart — stricter than the OOR badge's compass count) + the load-path tracker
+  lastLoadedId/loadedLibraryId (loadLibraryItem writes; clearLibrarySelection clears —
+  the ?song deep-link case needs it because a range-hidden song sits in the editor with
+  the dropdown silently unselected, which is exactly where the first green attempt
+  stalled); app.js songFamilyRoot/songFamily walk the landing-stub family from the
+  SHORTEST existing prefix id and switchInstrument jumps on fillLibrary→loadLibraryItem
+  order, staying put when the current member fits or nothing fits. Member order mirrors
+  tools/gen_song_pages.py: base slug, then variants alphabetically. sw VERSION → v6
+  (rule 15). Sweep note: the full 30-suite sweep ran 29/30 with board_tool red on a
+  day-rollover time bomb (its own assertion hardcoded ✅ 2026-09-24, green for the last
+  time yesterday), defused by injecting complete's --date; board_tool 8/8 after; the
+  night's true app suites all green (instruments_load, library_hardening,
+  instrument_switch_race, render_pin...). Lint clean. Commit `4ddeb1f`.
+- Next (night queue): unit b — the R4 CI-side data validator suite; unit c — refactor4-domain
+  cutover prep; unit d — octave-twin audit tooling; then the extension items
+  (play/pause DOM-writes dedupe, sw VERSION audit, enlargeSmallHoles, print popup).
+
+- **2026-09-25 (night session 11, unit b — the R4 data validator lands)** — the reframed
+  §2 validator is built: tests/data_validator.py (pure stdlib, no browser, no runtime
+  gate) — a sandbox battery of 12 named defect classes (good corpus clean; duplicate
+  JSON keys via an object_pairs_hook refusing the silent last-wins collapse; unique
+  instrument ids; missing declared fingerings/svg files named with their declarer;
+  note-id grammar fronting the s-spelling convention ('Fs4' never 'F#4') with octave
+  required; duplicate note ids; strict ascending chart pitch; covered arrays resolving
+  real holes; tone.json present-but-corrupt caught while the deliberate-404 declarations
+  stay allowed; svgWhen rows pinned to svg + a song/songTitle anchor; songs.json
+  name+body presence with typed scalars; bad default id) and the shipped real corpus
+  running clean. Deliberately NOT duplicated here: the slug/suffix/chain contract
+  (tests/shipped_songs.py owns it) and any body-grammar parsing (parse.js owns it).
+  Registered in CI in the stdlib region beside board_tool, before the Playwright
+  install. Commit `f62ede5`.
+
+- **2026-09-25 (night session 11, unit c — cutover prep for tomorrow's joint flip)** — the
+  three prep deliverables for the domain switch landed on the SEO item as a note: the
+  refactor4-domain merge-surface summary (one commit `e7718bc` over `c96965a`; five
+  files: deploy-site.yml, new CNAME, README, gen_pages suite+generator; zero overlap
+  with refactor4's merged files → clean merge), the checklist currency statement
+  (unchanged; tonight's session5 stack pushes also fire the artifact on served-content
+  paths, DNS/HTTPS order unaffected), and the brand-new live-verify tooling
+  `tools/verify_site.py` built, debugged and used: it reads the DEPLOYED songs.json
+  (never local), checks the shell/js-app entry, every stub's base-href/canonical/og:url
+  agreement on one serving prefix (prefix derived from --origin, so pre- and
+  post-flip stages share the contract) and playwright-boots sampled stubs from fresh
+  contexts. Tool-build findings worth keeping: (1) today's initial live state was a
+  STALE artifact — home shell predated the PWA commit while /song/ stubs served; a
+  push-triggered Actions deploy during the night refreshed it; (2) the boot leg hit
+  the SW-claims-the-second-navigation hazard → fresh context per boot (the AGENTS
+  rule-13 lesson now lives in the tool); (3) og:title's separator is an EM DASH
+  (U+2014), the title-strip regex handles both — and Chromium's resource-404 console
+  text is generic, so the tone.json allowlist reads m.location's URL, not message
+  text; (4) stub enumeration must mirror the serving suppression (registered-suffix
+  variants and -bass siblings of existing bases never get stubs; leaf -bass keys
+  keep theirs). Pre-flip probe RESULT (after the redeploy): 18 checks green — 8/8
+  landing stubs 200 with coherent heads, all 8 booted the right song on the right
+  ocarina with clean console at /Ocarina-Practice. Commit `a62dc97`. Tomorrow's gate:
+  the same tool with `--origin https://ocarina-practice.com`.
+
+- **2026-09-25 (night session 11, unit d — the octave-twin survey is PROVEN)** —
+  tools/audit_twins.py (report-only, self-check-battery-first, bodies untouched) walks
+  every family pair + cross pair in songs.json: a pair classifies TWIN only on
+  one-to-one token alignment with uniform melody deltas and every non-pitch token
+  carried verbatim; unreadable tokens (the kokiri stray `g4/4`) refuse the verdict by
+  construction rather than guess. FINDINGS: five octave twins (all four -bass bodies
+  sit exactly one octave below their alto bases; botw-theme-vs-down3 too), three
+  uniform non-octave twins (hobbits -c at -2, botw -bass at -9, botw -bass at -3 from
+  -down3), zero other twins across the whole corpus. The derive-at-load question
+  (variants keep hand-written bodies or derive from base) stays HELD for Robin with
+  the report on the item; keys/URLs stay frozen in any case (permalink contract).
+  Commit `33bd3fa`. The night queue advances to the extension units; meter said
+  ~232K after this unit's read.
+
+- **2026-09-25 (night session 11, unit 5 + 6 — M1 closes; sw VERSION audit clean)** —
+  unit 5: the play/pause DOM-writes cluster resolved as a deletion (the #playMel
+  element does not exist anywhere; the round mirror replaced the header's text
+  squares — keyboard_widgets's squaresGone leg has pinned that absence all along),
+  all four vestigial textContent writes left audio.js; targeted suites green +
+  eslint. On the same unit the board tool itself gained its fix + pin: complete's
+  --notes-file payload flag reaches the payload reader now (it only ever looked at
+  the generic --file flag — refused complete's own flag in real use; sandbox case
+  t9 pins both shapes). Board: the M1 dedup item strikes into DONE with the closing
+  cluster shelf now EMPTY. Commits `504b42d` + `9a2ae0b`.
+  Unit 6 (the rule-15 audit): the four ordered units + unit 5 land across commits —
+  shipped-behavior changes since oco-pwa-v5: ONLY the wet-switch auto-select (unit a,
+  bumped VERSION to oco-pwa-v6 IN the same commit). Everything after v6 is tooling,
+  tests, board moves and the engine-unobservable dead-write deletion — no shipped
+  behavior, no further bump owed; the offline suite will verify the v6 cache on the
+  night's final sweep.
+
+- **2026-09-25 (night session 11, units 7-8 + the wrap)** — unit 7: enlargeSmallHoles
+  got its O(holes²) cure as record-and-replay (the sequential pass makes a plan
+  precompute impossible — an enlarged hole changes neighbors' constraints — but the
+  settled attribute writes record on the first big-view miss and replay by element
+  index verbatim; bit-identical because hole geometry never touches the styling pass
+  and the plan keys on the same svg epoch that clears the output cache). svg_cache
+  gained the replay-purity leg; exact-restore pins stayed green. Commit `7a580ee`.
+  Unit 8: the print popup rides a blob URL carrying the SAME bytes Download saves —
+  document.write's deprecated sink gone without losing the standards-mode doctype;
+  render_pin gained the popup contract leg (red on about:blank before, green after).
+  Commit `94f6ddc`. FULL SWEEP 31/31 (235 s) after all units, offline_pwa green on
+  the v6 cache; eslint clean (zero warnings). The evening re-deploy Robin triggered
+  landed the fresh artifact mid-night and the live probe is green (unit c). The
+  stretch pick F6 transpose is HELD for Robin — text-shift vs token-shift is a
+  surface/feel fork with audible consequences (the note explains it on the item), and
+  the budget rule: one more unit + sweep would cross the watch line with closings
+  undone. Board: §4 P7 and §3 print-popup items strike DONE (14 open items). NO
+  pushes made tonight (Robin's ops) — session5 carries the whole night's stack
+  (a→8): `4ddeb1f` auto-select, `6c7ef6f`, `f62ede5` validator, `9ad9142`,
+  `a62dc97` verify_site, `974e91b`, `33bd3fa` twin audit, `a8726ef`, `504b42d`
+  M1 close, `9a2ae0b`, `4deb6cb`, `7a580ee`, `94f6ddc` + this wrap. Next session
+  (the joint flip): merge/push order is Robin's; his manual checklist lives on the
+  SEO item; the post-flip gate is `python tools/verify_site.py --origin
+  https://ocarina-practice.com`.
+
+- **2026-09-25 (CLI red diagnosis — the flake family's third member, cured by the rule-13 rendezvous)** —
+  Robin's push of the session5 stack CI-fired red on practice_dip's FIRST leg only
+  (run `36110497803`, job 107992645371, head `a802f10`): a 15 s timeout with the session
+  flat at maxIdx 0, and the four subsequent assert lines were phantom consequences of the
+  blind timeout resolve. Standalone local: green — so a race, not a regression. Fresh
+  diagnosis: the suite's rendezvous (OCA_PRACTICE+NOTES) unlocks INSIDE loadInstrument
+  (NOTES lands at installFingerings, but ensureOcarinaTemplate + the allowlisted tone.json
+  404 still pend), and boot then owes fillLibrary(home)+loadLibraryItem(home) →
+  practiceInvalidate — a session engaged mid-boot is killed by the tail a beat later; under
+  CI's cold load the window lost for the first time in the family's history. Repro'd at
+  will with CDP Emulation network latency (throwaway, deleted after); cured test-side ONLY:
+  the #scale-options tail guard appended to practice_dip's rendezvous (options are filled
+  only by the tail; a rAF poll can never resolve mid-synchronous-block — so the guard proves
+  loadLibraryItem completed) + a state card (started/st/ix/frames) on every resolve. Same
+  tail guard rode into practice_accepts_melody, practice_zen_return (3 legs),
+  practice_history, keyboard_widgets and render_pin (the last needs typed editor text to
+  survive the tail, others start practice). Not touched: library_hardening (already waits
+  the Scales OPTGROUP — a post-tail signal), instrument_switch_race (the race is its
+  subject), playback-only suites (practiceInvalidate stops practice, never play). Red→green:
+  stall under latency with the old rendezvous, healthy engage under the same latency with
+  the new one. Board: §6's flake note extended, hot row 1 dropped (the validator shipped
+  `f62ede5`), hot list refresh dated. Full sweep 31/31 green (227 s). No app code touched →
+  NO sw VERSION bump (rule 15). Queued for Robin's next push to session5.
+
+- **2026-09-25 (joint flip session — the domain rock, then the crawler stage)** —
+  Robin: "The new domain is active" then "what is live is main without the new code" — the
+  flip landed on main (PR #9/#10 merges; deploy run `36117318574`) before the serving
+  layer's newest truth. The ready gate went RED exactly as designed:
+  verify_site --origin https://ocarina-practice.com found all 8 stubs serving but none
+  booting (the workflow's baked `--site-prefix /Ocarina-Practice` stranded `<base
+  href>`/canonical one directory too deep on the root-served domain), and the fresh
+  crawler-stage legs reported robots.txt/sitemap.xml 404. Robin branched `domain-switch`
+  and granted the unit + what unlocks: the flip contract fix (--site-prefix / +
+  --origin in deploy-site.yml), the robots stage — generator emits sitemap.xml (home +
+  every stub URL, byte-deterministic, no lastmod) and an absolute og:image (disambiguated
+  flag --origin: og:image must be absolute; canonical/og:url stay origin-relative so the
+  artifact stays mount-agnostic, and the legacy project-page mount stays a string-contract
+  leg in gen_pages until its stage retires) — robots.txt committed timeless per Robin
+  ("no automation info facing the web" — dates/names of internals stay in dev files,
+  nothing dated serves), verify_site = the gate again (CI red on robots/sitemap until his
+  merge re-fires the deploy). Red→green: gen_pages wrote root-deploy legs first (red on
+  the missing --origin + sitemap), generator carried them green (8 boots clean, sitemap 9
+  locs exact). Sweep 31/31 (258 s). sw.js untouched — no VERSION bump. The discovery
+  session's rule-13 lesson also landed earlier today as `3930d42` (the dip red cured,
+  merged with PR #10, CI green at `36116579188`/`36117318584`).
+
