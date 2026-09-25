@@ -5,6 +5,11 @@ Stdlib only, LF-only, UTF-8 only. Invariants (checked by `verify`):
 - every TODO item is ONE line: `- [ ] **Title** — body … `<risk> <circle>( <effort>)?``
 - TODO carries no corpses (no `- [x]` lines); DONE carries no open items.
 - Section heads ## 1. – ## 9. mirror between the two files.
+- TODO's session log appends at the BOTTOM and reads old→new downward;
+  log-retire keeps the LAST `keep` entries (the newest) and moves the older
+  ones into DONE's log (they land oldest-first). Several sessions working
+  one day still append — never hand-place an entry. verify guards the log:
+  entry dates non-decreasing downward, no open items inside the log.
 Text payloads come from --file (or `-` for stdin); PowerShell 5.1 mangles
 emoji/§/backticks in argv, so anything but short ASCII prefixes and the
 tag-word args must ride files. Prose stays hand-composed; THIS tool owns
@@ -289,6 +294,21 @@ def verify(todo, done_path):
                 ok = (tl[j].startswith(("- [ ] ", "> ", "Currently covered", "Nothing open"))
                       or tl[j] == "" or tl[j] == "---")
                 reg(ok, f"TODO:{j + 1}: stray line inside §{m.group(1)}")
+    # Session log: appended order (old→new downward), nothing open inside it.
+    try:
+        log_head = tl.index("## Session log")
+    except ValueError:
+        log_head = None
+    if log_head is not None:
+        log_tl = tl[log_head + 1:]
+        # entry line shape is "- **2026-09-23 …" → the date sits at 5:15
+        dates = [l[5:15] for l in log_tl if ENTRY_RE.match(l)]
+        reg(dates == sorted(dates),
+            "session log: entry dates out of appended order (a newer-dated entry "
+            "sits above an older one — log-add appends at the bottom, never "
+            "hand-place an entry)")
+        reg(not any(l.startswith("- [ ] ") for l in log_tl),
+            "session log: open item inside the session log")
     reg(not any(l.startswith("- [ ] ") for l in dl), "DONE: frozen open item(s) present")
     dsecs = [int(SEC_HEAD_RE.match(l).group(1)) for l in dl if SEC_HEAD_RE.match(l)]
     reg(dsecs == list(range(1, 10)), f"DONE: section heads not 1..9 in order ({dsecs})")
