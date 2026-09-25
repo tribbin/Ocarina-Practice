@@ -227,6 +227,8 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 
 - [x] ~~**General readability (contrast) sweep — "a general test of readability of every component"** — Robin, 2026-09-25, prompted by a visible HiFi problem; wanted a general non-roster detector. `🟨 🟡 ⚙M`~~ ✅ 2026-09-25 `a529fd0` — tests/readability.py (in CI): a full-DOM scanner, not a roster — per look (plain/hyrule/hifi) and per state (base with collapsed blocks opened, floating tuner, zen, zen+tuner in-card, theme menu, help overlay, library dropdown, save dialog, audio performance pop, ?debug=1 panel) it walks every visible element that paints its own text or a button glyph, composites the real background chain (rgba stops blended), and holds WCAG 4.5/3.0 by size. Every state must MEASURE something (pass-by-nothing fails loudly — the class Robin caught with the song-library miss). The scanner found and the same commit fixed: the HiFi light-sheet internals, a HYRULE theme-menu class, the piano now-key label, --token-pause, and the Hyrule dbg heading. Note field for the next session: state minimums are distinct-path caps (35 base / 12 zen / small popups) — re-tune if a state's content changes.
 
+- [x] ~~**Suite servers print BrokenPipeError tracebacks into CI logs (the IDEAS CI paste, pruned; run `36187303217` job `108243773139`, pr 15 — passed anyway)** — browser teardown mid-GET races `copyfileobj` inside the suite-facing ThreadingHTTPServer (e.g. tests/instruments_load.py:30); the suites themselves pass, so the console noise is the defect: quiet the expected-teardown class in the suite-server pattern without hiding real failures. `🟨 🟠 ⚙S`~~ ✅ 2026-09-26 `c40991e` — landed 2026-09-25 (session 15 `c40991e`): the byte-identical server block in 34 suites became one hardened place (tests/suite_server.py — handle_error swallows only the ConnectionError family, real handler failures stay loud), every suite imports start_server, gen_pages borrows the hardened server for its staged mounts; tests/suite_hardened.py pins both directions red-first; 42/42 sweep green after the migration.
+
 ## 7. Accessibility & UX
 
 - [x] ~~**Piano keys are click-only `<div>`s** — no button semantics, no keyboard, no aria-label (title attr only). Make them buttons with aria-labels + keyboard. (ui.js:770-799)~~ ✅ 2026-09-22 `3094ad7` — role=button + aria-labels + roving tabindex (one tab stop), arrows (L/R chromatic, U/D octave, Home/End), Enter/Space audition; clicks move the anchor. Kept as styled `div`s with role=button (zero CSS/theme risk vs real `<button>`s). `tests/keyboard_widgets.py` in CI.
@@ -708,3 +710,164 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
   set completion as the joint content jam (the November anchor). Helds remain: MIDI
   implementation only as tooling, robots/sitemap post-verification stages builds lean on
   the live gate.
+
+- **2026-09-25 (session 12 — quick openers, wake-lock, layout pair, HiFi + theme menu, the general readability scan; the headless rule born)** —
+ Robin picked the openers+wake-lock+layout+HiFi batch (answers: wake-lock play+
+ practice; first pass palette+LED only; the theme selector is a MENU, theme named
+ **HiFi**, code `hifi`). Landed on the `session12` placeholder branch: (1) `ee4e2ec`
+ the CI job title names the real battery; (2) **Lighthouse pass** — mobile P80 /
+ A11y 100 / BP 96 / SEO 100, desktop P99; the scanner caught the mobile CLS 0.352
+ (reproduced headlessly under real throttling = the inst-sel ballooning + a
+ pre-CSS flash) and the token-touch listeners went passive — `b023394`; the
+ FIRST Lighthouse run opened Chrome HEADFUL on Robin's screen — the **headless
+ rule** went into AGENTS rule 17 (never a window; explicit `--headless=new
+ --disable-gpu` flags; asks first if unavoidable). (3) `e375203` the wake lock
+ (js/wakelock.js reasons-set module; seams in audio/playMelody-family +
+ practice start/pause/anchor/standby/un-press; `tests/wake_lock.py` red→green,
+ the setWakeLockSource seam after three probes proved `navigator.wakeLock` is a
+ readonly WebIDL getter nothing can shadow). (4) `b106cba` the layout pair —
+ tuner ✕ un-presses practice + mic glyph replaces ♪ on both transports;
+ Robin live-tested mid-unit (the ✕ overlapped the status glyph — row reserves
+ 30px; he verified the close works). (5) `bccb4f8` the theme MENU (Plain /
+ Hyrule / HiFi uniform ink) + the HiFi first pass. (6) **The readability work,
+ the session's centerpiece**: Robin demanded a GENERAL detector ("you'll find
+ a general way for a non-human") after unspecific hints — the selector roster
+ was replaced by the full-DOM scanner (every visible text/glyph element per
+ state, opened-state asserts for popups, measured-count floors vs
+ pass-by-nothing); the scanner then found the rest itself: HYRULE theme menu
+ (his catch), HiFi light-sheet internals, the piano now-key label,
+ --token-pause at 4.14, the Hyrule dbg heading — all fixed in `a529fd0`
+ (chassis-painted shape verified with Robin first; sw VERSION v10→v12 across
+ the batch; 34/34 sweep twice; lint clean; CI = push battery, single run).
+ Board: §6 items closed (job title, a new general-readability item), §9 items
+ added+closed (wake lock, layout pair, HiFi first pass), F7 note (Lighthouse
+ pass + report-only residuals). Branch session12 ends this wrap; Robin pushes/
+ merges (PR copy per canon handed below). Helds: his field checks (wake-lock
+ phone, HiFi retune knobs, ✕/mic look, live Lighthouse re-run post-deploy).
+ Robin-steered adds at the wrap: the branch is close but NOT merge-ready yet
+ ("minor issues and subjective problems we'll correct later") — (a) HiFi went
+ HIDDEN until finished (`4c4456c`, menu lists Plain/Hyrule only, ?hifi keeps
+ exploring, sw v13; theme_toggle rewritten for the hidden contract; sweep
+ 34/34 green on re-run — the first sweep had ONE bad_chip oot-leg red,
+ standalone green in between: the sweep-load flake family gained a member,
+ watch it), (b) the subjective list stays his; his two IDEAS captures
+ (`fe5c867` CSS updates, `1766fad` swing-disable-in-practice) ride the branch
+ in his own hand and wait for his lifts.
+
+- **2026-09-25 (session 13 — the board manager hardens its log rules, the stale board is corrected, the handoff gets prepped)** —
+  Robin's suspicion that the board tooling was unclear proved worth fixing
+  properly: the convention (append at bottom, old→new downward) is what the
+  tool always assumed and what the log mostly did — EXCEPT one long-planted
+  anomaly (the session-12 entry sat ABOVE the session-11 wrap's, which would
+  have made `log-retire` keep the wrong end) plus a stale opening-batch
+  bullet riding the oldest entry. tools/board.py now guards that class
+  red-first: `tests/board_tool.py` gained a verify leg (entry dates must
+  read non-decreasing downward — a newer-dated entry above an older one
+  fails — and nothing open may live inside the log section); implementing
+  it also caught a slice-offset in my first date grab (`l[3:13]` vs the
+  `- **` prefix — every entry hashed equal, masking all order) fixed to
+  `l[5:15]`; the docstring now states the append rule plainly, including
+  "several sessions on one day still append — never hand-place an entry".
+  The real board was normalized once by hand (session-12 block below
+  session-11's), the four-session log backlog retired into plans/DONE.md,
+  and the two IDEAS-lift items left the open list at their build `720373e`
+  (landed-crawler URL semantics + the info-screen issues link shipped via
+  PR #12 — the hot list had wrongly kept them "next build"). Board gains:
+  §1 the deep-link instrument-change redirect defect (field-observed, Robin
+  IDEAS; gen_pages pins the library-switch leg yet the field disagrees —
+  reproduce on a live stub first), §9 the SEO-guides application pass
+  (Robin's two Google docs; opener is read-then-audit, applications are his
+  picks), and the permalink item carries the new pin: the domain is
+  Search-Console-verified and the sitemap URLs are PERMANENT from today (no
+  rekeys, no path renames; kokiri's retired leaf URL was the last move of
+  its kind). Live Lighthouse re-check post-deploy rode the same note (mobile
+  perf 95 / CLS 0; desktop 99; residuals: render-blocking stylesheet +
+  #themeBtn label mismatch; the BP -1 is the expected §1 tone.json 404).
+  This session opened package-mode per Robin (tool fix + board state +
+  handoff); later field streams still pulled two units in:
+  — Robin CONFIRMED the wake lock live (play AND practice kept his phone's
+  screen awake — the held field check closes);
+  — Robin reported the live defect that the practice-mode swing slider was
+  'not disabled like tempo', which exposed my earlier mis-read — `1766fad`
+  was Robin planting the IDEAS idea line, never an implementation, so the
+  IDEAS-cleanup message wrongly called it shipped — and the behavior is
+  NOW real: the swing row joins playback's silent-dials contract
+  (`.dial-off` dim + inert beside tempo/focus-tempo) via `b86ddf3` red→green
+  (`tests/practice_dials.py`, CI-registered, sw v14), completing on the
+  board with his post-merge phone eyeball as the deciding pass.
+  The opening batch for the fresh session is proposed below.
+- Next (session 14 opening batch, proposed — Robin confirms/picks): (1) the
+  §1 deep-link instrument-change redirect defect — reproduce on a live
+  /song/ stub (his device or headless against the deployed site), then
+  red-first; the permanent-URL pin makes it the hottest open thing; (2) the
+  SEO-guides opener: read the two Google docs from IDEAS and AUDIT the
+  artifact (report only; the applications are Robin's picks); (3) the
+  audio-tick spike detector per §2's detection plan as the running
+  centerpiece (debug-only, no shipped-audible change); (4) CSS
+  fresh-on-release (version the css URL; watch the sw VERSION melody); (5)
+  the tick-override semantics unit (IDEAS line; the semantics are already
+  written). Helds all stand: twin-dedup verdict (kokiri stray token needs
+  his eyes), transpose text-vs-token fork, shipped-songs standardization
+  (later-stage pass), MIDI-as-tooling boundary, small-screens brainstorm,
+  and the feel-check stack (HiFi retune knobs, ✕/mic glyph, history line,
+  token chips).
+
+- **2026-09-25 (session 14 — the deep-link contract sealed, the twins derive at load, the tick contract, the stylesheet token, the spike watch pairs the flip)** —
+  Robin opened the session with a few hours and picked the full proposed
+  batch (plus field checks interleaved); the batched decisions: kokiri's
+  `g4/4` is a typo, derive ALL twins, the transpose fork resolves
+  TOKEN-LEVEL, every feel check on today's list, headless probing allowed
+  for the deep-link repro. Landed on the `session14` placeholder branch
+  (Robin pushes/merges as ever):
+  (1) `098115d` the kokiri typo — parse.js uppercases note letters so the
+  token played identically all along; the audit goes refusal-free and
+  kokiri is NOT-ALIGNED against everything (no twin), census closed at 8.
+  (2) `ff53abb` the deep-link redirect defect: Robin FIELD-CONFIRMED
+  mid-unit that instrument switching resolves to root+vars on the live
+  site; the headless probe then exposed two LATENT holes fixed red-first
+  under the new mounted boot leg (stub served under a path prefix): the
+  rewrite dropped its mount prefix (STUB_PATH had no capture group;
+  root-serving masked it) and, once off the deep path, ?song= stopped
+  tracking the playing song — rewriteLanderUrl now refreshes the vars in
+  place, extras (theme params) survive, bare root stays bare.
+  (3) `56c4ae0` the spike watch pairs the flip: spike cards gain an ambient
+  context ring (orientationchange legacy+spec, throttled resize; kind
+  +agoMs, 4 s age-out) riding the card/probe/console warn per the flip
+  evidence — the next field tick names its seam's plane, or proves the
+  device level by staying silent while the phone still hops.
+  (4) `eee3bbe` the twins derive AT LOAD: 5 derives records ship
+  (time/-storms/-sarias bass -12, botw-theme-down3 -12, hobbits-short-c
+  -2) materialized byte-equal; the byte-identity test was the instrument
+  that forced the music-theory engine: OCTAVE shifts carry the base
+  letter+accidental (Bb5→Bb4) after eponas' flat-side-Bb-beside-
+  sharp-F#/C# orthography proved no midi respell could know per-section
+  intent; botw-theme-bass (key-name labels + line split) and
+  eponas-song-bass (A2 label) stay HELD hand-written (Robin's calls); the
+  flats flag died in the theory run; validator owns the derives schema
+  (7 sandboxed defect classes), audit prints provenance and keeps the 5+3
+  census refusal-free, gen_pages boots the materialized corpus;
+  tests/twin_derive.py freezes the retired bodies as fixtures so a base
+  edit fails the derivation on purpose.
+  (5) the SEO-guides OPENER delivered as a report (no code): the artifact
+  already meets most of the guides (robots/sitemap/URLs/one-URL-per-
+  content/titles/OG/mobile); three application candidates await Robin's
+  picks — shell rel=canonical (recommended), JSON-LD (Breadcrumb /
+  WebApplication / MusicComposition), static stub cross-links.
+  (6) `53d8074` + `0685ea2` the stylesheet fresh-on-release: the <link>
+  href and sw.js's precache entry carry the css token css-v1 —
+  INDEPENDENT of sw VERSION after the new guard caught the coupling in
+  its own first draft; an old worker misses the versioned URL and serves
+  the network sheet immediately, so the first reload is fresh; boot
+  re-fetches the page's own link so the at-boot replace cannot drift.
+  (7) `0685ea2` the tick contract (IDEAS line): the user preference lives
+  in localStorage (oco-bass-c-tick), a song's tick declaration stays a
+  per-song session override that never writes it, both USER channels
+  (transport button + settings carrier) write on click, programmatic
+  song loads wear an autoTick guard; six-leg suite.
+  Sweeps: 38/38 (the two new suites registered in CI the same commits);
+  lint clean per unit; sw VERSION → oco-pwa-v19, css token → css-v1.
+  Helds: Robin's feel checks (HiFi knobs ?hifi, ✕/mic glyph, history
+  line, chip touch feel, small-screens brainstorm) — all unchanged;
+  SEO applications = his picks; shipped-songs standardization (later-
+  stage pass), MIDI-as-tooling boundary, small-screens, WAV-export
+  worklet reframe, real-DSP validation all stand.
