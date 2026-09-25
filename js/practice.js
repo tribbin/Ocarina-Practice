@@ -255,11 +255,15 @@ import { wakeHold, wakeDrop } from "./wakelock.js";
     panel.className = "prac-panel noprint";
     panel.hidden = true;
     panel.innerHTML =
+      '<button type="button" class="prac-close" title="Close practice (un-press)" aria-label="Close practice mode">' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6 18 18M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>' +
+      '</button>' +
       '<div class="prac-row1"><span class="prac-note">—</span>' +
       '<span class="prac-status"></span></div>' +
       '<div class="prac-scale"><div class="prac-zone"></div><div class="prac-mark"></div></div>' +
       '<div class="prac-track"><div class="prac-fill"></div></div>' +
       '<div class="prac-history" hidden></div>';
+    els.close = panel.querySelector(".prac-close");
     els.note = panel.querySelector(".prac-note");
     els.status = panel.querySelector(".prac-status");
     els.scale = panel.querySelector(".prac-scale");
@@ -270,7 +274,11 @@ import { wakeHold, wakeDrop } from "./wakelock.js";
     els.history = panel.querySelector(".prac-history");
     // No Pause/Skip/Restart/End here: the transports own mode control, and
     // clicking any token re-anchors the practice. The panel is a pure tuner
-    // display (draggable by its face).
+    // display (draggable by its face) — with the one affordance Robin asked
+    // for: a top-right close that UN-PRESSES practice in full (stop, not the
+    // pause many-transports do). Hidden in zen: the in-card strip is the
+    // card's own, and leaving zen is the route back.
+    els.close.onclick = () => stopPractice();
     makeDraggable(panel);
     panelHost().appendChild(panel);
     return panel;

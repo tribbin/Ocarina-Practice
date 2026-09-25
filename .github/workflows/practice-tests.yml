@@ -105,5 +105,7 @@ jobs:
         run: python tests/transpose_skill.py
       - name: Run wake-lock lifecycle tests
         run: python tests/wake_lock.py
+      - name: Run practice close/mic layout tests
+        run: python tests/practice_close.py
       - name: Run song-stub page generator contract tests
         run: python tests/gen_pages.py
