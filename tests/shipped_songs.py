@@ -17,11 +17,8 @@
 #
 #   python3 tests/shipped_songs.py      # headless & silent
 
-import http.server
-import socketserver
 import re
 import sys
-import threading
 from pathlib import Path
 
 # Registered trailing suffixes (the closed list; extend ONLY here): ocarina
@@ -85,19 +82,7 @@ async () => {
 """
 
 
-class QuietHandler(http.server.SimpleHTTPRequestHandler):
-    def __init__(self, *a, **kw):
-        super().__init__(*a, directory=str(ROOT), **kw)
-
-    def log_message(self, *a):
-        pass
-
-
-def start_server():
-    socketserver.ThreadingTCPServer.allow_reuse_address = True
-    httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), QuietHandler)
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    return httpd, httpd.server_address[1]
+from suite_server import start_server
 
 
 def slug_violation(key, all_keys, report):

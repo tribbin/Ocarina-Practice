@@ -16,11 +16,8 @@
 #
 #   python3 tests/console_hygiene.py          # headless & silent
 
-import http.server
-import socketserver
 import json
 import sys
-import threading
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
@@ -32,19 +29,7 @@ BOOT_WAIT = ("typeof OCA_PRACTICE !== 'undefined' && !!OCA_PRACTICE"
 SETTLE_MS = 2000  # async stragglers: library fill, SW registration, tone misses
 
 
-class QuietHandler(http.server.SimpleHTTPRequestHandler):
-    def __init__(self, *a, **kw):
-        super().__init__(*a, directory=str(ROOT), **kw)
-
-    def log_message(self, *a):
-        pass
-
-
-def start_server():
-    socketserver.ThreadingTCPServer.allow_reuse_address = True
-    httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), QuietHandler)
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    return httpd, httpd.server_address[1]
+from suite_server import start_server
 
 
 def declared_tone_paths():
