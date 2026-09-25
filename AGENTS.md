@@ -135,7 +135,12 @@ file sits at the repo root so every session finds it first.
 17. Test suites run their own throwaway HTTP server + isolated Chromium;
     they share nothing with Robin's preview (which is `file://` — no
     service worker, ever). Verify page behavior via `python3 -m http.server`,
-    never through his preview.
+    never through his preview. **Headless rule (Robin, 2026-09-25): the
+    session never opens a browser window on Robin's actual screen — every
+    browser launch outside the test suites (Lighthouse, tools, probes)
+    must carry explicit `--headless=new --disable-gpu` chrome flags;
+    anything that would unavoidably show a window needs his permission
+    first.**
 
 ## Commands (split per OS)
 

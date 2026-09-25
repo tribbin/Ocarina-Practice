@@ -763,6 +763,8 @@ function wireTokenTouch(el, i, t) {
     hushTokenHover();
     if (!isMelodyPlaying()) clearHighlight();
   };
+  // passive: nothing here preventDefault()s (drift CANCELS our dwell and
+  // lets the page scroll; pinch zoom must stay a browser gesture).
   el.addEventListener("touchstart", (e) => {
     if (e.touches.length !== 1) return; // pinch = zoom, not a dwell
     origin = null;
@@ -772,7 +774,7 @@ function wireTokenTouch(el, i, t) {
     if (hoverVoiceToken === t && hoverVoiceTimer) {
       origin = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     }
-  });
+  }, { passive: true });
   el.addEventListener("touchmove", (e) => {
     if (!origin) return;
     const p = e.touches[0];
@@ -780,15 +782,15 @@ function wireTokenTouch(el, i, t) {
       origin = null;
       calm(); // drift = scroll intent
     }
-  });
+  }, { passive: true });
   const lift = () => {
     if (!origin) return;
     origin = null;
     if (hoverVoiceTimer) calm(); // released before the dwell: silent cancel
     else touchHoldHeard = true;  // the preview already spoke; swallow the tap
   };
-  el.addEventListener("touchend", lift);
-  el.addEventListener("touchcancel", () => { origin = null; calm(); });
+  el.addEventListener("touchend", lift, { passive: true });
+  el.addEventListener("touchcancel", () => { origin = null; calm(); }, { passive: true });
 }
 
 // Roving tab stop for a token strip: one tab stop per strip (a song strip can

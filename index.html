@@ -9,6 +9,18 @@
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="apple-touch-icon" href="icon-192.png" />
 <title>Ocarina Practice</title>
+<style>
+  /* Critical paint gate: under a slow network Chrome's paint-holding gives up
+     after ~1 s and paints the UA-shape (8 px body margin, white sheet) before
+     app.css arrives — the 0.4-CLS pre-CSS flash Lighthouse caught on the phone.
+     These two declarations anticipate app.css's own html, body rule exactly;
+     anything more belongs in the stylesheet, not here. */
+  html, body { margin: 0; padding: 0; background: #f6efe6; }
+  /* the header's h1 margin collapses THROUGH the pre-CSS body's zero
+     margin and displaces the body box itself (~21 px = UA .67em); app.css's
+     header.app h1 { margin: 0 } is anticipated here for the gate. */
+  header h1 { margin: 0; }
+</style>
 <script>
 (function () {
   try {

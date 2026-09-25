@@ -252,6 +252,14 @@ header.app span { opacity: .7; font-size: 13px; }
 @media (max-width: 760px) {
   header.app { display: flex; flex-wrap: wrap; }
   .inst-picker { margin-inline: auto; }
+  /* Reserve the selector's grown-up width from the first paint: the option
+     list arrives with the instruments fetch, and today the narrow empty
+     control balloons into the row — head-tools wrap onto a second line and
+     the whole page slides down (the 0.35 mobile CLS Lighthouse caught).
+     The reserved box is the same one the filled control will occupy, so no
+     final layout changes; the wrap it forces is immediate, not mid-load.
+     Re-tune if instrument labels ever get their own redesign. */
+  .inst-sel { min-width: 316px; }
 }
 .inst-sel {
   background: rgba(255,255,255,.08); color: var(--paper);
