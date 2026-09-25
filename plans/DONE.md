@@ -133,6 +133,22 @@ formula (damage × imminence ÷ effort):
 - [x] ~~**Same-line function definitions** — `function isMelodyPlaying() {…}function isMelodyPaused() {…}` formatting smell. (audio.js:1685)~~ ✅ 2026-09-22 `c69448f`
 - [x] ~~**Normal-mode transport lacks a Stop** — zen's focus bar has a Stop button; the regular playback bar only cycles Play/Pause (and Space now pauses too since `1d6e03e`).~~ ✅ 2026-09-22 `017284e` + `1f904b6` + `0c58a50` — final shape per Robin: the four round controls (Loop, Play, Practice, Stop — same order, same ACTIVE colors) are TRULY CENTERED over the playback box-head (absolute, static-wrap fallback ≤760px); Loop/Tick lead the left cluster; the text Play/Practice buttons and hear-hint span retired; **Lite's header checkbox removed** (hidden `#liteMel` carrier keeps the one shared state the perf switch/glitch toast/audio read and persist). **Resting rounds wear the inactive ghost look** (Robin: black is the "activated" vocabulary; active colors untouched, glyphs go paper-colored when a state is on). **Tempo & Swing: each row is its own `title|slider|value` grid with FIXED column tracks** (`48px | 90px | value`) so the two sliders sit directly over each other (the earlier `display:contents` share-4-items version broke into a mess). Stop semantics shared via `transportStopAll`. Probe in `tests/keyboard_widgets.py` (incl. squares-gone). Needs only Robin's final eyeball.
 
+- [x] ~~**Deep-link instrument change does not redirect to root+vars (field-observed)** — Robin IDEAS 2026-09-25: "If I use a song deep link and change instrument, I'm not redirected to root+vars." The shipped landed-crawler contract wanted every LATER content change off a /song/ path to resolve to the site root with ?song=&inst= (an instrument change alone rides the switchInstrument same-song rewrite path in js/library.js), and gen_pages pins that switch leg in its test boots — so either the live root-served stubs behave differently from the staged legs or the instrument-only path misses the rewrite in the wild; reproduce on a live /song/ stub first (field check, his device), then red-first the fix. Hot: the domain is Search-Console-verified and the sitemap URLs are now permanent, so the intent contract (a /song/ path never plays different content) must hold before the crawler's first real sweep. `🟧 🟠 ⚙S`~~ ✅ 2026-09-25 `ff53abb` — Field answer 2026-09-25 closes the observation: instrument switching on a
+live /song/ stub DOES resolve to root+vars on the deployed site (Robin
+field-checked; headless probe agrees — /song/zelda/botw-theme/ →
+/?song=botw-theme&inst=stein-double-alto-c). But the contract had two
+latent holes left to red-first: (1) the rewrite dropped the MOUNT prefix —
+STUB_PATH had no capture group, so m[1]||"/" always resolved to the domain
+root, masked only because the pinned domain serves at /; (2) once off the
+deep path, ?song= stopped tracking the playing song — a later library load
+found the stub matcher already empty and returned early, leaving the
+previous song's var in place. Fixed in js/library.js rewriteLanderUrl
+(mount-anchored regex + in-place var refresh, extras like theme params
+survive) and pinned by the new MOUNTED boot leg in tests/gen_pages.py
+(instrument switch, library switch, typed replacement all resolve to the
+mount root).
+
+
 ## 2. Robustness / error handling
 
 - [x] ~~**Silent empty catches swallow synth failures** — `playNoteAt` wraps the entire voice builder in `try { … } catch (e) {}` (zero feedback), same in `playTickAt` and `simulateLag`, plus ~a dozen bare try/catch through audio/hover/position code. Log at least once per session into `#err` or a debug counter. (audio.js:975→1633, audio.js:1683, audio.js:131)~~ ✅ 2026-09-22 `4480fab` — `recordVoiceError(site, e)` records count+site+cause with a 1 s throttled console warn; exposed as `OCA_DEBUG.voiceErrors()/clearVoiceErrors()` (the debug panel can read it); wired into both playNoteAt and playTickAt. The small teardown/hover try/catches stay by design (they guard benign node-stop races); `simulateLag` already lives behind the debug panel. Verified by `tests/voice_error_visibility.py` (in CI).
