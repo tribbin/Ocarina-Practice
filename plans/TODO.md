@@ -216,6 +216,15 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
  pass + report-only residuals). Branch session12 ends this wrap; Robin pushes/
  merges (PR copy per canon handed below). Helds: his field checks (wake-lock
  phone, HiFi retune knobs, ✕/mic look, live Lighthouse re-run post-deploy).
+ Robin-steered adds at the wrap: the branch is close but NOT merge-ready yet
+ ("minor issues and subjective problems we'll correct later") — (a) HiFi went
+ HIDDEN until finished (`4c4456c`, menu lists Plain/Hyrule only, ?hifi keeps
+ exploring, sw v13; theme_toggle rewritten for the hidden contract; sweep
+ 34/34 green on re-run — the first sweep had ONE bad_chip oot-leg red,
+ standalone green in between: the sweep-load flake family gained a member,
+ watch it), (b) the subjective list stays his; his two IDEAS captures
+ (`fe5c867` CSS updates, `1766fad` swing-disable-in-practice) ride the branch
+ in his own hand and wait for his lifts.
 
 - **2026-09-25 (session 11 wrap — the intended exemplars land, CI stops double-running, the next batch planted)** —
   after the PR-copy canon was pinned to Robin's named PRs (#3 sentence-tagged links, #9
