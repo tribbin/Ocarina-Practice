@@ -166,6 +166,40 @@ def main():
         songs = json.loads(songs_raw)
 
     stubs = stub_paths(songs)
+
+    # Crawler stage on the live contract (robots was the post-flip unlock):
+    # robots.txt must serve with its Sitemap pointer, and sitemap.xml must
+    # enumerate exactly home + every stub URL the deployed corpus maps —
+    # nothing suppressed by the generator's family rules, nothing invented.
+    tests += 1
+    try:
+        st, robots = get(origin + "/robots.txt", args.timeout)
+        if st != 200:
+            errors.append(f"robots.txt: status {st}")
+        elif "Sitemap:" not in robots or "sitemap.xml" not in robots:
+            errors.append("robots.txt: Sitemap pointer missing")
+    except Exception as e:
+        errors.append(f"robots.txt: fetch failed {e}")
+
+    tests += 1
+    try:
+        st, sm = get(origin + "/sitemap.xml", args.timeout)
+        if st != 200:
+            errors.append(f"sitemap.xml: status {st}")
+        else:
+            locs = re.findall(r"<loc>([^<]*)</loc>", sm)
+            want = [origin + "/"] + sorted(
+                origin + "/" + p.lstrip("/") for p in stubs)
+            if sorted(locs) != sorted(want):
+                miss = [x for x in want if x not in locs]
+                extra = [x for x in locs if x not in want]
+                errors.append(f"sitemap.xml: loc mismatch (missing "
+                              f"{miss[:3]}, unknown {extra[:3]})")
+            else:
+                print(f"   sitemap.xml 200  {len(locs)} locs")
+    except Exception as e:
+        errors.append(f"sitemap.xml: fetch failed {e}")
+
     always = [p for p in stubs if p.endswith("/song-of-time/")]
     for path in stubs:
         tests += 1
