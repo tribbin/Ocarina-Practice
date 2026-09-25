@@ -1565,6 +1565,8 @@ function updateTransportUI() {
   if (tg) tg.classList.toggle("dial-off", tempoOff);
   const ft = document.getElementById("focusTempoLab");
   if (ft) ft.classList.toggle("dial-off", tempoOff);
+  const sw = document.getElementById("swingGrp");
+  if (sw) sw.classList.toggle("dial-off", tempoOff);
   ["practiceBtn", "practiceFocusBtn", "mirrorPractice"].forEach(id => {
     const b = document.getElementById(id);
     if (!b) return;
