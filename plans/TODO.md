@@ -64,6 +64,17 @@ applications and the feel-check stack are now the hot edges):
 | Item | Section |
 |---|---|
 | SEO-guides APPLICATIONS when Robin picks (shell rel=canonical recommended, JSON-LD, stub cross-links) — his call per candidate | §9 |
+**Session 15's opening batch, picked (Robin, 2026-09-25):** the SEO
+applications first — one shell `rel="canonical" href="/"` plus a
+WebApplication JSON-LD block on the shell (name "Ocarina Practice",
+applicationCategory **EducationalApplication**, operatingSystem "Any",
+browserRequirements, offers price "0" to mark it free; no ratings, no
+fake fields; NO per-stub JSON-LD and NO cross-links block today) — then,
+if room remains, the vertical-screen Zen note-bar lag as a REPORT unit
+(985942e's plant: the note bar lags behind the highlighted note on the
+phone and even leaves the screen partially — reproduce under throttling
+headlessly, name where the lag lives before any build). Feel checks and
+the tick hunt ride along as field activities regardless.
 | Feel checks on his phone/device: HiFi retune knobs (?hifi), tuner ✕/mic glyph, history-line clarity, token-chips touch feel; small-screens brainstorm when he's near | feel checks |
 | The next audio-tick field catch now names itself: spike cards carry the ambient ring (flip/resize + ages) — after his next orientation-flip session a firing card names the plane, counters-0 silence proves the device level | §2 |
 | Robin's field pass over the shipped batch: derived bodies (5 songs) boot byte-identical — his ears confirm the twin songs play as ever; the tick contract's click-during-override feel is his deciding pass | §9 / IDEAS |
