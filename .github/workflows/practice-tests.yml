@@ -10,6 +10,11 @@ name: practice tests
 
 on:
   push:
+    # Every open PR already validates its head with a pull_request run:
+    # a bare branch push fired the whole battery a second time per change
+    # (two full Playwright sweeps per commit, Robin 2026-09-25). Local
+    # branch work rides its PR run; main keeps its own merge shield.
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
