@@ -37,3 +37,5 @@ Let's add theming (colors/preview/backdrop/...) to both the main page and song-l
 BUGS
 
 When CSS changes, a deep refresh is needed. Can we version it, just like the app, so it will retrieve the fresh one on releases?
+
+On phone (relatively small vertical screen) the note bar is very much lagging, as in, moving too slowly towards the center as a note is highlighted. It even leaves the screen partially.
