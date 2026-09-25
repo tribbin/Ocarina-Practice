@@ -294,10 +294,18 @@ function wireInstrumentPicker() {
 async function boot() {
   try {
     applyTheme(themeFromQuery());
+    // The stylesheet rides its own version token (CSS fresh-on-release,
+    // Robin IDEAS 2026-09-25): boot re-fetches exactly what the page's own
+    // <link> opened, so the at-boot sheet replace can never disagree with
+    // what the page painted from (the link href is the single hand-owned
+    // reference; a release bumps it beside sw.js's VERSION).
+    const sheetLink = document.querySelector('link[rel="stylesheet"]');
+    const sheetHref = (sheetLink && sheetLink.getAttribute("href")) ||
+      "css/app.css";
     const [manifest, songs, cssText] = await Promise.all([
       loadJson("instruments.json"),
       loadJson("songs.json"),
-      loadText("css/app.css")
+      loadText(sheetHref)
     ]);
     setAppCss(cssText);
     window.INSTRUMENTS = manifest.instruments || [];
