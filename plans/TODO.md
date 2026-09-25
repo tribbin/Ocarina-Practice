@@ -56,17 +56,18 @@ first circle → urgency, last letter → effort.
 ## Hot list (importance across all types)
 
 Picks for the next session(s), roughly damage × imminence ÷ effort
-(refreshed 2026-09-25, session 13: the two lift items shipped via PR #12 and
-left the hot list; the sitemap URLs went PERMANENT with Search Console
-verified — redirect correctness is the hot edge; handoff prepped below):
+(refreshed 2026-09-25, session 14: the deep-link contract is SEALED with
+its mounted boot leg, the twins derive at load, the tick contract and the
+stylesheet token shipped, the spike watch pairs the flip — the SEO
+applications and the feel-check stack are now the hot edges):
 
 | Item | Section |
 |---|---|
-| Deep-link instrument change must redirect to root+vars (field defect §1; reproduce on a live /song/ stub first) + SEO-guides audit opener (read IDEAS' two Google docs, report what applies) — the crawler is coming | §1 / §9 |
-| Audio-tick spike detector per §2's detection plan (debug-only instrumentation; the next field tick then names its own seam) | §2 |
-| Small app units from IDEAS: CSS fresh-on-release (version the css URL; it is also perf's render-blocking drag), tick-override semantics (semantics written in IDEAS) | IDEAS |
-| §9 decisions waiting on Robin: octave-twin dedup verdict (5 proven + 3 shift-derivable; kokiri stray token needs his eyes), transpose text-vs-token fork, recording / library search when he wants them | §9 |
-| Feel checks on his phone/device: HiFi retune knobs (?hifi), tuner ✕/mic glyph, history-line clarity, token-chips touch feel; small-screens brainstorm when he's near (wake-lock play+practice CONFIRMED live 2026-09-25 — screen stayed awake; wake-lock's held check closes) | feel checks |
+| SEO-guides APPLICATIONS when Robin picks (shell rel=canonical recommended, JSON-LD, stub cross-links) — his call per candidate | §9 |
+| Feel checks on his phone/device: HiFi retune knobs (?hifi), tuner ✕/mic glyph, history-line clarity, token-chips touch feel; small-screens brainstorm when he's near | feel checks |
+| The next audio-tick field catch now names itself: spike cards carry the ambient ring (flip/resize + ages) — after his next orientation-flip session a firing card names the plane, counters-0 silence proves the device level | §2 |
+| Robin's field pass over the shipped batch: derived bodies (5 songs) boot byte-identical — his ears confirm the twin songs play as ever; the tick contract's click-during-override feel is his deciding pass | §9 / IDEAS |
+| Future merge-prone base-body edits now trip tests/twin_derive.py fixtures on purpose — the derivation revisit is a Robin meeting per edit | §9 |
 
 ---
 
@@ -243,3 +244,63 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   (later-stage pass), MIDI-as-tooling boundary, small-screens brainstorm,
   and the feel-check stack (HiFi retune knobs, ✕/mic glyph, history line,
   token chips).
+
+- **2026-09-25 (session 14 — the deep-link contract sealed, the twins derive at load, the tick contract, the stylesheet token, the spike watch pairs the flip)** —
+  Robin opened the session with a few hours and picked the full proposed
+  batch (plus field checks interleaved); the batched decisions: kokiri's
+  `g4/4` is a typo, derive ALL twins, the transpose fork resolves
+  TOKEN-LEVEL, every feel check on today's list, headless probing allowed
+  for the deep-link repro. Landed on the `session14` placeholder branch
+  (Robin pushes/merges as ever):
+  (1) `098115d` the kokiri typo — parse.js uppercases note letters so the
+  token played identically all along; the audit goes refusal-free and
+  kokiri is NOT-ALIGNED against everything (no twin), census closed at 8.
+  (2) `ff53abb` the deep-link redirect defect: Robin FIELD-CONFIRMED
+  mid-unit that instrument switching resolves to root+vars on the live
+  site; the headless probe then exposed two LATENT holes fixed red-first
+  under the new mounted boot leg (stub served under a path prefix): the
+  rewrite dropped its mount prefix (STUB_PATH had no capture group;
+  root-serving masked it) and, once off the deep path, ?song= stopped
+  tracking the playing song — rewriteLanderUrl now refreshes the vars in
+  place, extras (theme params) survive, bare root stays bare.
+  (3) `56c4ae0` the spike watch pairs the flip: spike cards gain an ambient
+  context ring (orientationchange legacy+spec, throttled resize; kind
+  +agoMs, 4 s age-out) riding the card/probe/console warn per the flip
+  evidence — the next field tick names its seam's plane, or proves the
+  device level by staying silent while the phone still hops.
+  (4) `eee3bbe` the twins derive AT LOAD: 5 derives records ship
+  (time/-storms/-sarias bass -12, botw-theme-down3 -12, hobbits-short-c
+  -2) materialized byte-equal; the byte-identity test was the instrument
+  that forced the music-theory engine: OCTAVE shifts carry the base
+  letter+accidental (Bb5→Bb4) after eponas' flat-side-Bb-beside-
+  sharp-F#/C# orthography proved no midi respell could know per-section
+  intent; botw-theme-bass (key-name labels + line split) and
+  eponas-song-bass (A2 label) stay HELD hand-written (Robin's calls); the
+  flats flag died in the theory run; validator owns the derives schema
+  (7 sandboxed defect classes), audit prints provenance and keeps the 5+3
+  census refusal-free, gen_pages boots the materialized corpus;
+  tests/twin_derive.py freezes the retired bodies as fixtures so a base
+  edit fails the derivation on purpose.
+  (5) the SEO-guides OPENER delivered as a report (no code): the artifact
+  already meets most of the guides (robots/sitemap/URLs/one-URL-per-
+  content/titles/OG/mobile); three application candidates await Robin's
+  picks — shell rel=canonical (recommended), JSON-LD (Breadcrumb /
+  WebApplication / MusicComposition), static stub cross-links.
+  (6) `53d8074` + `0685ea2` the stylesheet fresh-on-release: the <link>
+  href and sw.js's precache entry carry the css token css-v1 —
+  INDEPENDENT of sw VERSION after the new guard caught the coupling in
+  its own first draft; an old worker misses the versioned URL and serves
+  the network sheet immediately, so the first reload is fresh; boot
+  re-fetches the page's own link so the at-boot replace cannot drift.
+  (7) `0685ea2` the tick contract (IDEAS line): the user preference lives
+  in localStorage (oco-bass-c-tick), a song's tick declaration stays a
+  per-song session override that never writes it, both USER channels
+  (transport button + settings carrier) write on click, programmatic
+  song loads wear an autoTick guard; six-leg suite.
+  Sweeps: 38/38 (the two new suites registered in CI the same commits);
+  lint clean per unit; sw VERSION → oco-pwa-v19, css token → css-v1.
+  Helds: Robin's feel checks (HiFi knobs ?hifi, ✕/mic glyph, history
+  line, chip touch feel, small-screens brainstorm) — all unchanged;
+  SEO applications = his picks; shipped-songs standardization (later-
+  stage pass), MIDI-as-tooling boundary, small-screens, WAV-export
+  worklet reframe, real-DSP validation all stand.
