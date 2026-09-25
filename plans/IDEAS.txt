@@ -14,7 +14,7 @@ We will brainstorm this some time.
 
 LAYOUT
 
-I don't know what the (practice) 'history' function does, so I assume the user doesn't either.
+I've never seen a practice history while I have completed some songs during testing. I might be wrong, but I think it does not show. Check coe before I'm gonna play-test to produce it.
 
 OTHERS
 
