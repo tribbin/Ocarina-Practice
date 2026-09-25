@@ -30,10 +30,14 @@ OTHERS
 
 Make the 12-hole 'complete' regarding Zelda Ocarina of Time game songs.
 
+When a song 'overwrites' default about tick on/off, that should not change the use-preference. So when switching back to a song without override, whatever the user had as preference is applied. However, clicking the click button during the override changes (or confirms) the user preference.
+
 THEMES
 
 Additional 80s black audio-stack with square-row LED displays. The red understripe for headers can remain the same as other.
 Switching between themes in a way that signifies the color theme without showing it in the current theme during normal usage.
+
+Let's add theming (colors/preview/backdrop/...) to both the main page and song-links, that will show up when people paste a link in social media and for web searches.
 
 BUGS
 

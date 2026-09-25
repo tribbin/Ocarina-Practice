@@ -56,15 +56,16 @@ first circle → urgency, last letter → effort.
 ## Hot list (importance across all types)
 
 Picks for the next session(s), roughly damage × imminence ÷ effort
-(refreshed 2026-09-25: hot row 1's schema-validation question closed when the
-reframed R4 data validator shipped `f62ede5`; the flake family's third member
-got its class cure the same day):
+(refreshed 2026-09-25, joint flip session: the domain is live and the
+permalink gate went GREEN at 20 checks — robots/sitemap/og rows done; the
+new Robin-lifted landing-URL + issues-link picks head the stack):
 
 | Item | Section |
 |---|---|
+| **Landed-crawler URL semantics: leaving a stub path never plays different content under it** (switches → root + ?vars; title click → root) + **info-screen issues link** — the two Robin IDEAS lifts from the flip session, next build | §9 F-next / §7 |
 | Robin-field feedback stack: PWA install + airplane-mode practice (§9 F1), theme/help/title-bar eyeball, history line, new highlight-plan playback eyeball, dip dipMs/dipFrac by ear (§4 P2's retuned gate) | feel checks |
-| §9 feature stack: octave-twin dedup decision (survey done, held for Robin), transpose (held for Robin — text-vs-token fork on the item), recording — MIDI work only as tooling supporting Robin (section looping declined 2026-09-24 — archived in DONE §9; robots/sitemap are the post-switch invite — the permalink contract is not live until go-live + robots.txt) | §9 |
-| **Search-engine perma-links BEFORE the November Switch-2 OoT launch** — the one deadline-bound item in the pool (slug freeze → per-song static stubs → og/meta → robots on verification; ~5 weeks) | §9 |
+| §9 feature stack: octave-twin dedup decision (survey done, held for Robin), transpose (held for Robin — text-vs-token fork on the item), recording — MIDI work only as tooling supporting Robin (section looping declined 2026-09-24 — archived in DONE §9) | §9 |
+| **Search-engine perma-links — LIVE since 2026-09-25 (gate green, 20 checks)**; residuals only: Lighthouse pass, SERP watch (November Switch-2 anchor), Robin's Search Console verification + sitemap submission | §9 |
 
 ---
 
@@ -92,11 +93,17 @@ got its class cure the same day):
 
 Currently covered (don't lose this): practice acceptance (4 cases strict+closed-loop), practice dip gate (hold-through blocked, silence/50%-notch dips pass, 75% duck shut, legato free), practice seat across view rebuilds + zen-entry stopMelody + overlay zen-only seats, console-hygiene boot scan (4 boots; allowlist = manifest-declared tone misses), support-bracket battery incl. bit-identical melody-vs-support equivalence + Zen timing/gating, instrument load/tone-model install per manifest (incl. svgWhen id/title paths + boot diagnostics in per-leg fresh contexts), render pin (chips/grid/scroll-band/highlight/focus-restore + typed-render debounce contract), svg clone coordinates, debug panel build-on-open contract, transport scheduler arithmetic/cut-bus/lite, practice history, template safety, theme toggle, offline SW boot+swap, ac worker parity, swing grid, sr hints, spike watch (the tick hunt). CI = push/PR/manual, explicitly not a deploy gate. (.github/workflows/practice-tests.yml — console-hygiene + 24 suite steps + eslint + html-validate; local run-all counted 25 green on 2026-09-23 on the Linux partition and again on the Windows partition — partition sweep red 24/25 until the runner's UTF-8 child-env fix, see session log ~2026-09-23) NOTE: practice_accepts flaked ONE strict case under full-sweep load 2026-09-23, green twice standalone afterward and in the diag run — watch it, the arbiter hardening already took one such race; support_accepts flaked the same class 2026-09-24 (fixed wall-clock read window vs audio-clock lag under sweep CPU contention) and got the class cure: the read is now a real rendezvous with wall-fire stamps + ctx snapshots `335c4b4`). **Third member 2026-09-25 (CLI run `36110497803`, job 107992645371): practice_dip's leg A stalled the full 15 s timeout at maxIdx 0** — same SHA the local sweep had green; a DIFFERENT injury inside the same family: the suite's rendezvous (OCA_PRACTICE+NOTES) unlocks INSIDE loadInstrument (the stretch between installFingerings and boot's tail), where fillLibrary/loadLibraryItem(home) → practiceInvalidate is still owed — a session started mid-boot died when the tail landed; the stall reproduces at will with CDP network latency, cured by the rule-13 real rendezvous: the #scale options guard (filled only by the tail; a rAF poll never resolves mid-synchronous-block) plus a state card (started/st/ix/frames) on every driver resolve so a future stall names itself. The same tail guard rode into every suite that starts practice or needs typed editor text to survive boot (practice_accepts_melody, practice_zen_return, practice_history, keyboard_widgets, render_pin); library_hardening already waited a stronger post-tail signal (the Scales OPTGROUP), instrument_switch_race covers the race as its subject, playback-only suites are immune (practiceInvalidate stops practice, never play). Full sweep 31/31 green after the cure.
 
+- [ ] **CI job title "practice accepts the play output" is a fossil** — the workflow's job name predates the 30-suite reality (the job runs the whole battery now); Robin calls it clearly outdated (2026-09-25). Rename to something honest for the modern shape in practice-tests.yml (no UI/Behavior impact; run-record cosmetics only). `🟢 ⚪ ⚙S`
+
+
 ## 7. Accessibility & UX
 
 - [ ] **Token chips: long-press-to-listen on touch** ✅ 2026-09-22 `ab4ce0c` — hold rides the SAME 260 ms dwell as mouse/keyboard (`hoverPreview`): touch-down highlights, planted dwell auditions (once), completed hold swallows the follow-up tap (no transport start), quick taps keep native play-from-here, drift/pinch cancels silently. Pressing keeps `-webkit-touch-callout`/selection off. Pinned in `tests/keyboard_widgets.py` (touch section, playNote-call oracle — voice counts inflate from lingering nodes). Robin's feel-check on a real device still open. `🟨 🟠 ⚙S`
 
 - [ ] **Collapse buttons + misc** — §1 B7 was completed long ago; see `plans/DONE.md` §1 for what it covered and pick the misc remainder on touch. `🟢 🟡 ⚙S`
+
+- [ ] **Info screen links the GitHub issues page** — Robin, IDEAS 2026-09-25: add a link to https://github.com/tribbin/Ocarina-Practice/issues on the info/help screen so users can report problems. Static link, no behavior; render/sr pins updated where they enumerate that screen. `🟢 🟡 ⚙S`
+
 
 ## 8. Housekeeping
 
@@ -114,9 +121,15 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
 
 - [ ] **Library search / favorites / pinning** — flat dropdown gets unwieldy as personal library grows. `🟢 🟡 ⚙M`
 
-- [ ] **Search-engine perma-links BEFORE the Switch-2 OoT launch (November)** — lifted from IDEAS 2026-09-24 and refined with Robin's rules: per-song landing URLs where "content may change, but the link must serve what the crawl expected". URL shape locked 2026-09-24: **`/song/<category>/<base-slug>`**, default player **12-hole C alto**, category (zelda/scales/other, normalized from group; "on Bass"/"on Alto" collapse) keys per-category theming (zelda → Hyrule, else Plain/new). Progress: (✅ 2026-09-24) **slug freeze enforced** — closed suffix list + chain rule + grammar in `tests/shipped_songs.py` (CI fails on violating keys), the `-alt`/`-alto` split fixed pre-index (`major-alto`, `chromatic-alto`), the contract documented in `skills/ocarina-melodies/SKILL.md`; (✅ 2026-09-24) **serving layer built + live-boot corrected** — `tools/gen_song_pages.py` emits shell-only landing stubs per base slug: canonical + og:url on the site-prefix path, single song-specific description, `?song=<key>&inst=<chosen>` pre-boot seed, hidden/variants excluded, byte-deterministic, staging git-ignored; the LIVE URL check on the first deployed stub caught the generator-class defect string tests missed — the app's runtime fetches (`songs.json`/`instruments.json`/css text/manifest-driven instrument files; even the SW registration) resolve relative to the PAGE and 404'd two directories deep, killing boot — fixed with a `<base href="{site-prefix}/">` injection (root-absolute `/…` rejected in review: bakes the prefix everywhere, breaks relocatability, and cannot reach runtime fetches without app changes); the landing default became Robin's corrected LADDER — best-fit by 12-hole > double alto C > triple bass C > contrabass (Song of Time's bass body lands on the triple; every stub boots playable, no range marks) — and `tests/gen_pages.py` upgraded to a real-boot leg: the staging tree assembled exactly like the deploy workflow's allowlist, served under the /Ocarina-Practice mount, boot asserted for right song/right ocarina/zero out-of-range chips/rendered sheet/one description/clean console (allowlist semantics: every 404 must BE a tone.json; a healthy boot can legitimately have NO 404s — the triple's tone.json exists); `.github/workflows/deploy-site.yml` publishes on served-content path pushes + manual dispatch; (✅ 2026-09-24 `89a39f0`) **og/meta card stage complete** — og:type/og:site_name/og:description (same wording as the meta description, one description per page holds) + og:image riding the already-generated 512 icon (width/height/alt) + summary twitter:card, injected at the END of head so the shell's charset keeps its first-KB seat; URLs stay site-prefix path form (canonical/og:url/og:image consistent; fully-absolute held until a domain is pinned); gen_pages pins every tag per stub over the still-green real-boot matrix. (✅ 2026-09-24 `e7718bc`) **domain landed + serving layer switched to it** — `ocarina-practice.com` is now the site's pinned origin (registered along the forever-perma rule; registrar and registration details stay out of this public repo on Robin's call): the deploy artifact carries a CNAME file, gen_pages gained `--site-origin` (default the domain) and now emits ABSOLUTE canonical/og:url/og:image with `<base href="/">`, the gen_pages suite re-pins every contract against a ROOT-mounted artifact; project-page serving stays reachable via the preserved --site-prefix/--site-origin-empty knobs for rollback. **Robin's manual cutover checklist (order matters):** push refactor4 → merge/deploy fires the artifact (with CNAME) → registrar DNS: CNAME record www → <github-io-user-host> (plus A/AAAA apex records if wanted) → repo Settings → Pages → custom domain = ocarina-practice.com (wait the DNS check) → enforce HTTPS once the cert provisioned → account-level Pages 'verified domains' adds + TXT-verifies the domain (the free takeover guard) → re-probe landing URLs at the domain (the boot is root-relative now — the old /Ocarina-Practice path dies by design). (next: live-domain verification of the landing matrix — his push, then this check) Remaining: richer stub content if SERP demands (thin-mass watch), absolute URLs if a domain gets pinned, sitemap.xml + robots.txt only AFTER links verify (Robin's crawl rule), Lighthouse pass, first real deploy + SERP observation. Deadline anchor: OoT Switch 2 ships in November (~5 weeks from 2026-09-24). **Decisions 2026-09-24 (refinement round):** BRANDING settled — the product STAYS "Ocarina Practice" (og:site_name already correct; no rename; the IDEAS BRANDING line is clear to delete). Domain processing still pending tonight; go-live planned tomorrow as a JOINT session — Robin's rule: the flip "has never been a success" solo, so hands-off sessions do PREP ONLY: keep this item's cutover checklist current, add a refactor4-domain (e7718bc) diff summary of what merging brings, and build live-verify tooling. SEO feature stages (robots/sitemap) are POST-switch work — and Robin's correction: the permalink contract does not become LIVE until go-live WITH robots.txt in place; nothing is crawlable before that moment, so slug/staging prep carries no permalink risk — the robots.txt push itself stays the final invite act, only after the live boot verifies. ﻿Night prep 2026-09-25 (away session, prep only by tonight's rules): - **Merge surface** â€” refactor4-domain is ONE commit (`e7718bc` over `c96965a`) touching `.github/workflows/deploy-site.yml`, new `CNAME`, `README.md`, `tests/gen_pages.py`, `tools/gen_song_pages.py`; zero overlap with what refactor4 merged (js/*, AGENTS.md, plans/) â€” clean merge expected. - **Checklist currency** â€” Robin's cutover checklist (above) stands unchanged; a push of tonight's `session5` stack also fires the artifact (served-content path trigger), so "push â†’ merge/deploy" may run BEFORE his joint session touches DNS â€” the order of DNS/Pages/HTTPS steps is unaffected. - **Live-verify tooling built + used**: `tools/verify_site.py --origin <base> [--boot N]` (not a CI step; read-only GETs). Checks: shell serves the js/app.js module entry; deployed songs.json readable; every landing stub 200 with base href / canonical / og:url agreeing on the ONE serving prefix (base href from the origin's path, so both stages hold), og:title + description present; `--boot N` boots sampled stubs (song-of-time always) in fresh contexts (SW second-navigation lesson), zero console noise beyond the manifest-declared-absent tone.json 404s, right song on the right ocarina by the ladder. - **Pre-flip state recorded**: today started on a STALE artifact (home shell predated the PWA commit: no serviceWorker string, no og on the shell) while /song/ stubs served the permalink contracts; a fresh push-triggered Actions deploy during the night refreshed the artifact, and the full probe ran GREEN before the flip (18 checks, 8/8 stubs booted clean at /Ocarina-Practice). - **Tomorrow**: same command with `--origin https://ocarina-practice.com` is the post-flip acceptance gate â€” absolute canonical/og + root `<base href="/">` + CNAME artifact; the /Ocarina-Practice mount dies by design. Flip landed by Robin's hand on main (`a2a081d`, PR #10 merge; deploy run `36117318574` green 1m54s): the domain serves the OLD artifact — seed tests red, and the verify gate names why: all 8 stubs carry `<base href="/Ocarina-Practice/">` while the domain serves at root (the workflow baked the pre-flip mount), so every runtime fetch 404s and no stub boots; robots.txt and sitemap.xml absent (not yet stage-built). The domain-switch unit closes it: workflow passes `--site-prefix /` + `--origin https://ocarina-practice.com`; the generator emits sitemap.xml (home + every stub URL, byte-deterministic, no lastmod) and an absolute og:image (og:image must be absolute; the flip pinned the origin — canonical/og:url stay origin-relative so the artifact stays mount-agnostic); robots.txt committed, timeless per Robin (no automation commentary facing the web); gen_pages mirrors ROOT serving now (old project-page mount pinned by a string-contract leg, retires with the stage); verify_site gains the robots+sitemap live legs. Sweep 31/31 + gen_pages re-run after the robots rewrite. `🟨 🟠 ⚙M`
+- [ ] **Search-engine perma-links BEFORE the Switch-2 OoT launch (November)** — lifted from IDEAS 2026-09-24 and refined with Robin's rules: per-song landing URLs where "content may change, but the link must serve what the crawl expected". URL shape locked 2026-09-24: **`/song/<category>/<base-slug>`**, default player **12-hole C alto**, category (zelda/scales/other, normalized from group; "on Bass"/"on Alto" collapse) keys per-category theming (zelda → Hyrule, else Plain/new). Progress: (✅ 2026-09-24) **slug freeze enforced** — closed suffix list + chain rule + grammar in `tests/shipped_songs.py` (CI fails on violating keys), the `-alt`/`-alto` split fixed pre-index (`major-alto`, `chromatic-alto`), the contract documented in `skills/ocarina-melodies/SKILL.md`; (✅ 2026-09-24) **serving layer built + live-boot corrected** — `tools/gen_song_pages.py` emits shell-only landing stubs per base slug: canonical + og:url on the site-prefix path, single song-specific description, `?song=<key>&inst=<chosen>` pre-boot seed, hidden/variants excluded, byte-deterministic, staging git-ignored; the LIVE URL check on the first deployed stub caught the generator-class defect string tests missed — the app's runtime fetches (`songs.json`/`instruments.json`/css text/manifest-driven instrument files; even the SW registration) resolve relative to the PAGE and 404'd two directories deep, killing boot — fixed with a `<base href="{site-prefix}/">` injection (root-absolute `/…` rejected in review: bakes the prefix everywhere, breaks relocatability, and cannot reach runtime fetches without app changes); the landing default became Robin's corrected LADDER — best-fit by 12-hole > double alto C > triple bass C > contrabass (Song of Time's bass body lands on the triple; every stub boots playable, no range marks) — and `tests/gen_pages.py` upgraded to a real-boot leg: the staging tree assembled exactly like the deploy workflow's allowlist, served under the /Ocarina-Practice mount, boot asserted for right song/right ocarina/zero out-of-range chips/rendered sheet/one description/clean console (allowlist semantics: every 404 must BE a tone.json; a healthy boot can legitimately have NO 404s — the triple's tone.json exists); `.github/workflows/deploy-site.yml` publishes on served-content path pushes + manual dispatch; (✅ 2026-09-24 `89a39f0`) **og/meta card stage complete** — og:type/og:site_name/og:description (same wording as the meta description, one description per page holds) + og:image riding the already-generated 512 icon (width/height/alt) + summary twitter:card, injected at the END of head so the shell's charset keeps its first-KB seat; URLs stay site-prefix path form (canonical/og:url/og:image consistent; fully-absolute held until a domain is pinned); gen_pages pins every tag per stub over the still-green real-boot matrix. (✅ 2026-09-24 `e7718bc`) **domain landed + serving layer switched to it** — `ocarina-practice.com` is now the site's pinned origin (registered along the forever-perma rule; registrar and registration details stay out of this public repo on Robin's call): the deploy artifact carries a CNAME file, gen_pages gained `--site-origin` (default the domain) and now emits ABSOLUTE canonical/og:url/og:image with `<base href="/">`, the gen_pages suite re-pins every contract against a ROOT-mounted artifact; project-page serving stays reachable via the preserved --site-prefix/--site-origin-empty knobs for rollback. **Robin's manual cutover checklist (order matters):** push refactor4 → merge/deploy fires the artifact (with CNAME) → registrar DNS: CNAME record www → <github-io-user-host> (plus A/AAAA apex records if wanted) → repo Settings → Pages → custom domain = ocarina-practice.com (wait the DNS check) → enforce HTTPS once the cert provisioned → account-level Pages 'verified domains' adds + TXT-verifies the domain (the free takeover guard) → re-probe landing URLs at the domain (the boot is root-relative now — the old /Ocarina-Practice path dies by design). (next: live-domain verification of the landing matrix — his push, then this check) Remaining: richer stub content if SERP demands (thin-mass watch), absolute URLs if a domain gets pinned, sitemap.xml + robots.txt only AFTER links verify (Robin's crawl rule), Lighthouse pass, first real deploy + SERP observation. Deadline anchor: OoT Switch 2 ships in November (~5 weeks from 2026-09-24). **Decisions 2026-09-24 (refinement round):** BRANDING settled — the product STAYS "Ocarina Practice" (og:site_name already correct; no rename; the IDEAS BRANDING line is clear to delete). Domain processing still pending tonight; go-live planned tomorrow as a JOINT session — Robin's rule: the flip "has never been a success" solo, so hands-off sessions do PREP ONLY: keep this item's cutover checklist current, add a refactor4-domain (e7718bc) diff summary of what merging brings, and build live-verify tooling. SEO feature stages (robots/sitemap) are POST-switch work — and Robin's correction: the permalink contract does not become LIVE until go-live WITH robots.txt in place; nothing is crawlable before that moment, so slug/staging prep carries no permalink risk — the robots.txt push itself stays the final invite act, only after the live boot verifies. ﻿Night prep 2026-09-25 (away session, prep only by tonight's rules): - **Merge surface** â€” refactor4-domain is ONE commit (`e7718bc` over `c96965a`) touching `.github/workflows/deploy-site.yml`, new `CNAME`, `README.md`, `tests/gen_pages.py`, `tools/gen_song_pages.py`; zero overlap with what refactor4 merged (js/*, AGENTS.md, plans/) â€” clean merge expected. - **Checklist currency** â€” Robin's cutover checklist (above) stands unchanged; a push of tonight's `session5` stack also fires the artifact (served-content path trigger), so "push â†’ merge/deploy" may run BEFORE his joint session touches DNS â€” the order of DNS/Pages/HTTPS steps is unaffected. - **Live-verify tooling built + used**: `tools/verify_site.py --origin <base> [--boot N]` (not a CI step; read-only GETs). Checks: shell serves the js/app.js module entry; deployed songs.json readable; every landing stub 200 with base href / canonical / og:url agreeing on the ONE serving prefix (base href from the origin's path, so both stages hold), og:title + description present; `--boot N` boots sampled stubs (song-of-time always) in fresh contexts (SW second-navigation lesson), zero console noise beyond the manifest-declared-absent tone.json 404s, right song on the right ocarina by the ladder. - **Pre-flip state recorded**: today started on a STALE artifact (home shell predated the PWA commit: no serviceWorker string, no og on the shell) while /song/ stubs served the permalink contracts; a fresh push-triggered Actions deploy during the night refreshed the artifact, and the full probe ran GREEN before the flip (18 checks, 8/8 stubs booted clean at /Ocarina-Practice). - **Tomorrow**: same command with `--origin https://ocarina-practice.com` is the post-flip acceptance gate â€” absolute canonical/og + root `<base href="/">` + CNAME artifact; the /Ocarina-Practice mount dies by design. Flip landed by Robin's hand on main (`a2a081d`, PR #10 merge; deploy run `36117318574` green 1m54s): the domain serves the OLD artifact — seed tests red, and the verify gate names why: all 8 stubs carry `<base href="/Ocarina-Practice/">` while the domain serves at root (the workflow baked the pre-flip mount), so every runtime fetch 404s and no stub boots; robots.txt and sitemap.xml absent (not yet stage-built). The domain-switch unit closes it: workflow passes `--site-prefix /` + `--origin https://ocarina-practice.com`; the generator emits sitemap.xml (home + every stub URL, byte-deterministic, no lastmod) and an absolute og:image (og:image must be absolute; the flip pinned the origin — canonical/og:url stay origin-relative so the artifact stays mount-agnostic); robots.txt committed, timeless per Robin (no automation commentary facing the web); gen_pages mirrors ROOT serving now (old project-page mount pinned by a string-contract leg, retires with the stage); verify_site gains the robots+sitemap live legs. Sweep 31/31 + gen_pages re-run after the robots rewrite. POST-FLIP GATE GREEN (2026-09-25, merge `4f44099`, deploy run `36125302883`): 20 live checks pass against https://ocarina-practice.com — all 8 stubs boot the right song on the right ocarina at prefix `/`, robots.txt + sitemap.xml serve and enumerate home + exactly the stub set. Per Robin's rule the permalink contract is LIVE from this moment (go-live + robots.txt). The URLs/dates/etc on the served artifact are by-design: canonical/og:url origin-relative (mount-agnostic), og:image absolute, robots.txt timeless Robin-edited. REMAINING on the item: Lighthouse pass; first SERP observation (weeks — November Switch-2 anchor); Robin's Search Console domain verification + sitemap submission (his Google account, manual). The "sitemap.xml + robots.txt only AFTER links verify (Robin's crawl rule)" row is DONE by this gate; the legacy project-page mount string-leg in gen_pages now awaits its stage's retirement. On the IDEAS lifts Robin green-lit while selecting: perma-link landing navigation semantics (switches leave the deep path — root + ?vars; title click → root) and the info-screen issues link — both lifted as new §9/§7 items. `🟨 🟠 ⚙M`
 
 - [ ] **Deduplicate octave/transpose-twinned song bodies (survey first)** — Robin: "Deduplicating songs (that only differ in octave/transpose) would be a nice touch." FIRST step is tooling only (his MIDI-boundary rule: no song-data work unsupervised): a `tools/` audit that proves which songs.json variants are exact octave shifts of one another (the dummy↔stein +12 pair is the precedent — see skills/song-transposing). Report the twin classes + per-class divergence spots; then decide WITH Robin whether variants keep hand-written bodies or derive from a base body at load (keys/URLs MUST stay frozen either way — the permalink contract). ﻿Night survey 2026-09-25 (tools/audit_twins.py `33bd3fa`, report-only, no bodies touched): **5 octave twins** â€” song-of-time/-bass, song-of-storms/-bass, sarias-song/-bass, eponas-song/-bass (every -bass arrangement is its alto base's melody one octave DOWN, modulo nothing: barlines, rests, continuations, slides, durations and accents all carried over) and botw-theme/-down3 (also -12). **3 uniform non-octave twins** â€” concerning-hobbits-short/-c (shift -2), botw-theme/-bass (shift -9), botw-theme-bass/-down3 (shift -3; the two bass arrangements are a uniform -3 apart). **No other twins**: all cross pairs are NOT-ALIGNED (different token counts), and kokiri-forest-bass refuses every verdict until its stray lowercase `g4/4` token is resolved (tool refuses on unreadable shapes by construction). So: the four -bass bodies and botw's -down3 are PROVEN derivable-at-load candidates (keys/URLs stay frozen either way per the permalink contract); the three non-octave twins are shift-derivable too; kokiri is a potential fifth body once its stray token is explained â€” that one needs Robin's eyes before any claim. `🟨 🟡 ⚙M`
+
+- [ ] **Landed-crawler URL semantics: leaving a stub path never plays different content under it** — Robin, IDEAS 2026-09-25 (verbatim intent): when a user lands on a `/song/…` page via search and then switches song or instrument (or otherwise loads different content), the URL must "refer to the root of the domain with the ? GET vars" — `/?song=<key>&inst=<id>` (or bare `/?` when nothing library-identifiable is loaded) — "as you don't want someone to play a different song under a specific path". The landing page's OWN seed keeps its clean path (that is the canonical for that song); only SUBSEQUENT switches move to the root. Also: "make clicking the site title direct to the entry-point of the domain" — the header title becomes a plain link to `/` (its href must carry the serving prefix / stay relative so the artifact stays mount-agnostic). Touches only history.replaceState + header markup; no audio, no editor semantics; gen_pages boot legs gain the switch-assert (switch → URL becomes root+query, and the SW-era deep-link tests already cover the ?var side). `🟨 🟠 ⚙S`
+
+- [ ] **Intended-instrument per-song landing default** — Robin, IDEAS 2026-09-25: "Some songs are really not made for the alto, but were added because not many people have a bass ocarina." — `songs.json` may declare `"intended": "<instrument-id>"` on a base song; the landing seed then prefers that instrument over Robin's ladder WHEN any family member fits its chart, falling back to the ladder otherwise (a member of the family must fit: the seed never boots a dead display). SHIPPED exemplar 2026-09-25: botw-theme → ico-oak-leaf-bass-c-triple (members -bass/-down3 fit the triple; the alto base won the ladder order today; the live /song/zelda/botw-theme/ stub now seeds the bass body on the triple after merge+deploy). The data_validator owns the field (optional, string, manifest-known — sandbox v12); the gen_pages botw pin freezes the outcome (want (botw-theme-bass, triple)). REMAINING: per-song values are Robin's musical calls to plant over time — nothing else declared yet; the field changes nothing in-app (the picker stays free, the wet-switch auto-select ignores it). Robin settles the model (2026-09-25, live): BOTH instrument-tagged versions keep existing as entries (the alto-named base is the alto version; -bass named "(bass)" stays — the deletion proposal is declined), and the user lands on the intended instrument — WHEN the base declares it — via the NON-SPECIFIC (clean) URL: the base's own body needs no fit; the first family member (base first, then variants alphabetically) that fits the intended chart is the seed. No field → the ladder rules. The clean page's og/title reads the LANDED version's name (what actually plays). Do not rekey entries for this; do not strip the parenthetical tags; the field's semantics is the family walk, never a body rewrite. Second exemplar per Robin's live call (2026-09-25): the corpus had NO kokiri-forest base — the bass-c transcription sat on the leaf key kokiri-forest-bass with its own stub URL. Robin wants the non-specific URL to exist and land the bass version: the key was re-titled kokiri-forest-bass → kokiri-forest (byte-identical body; name "Kokiri Forest (bass)" — Robin explicitly kept the committed tag naming for the entry; group/tempo untouched; introduced "intended": ico-oak-leaf-bass-c-triple) so /song/zelda/kokiri-forest/ is the canonical landing — the old kokiri-forest-bass URL retires in the trial period (nothing indexed; the sitemap/stub set stays 8, the kokiri path becomes the clean one). The only kokiri reference outside data was the SKILL.md leaf example, updated in place. BotW semantics ruling stands (versions keep their keys; only the non-specific URL moves). `🟢 ⚪ ⚙S`
+
+
 
 
 
@@ -128,238 +141,71 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
 
 (Older entries live in `plans/DONE.md` (session log). New entries below — retire via `python tools/board.py log-retire` once another session has opened from them.)
 
-- **2026-09-24 (session 10 opens — the DONE-file split, rename-first)** — Robin pulled
-  main (refactor4 merged at `df6a3c0`) and forked `session5`; the logged DONE-file split
-  executed with his rename-first refinement: the OLD TODO.md wholesale became
-  `plans/DONE.md` (byte-identical snapshot — only the H1 heading and a preamble changed;
-  the session log through session 9 and every struck item preserved with zero reassembly
-  risk, including frozen declared-non-authoritative copies of the 17 then-open items),
-  and the open work was extracted back out into this fresh TODO (17 open items, standing
-  conventions + color legend, a 4-row hot list renumbered). Batch answers applied: full
-  purge on the TODO side, DONE as sections+log mirror, cross-refs point back, AGENTS
-  rule 1 now names DONE.md. Future convention: a completed item moves into DONE.md at
-  the same bookkeeping moment it completes; this log retires entries once the next
-  session has opened from them. Plans-only commit — no app code touched, no sw VERSION
-  bump, suites not run.
-- Next (session 9's logged shape): the refinement pass across the open board; then the
-  feel-check stack (hot row 2), §9 feature picks (row 3), and the SEO deadline row 4.
-- **2026-09-24 (session 10, part 2 — the board went scriptable)** — Spar with Robin
-  folded into `tools/board.py` (stdlib, both partitions) owning the structural moves:
-  `complete` (strike + ✅ date/SHA + insert into DONE's matching § head, refuses
-  ambiguous or absent title prefixes and strikethrough-marked bodies), `add`
-  (single-line item, before §9's standing blockquote, duplicate-title guard), `note`
-  (in-place finding before the trailing tag span), `tag` (ASCII words —
-  severe/moderate/minor/cosmetic/measure × next/soon/later/idle × s/m/l — re-score the
-  span), `log-add`, `log-retire` (moves all but the newest entry into DONE's log), and
-  `verify` (single-line items + tags grammar, no corpse in TODO / no frozen open item
-  in DONE, heads 1–9 both files, unnumbered hot rows, log stub present). DONE lost its
-  17 frozen open-item copies (the rename-first cost — completing R4 would have collided
-  with its own twin); the hot list dropped row numbers (no renumber obligation); the
-  log stub went generic; AGENTS rule 3 synced to move-at-completion and names the tool;
-  `verify` + `tests/board_tool.py` (8 pure-stdlib sandbox cases) registered in CI
-  before the Playwright install. First dogfood ran green: A6 long-press's missing tag
-  span set to `🟨 🟠 ⚙S` via the tool. First real tool bugs caught by the same setup:
-  `_items` used an undefined list name, the test registry's decorator returned the
-  wrapper function (0/0 cases until spotted). CRLF/`\r` inputs refused everywhere.
-- Next: refinement pass across the open board may lean on the tool everywhere; new
-  findings ride `note`, re-scorings ride `tag`, completions ride `complete` (TODO line
-  leaves, DONE gains the struck archive row).
-- **2026-09-24 (session 10, part 3 — refinement round + tonight's hands-off orders)** —
-  Robin live on the batch: (1) BRANDING settled — the product stays "Ocarina Practice"
-  (og:site_name already right); the "branch or stash" holding the code-switch he
-  remembers is `refactor4-domain` (tip `e7718bc`, parked until the flip). (2) §2 R4
-  re-framed to the CI-side validator shape — item text updated. (3) The IDEAS BUGS
-  block lifted into §2 R10 via `board note` (orientation-flip repro on the phone,
-  multi-tick bursts, visual-processing suspicion, the waveform question; the spike
-  watch has not met the phone yet) — that IDEAS block is now clear for Robin to delete,
-  as are its SEO block, Lighthouse line and BRANDING line. (4) New §9 F-items lifted:
-  instrument switch auto-selects the in-range song (approved build) and the
-  octave/transpose twin-bodies dedup (Robin's "nice touch" — SURVEY-only tooling first).
-  (5) TONIGHT'S HANDS-OFF ORDERS, run until the context rule says wrap: no pushes
-  (Robin's ops); no MIDI implementation (tooling-for-Robin only); no SEO feature stages
-  (robots/sitemap wait until the domain-switch WORK finishes; the switch itself is
-  TOMORROW'S JOINT session — Robin: the flip has never succeeded solo, so nights prep
-  only). Unit order: (a) instrument-switch auto-select song, built + pinned; (b) the
-  R4 CI-side data validator suite (pure stdlib, registered in CI); (c) refactor4-domain
-  diff summary + the F8 cutover checklist kept current + a live-verify tooling probe
-  (prep for tomorrow's joint switch); (d) the octave-twin dedup audit tooling (report
-  only, no song-data edits). Every unit: red→green where behavior changes, full sweep
-  before claiming green, board current per unit, session log per unit, all helds
-  respected (no audible changes; tick hunt parked until Robin's phone research;
-  feel-checks need his devices).
-- **2026-09-24 (session 10, part 4 — the night's queue extended)** — Robin confirmed
-  the extension since the four ordered units may finish early: after the ordered list
-  the night continues with (5) §5 M9's last cluster (play/pause DOM-writes dedupe —
-  mechanical, suite-covered), (6) the rule-15 sw-VERSION audit (sweep commits since
-  `oco-pwa-v5` for shipped behavior, bump if stale, offline suite green), (7) §4 P7
-  enlargeSmallHoles precompute, (8) §3 print-popup `document.write` → DOM injection,
-  re-checking the eslint warning count as a rider on whatever code unit touches.
-  Stretch pick with hours left: §9 F6 transpose (inaudible, suite-covered). §9 F4
-  standardization is HELD for its later-stage pass by Robin's call. Unchanged holds:
-  no pushes, no MIDI implementation, no robots/sitemap, tick hunt parked,
-  measurements/feel-checks need Robin.
+- **2026-09-25 (post-flip stretch — the gate goes green, the IDEAS lifts land on the board)** —
+  Robin merged `domain-switch` as PR #11 (`4f44099`) and re-fired the deploy
+  (`36125302883`, 29 s): the post-flip acceptance gate PASSED — `verify_site --origin
+  https://ocarina-practice.com --boot 8` = 20 live checks, 8/8 stubs booting right song/
+  right ocarina at prefix `/`, robots.txt + sitemap.xml serving and enumerating exactly
+  home + the stub set. Per Robin's rule the permalink contract is LIVE. The F7 item
+  carries the gate record; its residual rows are Lighthouse, SERP observation (November
+  anchor) and Robin's manual Search Console verification + sitemap submission. Robin
+  updated IDEAS meanwhile (commit `521f7e2` mobile-sleep; two new flip-adjacent entries)
+  and asked for the first IDEAS-cleanout check — end to end against the board/code
+  nothing was done, the file untouched. Then "Check updated IDEAS and TODO and select
+  some work": the two flip-adjacent IDEAS entries lifted as board items — §9 "Landed-
+  crawler URL semantics: leaving a stub path never plays different content under it"
+  (switches resolve to root + ?song=&inst=, seed keeps its canonical path, title click →
+  root entry) and §7 "Info screen links the GitHub issues page". Hot list refreshed
+  (gate-green rows retired from the wording; lifts head the stack). This bookkeeping
+  batch (notes/lifts/log/hot) is plans-only; app work next on Robin's word for the
+  branch.
 
-- **2026-09-25 (night session 11 opens; unit a — the wet-switch song jump)** — the ordered
-  away-work ran: instrument switches now auto-select the in-range family member (§9,
-  Robin-approved build). Red→green five-leg battery added to tests/instruments_load.py
-  (jump alto→bass, stay-when-fitting, jump bass→alto, no-fit-keeps-the-editor, typed-text
-  untouched; every leg also pins isMelodyPlaying() false — no transport starts from a wet
-  switch). Implementation: library.js songFitsChart (every melody token id must be ON the
-  chart — stricter than the OOR badge's compass count) + the load-path tracker
-  lastLoadedId/loadedLibraryId (loadLibraryItem writes; clearLibrarySelection clears —
-  the ?song deep-link case needs it because a range-hidden song sits in the editor with
-  the dropdown silently unselected, which is exactly where the first green attempt
-  stalled); app.js songFamilyRoot/songFamily walk the landing-stub family from the
-  SHORTEST existing prefix id and switchInstrument jumps on fillLibrary→loadLibraryItem
-  order, staying put when the current member fits or nothing fits. Member order mirrors
-  tools/gen_song_pages.py: base slug, then variants alphabetically. sw VERSION → v6
-  (rule 15). Sweep note: the full 30-suite sweep ran 29/30 with board_tool red on a
-  day-rollover time bomb (its own assertion hardcoded ✅ 2026-09-24, green for the last
-  time yesterday), defused by injecting complete's --date; board_tool 8/8 after; the
-  night's true app suites all green (instruments_load, library_hardening,
-  instrument_switch_race, render_pin...). Lint clean. Commit `4ddeb1f`.
-- Next (night queue): unit b — the R4 CI-side data validator suite; unit c — refactor4-domain
-  cutover prep; unit d — octave-twin audit tooling; then the extension items
-  (play/pause DOM-writes dedupe, sw VERSION audit, enlargeSmallHoles, print popup).
+- **2026-09-25 (session 6 branch — the two IDEAS lifts built: landed-crawler URLs + title link + issues link)** —
+  built on Robin's granted `session6` placeholder (renamed by him whenever; the bookkeeping
+  commit `fc70465` first moved OFF main onto session6 and main rewound to the merge tip per
+  the new placeholder-branch rule, now in AGENTS rule 8). RED→GREEN: gen_pages boot legs
+  first (red on all three behaviors), then the implementation — the landing SEED keeps its
+  clean canonical path (pinned), the site title is `header h1 > a[href='./']` (mount-agnostic
+  via <base>: root on the domain, /Ocarina-Practice on a project-page mount), a warm library
+  switch resolves the URL to the SITE ROOT with ?song=&inst= (derived from the current
+  pathname minus its /song/ tail — mount-agnostic by construction), a typed/cleared/file-
+  loaded replacement goes to BARE root (the rewrite runs after the dropdown drops so a stale
+  song name can never ride it), boot's own deep-link loads are gated by markUrlLanded() so
+  they keep the landing path forever. Hooks: library.js loadLibraryItem tail +
+  clearLibrarySelection (+ the idempotent root early-exit), app.js boot tail + the
+  switchInstrument same-song path (instrument change alone rewrites). The help dialog gained
+  the .help-meta colophon with the GitHub issues link (target=_blank rel=noopener). sw.js
+  VERSION → oco-pwa-v7 (rule 15; the offline suite rode the sweep green). Lint clean
+  (eslint + html-validate, node 22 restored to /tmp/opencode/node for the box). Full sweep
+  31/31 (262 s).
 
-- **2026-09-25 (night session 11, unit b — the R4 data validator lands)** — the reframed
-  §2 validator is built: tests/data_validator.py (pure stdlib, no browser, no runtime
-  gate) — a sandbox battery of 12 named defect classes (good corpus clean; duplicate
-  JSON keys via an object_pairs_hook refusing the silent last-wins collapse; unique
-  instrument ids; missing declared fingerings/svg files named with their declarer;
-  note-id grammar fronting the s-spelling convention ('Fs4' never 'F#4') with octave
-  required; duplicate note ids; strict ascending chart pitch; covered arrays resolving
-  real holes; tone.json present-but-corrupt caught while the deliberate-404 declarations
-  stay allowed; svgWhen rows pinned to svg + a song/songTitle anchor; songs.json
-  name+body presence with typed scalars; bad default id) and the shipped real corpus
-  running clean. Deliberately NOT duplicated here: the slug/suffix/chain contract
-  (tests/shipped_songs.py owns it) and any body-grammar parsing (parse.js owns it).
-  Registered in CI in the stdlib region beside board_tool, before the Playwright
-  install. Commit `f62ede5`.
+- **2026-09-25 (intended-instrument landed; Robin's model pinned)** — the songs.json `intended` field + the intended-aware landing walk shipped red-first (sandbox v12 validator class + the BotW pin), BotW seeds the -bass body on the triple from the clean URL after merge+deploy. Robin's followups pinned the semantics on the item: the instrument-tagged entries are the versions and keep their keys (no rekey, no -bass deletion), the non-specific URL is the intended-instrument's entry point when defined, the ladder rules otherwise, and the clean page titles what plays. IDEAS line left the scratchpad; the open board item carries future per-song values as Robin's musical calls. Sweep 31/31 (262 s) covered the data+generator+validator+pins; no sw bump (data+tooling only).
 
-- **2026-09-25 (night session 11, unit c — cutover prep for tomorrow's joint flip)** — the
-  three prep deliverables for the domain switch landed on the SEO item as a note: the
-  refactor4-domain merge-surface summary (one commit `e7718bc` over `c96965a`; five
-  files: deploy-site.yml, new CNAME, README, gen_pages suite+generator; zero overlap
-  with refactor4's merged files → clean merge), the checklist currency statement
-  (unchanged; tonight's session5 stack pushes also fire the artifact on served-content
-  paths, DNS/HTTPS order unaffected), and the brand-new live-verify tooling
-  `tools/verify_site.py` built, debugged and used: it reads the DEPLOYED songs.json
-  (never local), checks the shell/js-app entry, every stub's base-href/canonical/og:url
-  agreement on one serving prefix (prefix derived from --origin, so pre- and
-  post-flip stages share the contract) and playwright-boots sampled stubs from fresh
-  contexts. Tool-build findings worth keeping: (1) today's initial live state was a
-  STALE artifact — home shell predated the PWA commit while /song/ stubs served; a
-  push-triggered Actions deploy during the night refreshed it; (2) the boot leg hit
-  the SW-claims-the-second-navigation hazard → fresh context per boot (the AGENTS
-  rule-13 lesson now lives in the tool); (3) og:title's separator is an EM DASH
-  (U+2014), the title-strip regex handles both — and Chromium's resource-404 console
-  text is generic, so the tone.json allowlist reads m.location's URL, not message
-  text; (4) stub enumeration must mirror the serving suppression (registered-suffix
-  variants and -bass siblings of existing bases never get stubs; leaf -bass keys
-  keep theirs). Pre-flip probe RESULT (after the redeploy): 18 checks green — 8/8
-  landing stubs 200 with coherent heads, all 8 booted the right song on the right
-  ocarina with clean console at /Ocarina-Practice. Commit `a62dc97`. Tomorrow's gate:
-  the same tool with `--origin https://ocarina-practice.com`.
-
-- **2026-09-25 (night session 11, unit d — the octave-twin survey is PROVEN)** —
-  tools/audit_twins.py (report-only, self-check-battery-first, bodies untouched) walks
-  every family pair + cross pair in songs.json: a pair classifies TWIN only on
-  one-to-one token alignment with uniform melody deltas and every non-pitch token
-  carried verbatim; unreadable tokens (the kokiri stray `g4/4`) refuse the verdict by
-  construction rather than guess. FINDINGS: five octave twins (all four -bass bodies
-  sit exactly one octave below their alto bases; botw-theme-vs-down3 too), three
-  uniform non-octave twins (hobbits -c at -2, botw -bass at -9, botw -bass at -3 from
-  -down3), zero other twins across the whole corpus. The derive-at-load question
-  (variants keep hand-written bodies or derive from base) stays HELD for Robin with
-  the report on the item; keys/URLs stay frozen in any case (permalink contract).
-  Commit `33bd3fa`. The night queue advances to the extension units; meter said
-  ~232K after this unit's read.
-
-- **2026-09-25 (night session 11, unit 5 + 6 — M1 closes; sw VERSION audit clean)** —
-  unit 5: the play/pause DOM-writes cluster resolved as a deletion (the #playMel
-  element does not exist anywhere; the round mirror replaced the header's text
-  squares — keyboard_widgets's squaresGone leg has pinned that absence all along),
-  all four vestigial textContent writes left audio.js; targeted suites green +
-  eslint. On the same unit the board tool itself gained its fix + pin: complete's
-  --notes-file payload flag reaches the payload reader now (it only ever looked at
-  the generic --file flag — refused complete's own flag in real use; sandbox case
-  t9 pins both shapes). Board: the M1 dedup item strikes into DONE with the closing
-  cluster shelf now EMPTY. Commits `504b42d` + `9a2ae0b`.
-  Unit 6 (the rule-15 audit): the four ordered units + unit 5 land across commits —
-  shipped-behavior changes since oco-pwa-v5: ONLY the wet-switch auto-select (unit a,
-  bumped VERSION to oco-pwa-v6 IN the same commit). Everything after v6 is tooling,
-  tests, board moves and the engine-unobservable dead-write deletion — no shipped
-  behavior, no further bump owed; the offline suite will verify the v6 cache on the
-  night's final sweep.
-
-- **2026-09-25 (night session 11, units 7-8 + the wrap)** — unit 7: enlargeSmallHoles
-  got its O(holes²) cure as record-and-replay (the sequential pass makes a plan
-  precompute impossible — an enlarged hole changes neighbors' constraints — but the
-  settled attribute writes record on the first big-view miss and replay by element
-  index verbatim; bit-identical because hole geometry never touches the styling pass
-  and the plan keys on the same svg epoch that clears the output cache). svg_cache
-  gained the replay-purity leg; exact-restore pins stayed green. Commit `7a580ee`.
-  Unit 8: the print popup rides a blob URL carrying the SAME bytes Download saves —
-  document.write's deprecated sink gone without losing the standards-mode doctype;
-  render_pin gained the popup contract leg (red on about:blank before, green after).
-  Commit `94f6ddc`. FULL SWEEP 31/31 (235 s) after all units, offline_pwa green on
-  the v6 cache; eslint clean (zero warnings). The evening re-deploy Robin triggered
-  landed the fresh artifact mid-night and the live probe is green (unit c). The
-  stretch pick F6 transpose is HELD for Robin — text-shift vs token-shift is a
-  surface/feel fork with audible consequences (the note explains it on the item), and
-  the budget rule: one more unit + sweep would cross the watch line with closings
-  undone. Board: §4 P7 and §3 print-popup items strike DONE (14 open items). NO
-  pushes made tonight (Robin's ops) — session5 carries the whole night's stack
-  (a→8): `4ddeb1f` auto-select, `6c7ef6f`, `f62ede5` validator, `9ad9142`,
-  `a62dc97` verify_site, `974e91b`, `33bd3fa` twin audit, `a8726ef`, `504b42d`
-  M1 close, `9a2ae0b`, `4deb6cb`, `7a580ee`, `94f6ddc` + this wrap. Next session
-  (the joint flip): merge/push order is Robin's; his manual checklist lives on the
-  SEO item; the post-flip gate is `python tools/verify_site.py --origin
-  https://ocarina-practice.com`.
-
-- **2026-09-25 (CLI red diagnosis — the flake family's third member, cured by the rule-13 rendezvous)** —
-  Robin's push of the session5 stack CI-fired red on practice_dip's FIRST leg only
-  (run `36110497803`, job 107992645371, head `a802f10`): a 15 s timeout with the session
-  flat at maxIdx 0, and the four subsequent assert lines were phantom consequences of the
-  blind timeout resolve. Standalone local: green — so a race, not a regression. Fresh
-  diagnosis: the suite's rendezvous (OCA_PRACTICE+NOTES) unlocks INSIDE loadInstrument
-  (NOTES lands at installFingerings, but ensureOcarinaTemplate + the allowlisted tone.json
-  404 still pend), and boot then owes fillLibrary(home)+loadLibraryItem(home) →
-  practiceInvalidate — a session engaged mid-boot is killed by the tail a beat later; under
-  CI's cold load the window lost for the first time in the family's history. Repro'd at
-  will with CDP Emulation network latency (throwaway, deleted after); cured test-side ONLY:
-  the #scale-options tail guard appended to practice_dip's rendezvous (options are filled
-  only by the tail; a rAF poll can never resolve mid-synchronous-block — so the guard proves
-  loadLibraryItem completed) + a state card (started/st/ix/frames) on every resolve. Same
-  tail guard rode into practice_accepts_melody, practice_zen_return (3 legs),
-  practice_history, keyboard_widgets and render_pin (the last needs typed editor text to
-  survive the tail, others start practice). Not touched: library_hardening (already waits
-  the Scales OPTGROUP — a post-tail signal), instrument_switch_race (the race is its
-  subject), playback-only suites (practiceInvalidate stops practice, never play). Red→green:
-  stall under latency with the old rendezvous, healthy engage under the same latency with
-  the new one. Board: §6's flake note extended, hot row 1 dropped (the validator shipped
-  `f62ede5`), hot list refresh dated. Full sweep 31/31 green (227 s). No app code touched →
-  NO sw VERSION bump (rule 15). Queued for Robin's next push to session5.
-
-- **2026-09-25 (joint flip session — the domain rock, then the crawler stage)** —
-  Robin: "The new domain is active" then "what is live is main without the new code" — the
-  flip landed on main (PR #9/#10 merges; deploy run `36117318574`) before the serving
-  layer's newest truth. The ready gate went RED exactly as designed:
-  verify_site --origin https://ocarina-practice.com found all 8 stubs serving but none
-  booting (the workflow's baked `--site-prefix /Ocarina-Practice` stranded `<base
-  href>`/canonical one directory too deep on the root-served domain), and the fresh
-  crawler-stage legs reported robots.txt/sitemap.xml 404. Robin branched `domain-switch`
-  and granted the unit + what unlocks: the flip contract fix (--site-prefix / +
-  --origin in deploy-site.yml), the robots stage — generator emits sitemap.xml (home +
-  every stub URL, byte-deterministic, no lastmod) and an absolute og:image (disambiguated
-  flag --origin: og:image must be absolute; canonical/og:url stay origin-relative so the
-  artifact stays mount-agnostic, and the legacy project-page mount stays a string-contract
-  leg in gen_pages until its stage retires) — robots.txt committed timeless per Robin
-  ("no automation info facing the web" — dates/names of internals stay in dev files,
-  nothing dated serves), verify_site = the gate again (CI red on robots/sitemap until his
-  merge re-fires the deploy). Red→green: gen_pages wrote root-deploy legs first (red on
-  the missing --origin + sitemap), generator carried them green (8 boots clean, sitemap 9
-  locs exact). Sweep 31/31 (258 s). sw.js untouched — no VERSION bump. The discovery
-  session's rule-13 lesson also landed earlier today as `3930d42` (the dip red cured,
-  merged with PR #10, CI green at `36116579188`/`36117318584`).
+- **2026-09-25 (session 11 wrap — the intended exemplars land, CI stops double-running, the next batch planted)** —
+  after the PR-copy canon was pinned to Robin's named PRs (#3 sentence-tagged links, #9
+  approved second shape — commit `80be46d`, the bare-SHA-plus-URL form named as the drift),
+  Robin reshaped the intended-instrument story to its final understanding: the exemplar run
+  needed not a body rewrite but the non-specific URL landing the intended version — BotW
+  confirmed as-built (base declares intended=triple; the family walk seeds botw-theme-bass
+  on the triple), and Kokiri's clean URL manufactured by REKEYING the leaf kokiri-forest-bass
+  → kokiri-forest (byte-identical body; Robin kept the "(bass)" tag naming for the entry;
+  intended=triple; `d99eeaa` — the old URL retires mid-trial-period, SKILL.md's leaf example
+  updated, sweeps 31/31 twice). The PR pipeline's double-run diagnosed and cured: the bare
+  push: trigger fired both a push and a pull_request run per PR-commit — push now rides
+  main only (`cb253cb`), and Robin's fossil job-title complaint joins the board as the
+  next-session item (verify taut him: a tag span must be a code span). SAME-DAY CORRECTION
+  (Robin's single-run shape, `fe92c8b`): instead of push→main-only, the pull_request trigger
+  is DROPPED and bare push fires the battery once per commit on every branch — an open PR
+  recognizes the head SHA's run by job name; main's post-merge run is the shield; the traded
+  piece is the merge-commit pre-validation. Branch session6 ends
+  at `cb253cb` (10 commits) — PR copy already drafted for Robin per the canon; next session
+  opens from the proposed batch in the log.
+- Next (session 12 opening batch, proposed — Robin confirms/picks): (1) the phone wake-lock
+  (his committed IDEAS bugs entry; Screen Wake Lock API on play/practice, release on stop;
+  field-check on his phone); (2) the openers: CI fossil job-title rename + the SEO
+  Lighthouse pass (both small, one commit each); (3) the 80s LED theme sketch as the fun
+  centerpiece (IDEAS themes; first-pass tunable, joint design); (4) the LAYOUT quick pair
+  (practice-close button + the mic-icon inform), his field-check class; (5) the 12-hole OoT
+  set completion as the joint content jam (the November anchor). Helds remain: MIDI
+  implementation only as tooling, robots/sitemap post-verification stages builds lean on
+  the live gate.

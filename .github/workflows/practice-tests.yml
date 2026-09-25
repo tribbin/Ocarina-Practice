@@ -9,8 +9,13 @@
 name: practice tests
 
 on:
+  # One run per commit: every push fires the battery once (Robin,
+  # 2026-09-25 — drop the pull_request trigger instead of constraining
+  # push, so branch work gets feedback whether or not a PR exists yet).
+  # A PR whose base requires the check recognizes the head SHA's push run
+  # by its job name; the merge-commit pre-validation is traded away —
+  # main's own push-run post-merge is the shield.
   push:
-  pull_request:
   workflow_dispatch:
 
 permissions:

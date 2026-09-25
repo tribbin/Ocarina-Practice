@@ -62,13 +62,34 @@ file sits at the repo root so every session finds it first.
    facts live outside Git by Robin's call (2026-09-24).
 8. Pushes, merges, PRs, branch create/delete, remote cleanup: **Robin's
    operations.** Amend only your own unpushed commits, same concern only.
+   **Placeholder-branch rule (Robin, 2026-09-25): a session NEVER commits —
+   not even noise-free board moves — on main.** When no branch exists for
+   the work at hand, the session creates or reuses a placeholder branch in
+   his naming style (session6, domain-switch, …) that Robin can rename, and
+   lands the unit there; main advances only by Robin's hands. A slip that
+   landed on main is rewound immediately and re-landed on the placeholder
+   (working-tree state preserved, `git branch -f main origin/main` to rewind
+   the pointer).
 9. **Commit titles:** one dense informative sentence in the repo's style —
    describe the change and why, quotable in a PR description. No emoji.
    Shipped code comments carry **no references to the local planning docs**
    (code-to-code references are fine; TODO §-refs belong in TODO.md only).
-10. PR descriptions follow the established shape: `##` one-line summary,
-    plain section headers, bullets as commit titles linked to their SHAs
-    (current repo slug), test-infrastructure section last.
+10. PR descriptions follow the canon styling and links (canon: PR #3 —
+    sentence-tagged links; PR #9 is the approved second shape — `##`
+    section headings with the backticked SHA linked at the sentence's end).
+    Robin pastes the text; the render must be clean on the first try, so:
+    - Optional one-line tagline (no heading), then section titles as PLAIN
+      lines (the #3 shape; the #9 shape instead gives each section `##`).
+    - Bullets in one of the two sanctioned forms — commit URLs pasted as
+      REAL markdown links (current repo slug `tribbin/Ocarina-Practice`),
+      never as bare text after a SHA (the unshipped drift):
+      `- [<summary sentence>](<commit URL>)` (#3 canon), or
+      `- <dense sentence> ([`+`<SHA>`+`](<commit URL>))` (#9).
+    - No decorations beyond those two forms; no file trees, no emoji, no
+      generated-with sign-offs.
+    - LAST section: `Tests and infrastructure` — suites registered or
+      extended with their pins, defusals, the full-sweep statement and the
+      "CI runs the same suites (a health check, not a deploy gate)" line.
 
 ## Tests & verification
 

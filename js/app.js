@@ -2,8 +2,8 @@ import { titleFromText } from "./parse.js";
 import { installOcarinaTemplate, invalidateSvgHtml } from "./ocarina.js";
 import { installToneModel } from "./audio.js";
 import { BUILTIN, fillLibrary, initBuiltin, loadedLibraryId, loadLibraryItem,
-         refreshGeneratedScales, songFitsChart, syncLibraryMenu, userLib,
-         wireLibrary } from "./library.js";
+         markUrlLanded, refreshGeneratedScales, rewriteLanderUrl,
+         songFitsChart, syncLibraryMenu, userLib, wireLibrary } from "./library.js";
 import { buildKB, enterZenFromLink, render, setAppCss, wireUi } from "./ui.js";
 import { practiceInvalidate } from "./practice.js";
 import "./debug.js";
@@ -274,6 +274,10 @@ async function switchInstrument(inst) {
   if (newSong !== prevSong && typeof loadLibraryItem === "function")
     loadLibraryItem(newSong);
   if (typeof render === "function") render();
+  // The instrument changed even when the song stayed: the landed-crawler
+  // URL must not keep a deep path with a dead instrument (loadLibraryItem
+  // already rewrote the song-change case).
+  try { rewriteLanderUrl(); } catch (e) {}
 }
 
 function wireInstrumentPicker() {
@@ -343,6 +347,10 @@ async function boot() {
       loadLibraryItem(home);
     }
     if (queryHas("zen")) enterZenFromLink();
+    // Landed-crawler gate (library.js): everything boot itself loads may
+    // keep the landing stub's clean canonical path; only user traffic
+    // after this line moves the URL.
+    markUrlLanded();
   } catch (err) {
     const e = document.getElementById("err");
     if (e) {

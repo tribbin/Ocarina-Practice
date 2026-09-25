@@ -244,6 +244,9 @@ header.app {
   position: sticky; top: 0; z-index: 5;
 }
 header.app h1 { font-size: 18px; margin: 0; font-weight: 650; letter-spacing: .02em; white-space: nowrap; }
+/* The site title is a plain link to the site root (Robin, 2026-09-25):
+   same ink as before, no link-visit chrome, the anchor is the affordance. */
+header.app h1 a { color: inherit; text-decoration: none; }
 header.app span { opacity: .7; font-size: 13px; }
 .inst-picker { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; justify-self: center; }
 @media (max-width: 760px) {
@@ -1673,6 +1676,9 @@ html[data-theme="oot"] .help-card { --panel: #fff; }
 .help-rows { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; font-size: 14px; }
 .help-rows dt { font-weight: 700; color: var(--accent, #8b3d2f); white-space: nowrap; }
 .help-rows dd { margin: 0; }
+/* Colophon line under the shortcut rows: the issues link users can report
+   problems through (Robin, 2026-09-25). */
+.help-meta { margin: 10px 0 0; border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent); padding-top: 8px; font-size: 13px; opacity: .85; }
 
 /* Practice history line: one muted run summary under the tuner track. */
 .prac-history {

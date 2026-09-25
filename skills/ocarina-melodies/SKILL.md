@@ -133,7 +133,7 @@ keys and are never their own indexed pages.
   too high, **`-contrabass`** — the suffix list gains them at the
   standardization pass (adding them now would orphan existing families
   mid-rename). First application: the leaf bass songs
-  (`zelda-lullaby-bass`, `kokiri-forest-bass`); family heads that already
+  (`zelda-lullaby-bass`); family heads that already
   carry upper arrangements keep their names until the naming wave.
 - **Landing pages boot the ladder across the FAMILY** (gen_song_pages):
   first fit through 12-hole > double alto C > triple bass C > contrabass;
