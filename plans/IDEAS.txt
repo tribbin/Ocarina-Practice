@@ -34,3 +34,8 @@ THEMES
 
 Additional 80s black audio-stack with square-row LED displays. The red understripe for headers can remain the same as other.
 Switching between themes in a way that signifies the color theme without showing it in the current theme during normal usage.
+
+BUGS
+
+Telephones go to sleep mode (blacking screen) during play; can we keep it active like when playing a youtube video?
+Current behavior is a problem for people practicing.

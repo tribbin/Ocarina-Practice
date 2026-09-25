@@ -8,7 +8,11 @@
 # ocarina, rendered sheet/chips, clean console. Tone-file 404s are the
 # manifest-declared allowlist (a permitted miss, never a required one:
 # a healthy boot may legitimately have none — the triple bass has a
-# tone.json, the 12-hole does not).
+# tone.json, the 12-hole does not). The mirrored deploy shape is
+# DOMAIN-ROOT serving (the 2026-09-25 flip): robots.txt + generated
+# sitemap.xml round out the crawler stage, and the legacy project-page
+# mount stays pinned by a string-contract leg (--site-prefix's
+# parameter-ness, ready to retire with its stage).
 
 import http.server
 import json
@@ -18,7 +22,9 @@ import subprocess
 import sys
 import tempfile
 import threading
+import urllib.request
 from pathlib import Path
+from xml.etree import ElementTree
 
 from playwright.sync_api import sync_playwright
 
@@ -32,7 +38,11 @@ CHARTS = {i["id"]: gen.chart_ids(i["id"], MANIFEST) for i in MANIFEST["instrumen
 
 ALLOW_FILES = ["index.html", "sw.js", "manifest.webmanifest", "favicon.svg",
                "icon-192.png", "icon-512.png", "hyrule.webp",
-               "songs.json", "instruments.json"]
+               "songs.json", "instruments.json", "robots.txt"]
+
+SITE_ORIGIN = "https://ocarina-practice.com"
+
+SITEMAP_NS = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
 
 
 def category_of(group):
@@ -42,6 +52,25 @@ def category_of(group):
     if "scale" in g:
         return "scales"
     return "other"
+
+
+def expected_stub_keys():
+    keys = []
+    for key, song in SONGS.items():
+        if gen.SUFFIX.search(key) or song.get("hidden"):
+            continue
+        if key.endswith("-bass") and key[:-5] in SONGS:
+            continue  # family -bass member rides its base page
+        keys.append(key)
+    return keys
+
+
+def run_gen(out, *extra):
+    subprocess.run([sys.executable, str(REPO / "tools" / "gen_song_pages.py"),
+                    "--out", str(out)] + list(extra),
+                   cwd=str(REPO), capture_output=True,
+                   encoding="utf-8", errors="replace", timeout=60,
+                   check=True)
 
 
 def assemble_like_the_workflow(out: Path):
@@ -63,27 +92,22 @@ def main():
         out1 = Path(td) / "site1"
         out2 = Path(td) / "site2"
         for out in (out1, out2):
-            subprocess.run([sys.executable, str(REPO / "tools" / "gen_song_pages.py"),
-                            "--out", str(out),
-                            "--site-prefix", "/Ocarina-Practice"],
-                           cwd=str(REPO), capture_output=True,
-                           encoding="utf-8", errors="replace", timeout=60,
-                           check=True)
+            run_gen(out, "--site-prefix", "/", "--origin", SITE_ORIGIN)
         pages1 = sorted((out1 / "song").rglob("index.html"))
 
         expected = []
-        for key, song in SONGS.items():
-            if gen.SUFFIX.search(key) or song.get("hidden"):
-                continue
-            if key.endswith("-bass") and key[:-5] in SONGS:
-                continue  # family -bass member rides its base page
-            expected.append(("song", category_of(song.get("group")), key))
+        for key in expected_stub_keys():
+            expected.append(("song", category_of(SONGS[key].get("group")), key))
         expected = sorted("/".join(e) + "/index.html" for e in expected)
         got = sorted(str(p.relative_to(out1)).replace("\\", "/") for p in pages1)
         if got != expected:
             failures.append(f"stub set mismatch:\n  got {got}\n  want {expected}")
 
-        # String contracts per stub, including the ladder-family seed.
+        # String contracts per stub, including the ladder-family seed. The
+        # serving prefix is ROOT on the pinned domain: <base> re-roots from
+        # /, canonical/og:url carry the clean root path and og:image is
+        # fully qualified (an og:image must be absolute; the flip gave the
+        # origin to pin it against).
         want_landing = {}
         for p in pages1:
             rel = str(p.relative_to(out1)).replace("\\", "/")
@@ -92,11 +116,11 @@ def main():
             cat = rel.split("/")[1]
             member, inst = gen.pick_landing(key, SONGS, MANIFEST, CHARTS)
             want_landing[key] = (member, inst)
-            if '<base href="/Ocarina-Practice/">' not in stub:
+            if '<base href="/">' not in stub:
                 failures.append(f"{rel}: base href missing/wrong")
-            if f'rel="canonical" href="/Ocarina-Practice/song/{cat}/{key}/"' not in stub:
+            if f'<link rel="canonical" href="/song/{cat}/{key}/"' not in stub:
                 failures.append(f"{rel}: canonical missing/wrong")
-            if f'<meta property="og:url" content="/Ocarina-Practice/song/{cat}/{key}/"' not in stub:
+            if f'<meta property="og:url" content="/song/{cat}/{key}/"' not in stub:
                 failures.append(f"{rel}: og:url missing/wrong")
             if stub.count('meta name="description"') != 1:
                 failures.append(f"{rel}: description meta not exactly one")
@@ -117,12 +141,51 @@ def main():
             if f'<meta property="og:description" content="{desc_m}" />' not in stub:
                 failures.append(f"{rel}: og:description missing/wrong")
             if ('<meta property="og:image" '
-                    'content="/Ocarina-Practice/icon-512.png" />') not in stub:
+                    f'content="{SITE_ORIGIN}/icon-512.png" />') not in stub:
                 failures.append(f"{rel}: og:image missing/wrong")
             if '<meta name="twitter:card" content="summary" />' not in stub:
                 failures.append(f"{rel}: twitter:card missing")
             if "../../../" in stub:
                 failures.append(f"{rel}: depth-relative refs survive under <base>")
+
+        # Legacy project-page mount, string-contracts only: the flag is a
+        # parameter (the pre-flip stage ran exactly these shapes; when that
+        # stage is retired this leg retires with it).
+        out3 = Path(td) / "site3"
+        run_gen(out3, "--site-prefix", "/Ocarina-Practice",
+                "--origin", "https://verify.example")
+        leg = sorted((out3 / "song").rglob("index.html"))[0]
+        rel3 = str(leg.relative_to(out3)).replace("\\", "/")
+        key3 = rel3.split("/")[2]
+        cat3 = rel3.split("/")[1]
+        stub3 = leg.read_text(encoding="utf-8")
+        if '<base href="/Ocarina-Practice/">' not in stub3:
+            failures.append(f"legacy leg {rel3}: base href missing/wrong")
+        if (f'<link rel="canonical" '
+                f'href="/Ocarina-Practice/song/{cat3}/{key3}/"') not in stub3:
+            failures.append(f"legacy leg {rel3}: canonical missing/wrong")
+        if ('<meta property="og:image" '
+                'content="https://verify.example/Ocarina-Practice/icon-512.png" />') \
+                not in stub3:
+            failures.append(f"legacy leg {rel3}: og:image prefix missing")
+
+        # Sitemap: home + every stub URL, nothing suppressed, sorted.
+        sitemap = (out1 / "sitemap.xml")
+        if not sitemap.exists():
+            failures.append("sitemap.xml missing from staging")
+        else:
+            root = ElementTree.fromstring(sitemap.read_text(encoding="utf-8"))
+            locs = [el.text and el.text.strip() for el in root.iter()
+                    if el.tag == SITEMAP_NS + "loc"] or \
+                   [el.text and el.text.strip() for el in root.iter()
+                    if el.tag.endswith("}loc")]
+            want = sorted([SITE_ORIGIN + "/"] + [
+                f"{SITE_ORIGIN}/song/{category_of(SONGS[k].get('group'))}/{k}/"
+                for k in expected_stub_keys()])
+            if locs != want:
+                failures.append("sitemap loc set mismatch:\n  got "
+                                f"{locs}\n  want {want}")
+
         # Ladder pin: after the re-key the Song-of-Time BASE carries the
         # 12-hole-fitting arrangement (the old -alto body) and the bass body
         # lives in song-of-time-bass, so the family walk prefers the base —
@@ -149,20 +212,47 @@ def main():
             def __init__(self, *a, **kw):
                 super().__init__(*a, directory=str(site), **kw)
 
-            def translate_path(self, path):
-                if path.startswith("/Ocarina-Practice"):
-                    path = path[len("/Ocarina-Practice"):] or "/"
-                return super().translate_path(path)
-
             def log_message(self, *a):
                 pass
 
         httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Mount)
         threading.Thread(target=httpd.serve_forever, daemon=True).start()
         port = httpd.server_address[1]
-        base = f"http://127.0.0.1:{port}/Ocarina-Practice"
+        base = f"http://127.0.0.1:{port}"
 
         try:
+            # The crawler stage, SERVED: robots.txt carries its Sitemap
+            # pointer; the generated sitemap serves and enumerates exactly
+            # home + the stub set.
+            def get_local(path):
+                with urllib.request.urlopen(base + path, timeout=10) as r:
+                    return r.status, r.read().decode("utf-8", "replace")
+
+            try:
+                st, robots = get_local("/robots.txt")
+                if st != 200:
+                    failures.append(f"robots.txt status {st}")
+                elif "Sitemap:" not in robots or "sitemap.xml" not in robots:
+                    failures.append("robots.txt lacks the Sitemap pointer")
+            except Exception as e:
+                failures.append(f"robots.txt fetch failed: {e}")
+            if sitemap.exists():
+                try:
+                    st, served = get_local("/sitemap.xml")
+                    if st != 200:
+                        failures.append(f"sitemap.xml status {st}")
+                    else:
+                        root = ElementTree.fromstring(served)
+                        n = sum(1 for el in root.iter()
+                                if el.tag == SITEMAP_NS + "loc"
+                                or el.tag.endswith("}loc"))
+                        if n != 1 + len(expected_stub_keys()):
+                            failures.append(
+                                f"served sitemap has {n} locs, want "
+                                f"{1 + len(expected_stub_keys())}")
+                except Exception as e:
+                    failures.append(f"sitemap.xml fetch failed: {e}")
+
             with sync_playwright() as p:
                 browser = p.chromium.launch(headless=True)
                 for key in sorted(want_landing):
@@ -226,7 +316,9 @@ def main():
             print("  -", f)
         return 1
     print(f"PASS gen_pages: {len(pages1)} landing stubs — every base URL boots "
-          "its ladder-chosen arrangement with ZERO out-of-range marks, clean console")
+          "its ladder-chosen arrangement with ZERO out-of-range marks, clean "
+          "console; sitemap enumerates home + the exact stub set; robots.txt "
+          "serves its Sitemap pointer")
     return 0
 
 

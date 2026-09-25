@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # Generate per-song landing stub pages for the static site.
 #
-#   python tools/gen_song_pages.py --out site/
+#   python tools/gen_song_pages.py --out site/ --site-prefix / --origin \
+#       https://ocarina-practice.com
 #
 # For every BASE slug in songs.json (no registered variant suffix, not
 # hidden) this writes song/<category>/<slug>/index.html derived from the
@@ -13,6 +14,9 @@
 # fitting ladder below so every landing page boots playable: the seed
 # names the FAMILY member that fits the ladder's chosen instrument (the
 # base slug when it fits, else the first variant that does).
+# A sitemap.xml lands beside it: home + every emitted URL, nothing
+# suppressed, byte-deterministic (no lastmod — the serving tree's truth
+# is the corpus, and pages themselves may be worth a recrawl as-is).
 #
 # Output is a STAGING tree: nothing here deploys by itself. The deploy
 # workflow (.github/workflows/deploy-site.yml) runs this generator and
@@ -123,13 +127,14 @@ def category_of(group):
     return re.sub(r"[^a-z0-9-]+", "-", g.split()[0]).strip("-") or "other"
 
 
-def build_stub(html, key, song, member, cat, inst, site_prefix):
+def build_stub(html, key, song, member, cat, inst, site_prefix, origin):
     # <base href> re-roots EVERY relative reference — head links, the module
     # src AND the app's runtime fetches (songs.json / instruments.json /
     # css text / manifest-driven instrument files) and the service-worker
     # registration. A per-depth href rewrite cannot reach runtime fetches,
     # which is exactly what the first live boot caught (songs.json 404 two
-    # directories deep, boot dead).
+    # directories deep, boot dead). The value is the SERVING prefix — the
+    # project-page mount pre-flip, root on the pinned domain after it.
     html = html.replace("<head>", f'<head>\n  <base href="{site_prefix}/">', 1)
     name = song.get("name") or key
     desc = (f"Play {name} on the ocarina: hole-fingering tab, playback and "
@@ -143,8 +148,11 @@ def build_stub(html, key, song, member, cat, inst, site_prefix):
     # The full preview-card set: og:type/site_name/description give bots the
     # surrounding identity, og:image (the generated PWA icon, sized) gives
     # link previews something to render, twitter:card pins the summary
-    # layout. URLs carry the site prefix as a path — matching canonical/
-    # og:url; a fully-qualified image would need a pinned domain (none yet).
+    # layout. og:image is fully qualified — bots require an absolute URL,
+    # and the flip pinned the serving origin; --origin is the deploy's
+    # scheme+host (the site root), never including the prefix itself. The
+    # prefix-carrying URLs (canonical/og:url, <base>) stay origin-relative
+    # so the artifact keeps serving from any mount.
     stub_meta = (
         f'<link rel="canonical" href="{canonical}" />\n'
         f'<meta property="og:title" content="{name} — Ocarina Practice" />\n'
@@ -152,7 +160,7 @@ def build_stub(html, key, song, member, cat, inst, site_prefix):
         f'<meta property="og:type" content="website" />\n'
         f'<meta property="og:site_name" content="Ocarina Practice" />\n'
         f'<meta property="og:description" content="{desc}" />\n'
-        f'<meta property="og:image" content="{site_prefix}/icon-512.png" />\n'
+        f'<meta property="og:image" content="{origin}{site_prefix}/icon-512.png" />\n'
         f'<meta property="og:image:width" content="512" />\n'
         f'<meta property="og:image:height" content="512" />\n'
         f'<meta property="og:image:alt" content="Ocarina Practice icon" />\n'
@@ -177,10 +185,15 @@ def main():
     ap.add_argument("--site-prefix", default="/Ocarina-Practice",
                     help="site-root URL prefix of a GH Pages project site; "
                     "canonical/og:url carry it (empty = root-deployed domain)")
+    ap.add_argument("--origin", default="https://ocarina-practice.com",
+                    help="serving origin (scheme + host, the SITE root, "
+                    "pathless): used for sitemap <loc> entries and the "
+                    "og:image absolute URL only")
     args = ap.parse_args()
     site_prefix = "/" + args.site_prefix.strip("/")
     if site_prefix == "/":
         site_prefix = ""
+    origin = args.origin.rstrip("/")
     songs = json.loads((REPO / "songs.json").read_text(encoding="utf-8"))
     manifest = json.loads((REPO / "instruments.json").read_text(encoding="utf-8"))
     charts = {i["id"]: chart_ids(i["id"], manifest) for i in manifest["instruments"]}
@@ -188,6 +201,7 @@ def main():
 
     out = REPO / args.out
     written = []
+    urls = []
     for key, song in sorted(songs.items()):
         if SUFFIX.search(key):
             continue  # variants ride the base page, not their own URL
@@ -197,15 +211,30 @@ def main():
             continue  # a family -bass member rides its base page (grace
                       # period: unregistered marker); leaf -bass keys keep
                       # their own page
+        cat = category_of(song.get("group"))
         member, inst = pick_landing(key, songs, manifest, charts)
         stub = build_stub(html, key, songs[member], member,
-                          category_of(song.get("group")), inst, site_prefix)
-        p = out / "song" / category_of(song.get("group")) / key / "index.html"
+                          cat, inst, site_prefix, origin)
+        p = out / "song" / cat / key / "index.html"
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(stub, encoding="utf-8", newline="\n")
+        # Sitemap URLs: absolute (the sitemap protocol's <loc> requires
+        # it), origin + serving prefix + stub path; home leads the set.
+        urls.append(f"{origin}{site_prefix}/song/{cat}/{key}/")
         written.append(f"{p.relative_to(out)}  [{inst}]")
     (out / ".nojekyll").write_text("", encoding="utf-8", newline="\n")
-    print(f"wrote {len(written)} stub pages (+ .nojekyll) under {out}")
+    sitemap = ['<?xml version="1.0" encoding="UTF-8"?>',
+               ('<urlset xmlns="http://www.sitemaps.org/schemas/'
+                'sitemap/0.9">')]
+    for loc in [f"{origin}{site_prefix}/"] + sorted(urls):
+        sitemap.append("  <url>")
+        sitemap.append(f"    <loc>{loc}</loc>")
+        sitemap.append("  </url>")
+    sitemap.append("</urlset>")
+    (out / "sitemap.xml").write_text("\n".join(sitemap) + "\n",
+                                     encoding="utf-8", newline="\n")
+    print(f"wrote {len(written)} stub pages (+ .nojekyll, sitemap.xml with "
+          f"{len(urls) + 1} entries) under {out}")
     for w in written:
         print("  " + w)
 

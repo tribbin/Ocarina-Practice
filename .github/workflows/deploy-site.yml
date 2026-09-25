@@ -23,6 +23,7 @@ on:
       - "icon-192.png"
       - "icon-512.png"
       - "tools/gen_song_pages.py"
+      - "robots.txt"
       - ".github/workflows/deploy-site.yml"
   workflow_dispatch:
 
@@ -44,11 +45,17 @@ jobs:
         with:
           python-version: "3.12"
       - name: Generate per-song stub pages
-        run: python tools/gen_song_pages.py --out site/ --site-prefix /Ocarina-Practice
+        # The flip (2026-09-25) serves the pinned domain at ROOT: the
+        # site prefix is empty and the origin qualifies the og:image
+        # absolute and the sitemap <loc> entries. The old project-page
+        # mount value (" /Ocarina-Practice") is what the pre-flip deploy
+        # used — its baked artifact is what stranded every stub's base
+        # href in a non-served directory after the flip.
+        run: python tools/gen_song_pages.py --out site/ --site-prefix / --origin https://ocarina-practice.com
       - name: Assemble the served tree (the content allowlist)
         run: |
           touch site/.nojekyll
-          for f in index.html sw.js manifest.webmanifest favicon.svg icon-192.png icon-512.png hyrule.webp songs.json instruments.json; do
+          for f in index.html sw.js manifest.webmanifest favicon.svg icon-192.png icon-512.png hyrule.webp songs.json instruments.json robots.txt; do
             cp "$f" site/
           done
           mkdir -p site/css site/js site/instruments
