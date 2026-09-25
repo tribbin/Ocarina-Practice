@@ -64,17 +64,23 @@ applications and the feel-check stack are now the hot edges):
 | Item | Section |
 |---|---|
 | SEO-guides APPLICATIONS when Robin picks (shell rel=canonical recommended, JSON-LD, stub cross-links) — his call per candidate | §9 |
-**Session 15's opening batch, picked (Robin, 2026-09-25):** the SEO
-applications first — one shell `rel="canonical" href="/"` plus a
-WebApplication JSON-LD block on the shell (name "Ocarina Practice",
-applicationCategory **EducationalApplication**, operatingSystem "Any",
-browserRequirements, offers price "0" to mark it free; no ratings, no
-fake fields; NO per-stub JSON-LD and NO cross-links block today) — then,
-if room remains, the vertical-screen Zen note-bar lag as a REPORT unit
-(985942e's plant: the note bar lags behind the highlighted note on the
-phone and even leaves the screen partially — reproduce under throttling
-headlessly, name where the lag lives before any build). Feel checks and
-the tick hunt ride along as field activities regardless.
+**Session 15's opening batch, confirmed (Robin, 2026-09-25 night):** a
+HANDS-OFF session (sleeping) on `session15` only — the standing rules
+hold (no main commits, nothing audible or UX-visible ships without his
+field check, every unit lands green + committed + logged, wrap before
+the context action line). Confirmed order: (1) the SEO applications —
+shell `rel="canonical" href="/"` + a WebApplication JSON-LD block
+(applicationCategory **EducationalApplication**, operatingSystem "Any",
+browserRequirements, offers price "0"; description = the existing meta
+description VERBATIM; no per-stub JSON-LD, no cross-links today);
+(2) the vertical-screen Zen note-bar unit — INVESTIGATE AND BUILD
+whatever fits (the phone field check decides in the morning);
+(3) board-tooling units (the empty-lines verify+fix, the CI-noise
+quieting); (4) the URL-reflects-selection audit (report-only); (5) the
+perf-ideas report (waveform pre-cache / minify / SVG-gen); wrap at the
+report-only wall. Morning deck: PR copy per canon + the field-check
+list in the session log. Feel checks and the tick hunt stay HIS field
+work whenever he's near.
 | Feel checks on his phone/device: HiFi retune knobs (?hifi), tuner ✕/mic glyph, history-line clarity, token-chips touch feel; small-screens brainstorm when he's near | feel checks |
 | The next audio-tick field catch now names itself: spike cards carry the ambient ring (flip/resize + ages) — after his next orientation-flip session a firing card names the plane, counters-0 silence proves the device level | §2 |
 | Robin's field pass over the shipped batch: derived bodies (5 songs) boot byte-identical — his ears confirm the twin songs play as ever; the tick contract's click-during-override feel is his deciding pass | §9 / IDEAS |
@@ -107,6 +113,9 @@ the tick hunt ride along as field activities regardless.
 
 Currently covered (don't lose this): practice acceptance (4 cases strict+closed-loop), practice dip gate (hold-through blocked, silence/50%-notch dips pass, 75% duck shut, legato free), practice seat across view rebuilds + zen-entry stopMelody + overlay zen-only seats, console-hygiene boot scan (4 boots; allowlist = manifest-declared tone misses), support-bracket battery incl. bit-identical melody-vs-support equivalence + Zen timing/gating, instrument load/tone-model install per manifest (incl. svgWhen id/title paths + boot diagnostics in per-leg fresh contexts), render pin (chips/grid/scroll-band/highlight/focus-restore + typed-render debounce contract), svg clone coordinates, debug panel build-on-open contract, transport scheduler arithmetic/cut-bus/lite, practice history, template safety, theme toggle, offline SW boot+swap, ac worker parity, swing grid, sr hints, spike watch (the tick hunt). CI = push/PR/manual, explicitly not a deploy gate. (.github/workflows/practice-tests.yml — console-hygiene + 24 suite steps + eslint + html-validate; local run-all counted 25 green on 2026-09-23 on the Linux partition and again on the Windows partition — partition sweep red 24/25 until the runner's UTF-8 child-env fix, see session log ~2026-09-23) NOTE: practice_accepts flaked ONE strict case under full-sweep load 2026-09-23, green twice standalone afterward and in the diag run — watch it, the arbiter hardening already took one such race; support_accepts flaked the same class 2026-09-24 (fixed wall-clock read window vs audio-clock lag under sweep CPU contention) and got the class cure: the read is now a real rendezvous with wall-fire stamps + ctx snapshots `335c4b4`). **Third member 2026-09-25 (CLI run `36110497803`, job 107992645371): practice_dip's leg A stalled the full 15 s timeout at maxIdx 0** — same SHA the local sweep had green; a DIFFERENT injury inside the same family: the suite's rendezvous (OCA_PRACTICE+NOTES) unlocks INSIDE loadInstrument (the stretch between installFingerings and boot's tail), where fillLibrary/loadLibraryItem(home) → practiceInvalidate is still owed — a session started mid-boot died when the tail landed; the stall reproduces at will with CDP network latency, cured by the rule-13 real rendezvous: the #scale options guard (filled only by the tail; a rAF poll never resolves mid-synchronous-block) plus a state card (started/st/ix/frames) on every driver resolve so a future stall names itself. The same tail guard rode into every suite that starts practice or needs typed editor text to survive boot (practice_accepts_melody, practice_zen_return, practice_history, keyboard_widgets, render_pin); library_hardening already waited a stronger post-tail signal (the Scales OPTGROUP), instrument_switch_race covers the race as its subject, playback-only suites are immune (practiceInvalidate stops practice, never play). Full sweep 31/31 green after the cure.
 
+- [ ] **Suite servers print BrokenPipeError tracebacks into CI logs (IDEAS lines 47-99, run `36187303217` job `108243773139`, pr 15 — passed anyway)** — browser teardown mid-GET races `copyfileobj` inside the suite-facing ThreadingHTTPServer (e.g. tests/instruments_load.py:30); the suites themselves pass, so the console noise is the defect: quiet the expected-teardown class in the suite-server pattern without hiding real failures. `🟨 🟠 ⚙S`
+
+
 
 
 ## 7. Accessibility & UX
@@ -115,11 +124,17 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 
 - [ ] **Collapse buttons + misc** — §1 B7 was completed long ago; see `plans/DONE.md` §1 for what it covered and pick the misc remainder on touch. `🟢 🟡 ⚙S`
 
+- [ ] **Zen note bar lags on small vertical screens (field-planted, IDEAS line 43)** — the note bar moves too slowly toward center as a note highlights and even leaves the screen partially (phone, vertical screen, session night: Robin planted 2026-09-25 `985942e`). Session-15 unit per the confirmations: headless reproduce under throttling, name where the lag lives (rAF pacing / transform / long-token layout), then INVESTIGATE + BUILD whatever fits with suites green — the phone field check is the deciding pass. `🟧 🟠 ⚙M`
+
+
 
 
 ## 8. Housekeeping
 
 Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
+
+- [ ] **Board tool allegedly accumulates empty lines in TODO/DONE (IDEAS line 45)** — verify first (full file scans + verify's lint), fix red-first in tools/board.py + tests/board_tool.py if real, otherwise record "not real" with the evidence in a completion note. `🟨 🟠 ⚙S`
+
 
 ## 9. Functional ideas (features)
 
@@ -138,6 +153,12 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
 - [ ] **Intended-instrument per-song landing default** — Robin, IDEAS 2026-09-25: "Some songs are really not made for the alto, but were added because not many people have a bass ocarina." — `songs.json` may declare `"intended": "<instrument-id>"` on a base song; the landing seed then prefers that instrument over Robin's ladder WHEN any family member fits its chart, falling back to the ladder otherwise (a member of the family must fit: the seed never boots a dead display). SHIPPED exemplar 2026-09-25: botw-theme → ico-oak-leaf-bass-c-triple (members -bass/-down3 fit the triple; the alto base won the ladder order today; the live /song/zelda/botw-theme/ stub now seeds the bass body on the triple after merge+deploy). The data_validator owns the field (optional, string, manifest-known — sandbox v12); the gen_pages botw pin freezes the outcome (want (botw-theme-bass, triple)). REMAINING: per-song values are Robin's musical calls to plant over time — nothing else declared yet; the field changes nothing in-app (the picker stays free, the wet-switch auto-select ignores it). Robin settles the model (2026-09-25, live): BOTH instrument-tagged versions keep existing as entries (the alto-named base is the alto version; -bass named "(bass)" stays — the deletion proposal is declined), and the user lands on the intended instrument — WHEN the base declares it — via the NON-SPECIFIC (clean) URL: the base's own body needs no fit; the first family member (base first, then variants alphabetically) that fits the intended chart is the seed. No field → the ladder rules. The clean page's og/title reads the LANDED version's name (what actually plays). Do not rekey entries for this; do not strip the parenthetical tags; the field's semantics is the family walk, never a body rewrite. Second exemplar per Robin's live call (2026-09-25): the corpus had NO kokiri-forest base — the bass-c transcription sat on the leaf key kokiri-forest-bass with its own stub URL. Robin wants the non-specific URL to exist and land the bass version: the key was re-titled kokiri-forest-bass → kokiri-forest (byte-identical body; name "Kokiri Forest (bass)" — Robin explicitly kept the committed tag naming for the entry; group/tempo untouched; introduced "intended": ico-oak-leaf-bass-c-triple) so /song/zelda/kokiri-forest/ is the canonical landing — the old kokiri-forest-bass URL retires in the trial period (nothing indexed; the sitemap/stub set stays 8, the kokiri path becomes the clean one). The only kokiri reference outside data was the SKILL.md leaf example, updated in place. BotW semantics ruling stands (versions keep their keys; only the non-specific URL moves). `🟢 ⚪ ⚙S`
 
 - [ ] **SEO guides application pass** — Robin IDEAS 2026-09-25: "Read this and apply where appropriate" — https://support.google.com/webmasters/answer/9128669 and https://developers.google.com/search/docs/fundamentals/seo-starter-guide. Opener = read-then-audit against the artifact (robots.txt/sitemap.xml/song stubs/og tabs already serving; the sitemap set is now frozen-permanent, the domain Search-Console-verified), reporting what applies (title/meta/OG policy, structured data, internal linking, crawl directives) — Robin picks the applications. `🟨 🟠 ⚙M`
+
+- [ ] **URL always reflects selection — discussion (IDEAS line 33)** — the shipped rewriter (`ff53abb`) already moves every later content change to root+vars; the discussion residuals: typed text (bare root), user-saved songs, whether ANY non-library state belongs in the URL; REPORT-ONLY audit, Robin picks any extension. Handed for a hands-on session. `🟢 ⚪ ⚙S`
+
+- [ ] **Waveform pre-cache for songs + deploy minify/SVG-generation (IDEAS lines 17-21)** — pre-calculate note waveforms per song with a progress bar and stop-on-playback (the pre-cache exists to prevent playback-time strain); GitHub-actions minify of JS/CSS on deploy; GitHub-actions generation of the large hole SVGs. Robin picks which become units (the pre-cache is the one with real device value). `🟨 ⚪ ⚙M`
+
+
 
 
 
