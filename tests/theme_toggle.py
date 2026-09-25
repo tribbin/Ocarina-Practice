@@ -76,9 +76,9 @@ def main():
             items = page.evaluate(
                 "() => [...document.querySelectorAll('#themeMenu button')]"
                 ".map(b => ({ v: b.dataset.themeChoice, t: b.textContent.trim() }))")
-            if [i["t"] for i in items] != ["Plain", "Hyrule", "HiFi"]:
-                failures.append(f"the menu must list the three themes by name "
-                                f"(got {items})")
+            if [i["t"] for i in items] != ["Plain", "Hyrule"]:
+                failures.append(f"the menu must list only the finished themes — "
+                                f"HiFi stays hidden behind ?hifi (got {items})")
             # the switch signifies the theme without adopting its look: the
             # three menu items share one uniform ink no matter the look
             kinds = set(page.evaluate(
@@ -96,32 +96,32 @@ def main():
             if esc != "oot":
                 failures.append(f"an aborted menu must not change the look (got {esc})")
 
-            # picking HiFi applies, persists, re-renders, and reads HiFi back
-            page.click("#themeBtn")
-            page.wait_for_function(
-                "() => !document.getElementById('themeMenu').hidden")
-            page.click("#themeMenu button[data-theme-choice='hifi']")
-            page.wait_for_function(
-                "() => document.documentElement.getAttribute('data-theme') === 'hifi'")
-            hifi = page.evaluate(
-                "() => ({ label: document.getElementById('themeBtn').textContent,"
-                        " saved: localStorage.getItem('oco-theme'),"
-                        " cards: document.querySelectorAll('#sheet svg').length,"
-                        " menu: document.getElementById('themeMenu').hidden })")
-            if hifi["label"] != "HiFi" or hifi["saved"] != "hifi":
-                failures.append(f"the HiFi pick must apply + save (got {hifi})")
-            if not hifi["cards"]:
-                failures.append("cards must still render under HiFi")
-            if not hifi["menu"]:
-                failures.append("a pick must close the menu")
-
-            # reload: the saved HiFi choice rules
+            # HiFi is HIDDEN (Robin, 2026-09-25 — unfinished look): only the
+            # ?hifi link parameter and an already-saved choice reach it, and
+            # the menu never leads anyone there
+            page.evaluate("() => localStorage.setItem('oco-theme', 'hifi')")
             page.reload()
             page.wait_for_function(
                 "() => document.documentElement.getAttribute('data-theme') === 'hifi'"
-                " && document.getElementById('themeBtn').textContent === 'HiFi'")
+                " && document.getElementById('themeBtn').textContent === 'HiFi'",
+                timeout=15000)
+            page.click("#themeBtn")
+            page.wait_for_function(
+                "() => !document.getElementById('themeMenu').hidden")
+            hidden = page.evaluate(
+                "() => [...document.querySelectorAll('#themeMenu button')]"
+                ".map(b => b.dataset.themeChoice)")
+            if hidden != ["", "oot"]:
+                failures.append(f"the menu must NOT lead to the hidden HiFi "
+                                f"(got {hidden})")
+            page.keyboard.press("Escape")
+            page.wait_for_function(
+                "() => document.getElementById('themeMenu').hidden")
 
             # menu pick Plain: back to the light look, saved empty
+            page.reload()
+            page.wait_for_function(
+                "() => document.documentElement.getAttribute('data-theme') === 'hifi'")
             page.click("#themeBtn")
             page.wait_for_function(
                 "() => !document.getElementById('themeMenu').hidden")
@@ -174,10 +174,11 @@ def main():
         for f in failures:
             print("  - " + f)
         return 1
-    print("\nPASS: the theme menu lists Plain/Hyrule/HiFi in one uniform ink, "
-          "picks apply + persist + re-render, aborted menus change nothing, link "
-          "parameters keep outranking the saved choice, and the HiFi look renders "
-          "cards with the chrome hint following the chassis.")
+    print("\nPASS: the theme menu lists only the finished looks, picks apply "
+          "+ persist + re-render, aborted menus change nothing, the hidden "
+          "HiFi stays reachable only through ?hifi or a saved choice, link "
+          "parameters keep outranking the saved choice, and the chrome hint "
+          "follows every look.")
     return 0
 
 

@@ -181,7 +181,8 @@ function queryHas(name) {
 function themeFromQuery() {
   // ?plain / ?oot / ?hifi stay honored per shared link; without them the SAVED
   // choice rules (the Hyrule look stays the default for a fresh browser).
-  // The theme menu rides the same key ("oco-theme").
+  // The theme menu rides the same key ("oco-theme"). HiFi is the hidden
+  // theme for now: ?hifi explores it, the menu lists only the finished looks.
   if (queryHas("plain")) return "";
   if (queryHas("oot")) return "oot";
   if (queryHas("hifi")) return "hifi";
