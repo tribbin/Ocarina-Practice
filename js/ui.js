@@ -1296,19 +1296,48 @@ function wireUi() {
     if (typeof practiceInvalidate === "function") try { practiceInvalidate(); } catch (e) {}
     render();
   };
-  // Theme toggle beside Clear: flip data-theme (plain ↔ Hyrule), persist the
-  // choice, repaint the chrome-color hint and re-render so svgWhen rules
-  // (e.g. the saria body) re-resolve for the new theme.
+  // Theme menu beside Clear (Robin's pick, 2026-09-25): the button opens a
+  // small menu naming the themes — the switch signifies the color theme
+  // without showing it in the current theme (one uniform ink in the menu).
+  // Picking applies, persists "oco-theme", repaints the chrome hint and
+  // re-renders so svgWhen rules (e.g. the saria body) re-resolve.
   const themeBtn = document.getElementById("themeBtn");
-  if (themeBtn) {
-    themeBtn.onclick = () => {
-      const next = document.documentElement.hasAttribute("data-theme") ? "" : "oot";
-      applyTheme(next);
-      try { localStorage.setItem("oco-theme", next); } catch (e) {}
+  const themeMenu = document.getElementById("themeMenu");
+  if (themeBtn && themeMenu) {
+    const themeShut = () => {
+      themeMenu.hidden = true;
+      themeBtn.setAttribute("aria-expanded", "false");
+    };
+    const themeApply = (name) => {
+      applyTheme(name);
+      try { localStorage.setItem("oco-theme", name); } catch (e) {}
       syncThemeGlyph();
       syncThemeMeta();
       render();
     };
+    themeBtn.onclick = () => {
+      if (themeMenu.hidden) {
+        themeMenu.hidden = false;
+        themeBtn.setAttribute("aria-expanded", "true");
+        const cur = themeMenu.querySelector(
+          `button[data-theme-choice="${document.documentElement.getAttribute("data-theme") || ""}"]`);
+        if (cur) { try { cur.focus(); } catch (e) {} }
+      } else themeShut();
+    };
+    themeMenu.onclick = (e) => {
+      const b = e.target.closest("button[data-theme-choice]");
+      if (!b) return;
+      themeApply(b.dataset.themeChoice);
+      themeShut();
+      try { themeBtn.focus(); } catch (e) {}
+    };
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !themeMenu.hidden) { themeShut(); }
+    });
+    document.addEventListener("pointerdown", (e) => {
+      if (!themeMenu.hidden && !e.target.closest("#themeMenu") &&
+          !e.target.closest("#themeBtn")) themeShut();
+    });
     syncThemeGlyph();
     syncThemeMeta();
   }
@@ -1427,10 +1456,9 @@ function wireUi() {
 function syncThemeGlyph() {
   const btn = document.getElementById("themeBtn");
   if (!btn) return;
-  const on = document.documentElement.hasAttribute("data-theme");
-  btn.textContent = on ? "Hyrule" : "Plain";
-  btn.title = on ? "Switch to the classic light theme"
-                 : "Switch to the Hyrule Field theme";
+  const cur = document.documentElement.getAttribute("data-theme") || "";
+  btn.textContent = cur === "oot" ? "Hyrule" : cur === "hifi" ? "HiFi" : "Plain";
+  btn.title = "Switch the theme";
   btn.setAttribute("aria-label", btn.title);
 }
 

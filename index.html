@@ -38,7 +38,14 @@
     <select id="instSel" class="inst-sel" aria-label="Ocarina"></select>
   </div>
   <div class="head-tools">
-    <button class="ghost" type="button" id="themeBtn" title="Switch the theme"></button>
+    <div class="theme-wrap">
+      <button class="ghost" type="button" id="themeBtn" title="Switch the theme" aria-haspopup="menu" aria-expanded="false">Hyrule</button>
+      <div id="themeMenu" class="theme-menu" hidden role="menu" aria-label="Color theme">
+        <button type="button" role="menuitem" data-theme-choice="">Plain</button>
+        <button type="button" role="menuitem" data-theme-choice="oot">Hyrule</button>
+        <button type="button" role="menuitem" data-theme-choice="hifi">HiFi</button>
+      </div>
+    </div>
     <button class="ghost" type="button" id="helpBtn" title="Keyboard shortcuts" aria-haspopup="dialog">?</button>
   </div>
 </header>

@@ -59,6 +59,75 @@ html[data-theme="oot"] {
   --key-now-black-ring: #b8f090;
   --menu: #0a3a0a;
 }
+/* HiFi (Robin's naming, 2026-09-25 — code "hifi"): the 80s black audio-stack
+   first pass Robin asked for — black chassis panels, LED-amber dial numerals,
+   square-segment LED bars for the tuner meter and the practice fill; the red
+   header understripe stays as every other theme's. Chamber colors (--ch1..3)
+   and the token/rest symbology stay the fingering-data truth, untouched. */
+html[data-theme="hifi"] {
+  --clay: #d9a441;
+  --clay-dark: #e8b45a;
+  --ink: #e6e4de;
+  --paper: #0b0b0d;
+  --paper-2: #131316;
+  --line: #2a2a30;
+  --accent: #ff4d3a;
+  --good: #3ee07f;
+  --panel: #121216;
+  --head: #0e0e11;
+  --muted: #98969d;
+  --oca-bg: #f3e6d6;
+  --key: #141418;
+  --key-line: #2e2e36;
+  --key-label: #b7b5ad;
+  --ch-line-empty: #3a3a42;
+  --zen: #060607;
+  --zen-btn: #1d1d22;
+  --key-now: #123a24;
+  --key-now-ring: #3ee07f;
+  --key-now-black: #123a24;
+  --key-now-black-ring: #e8b45a;
+  --menu: #14141a;
+}
+html[data-theme="hifi"] header.app { background: var(--paper); color: var(--ink); }
+html[data-theme="hifi"] header.app button.ghost {
+  color: #fff; border-color: rgba(255,255,255,.45);
+}
+/* Square-row LED displays: the tuner's tuning scale and the bar fill become
+   squared segment rows; the dial value readouts are LED-amber monospace. */
+html[data-theme="hifi"] .prac-scale,
+html[data-theme="hifi"] .prac-track {
+  background: repeating-linear-gradient(90deg, rgba(255,255,255,.09) 0 6px, transparent 6px 10px);
+}
+html[data-theme="hifi"] .prac-fill {
+  background: repeating-linear-gradient(90deg, #3ee07f 0 6px, rgba(62,224,127,.25) 6px 10px);
+  box-shadow: 0 0 10px rgba(62,224,127,.35);
+}
+html[data-theme="hifi"] .dial-row > span:last-child,
+html[data-theme="hifi"] .dial-row .dial-val,
+html[data-theme="hifi"] #focusTempoVal {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 700; color: #ffb648;
+  text-shadow: 0 0 9px rgba(255,182,72,.4);
+  font-variant-numeric: tabular-nums; letter-spacing: .04em;
+}
+/* The theme menu (Robin's pick): a neutral popover that names the themes —
+   it signifies the color theme without showing it in the current theme. */
+.theme-wrap { position: relative; display: inline-flex; }
+.theme-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 60;
+  min-width: 132px; background: var(--panel); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.25); padding: 4px;
+  display: flex; flex-direction: column;
+}
+.theme-menu[hidden] { display: none; }
+.theme-menu button {
+  text-align: left; padding: 7px 12px; border: 0; border-radius: 7px;
+  background: transparent; color: inherit; font: 13.5px/1 inherit;
+  cursor: pointer; white-space: nowrap;
+}
+.theme-menu button:hover, .theme-menu button:focus-visible { background: rgba(127,127,140,.18); }
 /* Light surfaces inside the Hyrule theme: the library dialog card and the perf
    meters pop keep the app's cream look, so they need the light-surface token
    values locally (OOT re-scopes --ink/--muted/--panel for the dark panels,

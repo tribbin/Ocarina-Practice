@@ -179,14 +179,15 @@ function queryHas(name) {
 }
 
 function themeFromQuery() {
-  // ?plain / ?oot stay honored per shared link; without them the SAVED choice
-  // rules (the Hyrule look stays the default for a fresh browser). The toggle
-  // beside Clear rides the same key ("oco-theme").
+  // ?plain / ?oot / ?hifi stay honored per shared link; without them the SAVED
+  // choice rules (the Hyrule look stays the default for a fresh browser).
+  // The theme menu rides the same key ("oco-theme").
   if (queryHas("plain")) return "";
   if (queryHas("oot")) return "oot";
+  if (queryHas("hifi")) return "hifi";
   try {
     const saved = localStorage.getItem("oco-theme");
-    if (saved === "" || saved === "oot") return saved;
+    if (saved === "" || saved === "oot" || saved === "hifi") return saved;
   } catch (e) {}
   return "oot";
 }
