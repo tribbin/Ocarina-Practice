@@ -184,15 +184,51 @@ function fillLibrary(selectId) {
   syncLibraryMenu(cur);
 }
 
+// -------------------------------------------------- landed-crawler URLs
+// Robin, IDEAS 2026-09-25: a /song/… landing page IS that song's clean
+// canonical path (the stub's seed keeps it), but any LATER content change —
+// a library load, a loader-less song swap, a typed replacement — must never
+// sit under some other song's deep path. The URL then resolves to the SITE
+// ROOT with the ? GET vars (root + ?song=<key>&inst=<inst>, or bare root
+// when nothing library-identifiable is loaded). Mount-agnostic by
+// construction: the root is the current pathname minus its /song/ tail, so
+// both a domain-root and a project-page mount land on their own root.
+// markUrlLanded() gates the rewrites: the boot's own deep-link load may
+// only ever KEEP the landing path — the brain of the seed.
+let urlLanded = false;
+function markUrlLanded() { urlLanded = true; }
+const STUB_PATH = /\/song\/[^/]+\/[^/]+\/$/;
+function rewriteLanderUrl() {
+  if (!urlLanded) return;
+  const m = location.pathname.match(STUB_PATH);
+  if (!m) return;
+  const root = m[1] || "/";
+  const sel = document.getElementById("scale");
+  const song = (sel && sel.value) || lastLoadedId || "";
+  const pick = document.getElementById("instSel");
+  const inst = (pick && pick.value) || "";
+  const q = [];
+  if (song) q.push("song=" + encodeURIComponent(song));
+  if (inst) q.push("inst=" + encodeURIComponent(inst));
+  history.replaceState(null, "", root + (q.length ? "?" + q.join("&") : ""));
+}
+
 function clearLibrarySelection() {
   // The exact-library-body contract ends here (typed text, note clicks,
   // Clear, file load) — the hidden-song tracker must clear even when the
-  // dropdown selection is already empty (its early-return below).
+  // dropdown selection is already empty (the guarded branch below).
   lastLoadedId = "";
   const sel = document.getElementById("scale");
-  if (!sel || !sel.value) return;
-  sel.selectedIndex = -1;
-  syncLibraryMenu();
+  if (sel && sel.value) {
+    sel.selectedIndex = -1;
+    syncLibraryMenu();
+  }
+  // Typed/cleared/file-loaded content is a different song than the one
+  // the landing path names: the URL leaves the deep path once boot is
+  // behind us — and only AFTER the selection dropped, so a rewrite never
+  // names the replaced song (no library key remains → bare root).
+  // Idempotent: on the root the path matcher is already empty.
+  try { rewriteLanderUrl(); } catch (e) {}
 }
 
 function libraryMenuOpen() {
@@ -445,6 +481,9 @@ function loadLibraryItem(id) {
   // Only traffic that actually loaded a body counts; an onchange with a
   // missing id leaves the editor (and the tracker) as they were.
   if (loadedId) lastLoadedId = loadedId;
+  // A landed-crawler switch leaves the deep path (root + ?song=&inst=);
+  // boot's own loads arrive pre-mark and keep their landing path.
+  try { rewriteLanderUrl(); } catch (e) {}
   applySwing(swing);
   applySongTick(tick);
   if (typeof ensureOcarinaTemplate === "function") {
@@ -621,7 +660,7 @@ function wireLibrary() {
 
 export { BUILTIN, applySwing, applyTempoPct, clearLibrarySelection, currentSwing,
          fillLibrary, initBuiltin, libToast, loadedLibraryId, loadLibraryItem,
-         safeAlert, songFitsChart,
+         markUrlLanded, rewriteLanderUrl, safeAlert, songFitsChart,
          songTempo,
          syncLibraryMenu, tempoPct, userLib, wireLibrary, setUserLib, slugName,
          uniqueUserId, showHiddenSongs, refreshGeneratedScales };
@@ -631,6 +670,7 @@ window.userLib = userLib; window.setUserLib = setUserLib; window.slugName = slug
 window.uniqueUserId = uniqueUserId; window.withPlayHeaders = withPlayHeaders;
 window.fillLibrary = fillLibrary; window.initBuiltin = initBuiltin;
 window.loadLibraryItem = loadLibraryItem; window.tempoFromText = tempoFromText;
+window.markUrlLanded = markUrlLanded; window.rewriteLanderUrl = rewriteLanderUrl;
 window.applySongTick = applySongTick;
 window.setShowHidden = setShowHidden;
 window.showHiddenSongs = showHiddenSongs;

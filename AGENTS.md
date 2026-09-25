@@ -62,6 +62,14 @@ file sits at the repo root so every session finds it first.
    facts live outside Git by Robin's call (2026-09-24).
 8. Pushes, merges, PRs, branch create/delete, remote cleanup: **Robin's
    operations.** Amend only your own unpushed commits, same concern only.
+   **Placeholder-branch rule (Robin, 2026-09-25): a session NEVER commits —
+   not even noise-free board moves — on main.** When no branch exists for
+   the work at hand, the session creates or reuses a placeholder branch in
+   his naming style (session6, domain-switch, …) that Robin can rename, and
+   lands the unit there; main advances only by Robin's hands. A slip that
+   landed on main is rewound immediately and re-landed on the placeholder
+   (working-tree state preserved, `git branch -f main origin/main` to rewind
+   the pointer).
 9. **Commit titles:** one dense informative sentence in the repo's style —
    describe the change and why, quotable in a PR description. No emoji.
    Shipped code comments carry **no references to the local planning docs**

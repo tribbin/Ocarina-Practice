@@ -153,3 +153,22 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   (gate-green rows retired from the wording; lifts head the stack). This bookkeeping
   batch (notes/lifts/log/hot) is plans-only; app work next on Robin's word for the
   branch.
+
+- **2026-09-25 (session 6 branch — the two IDEAS lifts built: landed-crawler URLs + title link + issues link)** —
+  built on Robin's granted `session6` placeholder (renamed by him whenever; the bookkeeping
+  commit `fc70465` first moved OFF main onto session6 and main rewound to the merge tip per
+  the new placeholder-branch rule, now in AGENTS rule 8). RED→GREEN: gen_pages boot legs
+  first (red on all three behaviors), then the implementation — the landing SEED keeps its
+  clean canonical path (pinned), the site title is `header h1 > a[href='./']` (mount-agnostic
+  via <base>: root on the domain, /Ocarina-Practice on a project-page mount), a warm library
+  switch resolves the URL to the SITE ROOT with ?song=&inst= (derived from the current
+  pathname minus its /song/ tail — mount-agnostic by construction), a typed/cleared/file-
+  loaded replacement goes to BARE root (the rewrite runs after the dropdown drops so a stale
+  song name can never ride it), boot's own deep-link loads are gated by markUrlLanded() so
+  they keep the landing path forever. Hooks: library.js loadLibraryItem tail +
+  clearLibrarySelection (+ the idempotent root early-exit), app.js boot tail + the
+  switchInstrument same-song path (instrument change alone rewrites). The help dialog gained
+  the .help-meta colophon with the GitHub issues link (target=_blank rel=noopener). sw.js
+  VERSION → oco-pwa-v7 (rule 15; the offline suite rode the sweep green). Lint clean
+  (eslint + html-validate, node 22 restored to /tmp/opencode/node for the box). Full sweep
+  31/31 (262 s).

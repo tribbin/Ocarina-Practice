@@ -299,7 +299,78 @@ def main():
                             failures.append(f"{key}: unexplained HTTP failures {non404}")
                         if hard:
                             failures.append(f"{key}: console/page errors {hard}")
+                        # Landed-crawler semantics (Robin, IDEAS 2026-09-25):
+                        # the landing SEED keeps its clean canonical path;
+                        # the site title is a link to the site root (the
+                        # <base> re-roots "./" for every serving shape).
+                        seed_path = str(page.url).split("?")[0]
+                        if not seed_path.rstrip("/").endswith(
+                                f"/song/{cat}/{key}"):
+                            failures.append(
+                                f"{key}: landing seed must keep the clean "
+                                f"path (got {page.url})")
+                        if page.evaluate(
+                                "document.querySelector('header h1 a')"
+                                " && document.querySelector('header h1 a')"
+                                ".getAttribute('href') === './'") is not True:
+                            failures.append(
+                                f"{key}: the site title must link the site "
+                                "root (header h1 > a[href='./'])")
                         page.close()
+                        # A LATER library switch must never play different
+                        # content under the deep path: the URL resolves to
+                        # the site root with the ? GET vars.
+                        page2 = browser.new_page()
+                        page3 = None
+                        try:
+                            page2.goto(f"{base}/song/{cat}/{key}/",
+                                       wait_until="load")
+                            page2.wait_for_function(
+                                "document.getElementById('scale')"
+                                " && document.getElementById('scale').value"
+                                f" === '{member}'", timeout=20000)
+                            # The library select is wired by the custom menu
+                            # (the visible control is the menu) — select the
+                            # native option with actionability skipped.
+                            page2.select_option("#scale", "major", force=True)
+                            page2.wait_for_function(
+                                "document.getElementById('scale').value"
+                                " === 'major' && location.pathname === '/'"
+                                " && location.search.indexOf('song=') >= 0"
+                                " && location.search.indexOf('inst=') >= 0",
+                                timeout=20000)
+                            page2.close()
+                            # A typed replacement (the editor body no longer
+                            # the landed song) also leaves the path: bare
+                            # root, no stale vars.
+                            page3 = browser.new_page()
+                            page3.goto(f"{base}/song/{cat}/{key}/",
+                                       wait_until="load")
+                            page3.wait_for_function(
+                                "(function () { const s ="
+                                " document.getElementById('scale');"
+                                " return s && s.options.length > 0; })()",
+                                timeout=20000)
+                            page3.evaluate(
+                                "() => { const ta ="
+                                " document.getElementById('src');"
+                                " ta.value = '# typed\\nA4/4 A4/4';"
+                                " ta.dispatchEvent(new Event('input',"
+                                " { bubbles: true })); }")
+                            page3.wait_for_function(
+                                "location.pathname === '/'"
+                                " && location.search.indexOf('song=') < 0",
+                                timeout=20000)
+                            page3.close()
+                        except Exception as e:
+                            failures.append(f"{key}: landed-URL switch leg "
+                                            f"failed: {e}")
+                            for p in (page2, page3):
+                                if p:
+                                    try:
+                                        p.close()
+                                    except Exception:
+                                        pass
                     except Exception as e:
                         failures.append(f"{key}: boot failed: {e}")
                         try:
