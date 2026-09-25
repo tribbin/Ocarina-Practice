@@ -38,6 +38,11 @@ sys.path.insert(0, str(REPO / "tools"))
 import gen_song_pages as gen
 
 SONGS = json.loads((REPO / "songs.json").read_text(encoding="utf-8"))
+# Deriving twins materialize first (board §9 2026-09-25): the ladder and
+# every chart-fit must read the same bodies the generator materializes —
+# the byte-equal loader output is pinned by tests/twin_derive.py.
+from melody_transpose import materialize
+materialize(SONGS)
 MANIFEST = json.loads((REPO / "instruments.json").read_text(encoding="utf-8"))
 CHARTS = {i["id"]: gen.chart_ids(i["id"], MANIFEST) for i in MANIFEST["instruments"]}
 

@@ -204,6 +204,11 @@ def main():
         site_prefix = ""
     origin = args.origin.rstrip("/")
     songs = json.loads((REPO / "songs.json").read_text(encoding="utf-8"))
+    # Deriving twins materialize first (board §9 2026-09-25): the family
+    # walk and every chart-fit read the variant's body — byte-equal to the
+    # hand transcription the loader generates at boot (tests/twin_derive).
+    from melody_transpose import materialize
+    materialize(songs)
     manifest = json.loads((REPO / "instruments.json").read_text(encoding="utf-8"))
     charts = {i["id"]: chart_ids(i["id"], manifest) for i in manifest["instruments"]}
     html = (REPO / "index.html").read_text(encoding="utf-8")

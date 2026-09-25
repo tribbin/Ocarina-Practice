@@ -103,6 +103,8 @@ jobs:
         run: python tests/theme_toggle.py
       - name: Run transposer skill script tests
         run: python tests/transpose_skill.py
+      - name: Run twin-derivation byte-identity tests
+        run: python tests/twin_derive.py
       - name: Run wake-lock lifecycle tests
         run: python tests/wake_lock.py
       - name: Run practice close/mic layout tests

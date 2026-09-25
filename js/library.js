@@ -8,8 +8,57 @@ const LIB_KEY = "oco-bass-c-library";
 const SHOW_HIDDEN_KEY = "oco-bass-c-show-hidden";
 let BUILTIN = {};
 
+// Derivation engine (board §9 2026-09-25): the proven twin bodies leave
+// songs.json and materialize here from base body + uniform shift. The
+// byte-identity proofs shaped the rule (tools/melody_transpose.py is the
+// shared twin): an octave shift CARRIES the base letter and accidental
+// verbatim (Bb5 -12 is Bb4, never A#4), any other shift respells from
+// exact MIDI through the sharp table. '# ...' header lines verbatim,
+// [' ... '] bracket spans stashed out and restored (authored label
+// content never machine-moved). tests/twin_derive.py freezes the retired
+// hand bodies as fixtures: a base-body edit makes those fixtures fail on
+// purpose, forcing a revisit of the derivation.
+const DERIVE_SHARP = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+const DERIVE_PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+function deriveBody(base, shift) {
+  const stash = [];
+  const line = (l) => {
+    if (/^\s*#/.test(l)) return l;
+    return l
+      .replace(/\[[^\]]*\]/g, m => {
+        stash.push(m);
+        return "\u0001" + (stash.length - 1) + "\u0001";
+      })
+      .replace(/([A-G])([#bs]?)(\d)/g, (m, L, acc, oct) => {
+        if (shift % 12 === 0)
+          return L + (acc || "") + (parseInt(oct, 10) + shift / 12);
+        const a = (acc === "#" || acc === "s") ? 1 : acc === "b" ? -1 : 0;
+        const midi = (parseInt(oct, 10) + 1) * 12 + DERIVE_PC[L] + a + shift;
+        return DERIVE_SHARP[((midi % 12) + 12) % 12] +
+          (Math.floor(midi / 12) - 1);
+      });
+  };
+  const out = base.split("\n").map(line).join("\n");
+  return out.replace(/\u0001(\d+)\u0001/g, (m, i) => stash[+i]);
+}
+
 function initBuiltin(songs) {
   BUILTIN = songs || {};
+  // The derivation pass: entries declaring a derives record materialize
+  // their body from the base + shift; the record itself leaves BUILTIN so
+  // the published shape stays name/group/tempo/body/... (shipped-songs
+  // probes read exactly that). One level only — bases never derive.
+  for (const id of Object.keys(BUILTIN)) {
+    const d = BUILTIN[id].derives;
+    if (!d || typeof d !== "object") continue;
+    const base = BUILTIN[d.key];
+    const body = BUILTIN[id].body;
+    if (base && !base.derives &&
+        !(typeof body === "string" && body.trim())) {
+      BUILTIN[id].body = deriveBody(String(base.body || ""), d.shift | 0);
+    }
+    delete BUILTIN[id].derives;
+  }
   window.BUILTIN = BUILTIN; // compat mirror (shipped-songs probes read it)
 }
 

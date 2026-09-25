@@ -223,7 +223,11 @@ class V:
             if not isinstance(name, str) or not name:
                 self.err("songs.json", "no-name", key)
             body = item.get("body")
-            if not isinstance(body, str) or not body.strip():
+            # A hand body is required EXCEPT on a derives entry: the record
+            # declares an at-load derivation instead (a body beside a
+            # record is the redundant double the derives block flags).
+            if (not isinstance(body, str) or not body.strip()) \
+                    and "derives" not in item:
                 self.err("songs.json", "no-body", key)
             for field in ("hidden", "tick"):
                 if field in item and not isinstance(item[field], bool):
@@ -247,6 +251,54 @@ class V:
                 elif known and intended not in known:
                     self.err("songs.json", "bad-intended",
                              f"{key}: intended {intended!r} is no manifest instrument id")
+            # Derived twins (board §9 2026-09-25): a derives record declares
+            # the AT-LOAD derivation {key: base, shift, flats?}. The variant
+            # must not ALSO ship a hand body (redundant, the two would
+            # fight), the base must be a different key that keeps its hand
+            # body and never itself derives, and the record shape is strict.
+            if "derives" in item:
+                dr = item["derives"]
+                if not isinstance(dr, dict) or "key" not in dr \
+                        or "shift" not in dr:
+                    self.err("songs.json", "bad-derives",
+                             f"{key}: derives must be an object with "
+                             "key and shift")
+                    dr = {}
+                else:
+                    for unk in sorted(set(dr) - {"key", "shift"}):
+                        self.err("songs.json", "bad-derives",
+                                 f"{key}: unknown derives field {unk!r}")
+                    base_key = dr.get("key")
+                    if not isinstance(base_key, str) or base_key == key:
+                        self.err("songs.json", "bad-derives",
+                                 f"{key}: derives.key must name another song")
+                    else:
+                        base = s.get(base_key)
+                        if base is None:
+                            self.err("songs.json", "bad-derives",
+                                     f"{key}: derives.key {base_key!r} "
+                                     "is not a song")
+                        elif base.get("derives") is not None:
+                            self.err("songs.json", "bad-derives",
+                                     f"{key}: base {base_key!r} itself "
+                                     "derives (one level)")
+                        elif not isinstance(base.get("body"), str) \
+                                or not base["body"].strip():
+                            self.err("songs.json", "bad-derives",
+                                     f"{key}: base {base_key!r} must keep "
+                                     "a hand body")
+                    shift = dr.get("shift")
+                    if isinstance(shift, bool) or not isinstance(shift, int):
+                        self.err("songs.json", "bad-derives",
+                                 f"{key}: derives.shift must be an integer")
+                    elif abs(shift) > 24:
+                        self.err("songs.json", "bad-derives",
+                                 f"{key}: derives.shift beyond two octaves")
+                body = item.get("body")
+                if isinstance(body, str) and body.strip():
+                    self.err("songs.json", "bad-derives",
+                             f"{key}: a derives record replaces its body — "
+                             "ship one, not both")
 
 
 def validate(root):
@@ -329,6 +381,60 @@ def v0():
         errs = validate(good_sandbox(td))
         if errs:
             raise AssertionError(f"good corpus flagged: {errs}")
+
+
+@case("derives record shape (good, then each defect class) caught")
+def v01():
+    with tempfile.TemporaryDirectory() as td:
+        tmp = good_sandbox(td)
+        # the good shape: a variant derives from the base, no hand body
+        good = GOOD_SONGS.replace(
+            '"name": "Some Song", "group": "Other",\n                '
+            '"tempo": 120, "body": "C4 D4 E4"},',
+            '"name": "Some Song", "group": "Other",\n                '
+            '"tempo": 120, "body": "C4 D4 E4"},\n'
+            '  "some-song-12": {"name": "Some Song 12", "group": "Other",'
+            ' "tempo": 120,\n                 "derives": {"key": "some-song",'
+            ' "shift": -12}},')
+        write(tmp, "songs.json", good)
+        errs = validate(tmp)
+        if errs:
+            raise AssertionError(f"good derive shape flagged: {errs}")
+        # ship-one-not-both: a hand body beside the record is a defect
+        write(tmp, "songs.json", good.replace('"derives": {"key":',
+                                              '"body": "C4", "derives": {"key":'))
+        expect_hits(validate(tmp), "some-song-12", "bad-derives")
+        # unknown field
+        write(tmp, "songs.json", good.replace(
+            '"shift": -12}}', '"shift": -12, "weird": true}}'))
+        expect_hits(validate(tmp), "some-song-12", "bad-derives")
+        # self-derive
+        write(tmp, "songs.json", good.replace(
+            '"key": "some-song"', '"key": "some-song-12"'))
+        expect_hits(validate(tmp), "some-song-12", "bad-derives")
+        # missing base
+        write(tmp, "songs.json", good.replace(
+            '"key": "some-song"', '"key": "no-such-song"'))
+        expect_hits(validate(tmp), "no-such-song", "bad-derives")
+        # base with no body
+        write(tmp, "songs.json", good.replace(
+            '"tempo": 120, "body": "C4 D4 E4"},\n',
+            '"tempo": 120},\n').replace(
+            '"body": "C4", "derives": {', '"derives": {'))
+        expect_hits(validate(tmp), "some-song", "bad-derives")
+        # shift not an integer
+        write(tmp, "songs.json", good.replace(
+            '"shift": -12', '"shift": -12.5'))
+        expect_hits(validate(tmp), "some-song-12", "bad-derives")
+        # shift beyond two octaves
+        write(tmp, "songs.json", good.replace(
+            '"shift": -12', '"shift": 25'))
+        expect_hits(validate(tmp), "some-song-12", "bad-derives")
+        # flats (a retired concept — spelling is body-territory) lands in
+        # the unknown-field catch
+        write(tmp, "songs.json", good.replace(
+            '"shift": -12}}', '"shift": -12, "flats": "yes"}}'))
+        expect_hits(validate(tmp), "some-song-12", "bad-derives")
 
 
 @case("duplicate JSON keys caught on both data files")

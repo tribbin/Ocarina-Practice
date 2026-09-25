@@ -22,6 +22,8 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from melody_transpose import transpose_body  # the shared engine
+
 ROOT = Path(__file__).resolve().parent.parent
 
 NAMES_SHARP = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
@@ -91,37 +93,8 @@ def tokenize(body):
     return tokens, unknowns
 
 
-def transpose_body(body, shift):
-    """The melody-only mover, reusing the transposer skill's own rules:
-    '# ...' header lines verbatim, [' ... '] spans stashed verbatim, every
-    [A-G]([#bs]?)[0-9] in the remaining line re-spelled from MIDI."""
-    stash = []
-
-    def line_edit(line):
-        if line.lstrip().startswith("#"):
-            return line
-        line = re.sub(r"\[[^\]]*\]", lambda m: _stash(m), line)
-        line = re.sub(r"([A-G])([#bs]?)(\d)",
-                      lambda m: _respell(m.group(1), m.group(2), m.group(3), shift),
-                      line)
-        return line
-
-    def _stash(m):
-        stash.append(m.group(0))
-        return "\u0001%d\u0001" % (len(stash) - 1)
-
-    out = []
-    for line in body.split("\n"):
-        line = line_edit(line)
-        out.append(line)
-    text = "\n".join(out)
-    return re.sub(r"\u0001(\d+)\u0001", lambda m: stash[int(m.group(1))], text)
-
-
-def _respell(letter, acc, oct_, shift):
-    accn = 1 if acc in ("#", "s") else -1 if acc == "b" else 0
-    midi = (int(oct_) + 1) * 12 + PC[letter] + accn + shift
-    return NAMES_SHARP[((midi % 12) + 12) % 12] + str(midi // 12 - 1)
+# transpose_body/_respell moved to tools/melody_transpose.py — the shared
+# engine gen_song_pages materializes from too; this tool imports it above.
 
 
 def classify(body_a, body_b):
@@ -183,6 +156,20 @@ def pairs_from(songs):
 
 def real_report(songs):
     lines = []
+    # Derived twins first (board §9 2026-09-25): entries with a derives
+    # record materialize their byte-equal body HERE so the pairwise walk
+    # sees exactly the streams it classified before the bodies left
+    # songs.json — the report reads identical, top to bottom.
+    from melody_transpose import materialize
+    from melody_transpose import materialize
+    derived = [(key, item["derives"]) for key, item in songs.items()
+               if isinstance(item.get("derives"), dict)]
+    materialize(songs)
+    for key, dr in derived:
+        lines.append(
+            f"derived {key} <- {dr.get('key')} (shift "
+            f"{dr.get('shift')}{', flats' if dr.get('flats') else ''}) "
+            f"— pinned byte-equal by tests/twin_derive.py")
     fam_pairs, cross = pairs_from(songs)
     order = {k: i for i, k in enumerate(songs)}
 
