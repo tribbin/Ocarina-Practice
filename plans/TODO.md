@@ -56,16 +56,16 @@ first circle → urgency, last letter → effort.
 ## Hot list (importance across all types)
 
 Picks for the next session(s), roughly damage × imminence ÷ effort
-(refreshed 2026-09-25, joint flip session: the domain is live and the
-permalink gate went GREEN at 20 checks — robots/sitemap/og rows done; the
-new Robin-lifted landing-URL + issues-link picks head the stack):
+(refreshed 2026-09-25, session 12 close: quick openers + wake-lock + the
+layout pair + HiFi/menu + the general readability scan all landed on
+session12; the IDEAS lifts + merge/deploy are next):
 
 | Item | Section |
 |---|---|
-| **Landed-crawler URL semantics: leaving a stub path never plays different content under it** (switches → root + ?vars; title click → root) + **info-screen issues link** — the two Robin IDEAS lifts from the flip session, next build | §9 F-next / §7 |
-| Robin-field feedback stack: PWA install + airplane-mode practice (§9 F1), theme/help/title-bar eyeball, history line, new highlight-plan playback eyeball, dip dipMs/dipFrac by ear (§4 P2's retuned gate) | feel checks |
-| §9 feature stack: octave-twin dedup decision (survey done, held for Robin), transpose (held for Robin — text-vs-token fork on the item), recording — MIDI work only as tooling supporting Robin (section looping declined 2026-09-24 — archived in DONE §9) | §9 |
-| **Search-engine perma-links — LIVE since 2026-09-25 (gate green, 20 checks)**; residuals only: Lighthouse pass, SERP watch (November Switch-2 anchor), Robin's Search Console verification + sitemap submission | §9 |
+| **Landed-crawler URL semantics: leaving a stub path never plays different content under it** (switches → root + ?vars; title click → root) + **info-screen issues link** — the two Robin IDEAS lifts, next build | §9 F-next / §7 |
+| session12 merge + deploy (Robin), then: live Lighthouse re-run (CLS fixes + HiFi/chrome), wake-lock field check (phone stays awake through play/practice), HiFi retune eyeball (his knobs), tuner ✕/mic glyph eyeball | feel checks |
+| Robin-field feedback stack: PWA install + airplane-mode practice (§9 F1), theme/help/title-bar eyeball, history line, highlight-plan playback eyeball, dip dipMs/dipFrac by ear (§4 P2's retuned gate) | feel checks |
+| §9 feature stack: octave-twin dedup decision (survey done, held for Robin), transpose (held for Robin — text-vs-token fork on the item), recording — MIDI work only as tooling supporting Robin | §9 |
 
 ---
 
@@ -92,6 +92,7 @@ new Robin-lifted landing-URL + issues-link picks head the stack):
 - [ ] **debug.js coverage** — nothing tested; low value. `🟢 ⚪`
 
 Currently covered (don't lose this): practice acceptance (4 cases strict+closed-loop), practice dip gate (hold-through blocked, silence/50%-notch dips pass, 75% duck shut, legato free), practice seat across view rebuilds + zen-entry stopMelody + overlay zen-only seats, console-hygiene boot scan (4 boots; allowlist = manifest-declared tone misses), support-bracket battery incl. bit-identical melody-vs-support equivalence + Zen timing/gating, instrument load/tone-model install per manifest (incl. svgWhen id/title paths + boot diagnostics in per-leg fresh contexts), render pin (chips/grid/scroll-band/highlight/focus-restore + typed-render debounce contract), svg clone coordinates, debug panel build-on-open contract, transport scheduler arithmetic/cut-bus/lite, practice history, template safety, theme toggle, offline SW boot+swap, ac worker parity, swing grid, sr hints, spike watch (the tick hunt). CI = push/PR/manual, explicitly not a deploy gate. (.github/workflows/practice-tests.yml — console-hygiene + 24 suite steps + eslint + html-validate; local run-all counted 25 green on 2026-09-23 on the Linux partition and again on the Windows partition — partition sweep red 24/25 until the runner's UTF-8 child-env fix, see session log ~2026-09-23) NOTE: practice_accepts flaked ONE strict case under full-sweep load 2026-09-23, green twice standalone afterward and in the diag run — watch it, the arbiter hardening already took one such race; support_accepts flaked the same class 2026-09-24 (fixed wall-clock read window vs audio-clock lag under sweep CPU contention) and got the class cure: the read is now a real rendezvous with wall-fire stamps + ctx snapshots `335c4b4`). **Third member 2026-09-25 (CLI run `36110497803`, job 107992645371): practice_dip's leg A stalled the full 15 s timeout at maxIdx 0** — same SHA the local sweep had green; a DIFFERENT injury inside the same family: the suite's rendezvous (OCA_PRACTICE+NOTES) unlocks INSIDE loadInstrument (the stretch between installFingerings and boot's tail), where fillLibrary/loadLibraryItem(home) → practiceInvalidate is still owed — a session started mid-boot died when the tail landed; the stall reproduces at will with CDP network latency, cured by the rule-13 real rendezvous: the #scale options guard (filled only by the tail; a rAF poll never resolves mid-synchronous-block) plus a state card (started/st/ix/frames) on every driver resolve so a future stall names itself. The same tail guard rode into every suite that starts practice or needs typed editor text to survive boot (practice_accepts_melody, practice_zen_return, practice_history, keyboard_widgets, render_pin); library_hardening already waited a stronger post-tail signal (the Scales OPTGROUP), instrument_switch_race covers the race as its subject, playback-only suites are immune (practiceInvalidate stops practice, never play). Full sweep 31/31 green after the cure.
+
 
 
 ## 7. Accessibility & UX
@@ -181,6 +182,40 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   31/31 (262 s).
 
 - **2026-09-25 (intended-instrument landed; Robin's model pinned)** — the songs.json `intended` field + the intended-aware landing walk shipped red-first (sandbox v12 validator class + the BotW pin), BotW seeds the -bass body on the triple from the clean URL after merge+deploy. Robin's followups pinned the semantics on the item: the instrument-tagged entries are the versions and keep their keys (no rekey, no -bass deletion), the non-specific URL is the intended-instrument's entry point when defined, the ladder rules otherwise, and the clean page titles what plays. IDEAS line left the scratchpad; the open board item carries future per-song values as Robin's musical calls. Sweep 31/31 (262 s) covered the data+generator+validator+pins; no sw bump (data+tooling only).
+
+- **2026-09-25 (session 12 — quick openers, wake-lock, layout pair, HiFi + theme menu, the general readability scan; the headless rule born)** —
+ Robin picked the openers+wake-lock+layout+HiFi batch (answers: wake-lock play+
+ practice; first pass palette+LED only; the theme selector is a MENU, theme named
+ **HiFi**, code `hifi`). Landed on the `session12` placeholder branch: (1) `ee4e2ec`
+ the CI job title names the real battery; (2) **Lighthouse pass** — mobile P80 /
+ A11y 100 / BP 96 / SEO 100, desktop P99; the scanner caught the mobile CLS 0.352
+ (reproduced headlessly under real throttling = the inst-sel ballooning + a
+ pre-CSS flash) and the token-touch listeners went passive — `b023394`; the
+ FIRST Lighthouse run opened Chrome HEADFUL on Robin's screen — the **headless
+ rule** went into AGENTS rule 17 (never a window; explicit `--headless=new
+ --disable-gpu` flags; asks first if unavoidable). (3) `e375203` the wake lock
+ (js/wakelock.js reasons-set module; seams in audio/playMelody-family +
+ practice start/pause/anchor/standby/un-press; `tests/wake_lock.py` red→green,
+ the setWakeLockSource seam after three probes proved `navigator.wakeLock` is a
+ readonly WebIDL getter nothing can shadow). (4) `b106cba` the layout pair —
+ tuner ✕ un-presses practice + mic glyph replaces ♪ on both transports;
+ Robin live-tested mid-unit (the ✕ overlapped the status glyph — row reserves
+ 30px; he verified the close works). (5) `bccb4f8` the theme MENU (Plain /
+ Hyrule / HiFi uniform ink) + the HiFi first pass. (6) **The readability work,
+ the session's centerpiece**: Robin demanded a GENERAL detector ("you'll find
+ a general way for a non-human") after unspecific hints — the selector roster
+ was replaced by the full-DOM scanner (every visible text/glyph element per
+ state, opened-state asserts for popups, measured-count floors vs
+ pass-by-nothing); the scanner then found the rest itself: HYRULE theme menu
+ (his catch), HiFi light-sheet internals, the piano now-key label,
+ --token-pause at 4.14, the Hyrule dbg heading — all fixed in `a529fd0`
+ (chassis-painted shape verified with Robin first; sw VERSION v10→v12 across
+ the batch; 34/34 sweep twice; lint clean; CI = push battery, single run).
+ Board: §6 items closed (job title, a new general-readability item), §9 items
+ added+closed (wake lock, layout pair, HiFi first pass), F7 note (Lighthouse
+ pass + report-only residuals). Branch session12 ends this wrap; Robin pushes/
+ merges (PR copy per canon handed below). Helds: his field checks (wake-lock
+ phone, HiFi retune knobs, ✕/mic look, live Lighthouse re-run post-deploy).
 
 - **2026-09-25 (session 11 wrap — the intended exemplars land, CI stops double-running, the next batch planted)** —
   after the PR-copy canon was pinned to Robin's named PRs (#3 sentence-tagged links, #9
