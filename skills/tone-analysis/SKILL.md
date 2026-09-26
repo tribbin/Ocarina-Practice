@@ -12,6 +12,9 @@ description: Analyze single-tone WAV recordings (ocarina, fipple flutes) for env
 
 ## Prerequisites
 - Python 3 with `numpy` (`python -m pip install numpy`). No scipy needed.
+- The fit loop's render half runs the repo's venv (`.venv/bin/python3`):
+  it needs numpy + playwright (`.venv/bin/pip install numpy` if a fresh venv
+  lacks it — playwright already rides the suite bootstrap).
 
 ## Pipeline
 
@@ -80,9 +83,60 @@ Workarounds are ALREADY built into `scripts/render_ours.py` — keep them on any
 This avoids Chrome entirely; the debug panel's "⤓ Export WAV" button (js/debug.js) is the in-browser audit path: press it, play one note, the WAV downloads, then measure with `tone_report.py`.
 
 
+## 12-hole melody recording → per-note fit (the loop that landed the first tone.json)
+`oot-alto-c-12`'s `tone.json` was fit 2026-09-26 from Robin's MELODY recordings
+(skills/tone-analysis/reference-recordings/12hole/, also the working copies under
+`research/note-recordings/12hole/`):
+1. `scripts/melody_cut.py <wav> [--label L]` segments a melody mid-silence to
+   mid-silence (span-adaptive thresholds, stateful scan; cuts keep the full
+   attack, the release and a symmetric slice of room noise) and runs each cut
+   through `tone_report.analyze` with SCALABLE plateau margins (short notes
+   survive). Segments land in `research/analysis/12hole/<label>_segments.json`
+   + per-cut WAVs. Attribution = autocorr f0 → nearest chart note id (recorded
+   cents ride along; the ladder plays ±50 cents off ET sometimes — expected).
+2. Data policy (Robin): the C-major tone LADDER is the only single-note-grade
+   source; kokiri/storms contain transients, glides and multi-note spans —
+   they stay in the dataset as transition/glide CONTEXT (the engine's glide is
+   as short as a finger-tap on the real ocarina), never as row sources.
+   Notes the ladder doesn't cover stay unfitted (the loader interpolates).
+3. `scripts/fit_tone.py targets` aggregates the best LADDER take per note
+   (longest steady span wins); `fit` renders candidate rows through the bench
+   and iterates algebraic corrections (harmonics proportional ±8 dB/round,
+   level relative-to-anchor ±8, wind band-1 shift, wander/wob/attack loops);
+   `publish` copies the converged draft into `instruments/<id>/tone.json`.
+   Level convention (Robin): the recording gain is a mic-chain artifact —
+   levelDb anchors the loudest fitted note at 0 dB and ONLY the note-to-note
+   curve ships; masterLevel stays untouched (headroom for support tracks +
+   reverb). Converged r3: harmonics ±2 dB, levels ±0.3 dB, band-1 ±0.7 dB;
+   known residuals: deeper noise-band shape (b2/b3, the wind chain's own
+   LP/bump constants) and wobble-depth delivery (rows carry the measured
+   medians; the engine's slow-LFO implementation reads shallower).
+4. `scripts/render_ours.py` rebuilt for the module-era audio.js: it serves a
+   PATCHED copy (imports re-pointed absolute, module-local freqOf override via
+   `window.__F0`, getReverbBus/getLiteBus swapped for dry outGain, air/edge/
+   wander oscillators stubbed at their CALL SITES — not by osc creation order)
+   and imports it through an import map (the whole library graph imports
+   `./audio.js`, so the map redirects every importer to the one patched
+   instance; `Object.defineProperty(window, 'audioCtx')` would throw on a
+   second evaluation). Driven by Playwright in real time — `--virtual-time-
+   budget` + dump-dom never resolves `startRendering()` on this chrome, even
+   for a bare oscillator. One fresh context per render; ports 8137 (repo) /
+   8138 (bench pages), CORS=* so cross-port module imports work.
+
 ## Data locations
-- Dataset: `research/analysis/alto-recordings-tone-data.json` (compact trend summary lives in `trends`).
-- Raw reports + txt snapshots: `research/analysis/reports/<label>_report.json` / `<label>_txt.json`.
-- Recordings: `research/` (`C5.wav`, `C5_2nd_recording.wav`, `D6.wav`, `G6.wav` + `.txt` snapshots).
-- Mic gain identical across recordings → absolute dBFS differences between files are real breath-pressure differences (e.g. D6 plateau is ~+16 dB louder than C5).
-- Player guidance: D6/G6/C5_2nd were recorded against a tuner (in tune ±1.5 cents); no intentional vibrato — model slow wobble as intrinsic.
+- 12-hole fit working tree: `research/analysis/12hole/` (segments, cuts,
+  targets, candidate + draft tone.json, fit renders) — gitignored, the repo
+  receives only the finished `instruments/<id>/tone.json`.
+- Melody recordings: `research/note-recordings/12hole/` (gitignored working
+  copies) and the committed set under `reference-recordings/12hole/`.
+- Alto single-note pipeline (older): dataset
+  `research/analysis/alto-recordings-tone-data.json` (compact trend summary in
+  `trends`), raw reports + txt snapshots under `research/analysis/reports/`,
+  recordings `research/` (`C5.wav`, `C5_2nd_recording.wav`, `D6.wav`,
+  `G6.wav` + `.txt` snapshots) — may live only on the recording machine.
+- Mic gain identical across recordings → absolute dBFS differences between
+  files are real breath-pressure differences (e.g. D6 plateau ~+16 dB over C5);
+  BUT the recordings' gain itself is a mic artifact — the shipped synth copies
+  only the relative note curve (Robin, 2026-09-26).
+- Player guidance: D6/G6/C5_2nd were recorded against a tuner (±1.5 cents); no
+  intentional vibrato — model slow wobble as intrinsic.

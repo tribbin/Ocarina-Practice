@@ -73,7 +73,7 @@ night; what remains is measurement/planting work and his eyeballs):
 
 ## 1. Bugs (correctness / data loss)
 
-- [ ] **Measure and fit the chambers** — Robin records tone.json per chamber (stein-double-alto-c, oot-alto-c-12, ico-contrabass-11-c declare the field ahead of data; missing files read as "no data yet"); each fitting feeds the tone engine, maybe dropping very-low-dB harmonics later. Robin's hands-on work as he gets time. `🟩 ⚪ ⚙L`
+- [ ] **Measure and fit the chambers** — Robin records tone.json per chamber (stein-double-alto-c, oot-alto-c-12, ico-contrabass-11-c declare the field ahead of data; missing files read as "no data yet"); each fitting feeds the tone engine, maybe dropping very-low-dB harmonics later. Robin's hands-on work as he gets time. The 12-hole per-note fit is done (tone.json shipped for oot-alto-c-12, work on the 12-hole-synth-tuning branch): ladder-cut melodies are the single-note-grade source (kokiri/storms kept as transition/glide context — Robin: the real ocarina's glide is as short as a finger-tap while the engine's is longer), levelDb anchors the loudest fitted note at 0 dB (recorded gain is a mic artifact, masterLevel untouched so support tracks + reverb keep headroom), and the offline reproduce bench (skills/tone-analysis/scripts/fit_tone.py + render_ours.py, module-era audio.js via import map, Playwright real-time render) closed the loop to ±2 dB harmonics / ±0.3 dB levels on 11 ladder notes; D5/Ds5 unfitted (loader interpolates). HELD for Robin's field check — his ears name the next layer (noise shape b2/b3 + wobble-depth residuals noted in skills/tone-analysis/SKILL.md). No sw VERSION bump (data-only, precedent 8e7b1d7). `🟩 ⚪ ⚙L`
 
 ## 2. Robustness / error handling
 
@@ -402,3 +402,55 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   research tree, and CI keeps the corpus/grid contracts green through
   shipped_songs. Verified both shapes (the file moved out = skip exit 0,
   moved back = the full battery).
+
+- **2026-09-26 (session 17 cont. — the 12-hole recordings become per-note data: the melody-cut pipeline, the module-era offline bench, the first fitted tone.json)** —
+  Robin's IDEAS 12-hole recording analysis picked up on the
+  `12-hole-synth-tuning` branch (his guidance all session: tone ladder = the
+  feed ("multiple single notes when cut", honest volume envelope, silence as
+  the noise baseline), kokiri/storms = transition/glide context (the real
+  glide is a finger-tap), melody WAVs only — the individual note takes were
+  removed by his own hand, and the recordings' gain is a mic artifact while
+  end-volume must keep headroom for support tracks/reverb):
+  (1) **melody_cut.py** lands in the tone-analysis skill: span-adaptive
+      thresholds cut a melody mid-silence to mid-silence (the same gap owned
+      by both neighbors) and run every cut through tone_report.analyze with
+      scalable plateau margins + guard for short cuts (tone_report gained a
+      `margins=(0.22, 0.12)` parameter, defaults unchanged); attribution =
+      autocorr f0 → nearest chart id, cents recorded but not forced ET.
+      Ladder = 11 single-note-grade cuts; kokiri/storms measure but never
+      feed per Robin's call (transients/multi-note spans).
+  (2) **render_ours.py rebuilt for the module-era audio.js**: the old
+      classic-script load path is dead (audio.js is ESM now). The bench
+      writes a PATCHED module copy (imports absolute, module-local freqOf
+      with a `window.__F0` override, reverb/lite buses swapped for dry
+      outGain, air/edge/wander oscillators stubbed at their CALL sites) and
+      resolves it through one import map so the whole library graph has a
+      single audio instance; CORS=* on both bench servers; runs under
+      Playwright in REAL time (dump-dom + virtual time never resolves
+      startRendering on this chrome even for a bare oscillator).
+  (3) **fit_tone.py** closes the reproduce→record loop: per-note ladder
+      targets (best steady take, level anchored at the loudest fitted note,
+      levelDb all ≤ 0), then offline render → same-pipeline measure →
+      algebraic correction rounds. Converged round 3 on 11 rows: harmonics
+      within ±2 dB (systematic small sink below the blow-variance band),
+      levels ±0.3 dB, wind band-1 ±0.7 dB; open residuals: wind shape in
+      bands 2-3 (chain's own LP/bump constants), wobble-depth delivery and
+      attack-length delivery — all noted in the skill for the next layer.
+      D5/Ds5 unfitted (no ladder coverage; loader interpolates); B4's row
+      rides the ladder's re-blow blip (best-available, flagged).
+  (4) **instruments/oot-alto-c-12/tone.json ships** (tone-fit-v1, 11 rows,
+      chamber 1): harmonics/level/wind-band/wander/wobble/attack per note
+      from measurement, osDb from take overshoot, `h` vectors + expanded
+      keys keeping the loader free of new logic. Suite updates: data change,
+      so tests/instruments_load's boot leg repointed (a SHIPPED tone.json
+      must install as the model; declared-but-absent keeps the 404
+      tolerance); data_validator + console_hygiene green untouched; no sw
+      VERSION bump (data-only, precedent 8e7b1d7 / fetch rides SWR runtime
+      with no prior successful copy).
+  Affected suites green (data_validator, instruments_load — leg rewritten
+  for the landed data, console_hygiene); the board note + this log entry
+  land via tools/board.py. HELD for Robin's field check: the first fitted
+  voice is an audible-behavior change — his ears (multi-layer: the notes
+  themselves, the level curve inside one chamber, the wind) own the next
+  step; i will re-record when kids sleep done and the improved engine gets
+  re-analyzed per IDEAS (re-record double-alto-c notes).

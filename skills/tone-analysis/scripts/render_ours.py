@@ -1,106 +1,156 @@
-# render_ours.py — render the repo synth to WAV via headless-chrome OfflineAudioContext.
-# For each note: variant A "shipped" (ET pitch, default params incl. vibrato) and
-# variant B "matched" (measured f0, vibrato/tremolo off, master level matched to
-# the recording's plateau H1 RMS). No repo code is modified.
-import json, subprocess, os, base64, re, sys
+# render_ours.py — render the repo synth to WAV via headless-chrome
+# OfflineAudioContext for the instrument-fit loop (the offline "testbench").
+# audio.js is an ES module: the bench serves a PATCHED copy (imports re-pointed
+# absolute, module-local freqOf override, dry render buses) and imports it as a
+# real module — no classic-script shims.
+#
+# Render-path deviations from the shipped app (documented; they keep offline
+# rendering from hanging and touch only inaudible-at-fit levels):
+#   1. getReverbBus / getLiteBus bodies swapped for wire-through outGain(0.6)
+#      (the always-connected 2.6 s convolver and the bus limiters hang or clip
+#      offline; the app runs reverb OFF by default and the limiter rarely
+#      engages, but drop it entirely so plateau comparisons stay linear).
+#   2. air (osc #2), edge (#4), wander LFO (#5) are stubbed by muteAirEdge
+#      (their combos hang offline; measurements below quantify their absence
+#      against the recorded tone, the wind-noise layer still renders).
+#   3. vibrato/tremolo can be disabled (--no-vib) for plateau takes.
+#
+# One page render per call, one fresh --user-data-dir per page, ~1.5 s gap.
+#
+# Usage:
+#   python render_ours.py <note id> [:<dur>] [-o out.wav]
+#        [--inst oot-alto-c-12] [--tone auto|none|<path>]
+#        [--no-vib] [--no-wob] [--master-level 0.26] [--f0 HZ]
+#   - note ids ride the instrument's fingerings.json; pitch is the chart's
+#     ET frequency unless --f0 overrides (window.__F0 patched into the module).
+import json, subprocess, os, re, sys, time, glob, shutil
 
-APP = r"C:\Users\tribb\Documents\git\Triple-Bass-in-C-Ocarina-Tab-Maker"
-TMP = r"C:\Users\tribb\AppData\Local\Temp\opencode"
-CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+HERE = os.path.dirname(os.path.abspath(__file__))
+REPO = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+TMP = "/tmp/opencode" if os.path.isdir("/tmp/opencode") else os.path.join(REPO, "research", "analysis", "tmp")
+JS = "http://127.0.0.1:8137/js"
+PAGE = "http://127.0.0.1:8138"
 
-fing_json = json.dumps(json.load(open(os.path.join(APP, "fingerings.json"), encoding="utf-8")))
+def find_chrome():
+    if os.environ.get("OCA_CHROME"): return os.environ["OCA_CHROME"]
+    for cand in ["/usr/bin/google-chrome", "/usr/bin/chromium",
+                 "/usr/bin/chromium-browser", shutil.which("chromium")]:
+        if cand and os.path.exists(cand): return cand
+    hits = sorted(glob.glob(os.path.expanduser(
+        "~/.cache/ms-playwright/chromium-*/chrome-linux*/chrome")))
+    return hits[0] if hits else None
+
+_fing_cache = {}
+
+def fing_data(inst):
+    if inst not in _fing_cache:
+        _fing_cache[inst] = json.load(
+            open(os.path.join(REPO, "instruments", inst, "fingerings.json"), encoding="utf-8"))
+    return _fing_cache[inst]
+
+def build_patched_module(inst):
+    # 1. all relative imports of the module graph resolve on the repo server
+    #    (parse.js and friends keep re-importing each other relative to THEMSELVES);
+    # 2. audio.js imports freqOf from music-math — the pitch override needs a
+    #    module-local freqOf consulting window.__F0 first;
+    # 3. the two bus builders swap for dry wire-through copies.
+    src = open(os.path.join(REPO, "js", "audio.js"), encoding="utf-8-sig").read()
+    src = src.replace('from "./', 'from "%s/' % JS)
+    src = src.replace(
+        'import { freqOf, quarterSecFor, tokenGridBeats } from',
+        'import { freqOf as mathFreqOf, quarterSecFor, tokenGridBeats } from')
+    src = src.replace(
+        "import { isPracticeActive } from",
+        "function freqOf(id) { if (typeof window !== \"undefined\" && window.__F0) return window.__F0; return mathFreqOf(id); }\n"
+        "function STUB_OSC(ctx) { const sink = ctx.createGain(); return { type: \"sine\", frequency: sink.gain, detune: sink.gain, setPeriodicWave: function(){}, connect: function(){}, start: function(){}, stop: function(){} }; }\n"
+        'import { isPracticeActive } from')
+    # offline hang log: air, edge and its wander LFO must never create REAL
+    # oscillators in an OfflineAudioContext. Stub them at their call sites so
+    # the surrounding wiring stays intact (buffer layers keep rendering).
+    src = src.replace("const air = ctx.createOscillator();",
+                      "const air = STUB_OSC(ctx);")
+    src = src.replace("const edge = ctx.createOscillator();",
+                      "const edge = STUB_OSC(ctx);")
+    src = src.replace("const wander = ctx.createOscillator();",
+                      "const wander = STUB_OSC(ctx);")
+    src = re.sub(r"function getReverbBus\(ctx\) \{.*?\n\}",
+                 "function getReverbBus(ctx) {\n"
+                 "  if (reverbBus && reverbBus.context === ctx) return reverbBus;\n"
+                 "  const input = ctx.createGain();\n"
+                 "  const outGain = ctx.createGain();\n"
+                 "  outGain.gain.value = 0.6;\n"
+                 "  input.connect(outGain); outGain.connect(ctx.destination);\n"
+                 "  reverbBus = input;\n"
+                 "  return reverbBus;\n"
+                 "}", src, count=1)
+    src = re.sub(r"function getLiteBus\(ctx\) \{.*?\n\}",
+                 "function getLiteBus(ctx) {\n"
+                 "  if (liteBus && liteBus.context === ctx) return liteBus;\n"
+                 "  const input = ctx.createGain();\n"
+                 "  const outGain = ctx.createGain();\n"
+                 "  outGain.gain.value = 0.6;\n"
+                 "  input.connect(outGain); outGain.connect(ctx.destination);\n"
+                 "  liteBus = input;\n"
+                 "  return liteBus;\n"
+                 "}", src, count=1)
+    out = os.path.join(TMP, "audio_patched.mjs")
+    open(out, "w", encoding="utf-8").write(src)
+    return out
 
 TEMPLATE = r"""<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>
+<script type="importmap">
+{ "imports": { "__JSURL__/audio.js": "__PAGE__/audio_patched.mjs" } }
+</script>
 <div id="OUT">PENDING</div><div id="ERR"></div>
 <script>
 const FING_DATA = __FING__;
+const TONE_DATA = __TONE__;
 const CFG = __CFG__;
 </script>
-<script src="http://127.0.0.1:8137/js/audio.js"></script>
-<script>
+<script type="module">
+import { playNoteAt, installToneModel } from "__PAGE__/audio_patched.mjs";
 try {
-function installFingerings(f) {
-  window.FING = f;
-  window.NOTES = f.notes.map(n => n.id);
-  window.DISPLAY = Object.fromEntries(f.notes.map(n => [n.id, n.display]));
-  window.CHAMBER = Object.fromEntries(f.notes.map(n => [n.id, n.chamber]));
-  window.COVER = Object.fromEntries(f.notes.map(n => [n.id, n.covered]));
-}
-installFingerings(FING_DATA);
+window.FING = FING_DATA;
+window.NOTES = FING_DATA.notes.map(function (n) { return n.id; });
+window.DISPLAY = Object.fromEntries(FING_DATA.notes.map(function (n) { return [n.id, n.display]; }));
+window.CHAMBER = Object.fromEntries(FING_DATA.notes.map(function (n) { return [n.id, n.chamber]; }));
+window.COVER = Object.fromEntries(FING_DATA.notes.map(function (n) { return [n.id, n.covered]; }));
 const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-const LEN = Math.ceil(44100 * (CFG.dur + 0.8));
+const LEN = Math.ceil(44100 * (CFG.dur + 0.9));
 window.AudioContext = function () {
   const o = new OAC(1, LEN, 44100);
   try { Object.defineProperty(o, "state", { get: function () { return "running"; }, configurable: true }); } catch (e) {}
   if (!o.resume) o.resume = function () { return Promise.resolve(); };
-  if (CFG.muteAirEdge) {
-    // Chrome offline-render hang workaround: air (osc #2), edge (#4), wander
-    // (#5) in one voice hang startRendering in combos; muted via silent stubs.
-    // playNoteAt createOscillator order: osc(#1), air(#2), wob LFO(#3),
-    // [vibrato LFO only in Zen mode], edge(#4), wander(#5), then the
-    // octave-overblown ot. The stub keeps a REAL (unconnected) AudioParam as
-    // `frequency` so that wanderGain.connect(edge.frequency) still works — a
-    // plain object would throw and silently abort the remaining layers
-    // (wind noise / chiff / ot would be missing from the audit render).
-    const proto = OAC.prototype.createOscillator;
-    const protoGain = OAC.prototype.createGain;
-    let count = 0;
-    o.createOscillator = function () {
-      count++;
-      if (count === 2 || count === 4 || count === 5) {
-        // Silent param sink: a real gain's AudioParam, node left unconnected
-        // so nothing ever renders from it.
-        const sink = protoGain.call(o);
-        const ap = sink.gain;
-        return { type: "sine", frequency: ap, detune: ap, setPeriodicWave: function(){},
-                 connect: function(){}, start: function(){}, stop: function(){} };
-      }
-      return proto.call(o);
-    };
-  }
   window.__oac = o;
   return o;
 };
-if (CFG.f0) window.freqOf = function () { return CFG.f0; };
+if (TONE_DATA && installToneModel) installToneModel(TONE_DATA, CFG.instId);
 if (window.OCA_DEBUG) {
   if (CFG.noVib) { OCA_DEBUG.params.vibDepth = 0; OCA_DEBUG.params.tremDepth = 0; }
-  if (CFG.masterLevel) OCA_DEBUG.params.masterLevel = CFG.masterLevel;
+  if (CFG.noWob) { OCA_DEBUG.params.wobbAmt = 0; OCA_DEBUG.params.wanderAmt = 0; }
+  if (CFG.masterLevel !== undefined && CFG.masterLevel !== null) OCA_DEBUG.params.masterLevel = CFG.masterLevel;
   if (CFG.reverbWet !== undefined && CFG.reverbWet !== null) OCA_DEBUG.params.reverbWet = CFG.reverbWet;
+  if (CFG.set) { for (const [k, v] of Object.entries(CFG.set)) OCA_DEBUG.params[k] = v; OCA_DEBUG.invalidateWave(); }
 }
-// Offline rendering note: (a) the always-connected reverb convolver, and
-// (b) the DynamicsCompressor when combined with the tremolo passthrough gain,
-// make offline rendering hang in this Chrome build. The app runs with reverb
-// OFF by default (reverbEnabled=false -> wet gain 0), and the limiter only
-// guards peaks (it rarely engages at the app's levels), so swap getReverbBus
-// for the dry chain minus the compressor (input -> outGain 0.6). The audible
-// difference vs the shipped dry path is negligible at these levels.
-getReverbBus = function (ctx) {
-  if (window.__dbgbus && window.__dbgbus.context === ctx) return window.__dbgbus;
-  const input = ctx.createGain();
-  const outGain = ctx.createGain();
-  outGain.gain.value = 0.6;
-  input.connect(outGain); outGain.connect(ctx.destination);
-  window.__dbgbus = input;
-  return input;
-};
-function b64(buf8) {
-  let s = ""; const CH = 0x8000;
-  for (let i = 0; i < buf8.length; i += CH) s += String.fromCharCode.apply(null, buf8.subarray(i, i + CH));
-  return btoa(s);
-}
+if (CFG.f0) window.__F0 = CFG.f0;
 function encodeWav(f32, sr) {
   const n = f32.length;
   const buf = new ArrayBuffer(44 + n * 2), dv = new DataView(buf);
-  const ws = (o, str) => { for (let i = 0; i < str.length; i++) dv.setUint8(o + i, str.charCodeAt(i)); };
+  const ws = function (o, str) { for (let i = 0; i < str.length; i++) dv.setUint8(o + i, str.charCodeAt(i)); };
   ws(0, "RIFF"); dv.setUint32(4, 36 + n * 2, true); ws(8, "WAVE"); ws(12, "fmt ");
   dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
-  dv.setUint32(24, sr, true); dv.setUint32(28, sr * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true);
+  dv.setUint32(24, sr, true); dv.setUint16(28, sr * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true);
   ws(36, "data"); dv.setUint32(40, n * 2, true);
   for (let i = 0; i < n; i++) {
     const v = Math.max(-1, Math.min(1, f32[i]));
     dv.setInt16(44 + i * 2, v < 0 ? v * 0x8000 : v * 0x7FFF, true);
   }
   return new Uint8Array(buf);
+}
+function b64(buf8) {
+  let s = ""; const CH = 0x8000;
+  for (let i = 0; i < buf8.length; i += CH) s += String.fromCharCode.apply(null, buf8.subarray(i, i + CH));
+  return btoa(s);
 }
 playNoteAt(CFG.note, null, CFG.dur, []);
 const ctx = window.__oac;
@@ -116,84 +166,109 @@ ctx.startRendering().then(function (buf) {
 }
 </script></body></html>"""
 
-NOTES = {  # note-id: (measured f0, playNoteAt dur)
-    "A3": (220.0, 2.0),      # triple-bass range check (extrapolation zone)
-    "C5": (513.1586, 1.54),
-    "C5_2": (523.5930, 2.02),
-    "C6": (1046.5023, 2.0),  # chamber-2 top (unmeasured chamber, audit only)
-    "D6": (1173.6424, 1.73),
-    "G6": (1566.9872, 2.13),
-}
+_httpds = []
 
-def run_page(name, cfg, out_sub):
-    html = TEMPLATE.replace("__FING__", fing_json).replace("__CFG__", json.dumps(cfg))
-    page = os.path.join(TMP, name)
-    open(page, "w", encoding="utf-8").write(html)
-    prof = os.path.join(TMP, "chrome-prof-" + name.replace(".html", ""))
-    out = os.path.join(TMP, "dom_" + name + ".html")
-    proc = subprocess.run(
-        [CHROME, "--headless=old", "--disable-gpu", "--no-first-run", f"--user-data-dir={prof}",
-         "--virtual-time-budget=30000", "--dump-dom",         "http://127.0.0.1:8138/" + name],
-        capture_output=True, text=True, timeout=240)
-    open(out, "w", encoding="utf-8", errors="ignore").write(proc.stdout)
-    m = re.search(r'<div id="OUT">(B64:[A-Za-z0-9+/=]+)</div>', open(out, encoding="utf-8", errors="ignore").read())
+def ensure_servers():
+    import http.server, threading, socketserver, functools
+    if _httpds: return
+    class Quiet(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *a): pass
+        protocol_version = "HTTP/1.0"
+        def end_headers(self):
+            self.send_header("Access-Control-Allow-Origin", "*")
+            super().end_headers()
+    for port, root in ((8137, REPO), (8138, TMP)):
+        class H(Quiet, http.server.SimpleHTTPRequestHandler):
+            pass
+        socketserver.ThreadingTCPServer.allow_reuse_address = True
+        try:
+            httpd = socketserver.ThreadingTCPServer(
+                ("127.0.0.1", port), functools.partial(H, directory=root))
+        except OSError:
+            continue  # something already serves this port (a manual server)
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        _httpds.append(httpd)
+
+CHROME = None
+
+def run_page(name, cfg, out_wav):
+    ensure_servers()
+    build_patched_module(cfg.get("instId", "oot-alto-c-12"))
+    page = TEMPLATE.replace("__FING__", json.dumps(cfg.get("_fing"))).replace(
+        "__TONE__", json.dumps(cfg.get("_tone"))).replace(
+        "__CFG__", json.dumps({k: v for k, v in cfg.items() if not k.startswith("_")})).replace(
+        "__PAGE__", PAGE).replace("__JSURL__", JS)
+    html = os.path.join(TMP, name)
+    open(html, "w", encoding="utf-8").write(page)
+    # Playwright drives the page in real time (OfflineAudioContext + virtual
+    # time budget never resolves startRendering on this chrome; the old
+    # dump-dom pipeline predates the module-era audio.js).
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as p:
+        browser = p.chromium.launch(args=["--autoplay-policy=no-user-gesture-required"])
+        page = browser.new_page()
+        errs = []
+        page.on("pageerror", lambda e: errs.append(str(e)[:200]))
+        page.goto(f"{PAGE}/{name}")
+        try:
+            page.wait_for_function(
+                "document.getElementById('OUT').textContent !== 'PENDING'",
+                timeout=max(20000, int(cfg["dur"] * 1000) + 35000))
+        except Exception:
+            pass
+        out = page.evaluate("document.getElementById('OUT').textContent")
+        browser.close()
+    m = re.match(r"B64:", out)
+    if errs and not m:
+        print(f"[{name}] PAGEERROR: {errs[:2]}", flush=True)
     if not m:
-        text = open(out, encoding="utf-8", errors="ignore").read()
-        mm = re.search(r'<div id="OUT">((?:(?!<div).){0,400})</div>', text)
-        print(f"[{name}] FAILED: " + (mm.group(1)[:300] if mm else "no OUT"), flush=True)
+        print(f"[{name}] FAILED: {out[:200]}", flush=True)
         return None
-    wav = os.path.join(TMP, out_sub)
-    open(wav, "wb").write(base64.b64decode(m.group(1)[4:]))
-    print(f"[{name}] -> {wav}", flush=True)
-    import time
+    os.makedirs(os.path.dirname(out_wav), exist_ok=True)
+    open(out_wav, "wb").write(base64.b64decode(out[4:]))
+    print(f"[{name}] -> {out_wav}", flush=True)
     time.sleep(1.5)
-    return wav
+    return out_wav
 
-PLATEAU_H1 = {  # measured H1 plateau RMS dBFS from the recordings
-    "C5": -27.4, "C5_2": -25.5, "D6": -10.6, "G6": -15.3,
-    # unmeasured triple-range notes: predicted by the shipped level curve
-    "A3": -28.1, "C6": -19.8,
-}
-MEASURED_H1_SHIPPED = {}  # filled in pass 1
+def main():
+    argv = sys.argv[1:]
+    def opt(flag, default=None):
+        return argv[argv.index(flag) + 1] if flag in argv else default
+    spec = next((a for a in argv if not a.startswith("-") and a), "")
+    note_id, _, dur_s = spec.partition(":")
+    dur = float(dur_s) if dur_s else 2.0
+    out = opt("-o")
+    inst = opt("--inst", "oot-alto-c-12")
+    tone = opt("--tone", "auto")
+    if not out:
+        base = os.path.join(REPO, "research", "analysis", "12hole", "renders")
+        out = os.path.join(base, f"{inst}_{note_id}.wav")
+    build_patched_module(inst)
+    cfg = {"note": note_id, "instId": inst, "dur": dur,
+           "_fing": fing_data(inst)}
+    if tone == "auto":
+        path = os.path.join(REPO, "instruments", inst, "tone.json")
+        cfg["_tone"] = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else None
+    elif tone == "none":
+        cfg["_tone"] = None
+    else:
+        cfg["_tone"] = json.load(open(tone, encoding="utf-8"))
+    if "--no-vib" in argv: cfg["noVib"] = True
+    if "--no-wob" in argv: cfg["noWob"] = True
+    ml = opt("--master-level")
+    if ml is not None: cfg["masterLevel"] = float(ml)
+    sets = []
+    for a in argv:
+        if a.startswith("--set:") and "=" in a:
+            k, v = a[6:].partition("=")[0], float(a[6:].partition("=")[2])
+            sets.append([k, v])
+    if sets:
+        cfg["set"] = dict((k, v) for k, v in sets)
+    f0 = opt("--f0")
+    if f0 is not None: cfg["f0"] = float(f0)
+    run_page(f"r12_{note_id}_{int(dur*1000)}.html", cfg, out)
 
-def main(only=None):
-    results = {}
-    # PASS 1: shipped defaults at ET pitch
-    for note, (f0, dur) in NOTES.items():
-        if only and note not in only: continue
-        name = f"r_{note}_shipped.html"
-        wav = run_page(name, {"note": note.replace("_2", ""), "f0": None, "dur": dur, "muteAirEdge": True}, f"our_{note}_shipped.wav")
-        if wav: results[(note, "shipped")] = wav
-    # measure shipped H1 plateau to compute matched master level
-    for (note, kind), wav in list(results.items()):
-        r = json.loads(subprocess.run(["python", os.path.join(TMP, "tone_report.py"), wav,
-                                       "--nominal", note.replace("_2", ""), "--label", note,
-                                       "--json", os.path.join(TMP, f"our_{note}_{kind}_report.json")],
-                                      capture_output=True, text=True, timeout=300).stdout)
-        db = r["timbre"]["H1_plateau_rms_dbfs"]
-        MEASURED_H1_SHIPPED[note] = db
-        print(f"[measure] shipped {note}: H1 plateau {db:.1f} dBFS", flush=True)
-    # PASS 2: matched variants
-    for note, (f0, dur) in NOTES.items():
-        if only and note not in only: continue
-        target = PLATEAU_H1[note]
-        shipped = MEASURED_H1_SHIPPED.get(note, None)
-        if shipped is None:
-            # fallback derivation: H1 amp ~ 0.94*master/sqrt(2)
-            M = 10 ** (target / 20) * 2 ** 0.5 / 0.94
-        else:
-            M = 0.26 * 10 ** ((target - shipped) / 20)
-        name = f"r_{note}_matched.html"
-        wav = run_page(name, {"note": note.replace("_2", ""), "f0": f0, "dur": dur,
-                              "noVib": True, "masterLevel": round(M, 4), "muteAirEdge": True}, f"our_{note}_matched.wav")
-        if wav: results[(note, "matched")] = wav
-    for (note, kind), wav in results.items():
-        if kind != "matched": continue
-        subprocess.run(["python", os.path.join(TMP, "tone_report.py"), wav,
-                        "--nominal", note.replace("_2", ""), "--label", note,
-                        "--json", os.path.join(TMP, f"our_{note}_matched_report.json")],
-                       capture_output=True, text=True, timeout=300)
-    print("DONE")
+import base64
 
 if __name__ == "__main__":
-    main(set(sys.argv[1:]) or None)
+    main()

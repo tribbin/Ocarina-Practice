@@ -50,11 +50,21 @@ def boot_instrument(browser, base, inst_id, failures, tag):
             failures.append(f"{tag}: {key} not installed for {inst_id}")
     if state["notes"] < 5:
         failures.append(f"{tag}: {inst_id} has only {state['notes']} notes")
-    if state["tone"] not in (None, "MISSING"):
-        failures.append(f"{tag}: {inst_id} shipped no tone.json but installed "
-                        f"{state['tone']}")
     if state["tone"] == "MISSING":
         failures.append(f"{tag}: OCA_DEBUG.toneModel() missing (audio.js change?)")
+    tone_path = ROOT / "instruments" / inst_id / "tone.json"
+    if tone_path.exists():
+        # a shipped tone.json must install as the model, with its rows intact
+        m = state["tone"] if isinstance(state["tone"], dict) else None
+        ok = (isinstance(m, dict) and m.get("instrumentId") == inst_id
+              and m.get("chambers") and isinstance(m["chambers"], list)
+              and m["chambers"] and m["chambers"][0].get("rows"))
+        if not ok:
+            failures.append(f"{tag}: {inst_id} ships tone.json but the installed "
+                            f"model is wrong/empty: {str(state['tone'])[:160]}")
+    elif state["tone"] not in (None, "MISSING"):
+        failures.append(f"{tag}: {inst_id} shipped no tone.json but installed "
+                        f"{str(state['tone'])[:160]}")
     if errs:
         failures.append(f"{tag}: {inst_id} page errors {errs}")
     return page

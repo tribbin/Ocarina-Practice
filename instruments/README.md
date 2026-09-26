@@ -73,6 +73,10 @@ Field notes:
 - Every field stands alone. If the fit couldn't decide a value (or a whole
   sub-object), drop it — the loader keeps that one piece of the generic
   model, per field, per chamber. No all-or-nothing.
+- levelDb rows are RELATIVE to each other (recorded absolute gain is a
+  mic-chain artifact, never shipped). A fit anchors its own loudest recorded
+  note at 0 dB and only the note-to-note curve ships — the app's masterLevel
+  stays untouched so support tracks and reverb keep their headroom.
 - Envelope constants that came out chamber-level (not per note) are simply
   repeated identically across the chamber's 3 rows.
 - "chifff"/"ot"/"edge" replace the generic size/open-hole heuristics and the
@@ -87,8 +91,10 @@ Recording protocol (per ocarina, per chamber)
 3 notes per chamber: near-lowest, middle, near-top. One steady tone each
 (long enough for the fit, ideally 2+ s). Keep the mic/signal chain constant
 across all notes of an ocarina, note the distance; the fit normalizes
-relative levels within the ocarina (levelDb rows are relative to each other
-and to the shared C5 reference).
+relative levels within the ocarina (levelDb rows are relative to each other,
+anchored by the fit itself, never shipped against absolute mic gain) —
+the melody-ladder workflow (skills/tone-analysis/SKILL.md) supersedes the
+3-anchor protocol: one row per recorded note of the ladder, all of them.
 
 The fit script itself lives with the recordings (analysis machine); the repo
 receives only the finished tone.json in the ocarina's folder.
