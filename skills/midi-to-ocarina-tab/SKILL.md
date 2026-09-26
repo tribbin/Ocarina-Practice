@@ -68,6 +68,39 @@ octave): bars earlier/later get their own register (the Outset pizz vamp rides
 the nearest octave-in neighbour, per Robin's later retune — write a `#`
 comment line in the body naming exactly which notes were substituted/dropped.
 
+### 0d. Onset-grid assembly — the technique that made the Outset run clean
+
+This is what lifted the conversion quality (Robin: "better than any time
+before") — generalize it instead of re-deriving per song:
+
+1. **Dump ONSETS, not durations.** For each carrier channel print
+   `M{bar}.{beat} pitch` from a meter map (a per-measure beat-count function:
+   `4` for every bar except the score's irregular ones) — position truth
+   lives in the onset grid, and the 5/4-type bars fall out of the map instead
+   of breaking a global 4-beat guess.
+2. **Build tokens from the gap structure.** A token OWNS the time from its
+   onset to the next onset in that bar; a gap longer than the note's own
+   sounding length becomes a rest. Read the WRITTEN score (mscx) where it
+   disagrees with the MIDI product: the MIDI's `0.248/0.498/0.998` durations
+   are early-release artifacts, not rhythm — the da-dum's real shape was
+   `r/8 A/8 A/4 r/8 A/8 A/4` from the score, never from the file's durs.
+3. **Snap performed ornaments to the token grid, then let the bar-sum be the
+   arbiter.** Turn cells land at `.25/.625` positions in the file; a /16 pair
+   rearranges them without moving the cell's span. Every bar must SUM to its
+   meter's beats (the irregular bar to *its* beats) — a bar that misses by
+   exactly the ornament's fuzz is a dot-loss from the extractor, not a music
+   error.
+4. **Two-switch acceptance loop before shipping:**
+   `node skills/song-transposing/scripts/verify_song.cjs <key> <chart>` (0
+   unknown ids, 0 bad chips, fits chart) + a per-bar sum check against the
+   meter map (hand-counter or throwaway script — the Outset one also pinned
+   the with-bass body's supports as zero-beat spans). Then the usual suites
+   (shipped_songs, gen_pages) prove the data in-app.
+5. **Keep every intervention visible in the body:** octave substitutions,
+   dropped tails, dyad-voice choices and trill normalizations each get a `#`
+   comment line naming the bar numbers — Robin retunes from those lines
+   without re-deriving the source.
+
 ### 1. Inspect — find the melody channel
 
 ```
