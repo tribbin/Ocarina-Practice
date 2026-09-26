@@ -25,7 +25,9 @@ from pathlib import Path
 # markers (alto, 12, contrabass) and transposition/interval markers (c,
 # upN/downN). Content-shaping words (short, part...) are part of BASE slugs —
 # 'concerning-hobbits-short' is its own base, the -c copy chains to it.
-SUFFIX = re.compile(r"-(alto|12|contrabass|c|up\d+|down\d+)$")
+# 'midi' marks an arrangement whose accompaniment was interpreted straight
+# from a MIDI source (the melody stays the base's).
+SUFFIX = re.compile(r"-(alto|12|contrabass|c|up\d+|down\d+|midi)$")
 
 # Synthetic violations in the suite prove the tripwire, since the shipped
 # corpus is expected to be clean.

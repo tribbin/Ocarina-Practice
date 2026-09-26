@@ -33,7 +33,7 @@ import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-SUFFIX = re.compile(r"-(alto|12|contrabass|c|up\d+|down\d+)$")
+SUFFIX = re.compile(r"-(alto|12|contrabass|c|up\d+|down\d+|midi)$")
 
 # Landing-page default-ocarina ladder (Robin, 2026-09-24): 12-hole > double
 # alto C > triple bass C > contrabass. An instrument is seeded only when the

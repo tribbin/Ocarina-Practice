@@ -101,7 +101,45 @@ before") — generalize it instead of re-deriving per song:
    comment line naming the bar numbers — Robin retunes from those lines
    without re-deriving the source.
 
-### 1. Inspect — find the melody channel
+### 0e. Companion track from the full arrangement (Backed Melody variant, 2026-09-26)
+
+To build a `#track <name> [audible]` block whose accompaniment is the full
+arrangement's own voice (Outset Island's MIDI bass, done as `outset-island-midi`):
+
+1. **Align to the APP's melody grid, not a meter map.** The track bar-sum
+   contract (`tests/shipped_songs`) demands per-bar beat sums equal to the
+   SHIPPED melody's bars — parse the melody with the real parser (a
+   headless page.evaluate collecting per-bar sums) and use its cumulative
+   boundaries; the da-dum 5/4 and truncated finale fall out for free. A
+   third-party full file with no metas aligned exactly when the melody
+   carrier was cut from the same arranger's pulse.
+2. **Pick the voice by channel + band, and state the drops.** The groove
+   channel (ch0) carried everything; a second low channel that chugs the
+   same line in 16ths is a double, not a voice — exclude it and say so.
+   Same-onset chord hits are one voice's octave register, not harmony: keep
+   the LOW band (pitch < C4 for the Outset bass — the harp-register doubles
+   C#4-F5 lived only in the interludes) and name the bars in a body
+   comment.
+3. **Project the register by rule, not hand-scan.** Whole voice +24 to the
+   triple board; a projected root below the chart floor (A3 = midi 57)
+   rides one octave more. Expect a below-floor root's octave PAIR
+   (root + its upper octave one shimmer apart) to collapse to the same
+   projected pitch — write the flattened pair down in the comment; Robin
+   retunes from those lines. Flat spellings: the body speaks the melody's
+   accidental language (Db/Eb/Gb/Ab/Bb), never the MIDI's sharps.
+4. **Humanized 16th chugs stay out; half-beat hits stay in.** The Outset
+   bass was pure eighth-hits on an exact half-beat grid — each token owns
+   its onset-to-next-onset span (hit + rest fill), the tail hit past the
+   melody's finale gets trimmed, and every bar sums by construction. A
+   channel whose hits land off the 16th grid (humanized ornaments) would
+   need the snap step instead — don't assume one pattern generalizes.
+5. **Then the harmonize pass, then the suites.** Insert the block at the
+   same gain as the twin it will A/B against, run
+   `tools/track_harmonize.py <key>` (drops every attack the melody sounds
+   the same pitch — the arrangement doubling its own tune drops down an
+   octave, which is the honest sound), re-run to prove idempotence, then
+   `tests/shipped_songs` re-proves the bar grid in the real app.
+
 
 ```
 python3 scripts/mid2tab.py FILE.mid --inspect
