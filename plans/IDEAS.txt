@@ -20,6 +20,12 @@ OTHERS
 
 Make the 12-hole 'complete' regarding Zelda Ocarina of Time game songs.
 
+Have multiple ocarina's play as an arrangement. So separate sections 'grouped' and being able to play the other parts whil you practice.
+
+Intead of having a 'support track', actually having multi-track arrangement.
+
+Use outset island to make [melody + bass + contrabass] song example.
+
 THEMES
 
 Let's add theming (colors/preview/backdrop/...) to both the main page and song-links, that will show up when people paste a link in social media and for web searches.
