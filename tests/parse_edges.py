@@ -108,6 +108,42 @@ HELPERS = r"""
 }
 """
 
+BRACKETS = r"""
+() => {
+  const bb = (content) => {
+    const bar = parse("|[" + content + "] A4");
+    const bass = bar.filter(t => t.type === "bar" && "bass" in t)[0];
+    return bass ? { bass: bass.bass, beats: bass.beats } : { bass: null };
+  };
+  const inlineOf = (src) => {
+    const mids = parse(src).filter(t => t.type === "bass")[0];
+    return mids ? { bass: mids.id, glide: !!(mids.slide || mids.glide),
+                    dur: mids.dur, beats: mids.beats } : { bass: null };
+  };
+  const glideOf = (src) => {
+    const mids = parse(src).filter(t => t.type === "bass")[0];
+    return mids ? { bass: mids.id, glide: !!(mids.slide || mids.glide) }
+                : { bass: null, glide: false };
+  };
+  return {
+    // supports in every accidental spelling reach the same canonical id
+    sharpBar: bb("Gs2"),
+    hashBar: bb("G#2"),
+    flatBar: bb("Ab2"),
+    flatDurBar: bb("Db2/4."),
+    flatInline: inlineOf("A4 [Gb3/4] B4"),
+    flatGlide: glideOf("A4 [~Fb2/8] B4"),
+    // octave-crossing flat: Cb3 = B2
+    octaveFlat: bb("Cb3"),
+    // label tails that only look like pitches produce no support
+    labelNarrative: (() => {
+      const bar = parse('|["A flat story"] A4').filter(t => t.type === "bar")[0];
+      return "bass" in bar ? bar.bass : null;
+    })(),
+  };
+}
+"""
+
 HEADERS = r"""
 () => {
   return {
@@ -142,6 +178,7 @@ def main():
             n = page.evaluate(NOTES)
             h = page.evaluate(HELPERS)
             w = page.evaluate(HEADERS)
+            b = page.evaluate(BRACKETS)
 
             def check(key, cond, msg):
                 if not cond:
@@ -260,6 +297,29 @@ def main():
             check("inlineTempo", len(it) == 3 and it[1]["type"] == "tempo"
                   and it[1]["bpm"] == 130 and it[2]["id"] == "D4",
                   f"mid-song '# tempo' must emit the change token: {it!r}")
+
+            # --- supports accept every accidental spelling (b/#/s) ---
+            check("sharpBar", b["sharpBar"]["bass"] == "Gs2",
+                  f"|[Gs2] bar support: {b['sharpBar']!r}")
+            check("hashBar", b["hashBar"]["bass"] == "Gs2",
+                  f"|[G#2] bar support reaches the same s-id: {b['hashBar']!r}")
+            check("flatBar", b["flatBar"]["bass"] == "Gs2",
+                  f"|[Ab2] flat support reaches the same s-id "
+                  f"(was a silent miss): {b['flatBar']!r}")
+            check("flatDurBar", b["flatDurBar"]["bass"] == "Cs2"
+                  and b["flatDurBar"]["beats"] == 1.5,
+                  f"|[Db2/4.] flat + length support (dotted quarter): {b['flatDurBar']!r}")
+            check("flatInline", b["flatInline"]["bass"] == "Fs3"
+                  and b["flatInline"]["beats"] == 1,
+                  f"[Gb3/4] inline flat support: {b['flatInline']!r}")
+            check("flatGlide", b["flatGlide"]["glide"] is True
+                  and b["flatGlide"]["bass"] == "E2",
+                  f"[~Fb2/8] flat glide (Fb = E): {b['flatGlide']!r}")
+            check("octaveFlat", b["octaveFlat"]["bass"] == "B2",
+                  f"|[Cb3] crosses down to B2: {b['octaveFlat']!r}")
+            check("labelNarrative", b["labelNarrative"] is None,
+                  "a label tail that merely contains 'A flat' must stay "
+                  "desc-only")
 
             # --- helpers ---
             check("prettySharp", h["prettySharp"] == "C#4", "pretty Cs4")

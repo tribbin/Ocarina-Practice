@@ -76,9 +76,13 @@ drones (`| [Cs2]`, section-head brackets `|["Opening (Db major)",Cs2]`).
 
 Engine-side craft rules (from `audio.js` `buildSupportPlan`):
 
-- Support ids must be SHARP-SPELLED (`Cs2`, `Gs2`, `As1`) — the bracket regex
-  `^[A-G]s?[1-8]` reads no flat spellings, and a flat inside a bracket is
-  silently dropped (never a bad chip, the support just doesn't exist).
+- Support pitch spellings accept **sharp, s-form AND flat** (`Gs2`, `G#2`,
+  `Ab2`) — everything canonicalizes to the s-spelled chart id through the
+  parser's shared flat table (`Ab2`→`Gs2`, `Db2/4.`→`Cs2/4.`, `Cb3`→`B2`),
+  so all three spellings reach the same drone (parse.js `coreIdOf`, pinned by
+  tests/parse_edges). What still vanishes silently: anything that is NOT a
+  fully-shaped pitch with an octave digit — junk tails and label prose stay
+  desc-only, never bad chips.
 - A bracket PARKS and fires on the next melody note OR REST: to start a
   support mid-bar you need the melody to attack there; the Outset bottom-half
   splits (`| [F2/2] … [As2/2]`) lean on a beat-2 melody note. A rest also

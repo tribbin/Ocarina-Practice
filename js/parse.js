@@ -1,3 +1,21 @@
+// Flat spellings re-spell into the s-spelled chart id space (Db4 -> Cs4,
+// Cb4 -> B3); #, s and b are all accepted and normalized. Shared by the
+// melody branch and the support-bracket grammar so both spellings reach the
+// same id — a flat must never silently vanish just because it stood inside
+// a bracket.
+const FLAT_CORE = { C: ["B", -1], D: ["Cs", 0], E: ["Ds", 0], F: ["E", 0],
+                    G: ["Fs", 0], A: ["Gs", 0], B: ["As", 0] };
+
+function coreIdOf(letter, acc, oct) {
+  if (acc === "b") {
+    const [n, d] = FLAT_CORE[letter];
+    return n + (oct + d);
+  }
+  let core = letter;
+  if (acc === "#" || acc === "s") core += "s";
+  return core + oct;
+}
+
 function parse(src) {
   const tokens = [];
   const re = /([A-Ga-g])([#bs])?(\d)?(?!\d)(\/\d+\.?t?)?(!)?|(\|)\s*(\[[^\]]*\])?|(r)(\/\d+\.?t?)?|(-)(\/\d+\.?t?)?|(~)|(#[^\n]*)|(\[[^\]]*\])/g;
@@ -122,17 +140,11 @@ function parse(src) {
     const dur = pd.dur;
     const spellOct = oct;
     lastOct = oct;
-    let core = letter;
-    if (acc === "#" || acc === "s") core += "s";
-    else if (acc === "b") {
-      const flat = {C:["B",-1], D:["Cs",0], E:["Ds",0], F:["E",0], G:["Fs",0], A:["Gs",0], B:["As",0]};
-      const [n, d] = flat[letter];
-      core = n; oct += d;
-    }
+    const core = coreIdOf(letter, acc, oct);
     // s-spelling is for convenience (canonical ids); display wants the hash.
     if (acc === "s") acc = "#";
     const tok = {
-      type:"note", id: core + oct, dur, dotted: pd.dotted, triplet: pd.triplet, beats: pd.beats, raw: m[0],
+      type:"note", id: core, dur, dotted: pd.dotted, triplet: pd.triplet, beats: pd.beats, raw: m[0],
       spellLetter: letter, spellAcc: acc, spellOct
     };
     if (m[5]) tok.staccato = true;
@@ -169,8 +181,12 @@ function parseDur(spec) {
 //   an extension                    — -/2 extends the pending support's ring
 //                                     by that many beats (bare - with no
 //                                     length means nothing).
-// Anything else is not a support note: callers fall back to desc-only and
-// silent-skip respectively, so old descriptions never break.
+// Pitch spellings accept #, s and b like melody notes do; everything
+// canonicalizes to the s-spelled chart id (Ab2 -> Gs2, Db2/4. -> Cs2/4.,
+// Cb3 -> B2) through the melody branch's own flat table, so a flat inside a
+// bracket reaches the same drone a sharp would. Anything else is not a
+// support note: callers fall back to desc-only and silent-skip respectively,
+// so old descriptions never break.
 function bracketContent(content) {
   const parts = String(content).split(",");
   const tail = parts[parts.length - 1].trim();
@@ -184,16 +200,16 @@ function bracketContent(content) {
     return { ext: parseDur(ext[1]).beats };
   }
   // Glide: ~ Pitch with optional duration.
-  const gl = tail.match(/^~\s*([A-G]s?[1-8])(.*)$/);
+  const gl = tail.match(/^~\s*([A-G])([#sb]?)([1-8])(.*)$/);
   if (gl) {
-    const rest = gl[2].trim();
+    const rest = gl[4].trim();
     let pd = null;
     if (rest) {
       if (!/^\/\d+\.?t?$/.test(rest)) return null; // junk tail → not a support note
       pd = parseDur(rest);
     }
     const out = {
-      bass: gl[1],
+      bass: coreIdOf(gl[1], gl[2], +gl[3]),
       dur: pd ? pd.dur : null,
       dotted: pd ? pd.dotted : false,
       triplet: pd ? pd.triplet : false,
@@ -204,16 +220,16 @@ function bracketContent(content) {
     return out;
   }
   // Plain pitch with optional duration.
-  const pm = tail.match(/^([A-G]s?[1-8])(.*)$/);
+  const pm = tail.match(/^([A-G])([#sb]?)([1-8])(.*)$/);
   if (!pm) return null;
-  const rest = pm[2].trim();
+  const rest = pm[4].trim();
   let pd = null;
   if (rest) {
     if (!/^\/\d+\.?t?$/.test(rest)) return null; // junk tail → not a support note
     pd = parseDur(rest);
   }
   const out = {
-    bass: pm[1],
+    bass: coreIdOf(pm[1], pm[2], +pm[3]),
     dur: pd ? pd.dur : null,
     dotted: pd ? pd.dotted : false,
     triplet: pd ? pd.triplet : false,
