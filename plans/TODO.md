@@ -62,6 +62,7 @@ night; what remains is measurement/planting work and his eyeballs):
 
 | Item | Section |
 |---|---|
+| **Robin's field check on the multi-track trio** — `outset-island-with-bass` now plays melody + audible bass groove (the bassline two octaves down) + contrabass root-holds; his ears name the balance, the contrabass register, the practice-session audibility and the groove's final-bar cut | §7 |
 | **Robin's eyeball pass** on the panel builds: the HiFi retune batch (`?hifi` — amber buttons, dark segment row/select, deeper zen red, LED fills) and the favorites stars in the library — his values, built to spec; he retunes anything that reads off | feel checks |
 | The tone.json measurement/fitting work per chamber (Robin's instrument data; the loader treats missing files as "no data yet") | §1 |
 | The next audio-tick field catch names itself (spike cards carry the ambient ring); Robin re-introduces the hunt when the ticks matter | DONE (re-openable) |
@@ -89,6 +90,8 @@ night; what remains is measurement/planting work and his eyeballs):
 Currently covered (don't lose this): practice acceptance (4 cases strict+closed-loop), practice dip gate (hold-through blocked, silence/50%-notch dips pass, 75% duck shut, legato free), practice seat across view rebuilds + zen-entry stopMelody + overlay zen-only seats, console-hygiene boot scan (4 boots; allowlist = manifest-declared tone misses), support-bracket battery incl. bit-identical melody-vs-support equivalence + Zen timing/gating, instrument load/tone-model install per manifest (incl. svgWhen id/title paths + boot diagnostics in per-leg fresh contexts), render pin (chips/grid/scroll-band/highlight/focus-restore + typed-render debounce contract), svg clone coordinates, debug panel build-on-open contract, transport scheduler arithmetic/cut-bus/lite, practice history, template safety, theme toggle, offline SW boot+swap, ac worker parity, swing grid, sr hints, spike watch (the tick hunt), the session-14 batch (wake lock lifecycle, tick-override semantics, asset-version token equality, twin-derivation byte-identity, transposer skill, practice dials), and the session-15 additions (SEO shell shape + zero-per-stub JSON-LD, zen note-bar glide five-legger, suite-server teardown hardening, board-tool empty-run linting). CI = push/PR/manual, explicitly not a deploy gate. (.github/workflows/practice-tests.yml — console-hygiene + 41 suite steps + eslint + html-validate + board verify; local run-all counted 42 green on the Linux partition 2026-09-25 after the suite-server migration; earlier: 38 on 2026-09-25 session 14, 34 on session 12 — see DONE) NOTE: practice_accepts flaked ONE strict case under full-sweep load 2026-09-23, green twice standalone afterward and in the diag run — watch it, the arbiter hardening already took one such race; support_accepts flaked the same class 2026-09-24 (fixed wall-clock read window vs audio-clock lag under sweep CPU contention) and got the class cure: the read is now a real rendezvous with wall-fire stamps + ctx snapshots `335c4b4`). **Third member 2026-09-25 (CLI run `36110497803`, job 107992645371): practice_dip's leg A stalled the full 15 s timeout at maxIdx 0** — same SHA the local sweep had green; a DIFFERENT injury inside the same family: the suite's rendezvous (OCA_PRACTICE+NOTES) unlocks INSIDE loadInstrument (the stretch between installFingerings and boot's tail), where fillLibrary/loadLibraryItem(home) → practiceInvalidate is still owed — a session started mid-boot died when the tail landed; the stall reproduces at will with CDP network latency, cured by the rule-13 real rendezvous: the #scale options guard (filled only by the tail; a rAF poll never resolves mid-synchronous-block) plus a state card (started/st/ix/frames) on every driver resolve so a future stall names itself. The same tail guard rode into every suite that starts practice or needs typed editor text to survive boot (practice_accepts_melody, practice_zen_return, practice_history, keyboard_widgets, render_pin); library_hardening already waited a stronger post-tail signal (the Scales OPTGROUP), instrument_switch_race covers the race as its subject, playback-only suites are immune (practiceInvalidate stops practice, never play). Full sweep 31/31 green after the cure.
 
 ## 7. Accessibility & UX
+
+- [ ] **Field-check the multi-track build (Audible-behavior hold — Robin's ears decide)** — the trio now ships in `outset-island-with-bass` (melody + `#track bass audible` groove = the bassline two octaves down + `#track contrabass audible` root-holds re-projected from the old drone map); his pass names: the plain-view balance (bass/contrabass levels vs the melody), the contrabass register choice, the groove's final-bar cut at the melody's half-bar finale (bus fade), and whether the groove should stay audible INSIDE an active practice session (today it plays; the tuner-deafening worry is the reason supports stay Zen-only). `🟧 🔴 ⚙S`
 
 ## 8. Housekeeping
 
@@ -253,3 +256,54 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   phone/backcat eyes (his values, built to spec — an evening eyeball pass);
   tone.json measurements, song-body standardization, the perma-link data
   planting and the library widening keep their standing forms.
+
+- **2026-09-26 (session 16 — the multi-track pickup: the idea becomes grammar, engine, and the Outset trio)** —
+  Robin's IDEAS entry "multi-track arrangement" picked up via
+  research/multi-track-handover.md; the full dependence panel answered
+  up front (all recommended picks): build on `outset-island`, 2-track
+  proof then the trio, per-track zones with the bass audible in normal
+  practice, parallel-line track blocks, shared clock with the melody's
+  bars/labels, all-or-nothing v1 UI, melody tone model for bass voices.
+  Landed on `outset-island` (the branch already carried `coreIdOf`):
+  (1) `0e4afbe` **the grammar**: a `#track <name> [zen|audible]` header
+      line opens a real second token stream; parse() stays the melody
+      stream's front door (a line-based pre-pass lifts the blocks away —
+      every consumer keeps its flat melody array), parseTracks() parses
+      each block with the same grammar, same-name blocks append into one
+      stream (newest zone word wins), and malformed headers chip without
+      changing any stream boundary. tests/parse_edges carried the TRACK
+      legs red-first (melody purity, zones, merges, bars in blocks,
+      prose '#tracking' safety, the parse() shape).
+  (2) `53e8e2b` **the engine**: the named streams walk as real second
+      melodies on the shared clock (own scheduler state walked at the top
+      of every melody tick — a groove enters where the melody holds, the
+      thing pivot-anchored supports cannot do), the melody's exact note
+      semantics + its very playNoteAt voice; zone audible plays wherever
+      the melody plays (melody bag only), zone zen mirrors the support
+      gating and lands in the bass bag too. Track junk and melody-syntax
+      support markers chip (strip pills name the stream, clean bodies
+      render none). tests/track_accepts.py (CI-registered) red-first:
+      plain-view audible, zen audible, zen-zone gated, equivalence with
+      the same line as melody, loop re-fires, stop-leak guard, no-track
+      no-op, junk chips. A harness round-trip named the melody-voice's
+      range rule cleanly (the page boots A4–F6; supports/tracks never
+      range-check).
+  (3) `d754a09` **the groove ship**: outset-island-with-bass drops its
+      drone brackets — the melody keeps its notes and a `#track bass
+      audible` block carries the entire outset-island-bassline groove
+      two octaves down bar-for-bar (52 bars equal, the 5/4 da-dum, the
+      final bar truncated to the melody's half-bar finale); the
+      shipped-songs suite gains the corpus-wide track contract (streams
+      clean + zones declared + bar sums equal per bar index); the stub
+      generator's melody reader stops at '#track' headers (caught live by
+      the gen_pages boot timeout when the track notes were counted as
+      melody); sw oco-pwa-v27.
+  (4) `b23621b` **the trio (the IDEAS example)**: melody + bass groove +
+      contrabass — the old per-bar drone roots re-projected as a real
+      track (bar roots, the melody-attack splits as plain mid-bar tokens,
+      the 5/4 bar a tie-extended hold); three parallel walks, zero engine
+      churn.
+  Sweeps: 45/45 twice (the track battery inside); lint clean; board
+  verify green; the field-check item lifts to §7 as the feature's
+  deciding pass (Robin's ears own the balance/register/practice-tuner
+  calls; the first audible draft he retunes is the expected course).
