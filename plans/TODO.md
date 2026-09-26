@@ -390,3 +390,15 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   seeds the arrangement), parse_edges, transpose-skill shim, support,
   twin-derive. sw v34. Robin's refresh note: a stale preview showed
   doubled bar-lines; a hard reload cleared it (no fix needed).
+
+- **2026-09-26 (session 16 cont. — the CI red on the old commit: the
+  source audit becomes a local gate)** — the audit suite rode the PR's
+  older head and died in CI at run `36265370463` job `108468913064` on a
+  FileNotFoundError: `research/LoZWW_Outset_Island.mid` is gitignored
+  (work material, Robin's), so CI can never see it while every local run
+  was green. The fix reverted the day's tool churn and took the small
+  shape (`fbc75d1`): the suite SKIPS with a loud note when the source is
+  absent — the source audit is a LOCAL gate for machines carrying the
+  research tree, and CI keeps the corpus/grid contracts green through
+  shipped_songs. Verified both shapes (the file moved out = skip exit 0,
+  moved back = the full battery).
