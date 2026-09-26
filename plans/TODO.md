@@ -307,3 +307,28 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   verify green; the field-check item lifts to §7 as the feature's
   deciding pass (Robin's ears own the balance/register/practice-tuner
   calls; the first audible draft he retunes is the expected course).
+
+- **2026-09-26 (session 16 cont. — the mix lands, the harmonize pass becomes a tool, the MIDI unit queued)** —
+  The field check began speaking: (1) hard-to-tell-apart voices → the
+  header gained a trailing percent (`#track bass audible 50`,
+  `#track contrabass audible 75`), parsed to a gain ratio and applied as
+  ONE master multiplier inside playNoteAt; the note sink now reports the
+  mix so tests/track_accepts pins the ratio exactly (0.5/0.75/default
+  legs, red-first). (2) same-pitch doubling → tools/track_harmonize.py
+  (the reusable idempotent pass): absolute-onset collision map (melody
+  holds extend over ties cross-barline), token drops in convergence
+  rounds (octave below, then a perfect fifth below, then another octave),
+  durations untouched — 40 pizz tokens harmonized, zero collisions left,
+  the bar-grid contract untouched. (3) the -up12 twin lives for the
+  register A/B (high contrabass on the real cbc chart). Skills carry the
+  volume grammar + harmonizing doctrine (`320b9aa`); sw oco-pwa-v30;
+  sweep 45/45 green with this state; Robin confirmed the songs are
+  NOT yet shipped (nothing public) — reshape freedom stands.
+  QUEUED (next session, context meter hit the watch line here):
+  the MIDI-interpreted variant Robin asked for — research/
+  LoZWW_Outset_Island.mid is the source; read skills/midi-to-ocarina-tab
+  fresh at pickup (scripts/mscx_dump.py exists; mscx beats re-deriving),
+  build `outset-island`'s companion song with the FULL arrangement's
+  bass voice interpreted from the MIDI (skill's onset-grid assembly),
+  harmonized + bar-grid-aligned by the same pass, then the skills gain
+  the midi-unit learnings in place.
