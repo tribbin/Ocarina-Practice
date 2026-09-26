@@ -110,9 +110,8 @@ arrangement's own voice (Outset Island's MIDI bass, done as `outset-island-midi`
    contract (`tests/shipped_songs`) demands per-bar beat sums equal to the
    SHIPPED melody's bars — parse the melody with the real parser (a
    headless page.evaluate collecting per-bar sums) and use its cumulative
-   boundaries; the da-dum 5/4 and truncated finale fall out for free. A
-   third-party full file with no metas aligned exactly when the melody
-   carrier was cut from the same arranger's pulse.
+   boundaries. When the app's grid and the file's own meter disagree, stop:
+   an odd measure is a suspect, not an accommodating fact — see §0f.
 2. **Pick the voice by channel + band, and state the drops.** The groove
    channel (ch0) carried everything; a second low channel that chugs the
    same line in 16ths is a double, not a voice — exclude it and say so.
@@ -146,34 +145,50 @@ The first MIDI-track assembly read the file by WINDOW INTERSECTION: each
 melody-bar span collected whatever source hits fell inside its tick range.
 Robin's ears caught the result as "out of beat past the `~` series" while
 every mechanical check stayed green (bar sums matched, engine walk 0.000
-drift): the melody's 5-beat da-dum bar had stretched the app grid +1 beat
-past bar 18, so every later bar's window drank the NEXT measure's tail and
-the track content rotated one beat late — bar 33's bass was bar 7's content
-displaced into its second eighth. The file's own bars 7 and 33 were
-byte-identical; his thumbprint ("in the midi they are identical") was the
-oracle that proved the reading, not the engine, was faulty. Rules:
+drift): the shipped melody held a 5-beat da-dum bar 18 (inherited from the
+reduced score's own 5/4 meta at that point), so every later bar's window
+drank the NEXT measure's tail and the track content rotated one beat late —
+bar 33's bass was bar 7's content displaced into its second eighth. The
+file's own bars 7 and 33 were byte-identical; his thumbprint ("in the midi
+they are identical") was the oracle that proved the reading, not the
+engine, was faulty. Then his second read dug deeper: the 5/4 itself was
+the reduced score's engraving error — its fifth beat (the ocarina.mid's
+extra Eb at [72, 72.5)) was the ARRANGER's own human slip, absent from the
+game's file, whose timeline is pure 4/4 (the tune voice silent through
+[68, 72.5), the groove's bass entering exactly at 72). The app's melodies
+now run pure 4/4 equal to the game's measure-for-measure. Rules:
 
+0. **An odd measure is Robin's ear check, not a fact (his note,
+   2026-09-26).** When any source declares an irregular meter (a 5/4 amid
+   4/4, a stretched bar, a measure whose content disagrees between
+   arrangements), do not swim along — surface it and ask him to verify
+   against the source material by ear before the transcription ships with
+   it. Two arrangements disagreeing about one bar is a meter flag, not a
+   choice to make silently.
 1. **Map measures to melody bars BY CONTENT, not by window.** Measure k's
    full hit pattern plays on melody bar k at unchanged bar-relative
-   positions — the bar's downbeat stays the bar's downbeat. A melody-grid
-   stretch (5/4 da-dum, extra beat of hold) delays the track's absolute
-   position against the file, exactly as it delays the melody itself; that
-   is correct and inaudible as a rotation.
-2. **A stretched melody bar DRINKS the next measure's pickup.** Outset bar
-   18 (5 beats) carries file measure 18 plus measure 19's first-beat hits
-   in its fifth beat — read from the file's hit classes, not assumed.
-3. **Parallel-bar content classes are the acceptance oracle.** The tune and
+   positions — the bar's downbeat stays the bar's downbeat. When the app's
+   grid equals the file's meter, the content map is trivially exact; when
+   they disagree, see rule 0 before accommodating.
+2. **Parallel-bar content classes are the acceptance oracle.** The tune and
    its return are byte-parallel in the melody carrier; the bass under them
    must be the same class the file proves (7 ≡ 33, and the audit's raw
    identity graph names the shared measures). If a parallel bar's bass is
    not the file's class, the mapping is wrong even when grids align.
-4. **Verify with `tools/midi_track_audit.py --check`** (the Outset
+3. **Verify with `tools/midi_track_audit.py --check`** (the Outset
    instance: `--emit` regenerates the pre-harmonize block; `--check`
    re-derives the expectation from the file and fails naming every
    mismatched bar/offset; harmonize's single octave-down moves are
    allowed). `tests/midi_track_audit.py` runs it with a displaced-downbeat
    tripwire, CI-registered. Any future MIDI-track song adds its own
    contract line to this tool rather than re-deriving a checker.
+4. **The finale feeds the loop.** A song's last bar that truncates short of
+   its source measure makes the loop restart land on dead air: carry the
+   source measure's full content in both streams (Outset bar 52 = the
+   game's full measure-52 vamp in the track, the hold completing to 4
+   beats in the melody) so the closing vamp runs straight into the opening
+   one.
+
 
 
 

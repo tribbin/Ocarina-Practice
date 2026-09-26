@@ -6,17 +6,23 @@
 # OWN content on the melody's bar lines (measure k -> song bar k, bar-
 # relative hit positions unchanged). A window-intersection read is wrong as
 # soon as the melody's grid differs from the file's meter by beat
-# accumulations: the Outset melody holds a 5-beat da-dum at bar 18 while
+# accumulations: the Outset melody held a 5-beat da-dum at bar 18 while
 # the file runs straight 4/4, so every window after it rotated +1 beat and
 # the bass sounded off-beat for the rest of the song even though the bar
 # sums matched and the engine walk showed 0.000 drift.
 #
+# Correction 2026-09-26 (Robin's reads): the 5/4 itself was the reduced
+# score's engraving error — its fifth beat was the arranger's own extra
+# note, absent from the game's file, whose timeline is pure 4/4 (TS 4/4 at
+# beat 0 with no meter changes; the tune voice is silent through
+# [68, 72.5) and the groove enters exactly at 72). The melody's bar 18 is
+# now 4 beats and the app grid equals the file's measure-for-measure: the
+# map below carries NO drink and NO cut.
+#
 # Map encoded here, bar by bar, straight from the file's own evidence:
-#   bars 1-17   window == file measure k           (grids identical)
-#   bar 18      file measure 18 + measure 19's first-beat hits — the
-#               da-dum's 5th beat drinks the next measure's pickup
-#   bars 19-51  measure k's full hit pattern, positions unchanged
-#   bar 52      measure 52 cut to the melody's 2-beat finale
+#   every bar k = file measure k, full hit pattern, positions unchanged
+#   (bar 15-18's da-dum measure included; the finale bar 52 = the game's
+#   full vamp, so the support continues through the loop seam).
 #
 # Modes:
 #   --check [songs.json path]   compare a songs.json's track block against
@@ -37,8 +43,8 @@ TPQ = 192
 MID = ROOT / "research" / "LoZWW_Outset_Island.mid"
 SONG = "outset-island-midi"
 # the song's melody bar lengths (the shared-clock grid; the parser-verified
-# truth lives in tests/shipped_songs's bar contract)
-LENGTHS = [4] * 17 + [5] + [4] * 33 + [2]
+# truth lives in tests/shipped_songs's bar contract) — the game's pure 4/4
+LENGTHS = [4] * 52
 FLAT = {"C#": "Db", "D#": "Eb", "F#": "Gb", "G#": "Ab", "A#": "Bb"}
 BAND = 60          # the channel's harp-register doubles (>= C#4) drop
 SONGS_PATH = ROOT / "songs.json"
@@ -71,15 +77,7 @@ def measure_hits(notes, k, cut=None):
 
 def expected_bars():
     notes = file_hits()
-    bars = []
-    for k in range(1, 53):
-        if k == 18:
-            bars.append(sorted(measure_hits(notes, 18) +
-                [(rel + 4, pid) for rel, pid in
-                 measure_hits(notes, 19, cut=1.0)]))
-        else:
-            bars.append(measure_hits(notes, k, cut=2.0 if k == 52 else None))
-    return bars
+    return [measure_hits(notes, k) for k in range(1, 53)]
 
 def render_bar(hits, length):
     toks, pos = [], 0.0

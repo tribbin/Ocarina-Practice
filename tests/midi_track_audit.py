@@ -15,9 +15,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 TOOL = ROOT / "tools" / "midi_track_audit.py"
 
-# The melody grid (parser-truth lives in tests/shipped_songs): 4x17, the
-# 5-beat da-dum, 4x33, the 2-beat finale = 52 bars, 207 beats.
-LENGTHS = [4] * 17 + [5] + [4] * 33 + [2]
+# The melody grid (parser-truth lives in tests/shipped_songs): pure 4/4,
+# 52 bars of 4 = 208 beats, equal to the game file's measure-for-measure
+# timeline (the old 5-beat da-dum engraving was retired; see the tool).
+LENGTHS = [4] * 52
 
 
 def run(args):

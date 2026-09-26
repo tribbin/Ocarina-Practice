@@ -232,11 +232,16 @@ keys and are never their own indexed pages.
    **durations + meter** from a source that marks them (e/q/h tabs, MIDI,
    user-confirmed text). Letter names alone are not enough.
 2. Pick a meter and make **every bar sum to that meter** (3/4 → 3
-   quarter-beats). Mixed meters ride per bar: a bar sums to ITS OWN length
-   (Outset Island carries one 5/4 da-dum bar inside a 4/4 song; MuseScore
-   exports the irregular measure as an explicit 5/4 meta at that point). If
-   the user pastes a finished body, use that text; do not "improve" other
-   phrases while fixing one.
+   quarter-beats). Mixed meters ride per bar: a bar sums to ITS OWN length.
+   **Odd meters are suspects first (Robin, 2026-09-26):** Outset Island's
+   shipped 5/4 da-dum bar came from the reduced score's engraving of the
+   full arrangement — its fifth beat was the arranger's own extra note,
+   absent from the game's file, which ran pure 4/4; the transcription
+   faithfully inherited a wrong meter and the whole mid-song alignment
+   shifted one beat. When a source (score or MIDI) declares an irregular
+   measure, cross-check it against the other arrangement's and Robin's,
+   before shipping it. If the user pastes a finished body, use that text;
+   do not "improve" other phrases while fixing one.
 3. To hold a note across a bar, write `-` with the leftover duration
    (`E4/4 | -/2`). Do not repeat the note name — that is a new attack. When
    splitting a held note, **replace that one token**. Do not also keep the
