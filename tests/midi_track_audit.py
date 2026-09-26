@@ -14,6 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 TOOL = ROOT / "tools" / "midi_track_audit.py"
+MID = ROOT / "research" / "LoZWW_Outset_Island.mid"
 
 # The melody grid (parser-truth lives in tests/shipped_songs): pure 4/4,
 # 52 bars of 4 = 208 beats, equal to the game file's measure-for-measure
@@ -29,6 +30,18 @@ def run(args):
 
 def main():
     failures = []
+
+    # Local gate (Robin, 2026-09-26): research/ is gitignored — the game's
+    # MID is work material that stays out of the repo, so CI can never see
+    # it. The source audit is a LOCAL gate: every machine that carries the
+    # research tree runs it; CI skips with a loud note instead of dying on
+    # a FileNotFoundError (the red at run 36265370463's job 108468913064).
+    if not MID.exists():
+        print("\nSKIP: source file absent — research/ is gitignored, the "
+              "game's MID stays out of the repo, so this source audit is a "
+              "LOCAL gate (run it where the research tree exists). CI keeps "
+              "the bar-grid and corpus contracts green via shipped_songs.")
+        return 0
 
     # Leg 1 — the shipped state passes the source audit (harmonize moves
     # allowed as recorded single octave-downs). Any edit that drifts the
