@@ -131,3 +131,5 @@ jobs:
         run: python tests/zen_notebar.py
       - name: Run SEO shell (canonical + JSON-LD) tests
         run: python tests/seo_shell.py
+      - name: Run MIDI-track source-audit tests
+        run: python tests/midi_track_audit.py

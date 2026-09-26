@@ -140,6 +140,42 @@ arrangement's own voice (Outset Island's MIDI bass, done as `outset-island-midi`
    octave, which is the honest sound), re-run to prove idempotence, then
    `tests/shipped_songs` re-proves the bar grid in the real app.
 
+### 0f. Measure-content map, not window intersection (the Outset rotation, 2026-09-26)
+
+The first MIDI-track assembly read the file by WINDOW INTERSECTION: each
+melody-bar span collected whatever source hits fell inside its tick range.
+Robin's ears caught the result as "out of beat past the `~` series" while
+every mechanical check stayed green (bar sums matched, engine walk 0.000
+drift): the melody's 5-beat da-dum bar had stretched the app grid +1 beat
+past bar 18, so every later bar's window drank the NEXT measure's tail and
+the track content rotated one beat late — bar 33's bass was bar 7's content
+displaced into its second eighth. The file's own bars 7 and 33 were
+byte-identical; his thumbprint ("in the midi they are identical") was the
+oracle that proved the reading, not the engine, was faulty. Rules:
+
+1. **Map measures to melody bars BY CONTENT, not by window.** Measure k's
+   full hit pattern plays on melody bar k at unchanged bar-relative
+   positions — the bar's downbeat stays the bar's downbeat. A melody-grid
+   stretch (5/4 da-dum, extra beat of hold) delays the track's absolute
+   position against the file, exactly as it delays the melody itself; that
+   is correct and inaudible as a rotation.
+2. **A stretched melody bar DRINKS the next measure's pickup.** Outset bar
+   18 (5 beats) carries file measure 18 plus measure 19's first-beat hits
+   in its fifth beat — read from the file's hit classes, not assumed.
+3. **Parallel-bar content classes are the acceptance oracle.** The tune and
+   its return are byte-parallel in the melody carrier; the bass under them
+   must be the same class the file proves (7 ≡ 33, and the audit's raw
+   identity graph names the shared measures). If a parallel bar's bass is
+   not the file's class, the mapping is wrong even when grids align.
+4. **Verify with `tools/midi_track_audit.py --check`** (the Outset
+   instance: `--emit` regenerates the pre-harmonize block; `--check`
+   re-derives the expectation from the file and fails naming every
+   mismatched bar/offset; harmonize's single octave-down moves are
+   allowed). `tests/midi_track_audit.py` runs it with a displaced-downbeat
+   tripwire, CI-registered. Any future MIDI-track song adds its own
+   contract line to this tool rather than re-deriving a checker.
+
+
 
 ```
 python3 scripts/mid2tab.py FILE.mid --inspect
