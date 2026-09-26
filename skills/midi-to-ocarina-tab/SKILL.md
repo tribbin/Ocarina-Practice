@@ -20,6 +20,54 @@ no deps).
 
 ## Workflow
 
+### 0. Whose MIDI is it — reduced arrangement vs full original
+
+Wind-Waker practice (2026-09-26, Outset Island) taught a file hierarchy worth
+checking first, because the two files carry different truths:
+
+- **The full original arrangement** (third-party MIDI: no key/tempo metas,
+  GM programs, 192 tpqn in that case) — the source for anything ACCOMPANIMENT:
+  the bass groove lives only here (mid notes filtered to the low band catches
+  the root line; watch for the FIFTH-slot of a root-octave-fifth bounce), as
+  do string pads and fills.
+- **The reduced/ocarina MIDI + its MuseScore score** (`<name>_ocarina.mid` +
+  `...mscz`, 480 tpqn, full metas incl. key signatures and an exported
+  IrregularMeasure as an explicit 5/4 for that bar) — the source for the
+  MELODY carrier: the arranger already chose per section the instrument that
+  owns the tune; read it section by section and splice chronologically.
+
+If a score import exists, its written durations outrank the MIDI performance
+(the MIDI releases notes early; durations in the file ≠ written values).
+CAREFUL when reading the mscx: `pitch` lives on `<Note>` under `<Chord>`,
+dots can live on the Note too, and grace runs print `32nd` — tally each
+measure to the time signature to catch extractor dot-loss (an eighth-dotted
+pair read as eighths under-fills the bar by 0.5).
+
+### 0a. Splicing a multi-instrument carrier
+
+Per section, keep ONE voice: the section's melodic owner only. Where two
+instrument-staffs overlap in one bar (counter-melody), either pick the upper
+or the tune-proper voice — a dyad bar (chord hits) keeps its LOWER voice when
+the stepwise motion of the tune continues through it. Announce section for the
+player with `|["Label (Key)"]` bar-heads, and carry mid-body `#` comment lines
+(nothing at the very top — leading `#` lines become the title header).
+
+### 0b. Handwritten ornaments from the MIDI
+
+MuseScore exports performed trills/turns as real fast notes (32nd-pair +
+held principal). The house convention (Outset Island, pending Robin's ears):
+two 16ths + the held fundamental, e.g. `Gs5/16 ~ As5/16 ~ Gs5/4` — the `~`
+slide colour reads as the turn. Bars must still sum: the turn cell must span
+exactly the principal's original length.
+
+### 0c. Pieces the chart can't reach
+
+When the carrier dips below the ocarina chart (or attains no chart at any
+octave): bars earlier/later get their own register (the Outset pizz vamp rides
++24 while the tune stays at pitch); single out-of-range notes become rests OR
+the nearest octave-in neighbour, per Robin's later retune — write a `#`
+comment line in the body naming exactly which notes were substituted/dropped.
+
 ### 1. Inspect — find the melody channel
 
 ```

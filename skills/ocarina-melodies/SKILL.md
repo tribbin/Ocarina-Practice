@@ -70,6 +70,29 @@ inside an inline/bar support must resolve for the ocarina's support voice.
 Support starts AFTER the previous chain ends: the engine starts a support
 with the next rest/note following the previous note chain.
 
+First real ships 2026-09-26 (the Outset Island trio — read them as worked
+examples): `outset-island-with-bass` carries the melody with per-bar root
+drones (`| [Cs2]`, section-head brackets `|["Opening (Db major)",Cs2]`).
+
+Engine-side craft rules (from `audio.js` `buildSupportPlan`):
+
+- Support ids must be SHARP-SPELLED (`Cs2`, `Gs2`, `As1`) — the bracket regex
+  `^[A-G]s?[1-8]` reads no flat spellings, and a flat inside a bracket is
+  silently dropped (never a bad chip, the support just doesn't exist).
+- A bracket PARKS and fires on the next melody note OR REST: to start a
+  support mid-bar you need the melody to attack there; the Outset bottom-half
+  splits (`| [F2/2] … [As2/2]`) lean on a beat-2 melody note. A rest also
+  pivots, so a support can sit alone over a rest bar.
+- Durationless ring = to the next BARLINE (or, past the last note, to the last
+  token); explicit length `[Cs2/2]` sounds that many beats; `[-/2]` extends the
+  running chain; `[~F2/4]` glides in from the running chain's pitch.
+- Supports never count against the melody's range check (melody notes only) —
+  but the drone does ring through the melody voice's model at that frequency,
+  so unreachable-looking ids still sound (tuned by ear; the model extrapolates).
+- Sub-register + stepper: keep the drone's pitch BELOW the melody's own
+  octave; the melody voice already implies its own octave — drones belong in
+  the lower-chamber world.
+
 ## Player-facing formatting conventions (house target)
 
 These are cosmetic today (the parser reads `|` wherever it stands; a body
@@ -150,8 +173,11 @@ keys and are never their own indexed pages.
    **durations + meter** from a source that marks them (e/q/h tabs, MIDI,
    user-confirmed text). Letter names alone are not enough.
 2. Pick a meter and make **every bar sum to that meter** (3/4 → 3
-   quarter-beats). If the user pastes a finished body, use that text; do not
-   "improve" other phrases while fixing one.
+   quarter-beats). Mixed meters ride per bar: a bar sums to ITS OWN length
+   (Outset Island carries one 5/4 da-dum bar inside a 4/4 song; MuseScore
+   exports the irregular measure as an explicit 5/4 meta at that point). If
+   the user pastes a finished body, use that text; do not "improve" other
+   phrases while fixing one.
 3. To hold a note across a bar, write `-` with the leftover duration
    (`E4/4 | -/2`). Do not repeat the note name — that is a new attack. When
    splitting a held note, **replace that one token**. Do not also keep the
