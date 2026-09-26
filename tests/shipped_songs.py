@@ -204,11 +204,12 @@ def main():
         for f in failures:
             print("  - " + f)
         return 1
-    track_songs = [k for k, s in songs.items() if s["tracks"]]
+    track_songs = [(k, s) for k, s in songs.items() if s["tracks"]]
+    names = ", ".join(f"{k}[{', '.join(t['name'] for t in s['tracks'])}]"
+                      for k, s in sorted(track_songs))
     print(f"\nPASS: all {len(songs)} shipped songs parse clean (no bad chips), "
           f"fit at least one shipped ocarina, and carry sane metadata; "
-          f"{len(track_songs)} multi-track song(s) align bar-for-bar "
-          f"({', '.join(f'{k}[{s['tracks'][0]['name']}]' for k, s in sorted(songs.items()) if s['tracks'])}).")
+          f"{len(track_songs)} multi-track song(s) align bar-for-bar ({names}).")
     return 0
 
 
