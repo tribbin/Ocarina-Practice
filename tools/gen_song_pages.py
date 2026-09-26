@@ -54,9 +54,16 @@ _NN = ["C", "Cs", "D", "Ds", "E", "F", "Fs", "G", "Gs", "A", "As", "B"]
 def body_note_ids(body):
     # Melody-note ids (s-spelled, chart alphabet): drop comment lines and
     # every [...] bracket (supports/labels are instrument-pinned, never
-    # melody), then read explicit-octave note tokens. Sufficient for
-    # instrument SELECTION; the browser boot leg is the real verifier.
-    lines = [ln for ln in body.split("\n") if not ln.lstrip().startswith("#")]
+    # melody), then read explicit-octave note tokens. Track blocks ("#track"
+    # headers onward) are arrangement layers, not the melody — the landing
+    #/chart-fit question is about the melody the player fingers. Sufficient
+    # for instrument SELECTION; the browser boot leg is the real verifier.
+    lines = []
+    for ln in body.split("\n"):
+        if re.match(r"#[ \t]*track\b", ln, re.I):
+            break
+        if not ln.lstrip().startswith("#"):
+            lines.append(ln)
     flat = re.sub(r"\[[^\]]*\]", "", "\n".join(lines))
     ids = []
     for letter, acc, octv in re.findall(r"([A-G])([#bs]?)(\d)", flat):

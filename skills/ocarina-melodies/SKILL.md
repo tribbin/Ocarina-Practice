@@ -71,8 +71,10 @@ Support starts AFTER the previous chain ends: the engine starts a support
 with the next rest/note following the previous note chain.
 
 First real ships 2026-09-26 (the Outset Island trio — read them as worked
-examples): `outset-island-with-bass` carries the melody with per-bar root
-drones (`| [Cs2]`, section-head brackets `|["Opening (Db major)",Cs2]`).
+examples): `outset-island-with-bass` was BORN with per-bar root drones
+(`| [Cs2]`, section-head brackets `|["Opening (Db major)",Cs2]`); the same
+day it moved ON to a real groove track (below) and no longer carries
+brackets — the drones survive only as the Zen-only layer's mechanism.
 
 Engine-side craft rules (from `audio.js` `buildSupportPlan`):
 
@@ -96,6 +98,37 @@ Engine-side craft rules (from `audio.js` `buildSupportPlan`):
 - Sub-register + stepper: keep the drone's pitch BELOW the melody's own
   octave; the melody voice already implies its own octave — drones belong in
   the lower-chamber world.
+
+## Multi-track (named `#track` blocks — real second melodies)
+
+Parallel-line serialization (Robin's election 2026-09-26): a `#track <name>
+[zen|audible]` header line opens a REAL second token stream in the body
+text. Everything before the first valid header stays the melody; the melody
+stream never consumes a block.
+
+- Grammar: `#track bass` (audible by default = plays wherever the melody
+  plays, NORMAL practice included) / `#track bass zen` (the support-layer's
+  Zen gating). The header is line-anchored + case-insensitive; the same name
+  appearing twice APPENDS into one stream (a bass written in two halves is
+  one line); the newest zone word wins on the merged stream.
+- **The bar-alignment contract**: one melody bar = one track bar (bar count
+  AND per-bar beat sums equal, mixed meters included). Every consumer stands
+  on it: the two streams start together, pause/resume/loop/stop together,
+  and a melody `# tempo` inside a stream moves the shared quarter from that
+  point. tests/shipped_songs pins the contract for the whole shipped corpus.
+- Track tokens use the FULL melody grammar (accidental spellings, ties via
+  `~` slides and `-`, staccato…); track voices are the melody voice's own
+  `playNoteAt` with NO chart range check — a groove may sit below the melody
+  ocarina's carve, exactly like a support drone.
+- Melody-stream syntax is out of place inside a block: support brackets
+  (`[C2]`, `|[Ab2]`, `[-/2]`) CHIP there, never silently carry. Malformed
+  headers chip and change NO stream boundary (their lines stay with
+  whatever stream was open — no silent loss). Track junk chips in the token
+  strips after a `#track <name>` pill (clean bodies render none).
+- Worked example: `outset-island-with-bass` — melody on top, then
+  `#track bass audible` carrying the entire `outset-island-bassline` groove
+  two octaves down (its final bar truncates to the melody's half-bar
+  finale), bar-for-bar.
 
 ## Player-facing formatting conventions (house target)
 

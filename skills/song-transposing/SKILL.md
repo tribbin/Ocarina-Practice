@@ -52,6 +52,7 @@ On success: per-note exact-shift check (`every(src[i]+S === dst[i])` by MIDI), u
 
 ## Semantics locked 2026-09-23 (Robin's calls)
 - **Supports stay verbatim**: every `[...]` bracket (section labels, bar supports, inline supports, `[-/2]` extensions, `[~..]` glides) passes through a transposition untouched — supports are instrument-pinned chambers of the specific ocarina, melody only moves. The script masks bracket spans wholesale during the rewrite.
+- **Track blocks transpose like the melody** (2026-09-26): `#track` header lines carry no pitches and pass verbatim; every note inside a block is unmasked plain text and moves with the shift — a bass line must stay under the melody's key. The parser oracle inside the scripts sees only the melody stream (`parse()` stops at the first valid header), so a typo'd track body is NOT caught by the transposer's bad-chip net — tests/shipped_songs owns that duty for the shipped corpus.
 - **s-form notes transpose** as their sharp equivalent and re-spell into the sharp system; no manual pre-step.
 - **Copies inherit everything** (tempo, tick, swing, hidden) and override name/group/body only.
 
