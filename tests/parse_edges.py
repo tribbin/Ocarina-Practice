@@ -17,6 +17,7 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parent.parent
 HEADLESS = "--headed" not in sys.argv
 WAIT = ("typeof parse === 'function'"
+        " && typeof parseTracks === 'function'"
         " && typeof withPlayHeaders === 'function'"
         " && typeof midiOf === 'function'")
 
@@ -140,6 +141,43 @@ BRACKETS = r"""
       const bar = parse('|["A flat story"] A4').filter(t => t.type === "bar")[0];
       return "bass" in bar ? bar.bass : null;
     })(),
+  };
+}
+"""
+
+# Multi-track blocks (parallel-line serialization): a `#track <name> [zen]`
+# header opens a second, real token stream. Notes before the first header
+# stay the melody; the melody stream never consumes a valid block; blocks
+# split at VALID headers only (an invalid header chips and never changes the
+# stream boundary — its lines stay where they were, no silent loss).
+TRKS = r"""
+() => {
+  const wrap = (src) => parse(src).map(t => t.type === "bad" ? "bad:" + t.raw
+                      : (t.type === "note" ? t.id : t.type)).join(" ");
+  const tks = (src) => parseTracks(src).map(tr => ({
+    name: tr.name, zone: tr.zone,
+    toks: tr.tokens.map(t => t.type === "bad" ? "bad:" + t.raw
+            : (t.type === "note" ? t.id : t.type)).join(" ") }));
+  return {
+    melodyOnly: wrap("C4 D4\n#track bass audible\nDb2 Db3"),
+    tracks: tks("C4 D4\n#track bass audible\nDb2 Db3"),
+    zoneDefault: tks("A4\n#track bass\nC2"),
+    zoneZen: tks("A4\n#track bass zen\nC2"),
+    twoBlocksOneName: tks("C4\n#track bass\nC2\n#track bass audible\nC3"),
+    twoNames: tks("C4\n#track bass\nC2\n#track contrabass\nC1 C2"),
+    barsInTrack: tks("A4\n#track bass\n|B1 C2 | C2\n#track contrabass zen\n| A4"),
+    junkInTrack: tks("A4\n#track bass\nC2 zz D2"),
+    proseTrackless: wrap("C4\n# trackless prose\nD4"),
+    proseTracking: [wrap("C4\n# tracking prose is fine\nD4"),
+                     tks("C4\n# tracking prose is fine").length],
+    bareHeader: [wrap("C4\n#track\nC2"), tks("C4\n#track\nC2").length],
+    badZoneMelody: wrap("C4\n#track bass loud\nC2"),
+    badZoneTracks: tks("C4\n#track bass loud\nC2"),
+    upperHeader: tks("C4\n#TRACK BASS\nC2"),
+    noTracks: tks("C4 D4").length,
+    // parse() must leave the tokens list harmless on multi-track bodies for
+    // the melody consumers: same array shape as a plain body (no extra blobs)
+    melodyShape: parse("C4 D4\n#track bass\nDb2").length,
   };
 }
 """
@@ -320,6 +358,78 @@ def main():
             check("labelNarrative", b["labelNarrative"] is None,
                   "a label tail that merely contains 'A flat' must stay "
                   "desc-only")
+
+            # --- multi-track blocks ---
+            t = page.evaluate(TRKS)
+
+            def check_tr(key, cond, msg):
+                check("TRKS " + key, cond, msg)
+
+            check_tr("melodyOnly", t["melodyOnly"] == "C4 D4",
+                     f"the melody stream must never consume a block's notes: "
+                     f"{t['melodyOnly']!r}")
+            check_tr("tracks", t["tracks"] == [{"name": "bass", "zone": "audible",
+                                               "toks": "Cs2 Cs3"}],
+                     f"a track block parses its own stream (canonical s-ids, "
+                     f"flat spellings included): {t['tracks']!r}")
+            check_tr("zoneDefault", t["zoneDefault"] == [{"name": "bass",
+                                                          "zone": "audible",
+                                                          "toks": "C2"}],
+                     f"a header without a zone word defaults to audible "
+                     f"(practice-audible by election): {t['zoneDefault']!r}")
+            check_tr("zoneZen", t["zoneZen"] == [{"name": "bass", "zone": "zen",
+                                                 "toks": "C2"}],
+                     f"the zen zone word must be honored: {t['zoneZen']!r}")
+            check_tr("twoBlocksOneName",
+                     t["twoBlocksOneName"] == [{"name": "bass", "zone": "audible",
+                                                "toks": "C2 C3"}],
+                     f"same-name blocks append into ONE stream: "
+                     f"{t['twoBlocksOneName']!r}")
+            check_tr("twoNames",
+                     [x["name"] for x in t["twoNames"]] == ["bass", "contrabass"]
+                     and t["twoNames"][1]["toks"] == "C1 C2",
+                     f"different names are two streams, a new header ends the "
+                     f"previous block (octave inheritance rides the new "
+                     f"stream): {t['twoNames']!r}")
+            check_tr("barsInTrack",
+                     t["barsInTrack"] == [
+                       {"name": "bass", "zone": "audible",
+                        "toks": "bar B1 C2 bar C2"},
+                       {"name": "contrabass", "zone": "zen", "toks": "bar A4"}],
+                     f"bars parse inside blocks and stay with their stream's "
+                     f"zone: {t['barsInTrack']!r}")
+            check_tr("junkInTrack",
+                     "bad:zz" in t["junkInTrack"][0]["toks"],
+                     f"junk inside a block must chip in the track stream, not "
+                     f"vanish: {t['junkInTrack']!r}")
+            check_tr("proseTrackless", t["proseTrackless"] == "C4 D4",
+                     "prose comments that merely contain 'track' stay comments")
+            check_tr("proseTracking", t["proseTracking"] == ["C4 D4", 0],
+                     f"prose '#tracking' lines open nothing: "
+                     f"{t['proseTracking']!r}")
+            check_tr("bareHeader",
+                     t["bareHeader"][0] == "C4 C2 bad:#track"
+                     and t["bareHeader"][1] == 0,
+                     f"a bare '#track' header must chip, never open an "
+                     f"anonymous block: {t['bareHeader']!r}")
+            check_tr("badZoneMelody",
+                     t["badZoneMelody"] == "C4 C2 bad:#track bass loud",
+                     f"an invalid zone word chips and changes NO stream "
+                     f"boundary — the lines stay where they were: "
+                     f"{t['badZoneMelody']!r}")
+            check_tr("badZoneTracks", t["badZoneTracks"] == [],
+                     "the invalid-header lines must stay in the melody stream "
+                     "(no track stream opened)")
+            check_tr("upperHeader",
+                     t["upperHeader"] == [{"name": "bass", "zone": "audible",
+                                          "toks": "C2"}],
+                     f"the header is case-insensitive: {t['upperHeader']!r}")
+            check_tr("noTracks", t["noTracks"] == 0,
+                     "a body without blocks opens no streams")
+            check_tr("melodyShape", t["melodyShape"] == 2,
+                     f"parse() stays the melody-only flat array on multi-track "
+                     f"bodies: {t['melodyShape']!r}")
+
 
             # --- helpers ---
             check("prettySharp", h["prettySharp"] == "C#4", "pretty Cs4")
