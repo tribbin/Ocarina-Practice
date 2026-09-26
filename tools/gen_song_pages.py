@@ -92,11 +92,17 @@ def pick_default_inst(note_ids, manifest, charts):
 
 def family_members(key, songs):
     # A song family: the base slug plus every registered-suffix variant
-    # that chains to it. The BASE boots when it fits the chosen instrument;
-    # otherwise the first variant that does (base keeps the clean URL,
-    # arrangements carry the playable body).
+    # that chains to it. The CANON ARRANGEMENT seeds the landing when it
+    # fits (the content-marker variant — the family's own interpretation of
+    # the piece, Robin 2026-09-26: "our MIDI transcription version the only
+    # version"), the base boots when it fits but no arrangement does, and
+    # other instruments/interval variants fill in behind, alphabetically.
     fam = [k for k in songs if k == key or k.startswith(key + "-")]
-    return sorted(fam, key=lambda k: (k != key, k))
+    def rank(k):
+        if k.endswith("-midi"):      # the content-marker arrangement leads
+            return 0
+        return 1 if k == key else 2
+    return sorted(fam, key=lambda k: (rank(k), k))
 
 
 def fits_chart(key, body, inst, charts):

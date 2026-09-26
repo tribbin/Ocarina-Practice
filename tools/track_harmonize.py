@@ -117,7 +117,13 @@ def split_streams(body):
     return "\n".join(mel), streams
 
 def reassemble(body, streams):
-    parts = body.split("#track ")[0].rstrip("\n")
+    # The melody part must come from THE LINE-ANCHORED splitter, never a
+    # bare body.split("#track "): a body comment may legitimately MENTION a
+    # '#track' header inline (the tidy title blocks do), and a substring
+    # split amputates the melody (the amputation Robin's gen_pages boot
+    # caught, 2026-09-26).
+    mel, _ = split_streams(body)
+    parts = mel.rstrip("\n")
     for head, txt in streams:
         parts += "\n\n#track " + head + "\n" + txt.strip("\n")
     return parts + "\n"
