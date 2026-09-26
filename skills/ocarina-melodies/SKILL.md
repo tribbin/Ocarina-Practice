@@ -108,9 +108,16 @@ stream never consumes a block.
 
 - Grammar: `#track bass` (audible by default = plays wherever the melody
   plays, NORMAL practice included) / `#track bass zen` (the support-layer's
-  Zen gating). The header is line-anchored + case-insensitive; the same name
+  Zen gating); a trailing percent sets the track's MIX level —
+  `#track bass audible 50` (a numeric second field also works with the zone
+  at its default: `#track bass 50`). The percent becomes the voice's master
+  gain directly (audio.js `voiceGain`, one point in `playNoteAt`), so every
+  layer of the voice scales with it; the note sink reports it as its sixth
+  arg for tests. Header is line-anchored + case-insensitive; the same name
   appearing twice APPENDS into one stream (a bass written in two halves is
-  one line); the newest zone word wins on the merged stream.
+  one line); the newest zone word and volume win on the merged stream.
+  Malformed headers (bad zone, non-numeric percent, 0 or >100) chip and
+  change NO stream boundary.
 - **The bar-alignment contract**: one melody bar = one track bar (bar count
   AND per-bar beat sums equal, mixed meters included). Every consumer stands
   on it: the two streams start together, pause/resume/loop/stop together,
@@ -125,10 +132,25 @@ stream never consumes a block.
   headers chip and change NO stream boundary (their lines stay with
   whatever stream was open — no silent loss). Track junk chips in the token
   strips after a `#track <name>` pill (clean bodies render none).
+- **Harmonizing over doubling** (field-check lesson, 2026-09-26): a support
+  voice must never attack WHILE the melody sounds the same pitch — the
+  doubled attack is what makes the two voices hard to tell apart. The repair
+  pass is mechanical and repeatable: `python tools/track_harmonize.py`
+  (stdlib, idempotent) walks absolute onsets (melody holds extend over `-`
+  ties, cross-barline) and drops colliding tokens in convergence rounds —
+  an octave down first ("the octave below the melody's other notes"), then
+  a perfect FIFTH below when the octave would land on another melody note
+  (the melody itself rides low octaves), then another octave. Durations are
+  untouched, so the bar-grid contract holds by construction. Percentages are
+  a mixing call (field values 2026-09-26: pizz 50 %, contrabass 75 %).
 - Worked example: `outset-island-with-bass` — melody on top, then
-  `#track bass audible` carrying the entire `outset-island-bassline` groove
-  two octaves down (its final bar truncates to the melody's half-bar
-  finale), bar-for-bar.
+  `#track bass audible 50` carrying the entire `outset-island-bassline`
+  groove (its own triple-fitting register; colliding tokens harmonized by
+  the pass above), the finale truncated to the melody's half-bar; and
+  `#track contrabass audible 75` holding grounded per-bar roots. The
+  `-up12` twin carries the same pair with the contrabass raised onto the
+  real `ico-contrabass-11-c` chart (B2-F4) — the A/B pair Robin field-
+  checks register by register.
 
 ## Player-facing formatting conventions (house target)
 

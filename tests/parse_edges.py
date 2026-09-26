@@ -155,7 +155,7 @@ TRKS = r"""
   const wrap = (src) => parse(src).map(t => t.type === "bad" ? "bad:" + t.raw
                       : (t.type === "note" ? t.id : t.type)).join(" ");
   const tks = (src) => parseTracks(src).map(tr => ({
-    name: tr.name, zone: tr.zone,
+    name: tr.name, zone: tr.zone, vol: tr.vol,
     toks: tr.tokens.map(t => t.type === "bad" ? "bad:" + t.raw
             : (t.type === "note" ? t.id : t.type)).join(" ") }));
   return {
@@ -163,6 +163,14 @@ TRKS = r"""
     tracks: tks("C4 D4\n#track bass audible\nDb2 Db3"),
     zoneDefault: tks("A4\n#track bass\nC2"),
     zoneZen: tks("A4\n#track bass zen\nC2"),
+    volAudible: tks("A4\n#track bass audible 50\nC2"),
+    volZen: tks("A4\n#track bass zen 75\nC2"),
+    volLate: tks("A4\n#track bass 50\nC2"),
+    volRangeHigh: [wrap("A4\n#track bass audible 101\nC2"),
+                    tks("A4\n#track bass audible 101\nC2").length],
+    volRangeZero: tks("A4\n#track bass audible 0\nC2").length,
+    volJunk: [wrap("A4\n#track bass audible half\nC2"),
+              tks("A4\n#track bass audible half\nC2").length],
     twoBlocksOneName: tks("C4\n#track bass\nC2\n#track bass audible\nC3"),
     twoNames: tks("C4\n#track bass\nC2\n#track contrabass\nC1 C2"),
     barsInTrack: tks("A4\n#track bass\n|B1 C2 | C2\n#track contrabass zen\n| A4"),
@@ -373,21 +381,46 @@ def main():
             check_tr("melodyOnly", t["melodyOnly"] == "C4 D4",
                      f"the melody stream must never consume a block's notes: "
                      f"{t['melodyOnly']!r}")
-            check_tr("tracks", t["tracks"] == [{"name": "bass", "zone": "audible",
+            check_tr("tracks", t["tracks"] == [{"name": "bass", "zone": "audible", "vol": 1.0,
                                                "toks": "Cs2 Cs3"}],
                      f"a track block parses its own stream (canonical s-ids, "
                      f"flat spellings included): {t['tracks']!r}")
             check_tr("zoneDefault", t["zoneDefault"] == [{"name": "bass",
                                                           "zone": "audible",
+                                                          "vol": 1.0,
                                                           "toks": "C2"}],
                      f"a header without a zone word defaults to audible "
                      f"(practice-audible by election): {t['zoneDefault']!r}")
             check_tr("zoneZen", t["zoneZen"] == [{"name": "bass", "zone": "zen",
-                                                 "toks": "C2"}],
+                                                  "vol": 1.0, "toks": "C2"}],
                      f"the zen zone word must be honored: {t['zoneZen']!r}")
+            check_tr("volAudible", t["volAudible"] == [{"name": "bass",
+                                                        "zone": "audible",
+                                                        "vol": 0.5,
+                                                        "toks": "C2"}],
+                     f"a trailing percent becomes the track's gain ratio "
+                     f"(0.5 = half volume): {t['volAudible']!r}")
+            check_tr("volZen", t["volZen"] == [{"name": "bass", "zone": "zen",
+                                                "vol": 0.75, "toks": "C2"}],
+                     f"zen volume: {t['volZen']!r}")
+            check_tr("volLate", t["volLate"] == [{"name": "bass",
+                                                  "zone": "audible",
+                                                  "vol": 0.5, "toks": "C2"}],
+                     f"zone word optional when a volume stands: "
+                     f"{t['volLate']!r}")
+            check_tr("volRangeHigh",
+                     t["volRangeHigh"][0] == "A4 C2 bad:#track bass audible 101"
+                     and t["volRangeHigh"][1] == 0,
+                     "percent 101 chips and changes no stream boundary")
+            check_tr("volRangeZero", t["volRangeZero"] == 0,
+                     "percent 0 chips (the numeric form keeps >0)")
+            check_tr("volJunk",
+                     t["volJunk"][0] == "A4 C2 bad:#track bass audible half"
+                     and t["volJunk"][1] == 0,
+                     f"a non-numeric tail chips: {t['volJunk']!r}")
             check_tr("twoBlocksOneName",
                      t["twoBlocksOneName"] == [{"name": "bass", "zone": "audible",
-                                                "toks": "C2 C3"}],
+                                                "vol": 1.0, "toks": "C2 C3"}],
                      f"same-name blocks append into ONE stream: "
                      f"{t['twoBlocksOneName']!r}")
             check_tr("twoNames",
@@ -398,9 +431,9 @@ def main():
                      f"stream): {t['twoNames']!r}")
             check_tr("barsInTrack",
                      t["barsInTrack"] == [
-                       {"name": "bass", "zone": "audible",
+                       {"name": "bass", "zone": "audible", "vol": 1.0,
                         "toks": "bar B1 C2 bar C2"},
-                       {"name": "contrabass", "zone": "zen", "toks": "bar A4"}],
+                       {"name": "contrabass", "zone": "zen", "vol": 1.0, "toks": "bar A4"}],
                      f"bars parse inside blocks and stay with their stream's "
                      f"zone: {t['barsInTrack']!r}")
             check_tr("junkInTrack",
@@ -439,7 +472,7 @@ def main():
                      "(no track stream opened)")
             check_tr("upperHeader",
                      t["upperHeader"] == [{"name": "bass", "zone": "audible",
-                                          "toks": "C2"}],
+                                          "vol": 1.0, "toks": "C2"}],
                      f"the header is case-insensitive: {t['upperHeader']!r}")
             check_tr("noTracks", t["noTracks"] == 0,
                      "a body without blocks opens no streams")

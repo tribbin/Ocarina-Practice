@@ -18,6 +18,7 @@
 #   python3 tests/track_accepts.py           # headless & silent
 #   python3 tests/track_accepts.py --headed  # watch it
 
+import json
 import sys
 from pathlib import Path
 
@@ -312,6 +313,79 @@ def main():
             if pills.get("cleanPills"):
                 failures.append("track junk chips: a clean body must render "
                                 f"no pills {pills!r}")
+
+            # 10 — per-track gain reaches the voice: the header's trailing
+            # percent lands on the voice's plateau (the sink exposes mlev,
+            # the master level incl. the gain), so same-pitch events on the
+            # melody (gain 1) vs a track give the ratio EXACTLY.
+            print("== per-track gain reaches the voice", flush=True)
+            def gain_case(src, want, name):
+                print(f"== {name}", flush=True)
+                page = browser.new_page()
+                page.goto(base + "?nofs=1")
+                page.wait_for_function(
+                    "typeof OCA_PRACTICE !== 'undefined' && !!OCA_PRACTICE"
+                    " && window.NOTES && window.NOTES.length")
+                _errs = []
+                page.on("pageerror", lambda e, q=page: q._errs.append(str(e)))
+                drv = """
+() => new Promise(resolve => {
+  const ev = [];
+  setNoteSink((id, when, dur, sf, is, mlev) => {
+    if (when >= 0) ev.push({ id, mlev });
+  });
+  const SRC = %s;
+  document.getElementById('src').value = SRC;
+  render();
+  playMelody();
+  const start = performance.now();
+  const poll = () => {
+    const mels = ev.filter(e => e.id === 'C5' && e.mlev > 0.05);
+    const lows = ev.filter(e => e.id === 'C5' && e.mlev > 0 && e.mlev <= 0.05 * %s + 0.02);
+    if ((mels.length >= 2) && ev.length >= 6 || performance.now() - start > 8000) {
+      stopMelody();
+      resolve(ev);
+      return;
+    }
+    setTimeout(poll, 120);
+  };
+  setTimeout(poll, 300);
+})
+""" % (json.dumps(src), json.dumps(1.0 / want) if want else "1")
+                ev = page.evaluate(drv)
+                if _errs:
+                    failures.append(f"{name}: page errors {_errs}")
+                page.close()
+                mels = [e.get("mlev") for e in ev if e["id"] == "C5"
+                        if e.get("mlev") and e["mlev"] > 0.05]
+                if not mels:
+                    failures.append(f"{name}: no melody mlev captured — {ev!r}")
+                    return
+                base_mlev = max(mels)
+                rat = {}
+                for e in ev:
+                    if e["id"] == "C5" and e.get("mlev"):
+                        r = round(e["mlev"] / base_mlev, 3)
+                        rat.setdefault(r, 0)
+                        rat[r] += 1
+                if abs(want - 1.0) > 1e-9:
+                    hit = [r for r in rat if abs(r - want) <= 0.02]
+                    if not hit:
+                        failures.append(f"{name}: no event at ratio {want} "
+                                        f"(ratios: {rat!r}, base {base_mlev:.3f})")
+                    else:
+                        other = [r for r in rat if abs(r - 1.0) > 0.02
+                                 and abs(r - want) > 0.02]
+                        if other:
+                            failures.append(f"{name}: stray ratio(s) {other} "
+                                            f"beyond 1.0 and {want}")
+
+            gain_case("C5/2 r/2\n#track bass audible 50\nC5/2 C5/2",
+                      0.5, "bass at 50%")
+            gain_case("C5/2 r/2\n#track contrabass audible 75\nC5/2 C5/2",
+                      0.75, "contrabass at 75%")
+            gain_case("C5/2 r/2\n#track bass audible\nC5/2 C5/2",
+                      1.0, "no percent = full volume")
 
             browser.close()
     finally:

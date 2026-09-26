@@ -209,10 +209,21 @@ function trackStreamLines(src) {
     if (!m) { (block ? block.lines : melody).push(line); continue; }
     const fields = (m[1] || "").split(/\s+/).filter(Boolean);
     const name = fields[0] || "";
-    const zone = fields[1] || "audible";
+    // A numeric second field is the volume with the zone at its default;
+    // keep the visible order (zone then percent) equally legal.
+    let zone = "audible", vol = null;
+    if (fields.length >= 2 && /^\d{1,3}$/.test(fields[1])) {
+      vol = fields[1];
+    } else if (fields.length >= 2) {
+      zone = fields[1];
+    }
+    if (fields.length === 3) vol = fields[2];
+    if (vol !== null && (!/^\d{1,3}$/.test(vol) || +vol < 1 || +vol > 100)) vol = null;
     const valid = TRACK_NAME_RE.test(name) &&
                   (zone === "audible" || zone === "zen") &&
-                  fields.length <= 2;
+                  fields.length <= 3 &&
+                  (fields.length < 2 || vol !== null || fields[1] === zone) &&
+                  (fields.length !== 3 || vol !== null);
     if (!valid) {
       (block ? block.bads : melodyBads).push(line);
       continue;
@@ -220,12 +231,13 @@ function trackStreamLines(src) {
     const lower = name.toLowerCase();
     if (byName.has(lower)) {
       // Same name again: CONTINUE that stream (append) instead of opening a
-      // second one; the newest zone word wins for it.
+      // second one; the newest zone word and volume win for it.
       block = byName.get(lower);
       block.zone = zone;
+      if (vol !== null) block.vol = vol;
       continue;
     }
-    block = { name: lower, zone, lines: [], bads: [] };
+    block = { name: lower, zone, vol, lines: [], bads: [] };
     byName.set(lower, block);
     blocks.push(block);
   }
@@ -261,7 +273,7 @@ function parseTracks(src) {
       tokens.push(tok);
     }
     for (const badLine of b.bads) tokens.push({ type: "bad", raw: badLine });
-    return { name: b.name, zone: b.zone, tokens };
+    return { name: b.name, zone: b.zone, vol: (b.vol != null ? +b.vol : 100) / 100, tokens };
   });
 }
 

@@ -1214,7 +1214,11 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     if (audioCtx.state === "suspended") safeResume(audioCtx);
     const ctx = audioCtx;
     ringOnset(id, when, intoSlide);
-    if (noteSink) try { noteSink(id, when, durSec, slideFromId, intoSlide); } catch (e) {}
+    // Per-track mix: the melody voice and every legacy bag carry no
+    // trackGain (full volume); a named track's bag scales both its plateau
+    // (M below) and — reported to the sink here — the mix ratio observable.
+    const voiceGain = isMelodyBag(bag) && bag.trackGain != null ? bag.trackGain : 1;
+    if (noteSink) try { noteSink(id, when, durSec, slideFromId, intoSlide, voiceGain); } catch (e) {}
     // Late scheduling (a main-thread stall past the 0.3 s lookahead — GC/JIT
     // bursts, worse on phones) hands a `when` already in the past. All gain/
     // pitch automation scheduled for the past collapses into one instant
@@ -1325,7 +1329,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // loudness). The breathy pre-tone and "tone speaks" stages keep their
     // original proportions of 0.26 so the envelope shape is unchanged at the
     // default and simply scales with the level.
-    const M = AUDIO_DEBUG.masterLevel * vp.levelLin;
+    const M = AUDIO_DEBUG.masterLevel * vp.levelLin * voiceGain;
     const preLevel = M * (0.05 / 0.26);   // breathy pre-tone (exactly 0.05 at default M)
     const toneLevel = M * (0.16 / 0.26);  // tone begins to speak (exactly 0.16 at default M)
     // Tone speaks slightly after onset (breathy pre-tone → full), pairing with
@@ -2191,9 +2195,9 @@ function fireSupportEvent(e, when) {
 
   let trackStreams = []; // [{ name, zone, tokens, idx, pos96, nextTime }]
 
-  function trackBagFor(zone) {
+  function trackBagFor(zone, vol) {
     const zen = zone === "zen";
-    return { melodyRoute: true,
+    return { melodyRoute: true, trackGain: vol == null ? 1 : vol,
              push(v) { melodyBag.push(v); if (zen) bassBag.push(v); } };
   }
 
@@ -2203,7 +2207,7 @@ function fireSupportEvent(e, when) {
   function setupTrackStreams(src, from, resumeBeats) {
     trackStreams = parseTracks(src).map(tr => ({
       name: tr.name, zone: tr.zone, tokens: tr.tokens,
-      idx: 0, pos96: 0, nextTime: 0 }));
+      vol: tr.vol, idx: 0, pos96: 0, nextTime: 0 }));
     if (from > 0 && resumeBeats > 0) alignTracksToBeats(resumeBeats / 96);
   }
 
@@ -2290,7 +2294,8 @@ function fireSupportEvent(e, when) {
     const soundHold = tok.staccato
       ? Math.min(hold * 0.4, 0.16)
       : intoSlide ? hold : hold * 0.92;
-    playNoteAt(tok.id, noteWhen, Math.max(0.09, soundHold), trackBagFor(w.zone),
+    playNoteAt(tok.id, noteWhen, Math.max(0.09, soundHold),
+               trackBagFor(w.zone, w.vol),
                slideFrom, intoSlide);
   }
 
