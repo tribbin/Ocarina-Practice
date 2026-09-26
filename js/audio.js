@@ -1927,6 +1927,7 @@ function isMelodyPaused() { return melodyPaused; }
 
 function stopMelody() {
   melodyPlaying = false;
+  trackStreams = []; // the named tracks die with the melody by construction
   wakeDrop("melody"); // the transport died: the phone may sleep again
   dropHighlightPlan();
   melodyPaused = false;
@@ -1955,6 +1956,8 @@ function playMelody(fromIdx) {
   // Statically anchor the second, parallel support melody to these tokens:
   // its events fire at melody pivots while the walk runs.
   supportPlan = buildSupportPlan(melodyTokens);
+  // The named "#track" streams become real second walks on the same clock.
+  setupTrackStreams(document.getElementById("src").value, from, melodyPos96);
   // Seed the current tempo: header tempo, then any inline "# tempo" tokens that
   // occur before the start index (so playing from mid-song uses the right one).
   melodyQuarter = quarterSec();
@@ -1969,7 +1972,9 @@ function playMelody(fromIdx) {
   wakeHold("melody"); // screen stays up while the song plays (Robin 2026-09-25)
   syncTransport();
   resetMelodyBuses(audioCtx); // fresh bus generation for the upcoming voices
-  scheduleMelody(audioCtx.currentTime + 0.05);
+  const startWhen = audioCtx.currentTime + 0.05;
+  rebaseTrackTimes(startWhen); // the named tracks start exactly at the melody
+  scheduleMelody(startWhen);
 }
 
 function pauseMelody() {
@@ -1997,7 +2002,9 @@ function resumeMelody() {
   wakeHold("melody"); // resume = screen stays up again
   syncTransport();
   resetMelodyBuses(audioCtx); // fresh bus generation for the upcoming voices
-  scheduleMelody(audioCtx.currentTime + 0.05);
+  const resumeWhen = audioCtx.currentTime + 0.05;
+  rebaseTrackTimes(resumeWhen);
+  scheduleMelody(resumeWhen);
 }
 
 function togglePlayPause() {
@@ -2161,13 +2168,138 @@ function fireSupportEvent(e, when) {
     supportPlan.open = null;
   }
   const voices = playSupportAt(e.id, when, dur, slideFrom, intoSlide);
-  if (e.beats == null) {
-    // Same-anchor open events are a chord: keep one cut-set per pivot.
-    if (supportPlan.open && supportPlan.open.anchorIdx === e.anchorIdx)
-      supportPlan.open.voices.push(...voices);
-    else supportPlan.open = { anchorIdx: e.anchorIdx, voices };
+    if (e.beats == null) {
+      // Same-anchor open events are a chord: keep one cut-set per pivot.
+      if (supportPlan.open && supportPlan.open.anchorIdx === e.anchorIdx)
+        supportPlan.open.voices.push(...voices);
+      else supportPlan.open = { anchorIdx: e.anchorIdx, voices };
+    }
   }
-}
+
+  // ---------------------------------------------------------------------------
+  // Multi-track: the named "#track" streams (parse.js parseTracks) play as
+  // REAL second melodies on the shared clock — their own token walk, so a
+  // bass groove can enter where the melody holds (the one thing the support
+  // layer cannot do), with the melody's note semantics and its very
+  // playNoteAt voice (equivalence is the test bar, not a new timbre).
+  // Zone "audible" (the default) plays wherever the melody plays, including
+  // plain practice; zone "zen" mirrors the support gating and lands in the
+  // bass bag as well (cut when Zen is left mid-playback).
+  // Support markers are melody-stream syntax: inside a track stream the
+  // parser chips them, so nothing here ever reads a hidden bass token.
+  // ---------------------------------------------------------------------------
+
+  let trackStreams = []; // [{ name, zone, tokens, idx, pos96, nextTime }]
+
+  function trackBagFor(zone) {
+    const zen = zone === "zen";
+    return { melodyRoute: true,
+             push(v) { melodyBag.push(v); if (zen) bassBag.push(v); } };
+  }
+
+  // Start-state per stream at play time: from a token offset the bars carry
+  // the alignment contract — every track rewinds to the melody's resume beat
+  // (a track token straddling that beat is passed over, its tail dropped).
+  function setupTrackStreams(src, from, resumeBeats) {
+    trackStreams = parseTracks(src).map(tr => ({
+      name: tr.name, zone: tr.zone, tokens: tr.tokens,
+      idx: 0, pos96: 0, nextTime: 0 }));
+    if (from > 0 && resumeBeats > 0) alignTracksToBeats(resumeBeats / 96);
+  }
+
+  function alignTracksToBeats(beats) {
+    const eps = 1e-6;
+    for (const w of trackStreams) {
+      let seen = 0, idx = 0;
+      for (;;) {
+        while (idx < w.tokens.length) {
+          const t = w.tokens[idx];
+          if (t.type !== "note" && t.type !== "rest" && t.type !== "tie") { idx++; continue; }
+          break;
+        }
+        if (idx >= w.tokens.length || seen >= beats - eps) break;
+        seen += tokenGridBeats(w.tokens[idx]);
+        idx++;
+      }
+      w.idx = idx;
+      w.pos96 = Math.round(beats * 96);
+    }
+  }
+
+  // One shared scheduler step: every stream pushes what is due into the same
+  // lookahead window the melody walk uses (it runs at the top of each tick).
+  function walkTrackStreams() {
+    if (!audioCtx || !trackStreams.length) return;
+    const horizon = audioCtx.currentTime + SCHED_AHEAD;
+    for (const w of trackStreams) walkTrackStream(w, horizon);
+  }
+
+  function walkTrackStream(w, horizon) {
+    const loopEl = document.getElementById("loopMel");
+    const loop = !!(loopEl && loopEl.checked);
+    while (w.nextTime < horizon) {
+      // Zero-time tokens ride through (bars/tempo/support-markers, transparent);
+      // a "tempo" inside the stream shares the melody walker's live quarter.
+      while (w.idx < w.tokens.length) {
+        const zt = w.tokens[w.idx];
+        if (zt.type === "bar" || zt.type === "tempo" || zt.type === "bass") {
+          if (zt.type === "tempo") melodyQuarter = quarterSecFor(zt.bpm);
+          w.idx++;
+          continue;
+        }
+        break;
+      }
+      if (w.idx >= w.tokens.length) {
+        if (!loop) return;
+        // New pass: the stream loops on the shared clock (its own total
+        // equals the melody's; the next onset lands where the melody's does).
+        w.idx = 0;
+        w.pos96 = 0;
+        continue;
+      }
+      const tok = w.tokens[w.idx];
+      const noteWhen = Math.max(w.nextTime, audioCtx.currentTime + 0.02);
+      const step = Math.max(0.001, swungBeats(tok, w.pos96) * melodyQuarter /
+                    tempoSpeed());
+      w.pos96 += Math.round(tokenGridBeats(tok) * 96);
+      const zen = w.zone === "zen";
+      const gated = zen && (!(typeof isFocusMode === "function") || !isFocusMode() ||
+                    (typeof isPracticeActive === "function" && isPracticeActive()));
+      if (!gated) soundTrackToken(w, tok, noteWhen);
+      w.idx++;
+      w.nextTime += step;
+      if (!melodyPlaying) return;
+    }
+  }
+
+  // The melody note body mirrored exactly: same hold math, same slides and
+  // staccato. NO chart range check — a track may sit below the melody
+  // ocarina's carve, exactly as bracket supports always could.
+  function soundTrackToken(w, tok, noteWhen) {
+    if (tok.type !== "note" && tok.type !== "tie") return; // rests are silent
+    const hold = soundingGridBeats(w.tokens, w.idx) * melodyQuarter;
+    const slideFrom = (tok.slide && NOTES.includes(tok.slideFrom)) ? tok.slideFrom : null;
+    let intoSlide = false;
+    for (let i = lastHoldIndex(w.tokens, w.idx) + 1; i < w.tokens.length; i++) {
+      const nt = w.tokens[i];
+      if (nt.type === "bar" || nt.type === "tempo" || nt.type === "bass") continue;
+      intoSlide = !!(nt.slide && NOTES.includes(nt.id) &&
+                     NOTES.includes(nt.slideFrom) && nt.slideFrom === tok.id && nt.id !== tok.id);
+      break;
+    }
+    const soundHold = tok.staccato
+      ? Math.min(hold * 0.4, 0.16)
+      : intoSlide ? hold : hold * 0.92;
+    playNoteAt(tok.id, noteWhen, Math.max(0.09, soundHold), trackBagFor(w.zone),
+               slideFrom, intoSlide);
+  }
+
+  // Pause keeps walker positions (like the melody's); resume rebases every
+  // stream onto the same anchor time the melody uses.
+  function rebaseTrackTimes(when) {
+    for (const w of trackStreams) w.nextTime = when;
+  }
+
 
 // ---- shared highlight plan ------------------------------------------------
 // Every scheduled token used to carry its OWN setTimeout for highlightToken —
@@ -2223,6 +2355,7 @@ function dropHighlightPlan() {
 
 function scheduleMelody(when) {
   if (!melodyPlaying) return;
+  walkTrackStreams(); // every tick: the named tracks push their due notes too
   // First call after (re)start seeds the clock from the passed absolute time.
   if (when != null) melodyNextTime = when;
   pruneBag(melodyBag);

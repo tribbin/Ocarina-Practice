@@ -167,6 +167,11 @@ TRKS = r"""
     twoNames: tks("C4\n#track bass\nC2\n#track contrabass\nC1 C2"),
     barsInTrack: tks("A4\n#track bass\n|B1 C2 | C2\n#track contrabass zen\n| A4"),
     junkInTrack: tks("A4\n#track bass\nC2 zz D2"),
+    // Support markers are melody-stream syntax: inside a track block they
+    // must chip, never silently become a hidden drone on the track line.
+    supportInTrack: tks("A4\n#track bass\nC2 [B1] C3"),
+    barSupportInTrack: tks("A4\n#track bass\n| [Gs2] C2 C3"),
+    extInTrack: tks("A4\n#track bass\n[-/2] C2"),
     proseTrackless: wrap("C4\n# trackless prose\nD4"),
     proseTracking: [wrap("C4\n# tracking prose is fine\nD4"),
                      tks("C4\n# tracking prose is fine").length],
@@ -402,6 +407,18 @@ def main():
                      "bad:zz" in t["junkInTrack"][0]["toks"],
                      f"junk inside a block must chip in the track stream, not "
                      f"vanish: {t['junkInTrack']!r}")
+            check_tr("supportInTrack",
+                     t["supportInTrack"][0]["toks"] == "C2 bad:[B1] C3",
+                     f"support markers inside a track must chip, never hide: "
+                     f"{t['supportInTrack']!r}")
+            check_tr("barSupportInTrack",
+                     t["barSupportInTrack"][0]["toks"] == "bar bad:[G#2] C2 C3",
+                     f"bar-carried support content chips and the bar itself "
+                     f"survives: {t['barSupportInTrack']!r}")
+            check_tr("extInTrack",
+                     t["extInTrack"][0]["toks"].startswith("bad:"),
+                     f"support extensions inside a track must chip too: "
+                     f"{t['extInTrack']!r}")
             check_tr("proseTrackless", t["proseTrackless"] == "C4 D4",
                      "prose comments that merely contain 'track' stay comments")
             check_tr("proseTracking", t["proseTracking"] == ["C4 D4", 0],

@@ -59,6 +59,8 @@ jobs:
         run: python tests/practice_zen_return.py
       - name: Run support-bracket tests
         run: python tests/support_accepts_brackets.py
+      - name: Run track-block playback tests
+        run: python tests/track_accepts.py
       - name: Run parser edge-case tests
         run: python tests/parse_edges.py
       - name: Run render-behavior pin

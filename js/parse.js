@@ -232,13 +232,34 @@ function trackStreamLines(src) {
   return { melody, melodyBads, blocks };
 }
 
+// Chip shell for a support marker that got written inside a track block:
+// support markers are melody-stream syntax (inline `[C2]`, bar `|[Ab2]`,
+// extensions `[-/2]`) and a track stream must surface them, never silently
+// carry a hidden drone the melody never asked for.
+function trackSupportChip(tok) {
+  if (tok.ext != null) return { type: "bad", raw: "[-/…]" };
+  if (tok.id) return { type: "bad", raw: "[" + (tok.glide ? "~" : "") + pretty(tok.id) + "]" };
+  return { type: "bad", raw: "[...]" };
+}
+
 // One flat melody array per track, in header order:
 // [{ name, zone, tokens }] — each block parses with the same grammar, and a
 // block's collected bad headers ride its own stream's tail.
 function parseTracks(src) {
   const split = trackStreamLines(src);
   return split.blocks.map(b => {
-    const tokens = parse(b.lines.join("\n"));
+    const tokens = [];
+    for (const tok of parse(b.lines.join("\n"))) {
+      if (tok.type === "bass") { tokens.push(trackSupportChip(tok)); continue; }
+      if (tok.type === "bar" && tok.bass) {
+        const chip = trackSupportChip({ id: tok.bass, glide: tok.slide });
+        delete tok.bass; delete tok.beats; delete tok.slide;
+        tokens.push(tok);
+        tokens.push(chip);
+        continue;
+      }
+      tokens.push(tok);
+    }
     for (const badLine of b.bads) tokens.push({ type: "bad", raw: badLine });
     return { name: b.name, zone: b.zone, tokens };
   });
