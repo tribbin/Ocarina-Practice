@@ -91,7 +91,7 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 
 ## 7. Accessibility & UX
 
-- [ ] **Field-check the multi-track build (Audible-behavior hold — Robin's ears decide)** — the trio now ships in `outset-island-with-bass` (melody + `#track bass audible` groove = the bassline two octaves down + `#track contrabass audible` root-holds re-projected from the old drone map); his pass names: the plain-view balance (bass/contrabass levels vs the melody), the contrabass register choice, the groove's final-bar cut at the melody's half-bar finale (bus fade), and whether the groove should stay audible INSIDE an active practice session (today it plays; the tuner-deafening worry is the reason supports stay Zen-only). Plus the NEW comparison twin `outset-island-midi` (melody + the full arrangement's bass re-read measure-by-measure — his rotation catch is fixed, bar 33 ≡ bar 7 now byte-true; tools/midi_track_audit.py --check is the gate): his ears A/B it against the with-bass trio for which bass read plays, and confirm the new loop seam (the finale now completes to four beats with both supports continuing — the closing vamp runs straight into the opening one). `🟧 🔴 ⚙S`
+- [ ] **Field-check the game arrangement (Audible-behavior hold — Robin's ears decide)** — the Outset corpus is now ONE version: `outset-island-midi` = "Outset Island (arrangement)" (melody + `#track bass audible 50` + the derived `#track contrabass audible 75`; the with-bass trio, its up12 twin and the bassline solo retired before deploy); his pass names: the plain-view balance (bass/contra levels vs the melody at 50/75), the contra register choice (the game sub-bass +12 reading), the ♭ chord labels in the sheet's caps styling, the loop seam (the closing vamp into the opening one), and whether the layers stay audible INSIDE an active practice session (today they play; the tuner-deafening worry stands). `🟧 🔴 ⚙S`
 
 ## 8. Housekeeping
 
@@ -366,3 +366,27 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   standard set (AGENTS.md §12, board §6: sound-engine touches only).
   Affected-suite runs green throughout (shipped_songs 22/3-track, the audit
   suite, gen_pages, parse_edges); sw v31 → v33.
+
+- **2026-09-26 (session 16 cont. — the arrangement ships as the only version:
+  the derived contrabass, visible chord labels, the tidy landing)** —
+  Robin's green-light made the MIDI transcription THE Outset version:
+  the corpus retires the with-bass trio, its up12 twin and the bassline
+  solo (19 songs now, one multi-track); `outset-island-midi` = "Outset
+  Island (arrangement)" gains the derived `#track contrabass audible 75`
+  built by the new root-segment rule in tools/midi_track_audit.py (bounce
+  merging, longest-run measurement, the +12 sub-bass register, whole
+  holds / 2+2 splits, Ab2 at the da-dum, the loop root at the finale),
+  harmonize-clean from birth (0 collisions), its audit extended to BOTH
+  layers. Every melody bar label = number + section + the bass's own
+  chord root (Unicode flats so the caps strip reads A♭ not AB); the
+  display name drops 'game'. Landing seed canonizes the arrangement:
+  gen_song_pages' family order puts the content-marker variant first.
+  Two loader truths found the hard way: withPlayHeaders DISCARDS the
+  body's leading comment block (so user-visible notes live in LABELS;
+  the tooling's head probe repointed to the first bar row), and the
+  harmonize's bare split('#track ') amputates any melody whose comment
+  quotes a header inline (now line-anchored). Suites green throughout:
+  shipped 19/1-track, the audit battery, gen_pages (9 stubs, the family
+  seeds the arrangement), parse_edges, transpose-skill shim, support,
+  twin-derive. sw v34. Robin's refresh note: a stale preview showed
+  doubled bar-lines; a hard reload cleared it (no fix needed).
