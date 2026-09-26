@@ -70,6 +70,88 @@ inside an inline/bar support must resolve for the ocarina's support voice.
 Support starts AFTER the previous chain ends: the engine starts a support
 with the next rest/note following the previous note chain.
 
+First real ships 2026-09-26 (the Outset Island trio — read them as worked
+examples): `outset-island-with-bass` was BORN with per-bar root drones
+(`| [Cs2]`, section-head brackets `|["Opening (Db major)",Cs2]`); the same
+day it moved ON to a real groove track (below) and no longer carries
+brackets — the drones survive only as the Zen-only layer's mechanism.
+
+Engine-side craft rules (from `audio.js` `buildSupportPlan`):
+
+- Support pitch spellings accept **sharp, s-form AND flat** (`Gs2`, `G#2`,
+  `Ab2`) — everything canonicalizes to the s-spelled chart id through the
+  parser's shared flat table (`Ab2`→`Gs2`, `Db2/4.`→`Cs2/4.`, `Cb3`→`B2`),
+  so all three spellings reach the same drone (parse.js `coreIdOf`, pinned by
+  tests/parse_edges). What still vanishes silently: anything that is NOT a
+  fully-shaped pitch with an octave digit — junk tails and label prose stay
+  desc-only, never bad chips.
+- A bracket PARKS and fires on the next melody note OR REST: to start a
+  support mid-bar you need the melody to attack there; the Outset bottom-half
+  splits (`| [F2/2] … [As2/2]`) lean on a beat-2 melody note. A rest also
+  pivots, so a support can sit alone over a rest bar.
+- Durationless ring = to the next BARLINE (or, past the last note, to the last
+  token); explicit length `[Cs2/2]` sounds that many beats; `[-/2]` extends the
+  running chain; `[~F2/4]` glides in from the running chain's pitch.
+- Supports never count against the melody's range check (melody notes only) —
+  but the drone does ring through the melody voice's model at that frequency,
+  so unreachable-looking ids still sound (tuned by ear; the model extrapolates).
+- Sub-register + stepper: keep the drone's pitch BELOW the melody's own
+  octave; the melody voice already implies its own octave — drones belong in
+  the lower-chamber world.
+
+## Multi-track (named `#track` blocks — real second melodies)
+
+Parallel-line serialization (Robin's election 2026-09-26): a `#track <name>
+[zen|audible]` header line opens a REAL second token stream in the body
+text. Everything before the first valid header stays the melody; the melody
+stream never consumes a block.
+
+- Grammar: `#track bass` (audible by default = plays wherever the melody
+  plays, NORMAL practice included) / `#track bass zen` (the support-layer's
+  Zen gating); a trailing percent sets the track's MIX level —
+  `#track bass audible 50` (a numeric second field also works with the zone
+  at its default: `#track bass 50`). The percent becomes the voice's master
+  gain directly (audio.js `voiceGain`, one point in `playNoteAt`), so every
+  layer of the voice scales with it; the note sink reports it as its sixth
+  arg for tests. Header is line-anchored + case-insensitive; the same name
+  appearing twice APPENDS into one stream (a bass written in two halves is
+  one line); the newest zone word and volume win on the merged stream.
+  Malformed headers (bad zone, non-numeric percent, 0 or >100) chip and
+  change NO stream boundary.
+- **The bar-alignment contract**: one melody bar = one track bar (bar count
+  AND per-bar beat sums equal, mixed meters included). Every consumer stands
+  on it: the two streams start together, pause/resume/loop/stop together,
+  and a melody `# tempo` inside a stream moves the shared quarter from that
+  point. tests/shipped_songs pins the contract for the whole shipped corpus.
+- Track tokens use the FULL melody grammar (accidental spellings, ties via
+  `~` slides and `-`, staccato…); track voices are the melody voice's own
+  `playNoteAt` with NO chart range check — a groove may sit below the melody
+  ocarina's carve, exactly like a support drone.
+- Melody-stream syntax is out of place inside a block: support brackets
+  (`[C2]`, `|[Ab2]`, `[-/2]`) CHIP there, never silently carry. Malformed
+  headers chip and change NO stream boundary (their lines stay with
+  whatever stream was open — no silent loss). Track junk chips in the token
+  strips after a `#track <name>` pill (clean bodies render none).
+- **Harmonizing over doubling** (field-check lesson, 2026-09-26): a support
+  voice must never attack WHILE the melody sounds the same pitch — the
+  doubled attack is what makes the two voices hard to tell apart. The repair
+  pass is mechanical and repeatable: `python tools/track_harmonize.py`
+  (stdlib, idempotent) walks absolute onsets (melody holds extend over `-`
+  ties, cross-barline) and drops colliding tokens in convergence rounds —
+  an octave down first ("the octave below the melody's other notes"), then
+  a perfect FIFTH below when the octave would land on another melody note
+  (the melody itself rides low octaves), then another octave. Durations are
+  untouched, so the bar-grid contract holds by construction. Percentages are
+  a mixing call (field values 2026-09-26: pizz 50 %, contrabass 75 %).
+- Worked example: `outset-island-with-bass` — melody on top, then
+  `#track bass audible 50` carrying the entire `outset-island-bassline`
+  groove (its own triple-fitting register; colliding tokens harmonized by
+  the pass above), the finale truncated to the melody's half-bar; and
+  `#track contrabass audible 75` holding grounded per-bar roots. The
+  `-up12` twin carries the same pair with the contrabass raised onto the
+  real `ico-contrabass-11-c` chart (B2-F4) — the A/B pair Robin field-
+  checks register by register.
+
 ## Player-facing formatting conventions (house target)
 
 These are cosmetic today (the parser reads `|` wherever it stands; a body
@@ -150,8 +232,16 @@ keys and are never their own indexed pages.
    **durations + meter** from a source that marks them (e/q/h tabs, MIDI,
    user-confirmed text). Letter names alone are not enough.
 2. Pick a meter and make **every bar sum to that meter** (3/4 → 3
-   quarter-beats). If the user pastes a finished body, use that text; do not
-   "improve" other phrases while fixing one.
+   quarter-beats). Mixed meters ride per bar: a bar sums to ITS OWN length.
+   **Odd meters are suspects first (Robin, 2026-09-26):** Outset Island's
+   shipped 5/4 da-dum bar came from the reduced score's engraving of the
+   full arrangement — its fifth beat was the arranger's own extra note,
+   absent from the game's file, which ran pure 4/4; the transcription
+   faithfully inherited a wrong meter and the whole mid-song alignment
+   shifted one beat. When a source (score or MIDI) declares an irregular
+   measure, cross-check it against the other arrangement's and Robin's,
+   before shipping it. If the user pastes a finished body, use that text;
+   do not "improve" other phrases while fixing one.
 3. To hold a note across a bar, write `-` with the leftover duration
    (`E4/4 | -/2`). Do not repeat the note name — that is a new attack. When
    splitting a held note, **replace that one token**. Do not also keep the

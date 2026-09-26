@@ -310,8 +310,14 @@ def main():
                         if page.evaluate(
                                 "document.querySelectorAll('[role=button].tok').length") < 5:
                             failures.append(f"{key}: boot rendered almost no chips")
-                        head = (SONGS[member].get("body") or "").strip() \
-                            .split("\n")[0][:30]
+                        # The loader discards the body's own leading comment
+                        # block ("# name" + "# tempo" replace it), so the
+                        # head probe must be the body's first BAR ROW — the
+                        # loader keeps rows verbatim (the tidy-title leak
+                        # Robin's gen_pages boot caught, 2026-09-26).
+                        head = next((ln.strip()[:30] for ln in
+                                     (SONGS[member].get("body") or "").split("\n")
+                                     if ln.strip().startswith("|")), "")
                         src = page.evaluate("document.querySelector('#src').value")
                         if head and head not in src:
                             failures.append(

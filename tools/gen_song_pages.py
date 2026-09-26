@@ -33,7 +33,7 @@ import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-SUFFIX = re.compile(r"-(alto|12|contrabass|c|up\d+|down\d+)$")
+SUFFIX = re.compile(r"-(alto|12|contrabass|c|up\d+|down\d+|midi)$")
 
 # Landing-page default-ocarina ladder (Robin, 2026-09-24): 12-hole > double
 # alto C > triple bass C > contrabass. An instrument is seeded only when the
@@ -54,9 +54,16 @@ _NN = ["C", "Cs", "D", "Ds", "E", "F", "Fs", "G", "Gs", "A", "As", "B"]
 def body_note_ids(body):
     # Melody-note ids (s-spelled, chart alphabet): drop comment lines and
     # every [...] bracket (supports/labels are instrument-pinned, never
-    # melody), then read explicit-octave note tokens. Sufficient for
-    # instrument SELECTION; the browser boot leg is the real verifier.
-    lines = [ln for ln in body.split("\n") if not ln.lstrip().startswith("#")]
+    # melody), then read explicit-octave note tokens. Track blocks ("#track"
+    # headers onward) are arrangement layers, not the melody — the landing
+    #/chart-fit question is about the melody the player fingers. Sufficient
+    # for instrument SELECTION; the browser boot leg is the real verifier.
+    lines = []
+    for ln in body.split("\n"):
+        if re.match(r"#[ \t]*track\b", ln, re.I):
+            break
+        if not ln.lstrip().startswith("#"):
+            lines.append(ln)
     flat = re.sub(r"\[[^\]]*\]", "", "\n".join(lines))
     ids = []
     for letter, acc, octv in re.findall(r"([A-G])([#bs]?)(\d)", flat):
@@ -85,11 +92,17 @@ def pick_default_inst(note_ids, manifest, charts):
 
 def family_members(key, songs):
     # A song family: the base slug plus every registered-suffix variant
-    # that chains to it. The BASE boots when it fits the chosen instrument;
-    # otherwise the first variant that does (base keeps the clean URL,
-    # arrangements carry the playable body).
+    # that chains to it. The CANON ARRANGEMENT seeds the landing when it
+    # fits (the content-marker variant — the family's own interpretation of
+    # the piece, Robin 2026-09-26: "our MIDI transcription version the only
+    # version"), the base boots when it fits but no arrangement does, and
+    # other instruments/interval variants fill in behind, alphabetically.
     fam = [k for k in songs if k == key or k.startswith(key + "-")]
-    return sorted(fam, key=lambda k: (k != key, k))
+    def rank(k):
+        if k.endswith("-midi"):      # the content-marker arrangement leads
+            return 0
+        return 1 if k == key else 2
+    return sorted(fam, key=lambda k: (rank(k), k))
 
 
 def fits_chart(key, body, inst, charts):

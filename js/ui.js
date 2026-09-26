@@ -1035,6 +1035,38 @@ function drawTokens(tokens) {
   bumpHoverQuiet();
   drawTokenStrip(document.getElementById("tokens"), tokens, true);
   drawTokenStrip(document.getElementById("focusTokens"), tokens);
+  drawTracksBadPills();
+}
+
+// Track-stream junk chips (bad-chip philosophy): a clean body renders no
+// track pills at all, but any unparsable junk inside a "#track" stream must
+// surface exactly like melody junk does — a stream-name pill, then the raw
+// junk in the same .tok.bad shape, in both strips.
+function drawTracksBadPills() {
+  const srcEl = document.getElementById("src");
+  if (!srcEl) return;
+  let streams;
+  try { streams = parseTracks(srcEl.value); } catch (e) { return; }
+  const bad = streams.filter(tr => tr.tokens.some(t => t.type === "bad"));
+  if (!bad.length) return;
+  for (const box of [document.getElementById("tokens"),
+                     document.getElementById("focusTokens")]) {
+    if (!box) continue;
+    for (const tr of bad) {
+      const h = document.createElement("div");
+      h.className = "tok bad";
+      h.textContent = "#track " + tr.name;
+      h.title = "the junk below belongs to this track — fix or remove it";
+      box.appendChild(h);
+      for (const t of tr.tokens.filter(x => x.type === "bad")) {
+        const el = document.createElement("div");
+        el.className = "tok bad";
+        el.textContent = t.raw || "?";
+        el.title = "not part of the " + tr.name + " track notation — fix or remove it";
+        box.appendChild(el);
+      }
+    }
+  }
 }
 
 function addNote(id) {

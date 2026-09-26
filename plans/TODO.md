@@ -62,6 +62,7 @@ night; what remains is measurement/planting work and his eyeballs):
 
 | Item | Section |
 |---|---|
+| **Robin's field check on the multi-track trio** — `outset-island-with-bass` now plays melody + audible bass groove (the bassline two octaves down) + contrabass root-holds; his ears name the balance, the contrabass register, the practice-session audibility and the groove's final-bar cut | §7 |
 | **Robin's eyeball pass** on the panel builds: the HiFi retune batch (`?hifi` — amber buttons, dark segment row/select, deeper zen red, LED fills) and the favorites stars in the library — his values, built to spec; he retunes anything that reads off | feel checks |
 | The tone.json measurement/fitting work per chamber (Robin's instrument data; the loader treats missing files as "no data yet") | §1 |
 | The next audio-tick field catch names itself (spike cards carry the ambient ring); Robin re-introduces the hunt when the ticks matter | DONE (re-openable) |
@@ -86,9 +87,11 @@ night; what remains is measurement/planting work and his eyeballs):
 
 ## 6. Tests & CI
 
-Currently covered (don't lose this): practice acceptance (4 cases strict+closed-loop), practice dip gate (hold-through blocked, silence/50%-notch dips pass, 75% duck shut, legato free), practice seat across view rebuilds + zen-entry stopMelody + overlay zen-only seats, console-hygiene boot scan (4 boots; allowlist = manifest-declared tone misses), support-bracket battery incl. bit-identical melody-vs-support equivalence + Zen timing/gating, instrument load/tone-model install per manifest (incl. svgWhen id/title paths + boot diagnostics in per-leg fresh contexts), render pin (chips/grid/scroll-band/highlight/focus-restore + typed-render debounce contract), svg clone coordinates, debug panel build-on-open contract, transport scheduler arithmetic/cut-bus/lite, practice history, template safety, theme toggle, offline SW boot+swap, ac worker parity, swing grid, sr hints, spike watch (the tick hunt), the session-14 batch (wake lock lifecycle, tick-override semantics, asset-version token equality, twin-derivation byte-identity, transposer skill, practice dials), and the session-15 additions (SEO shell shape + zero-per-stub JSON-LD, zen note-bar glide five-legger, suite-server teardown hardening, board-tool empty-run linting). CI = push/PR/manual, explicitly not a deploy gate. (.github/workflows/practice-tests.yml — console-hygiene + 41 suite steps + eslint + html-validate + board verify; local run-all counted 42 green on the Linux partition 2026-09-25 after the suite-server migration; earlier: 38 on 2026-09-25 session 14, 34 on session 12 — see DONE) NOTE: practice_accepts flaked ONE strict case under full-sweep load 2026-09-23, green twice standalone afterward and in the diag run — watch it, the arbiter hardening already took one such race; support_accepts flaked the same class 2026-09-24 (fixed wall-clock read window vs audio-clock lag under sweep CPU contention) and got the class cure: the read is now a real rendezvous with wall-fire stamps + ctx snapshots `335c4b4`). **Third member 2026-09-25 (CLI run `36110497803`, job 107992645371): practice_dip's leg A stalled the full 15 s timeout at maxIdx 0** — same SHA the local sweep had green; a DIFFERENT injury inside the same family: the suite's rendezvous (OCA_PRACTICE+NOTES) unlocks INSIDE loadInstrument (the stretch between installFingerings and boot's tail), where fillLibrary/loadLibraryItem(home) → practiceInvalidate is still owed — a session started mid-boot died when the tail landed; the stall reproduces at will with CDP network latency, cured by the rule-13 real rendezvous: the #scale options guard (filled only by the tail; a rAF poll never resolves mid-synchronous-block) plus a state card (started/st/ix/frames) on every driver resolve so a future stall names itself. The same tail guard rode into every suite that starts practice or needs typed editor text to survive boot (practice_accepts_melody, practice_zen_return, practice_history, keyboard_widgets, render_pin); library_hardening already waited a stronger post-tail signal (the Scales OPTGROUP), instrument_switch_race covers the race as its subject, playback-only suites are immune (practiceInvalidate stops practice, never play). Full sweep 31/31 green after the cure.
+Currently covered (don't lose this): practice acceptance (4 cases strict+closed-loop), practice dip gate (hold-through blocked, silence/50%-notch dips pass, 75% duck shut, legato free), practice seat across view rebuilds + zen-entry stopMelody + overlay zen-only seats, console-hygiene boot scan (4 boots; allowlist = manifest-declared tone misses), support-bracket battery incl. bit-identical melody-vs-support equivalence + Zen timing/gating, instrument load/tone-model install per manifest (incl. svgWhen id/title paths + boot diagnostics in per-leg fresh contexts), render pin (chips/grid/scroll-band/highlight/focus-restore + typed-render debounce contract), svg clone coordinates, debug panel build-on-open contract, transport scheduler arithmetic/cut-bus/lite, practice history, template safety, theme toggle, offline SW boot+swap, ac worker parity, swing grid, sr hints, spike watch (the tick hunt), the session-14 batch (wake lock lifecycle, tick-override semantics, asset-version token equality, twin-derivation byte-identity, transposer skill, practice dials), the session-15 additions (SEO shell shape + zero-per-stub JSON-LD, zen note-bar glide five-legger, suite-server teardown hardening, board-tool empty-run linting), and the session-16/16-cont. additions (track acceptance battery incl. mix ratios, hifi retune, library favorites star + readability, tests/midi_track_audit = the pure-python source-measure audit with a displaced-downbeat tripwire over tools/midi_track_audit.py). **Sweep policy (Robin, 2026-09-26): the full run_all sweep runs only for sound-engine touches; data/song changes run the directly-affected suites (see AGENTS.md §12)** — full sweep 46/46 was the last before the policy (including the new audit suite). CI = push/PR/manual, explicitly not a deploy gate. (.github/workflows/practice-tests.yml — console-hygiene + 41 suite steps + eslint + html-validate + board verify; local run-all counted 42 green on the Linux partition 2026-09-25 after the suite-server migration; earlier: 38 on 2026-09-25 session 14, 34 on session 12 — see DONE) NOTE: practice_accepts flaked ONE strict case under full-sweep load 2026-09-23, green twice standalone afterward and in the diag run — watch it, the arbiter hardening already took one such race; support_accepts flaked the same class 2026-09-24 (fixed wall-clock read window vs audio-clock lag under sweep CPU contention) and got the class cure: the read is now a real rendezvous with wall-fire stamps + ctx snapshots `335c4b4`). **Third member 2026-09-25 (CLI run `36110497803`, job 107992645371): practice_dip's leg A stalled the full 15 s timeout at maxIdx 0** — same SHA the local sweep had green; a DIFFERENT injury inside the same family: the suite's rendezvous (OCA_PRACTICE+NOTES) unlocks INSIDE loadInstrument (the stretch between installFingerings and boot's tail), where fillLibrary/loadLibraryItem(home) → practiceInvalidate is still owed — a session started mid-boot died when the tail landed; the stall reproduces at will with CDP network latency, cured by the rule-13 real rendezvous: the #scale options guard (filled only by the tail; a rAF poll never resolves mid-synchronous-block) plus a state card (started/st/ix/frames) on every driver resolve so a future stall names itself. The same tail guard rode into every suite that starts practice or needs typed editor text to survive boot (practice_accepts_melody, practice_zen_return, practice_history, keyboard_widgets, render_pin); library_hardening already waited a stronger post-tail signal (the Scales OPTGROUP), instrument_switch_race covers the race as its subject, playback-only suites are immune (practiceInvalidate stops practice, never play). Full sweep 31/31 green after the cure.
 
 ## 7. Accessibility & UX
+
+- [ ] **Field-check the game arrangement (Audible-behavior hold — Robin's ears decide)** — the Outset corpus is now ONE version: `outset-island-midi` = "Outset Island (arrangement)" (melody + `#track bass audible 50` + the derived `#track contrabass audible 75`; the with-bass trio, its up12 twin and the bassline solo retired before deploy); his pass names: the plain-view balance (bass/contra levels vs the melody at 50/75), the contra register choice (the game sub-bass +12 reading), the ♭ chord labels in the sheet's caps styling, the loop seam (the closing vamp into the opening one), and whether the layers stay audible INSIDE an active practice session (today they play; the tuner-deafening worry stands). `🟧 🔴 ⚙S`
 
 ## 8. Housekeeping
 
@@ -253,3 +256,149 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   phone/backcat eyes (his values, built to spec — an evening eyeball pass);
   tone.json measurements, song-body standardization, the perma-link data
   planting and the library widening keep their standing forms.
+
+- **2026-09-26 (session 16 — the multi-track pickup: the idea becomes grammar, engine, and the Outset trio)** —
+  Robin's IDEAS entry "multi-track arrangement" picked up via
+  research/multi-track-handover.md; the full dependence panel answered
+  up front (all recommended picks): build on `outset-island`, 2-track
+  proof then the trio, per-track zones with the bass audible in normal
+  practice, parallel-line track blocks, shared clock with the melody's
+  bars/labels, all-or-nothing v1 UI, melody tone model for bass voices.
+  Landed on `outset-island` (the branch already carried `coreIdOf`):
+  (1) `0e4afbe` **the grammar**: a `#track <name> [zen|audible]` header
+      line opens a real second token stream; parse() stays the melody
+      stream's front door (a line-based pre-pass lifts the blocks away —
+      every consumer keeps its flat melody array), parseTracks() parses
+      each block with the same grammar, same-name blocks append into one
+      stream (newest zone word wins), and malformed headers chip without
+      changing any stream boundary. tests/parse_edges carried the TRACK
+      legs red-first (melody purity, zones, merges, bars in blocks,
+      prose '#tracking' safety, the parse() shape).
+  (2) `53e8e2b` **the engine**: the named streams walk as real second
+      melodies on the shared clock (own scheduler state walked at the top
+      of every melody tick — a groove enters where the melody holds, the
+      thing pivot-anchored supports cannot do), the melody's exact note
+      semantics + its very playNoteAt voice; zone audible plays wherever
+      the melody plays (melody bag only), zone zen mirrors the support
+      gating and lands in the bass bag too. Track junk and melody-syntax
+      support markers chip (strip pills name the stream, clean bodies
+      render none). tests/track_accepts.py (CI-registered) red-first:
+      plain-view audible, zen audible, zen-zone gated, equivalence with
+      the same line as melody, loop re-fires, stop-leak guard, no-track
+      no-op, junk chips. A harness round-trip named the melody-voice's
+      range rule cleanly (the page boots A4–F6; supports/tracks never
+      range-check).
+  (3) `d754a09` **the groove ship**: outset-island-with-bass drops its
+      drone brackets — the melody keeps its notes and a `#track bass
+      audible` block carries the entire outset-island-bassline groove
+      two octaves down bar-for-bar (52 bars equal, the 5/4 da-dum, the
+      final bar truncated to the melody's half-bar finale); the
+      shipped-songs suite gains the corpus-wide track contract (streams
+      clean + zones declared + bar sums equal per bar index); the stub
+      generator's melody reader stops at '#track' headers (caught live by
+      the gen_pages boot timeout when the track notes were counted as
+      melody); sw oco-pwa-v27.
+  (4) `b23621b` **the trio (the IDEAS example)**: melody + bass groove +
+      contrabass — the old per-bar drone roots re-projected as a real
+      track (bar roots, the melody-attack splits as plain mid-bar tokens,
+      the 5/4 bar a tie-extended hold); three parallel walks, zero engine
+      churn.
+  Sweeps: 45/45 twice (the track battery inside); lint clean; board
+  verify green; the field-check item lifts to §7 as the feature's
+  deciding pass (Robin's ears own the balance/register/practice-tuner
+  calls; the first audible draft he retunes is the expected course).
+
+- **2026-09-26 (session 16 cont. — the mix lands, the harmonize pass becomes a tool, the MIDI unit queued)** —
+  The field check began speaking: (1) hard-to-tell-apart voices → the
+  header gained a trailing percent (`#track bass audible 50`,
+  `#track contrabass audible 75`), parsed to a gain ratio and applied as
+  ONE master multiplier inside playNoteAt; the note sink now reports the
+  mix so tests/track_accepts pins the ratio exactly (0.5/0.75/default
+  legs, red-first). (2) same-pitch doubling → tools/track_harmonize.py
+  (the reusable idempotent pass): absolute-onset collision map (melody
+  holds extend over ties cross-barline), token drops in convergence
+  rounds (octave below, then a perfect fifth below, then another octave),
+  durations untouched — 40 pizz tokens harmonized, zero collisions left,
+  the bar-grid contract untouched. (3) the -up12 twin lives for the
+  register A/B (high contrabass on the real cbc chart). Skills carry the
+  volume grammar + harmonizing doctrine (`320b9aa`); sw oco-pwa-v30;
+  sweep 45/45 green with this state; Robin confirmed the songs are
+  NOT yet shipped (nothing public) — reshape freedom stands.
+  QUEUED (next session, context meter hit the watch line here):
+  the MIDI-interpreted variant Robin asked for — research/
+  LoZWW_Outset_Island.mid is the source; read skills/midi-to-ocarina-tab
+  fresh at pickup (scripts/mscx_dump.py exists; mscx beats re-deriving),
+  build `outset-island`'s companion song with the FULL arrangement's
+  bass voice interpreted from the MIDI (skill's onset-grid assembly),
+  harmonized + bar-grid-aligned by the same pass, then the skills gain
+  the midi-unit learnings in place.
+
+- **2026-09-26 (session 16 cont. — the MIDI twin ships, Robin's rotation catch, the 5/4 retires, the loop seam completes)** —
+  The queued MIDI-interpreted variant landed (`20f0664`): `outset-island-midi`
+  = the with-bass melody verbatim + `#track bass audible 50` re-interpreted
+  from the full arrangement's ch0 through the onset-grid assembly (+24
+  projection, Ab1 roots a third octave up, harp-register doubles dropped,
+  tail hit trimmed, the second low channel declared out; harmonize moved 31
+  same-pitch attacks), bar labels 1-52 so Robin can name measures; the
+  `-midi` content marker joined both suffix pins; the midi skill gained §0e;
+  sw v31. Robin's field check then caught what every mechanical check had
+  hidden: bar 7 and bar 33 SHOULD be in pace "in a similar way" (his
+  thumbprint: "in the midi they are identical") — the raw identity test
+  proved the FILE's measures 7/33 byte-identical while our track read bar 33
+  as the NEXT measure's tail: the window-intersection assembly rotated every
+  bar's content +1 beat past the da-dum (`bae365d` fixed it with the
+  measure-content map, tools/midi_track_audit.py + its CI-registered tripwire
+  suite built red-first, bar 33 ≡ bar 7 restored; sw v32).
+  His M18 read then pulled the root under the rotation (`2c02f04`): the
+  reduced score's 5/4 da-dum bar was ITS OWN error — the ocarina.mid's
+  Eb at [72, 72.5) was the arranger's human slip (absent from the game's
+  file; the game's TS metas = 4/4 with no meter change, the tune voice
+  silent through [68, 72.5), the groove's bass entering exactly at 72) —
+  the whole Outset corpus re-carved to the game's pure 4/4: five bodies'
+  bar 18 lost the stolen Eb5/4, bar 52 COMPLETES to four beats in every
+  melody, both support layers now carry the full measure-52 vamp/whole note
+  so a loop lands the closing vamp straight into the opening one, the
+  contrabass rows lose the leftover `/1 -` misreads, the twin re-emits from
+  the audit tool with the pure-4/4 map (check green, 40 harmonize moves
+  idempotent), and the odd-meter doctrine lands in both skills: an
+  irregular measure is Robin's ear check against the source material, not
+  an accommodating fact. His last note retires the full sweep from the
+  standard set (AGENTS.md §12, board §6: sound-engine touches only).
+  Affected-suite runs green throughout (shipped_songs 22/3-track, the audit
+  suite, gen_pages, parse_edges); sw v31 → v33.
+
+- **2026-09-26 (session 16 cont. — the arrangement ships as the only version:
+  the derived contrabass, visible chord labels, the tidy landing)** —
+  Robin's green-light made the MIDI transcription THE Outset version:
+  the corpus retires the with-bass trio, its up12 twin and the bassline
+  solo (19 songs now, one multi-track); `outset-island-midi` = "Outset
+  Island (arrangement)" gains the derived `#track contrabass audible 75`
+  built by the new root-segment rule in tools/midi_track_audit.py (bounce
+  merging, longest-run measurement, the +12 sub-bass register, whole
+  holds / 2+2 splits, Ab2 at the da-dum, the loop root at the finale),
+  harmonize-clean from birth (0 collisions), its audit extended to BOTH
+  layers. Every melody bar label = number + section + the bass's own
+  chord root (Unicode flats so the caps strip reads A♭ not AB); the
+  display name drops 'game'. Landing seed canonizes the arrangement:
+  gen_song_pages' family order puts the content-marker variant first.
+  Two loader truths found the hard way: withPlayHeaders DISCARDS the
+  body's leading comment block (so user-visible notes live in LABELS;
+  the tooling's head probe repointed to the first bar row), and the
+  harmonize's bare split('#track ') amputates any melody whose comment
+  quotes a header inline (now line-anchored). Suites green throughout:
+  shipped 19/1-track, the audit battery, gen_pages (9 stubs, the family
+  seeds the arrangement), parse_edges, transpose-skill shim, support,
+  twin-derive. sw v34. Robin's refresh note: a stale preview showed
+  doubled bar-lines; a hard reload cleared it (no fix needed).
+
+- **2026-09-26 (session 16 cont. — the CI red on the old commit: the
+  source audit becomes a local gate)** — the audit suite rode the PR's
+  older head and died in CI at run `36265370463` job `108468913064` on a
+  FileNotFoundError: `research/LoZWW_Outset_Island.mid` is gitignored
+  (work material, Robin's), so CI can never see it while every local run
+  was green. The fix reverted the day's tool churn and took the small
+  shape (`fbc75d1`): the suite SKIPS with a loud note when the source is
+  absent — the source audit is a LOCAL gate for machines carrying the
+  research tree, and CI keeps the corpus/grid contracts green through
+  shipped_songs. Verified both shapes (the file moved out = skip exit 0,
+  moved back = the full battery).

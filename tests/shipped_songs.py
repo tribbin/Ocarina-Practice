@@ -25,7 +25,9 @@ from pathlib import Path
 # markers (alto, 12, contrabass) and transposition/interval markers (c,
 # upN/downN). Content-shaping words (short, part...) are part of BASE slugs —
 # 'concerning-hobbits-short' is its own base, the -c copy chains to it.
-SUFFIX = re.compile(r"-(alto|12|contrabass|c|up\d+|down\d+)$")
+# 'midi' marks an arrangement whose accompaniment was interpreted straight
+# from a MIDI source (the melody stays the base's).
+SUFFIX = re.compile(r"-(alto|12|contrabass|c|up\d+|down\d+|midi)$")
 
 # Synthetic violations in the suite prove the tripwire, since the shipped
 # corpus is expected to be clean.
@@ -47,7 +49,8 @@ from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parent.parent
 HEADLESS = "--headed" not in sys.argv
-WAIT = ("typeof window.parse === 'function' && typeof window.BUILTIN !== 'undefined'"
+WAIT = ("typeof window.parse === 'function' && typeof window.parseTracks === 'function'"
+        " && typeof window.BUILTIN !== 'undefined'"
         " && BUILTIN && BUILTIN.major && BUILTIN.major.body"
         " && BUILTIN.chromatic && BUILTIN.chromatic.body")
 
@@ -59,6 +62,20 @@ async () => {
     const fj = await (await fetch(inst.fingerings)).json();
     sets.push({ id: inst.id, notes: fj.notes.map(n => n.id) });
   }
+  // Per-stream bar summary for the shared-clock alignment contract: bars are
+  // the '|' tokens' order; each bar sums note/rest/tie grid beats.
+  const barSum = (toks) => {
+    const sums = [];
+    let cur = 0, any = false;
+    for (const t of toks) {
+      if (t.type === "bar") { if (any) sums.push(cur); cur = 0; any = false; continue; }
+      if (t.type === "note" || t.type === "rest" || t.type === "tie") {
+        cur += t.beats || 0; any = true;
+      }
+    }
+    if (any) sums.push(cur);
+    return sums;
+  };
   const out = {};
   for (const [id, song] of Object.entries(BUILTIN)) {
     const body = song.body != null ? String(song.body) : "";
@@ -75,6 +92,11 @@ async () => {
       inRangeBy: sets
         .filter(s => ids.length && ids.every(x => s.notes.includes(x)))
         .map(s => s.id),
+      tracks: parseTracks(body).map(tr => ({
+        name: tr.name, zone: tr.zone,
+        bads: tr.tokens.filter(t => t.type === "bad").map(t => t.raw),
+        melBars: barSum(toks), trkBars: barSum(tr.tokens),
+      })),
     };
   }
   return out;
@@ -144,6 +166,32 @@ def main():
                     failures.append(f"{sid}: missing display name")
                 if s["tempo"] is None or not (10 <= s["tempo"] <= 400):
                     failures.append(f"{sid}: tempo out of 10–400: {s['tempo']!r}")
+                # Track-stream contract: streams parse clean and every track's
+                # bar count + per-bar beat sums equal the melody's bar grid
+                # (the shared-clock precondition the whole feature stands on).
+                for tr in s["tracks"]:
+                    if tr["bads"]:
+                        failures.append(
+                            f"{sid}: track '{tr['name']}' has "
+                            f"{len(tr['bads'])} bad token(s): "
+                            f"{tr['bads'][:6]!r}")
+                    if tr["zone"] not in ("audible", "zen"):
+                        failures.append(
+                            f"{sid}: track '{tr['name']}' zone {tr['zone']!r} "
+                            "is not a declared zone")
+                    mel, trk = tr["melBars"], tr["trkBars"]
+                    if len(mel) != len(trk):
+                        failures.append(
+                            f"{sid}: track '{tr['name']}' has {len(trk)} bars "
+                            f"vs the melody's {len(mel)} — the shared clock "
+                            "demands bar-for-bar alignment")
+                    else:
+                        for i, (a, b) in enumerate(zip(mel, trk)):
+                            if abs(a - b) > 1e-6:
+                                failures.append(
+                                    f"{sid}: track '{tr['name']}' bar {i + 1} "
+                                    f"sums {b} beats vs the melody's {a}")
+                                break
                 v = slug_violation(sid, all_keys, {})
                 if v:
                     failures.append(f"{sid}: {v}")
@@ -158,8 +206,12 @@ def main():
         for f in failures:
             print("  - " + f)
         return 1
+    track_songs = [(k, s) for k, s in songs.items() if s["tracks"]]
+    names = ", ".join(f"{k}[{', '.join(t['name'] for t in s['tracks'])}]"
+                      for k, s in sorted(track_songs))
     print(f"\nPASS: all {len(songs)} shipped songs parse clean (no bad chips), "
-          "fit at least one shipped ocarina, and carry sane metadata.")
+          f"fit at least one shipped ocarina, and carry sane metadata; "
+          f"{len(track_songs)} multi-track song(s) align bar-for-bar ({names}).")
     return 0
 
 

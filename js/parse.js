@@ -1,11 +1,36 @@
+// Flat spellings re-spell into the s-spelled chart id space (Db4 -> Cs4,
+// Cb4 -> B3); #, s and b are all accepted and normalized. Shared by the
+// melody branch and the support-bracket grammar so both spellings reach the
+// same id — a flat must never silently vanish just because it stood inside
+// a bracket.
+const FLAT_CORE = { C: ["B", -1], D: ["Cs", 0], E: ["Ds", 0], F: ["E", 0],
+                    G: ["Fs", 0], A: ["Gs", 0], B: ["As", 0] };
+
+function coreIdOf(letter, acc, oct) {
+  if (acc === "b") {
+    const [n, d] = FLAT_CORE[letter];
+    return n + (oct + d);
+  }
+  let core = letter;
+  if (acc === "#" || acc === "s") core += "s";
+  return core + oct;
+}
+
 function parse(src) {
+  // Multi-track pre-pass: a body may carry parallel track blocks after the
+  // melody ("#track bass audible" / "#track X zen" header lines). parse()
+  // stays the MELODY stream's front door (every consumer — render, library,
+  // playback — keeps reading a flat melody array), so the blocks' text is
+  // lifted away here and parsed separately through parseTracks().
+  const split = trackStreamLines(String(src == null ? "" : src));
   const tokens = [];
   const re = /([A-Ga-g])([#bs])?(\d)?(?!\d)(\/\d+\.?t?)?(!)?|(\|)\s*(\[[^\]]*\])?|(r)(\/\d+\.?t?)?|(-)(\/\d+\.?t?)?|(~)|(#[^\n]*)|(\[[^\]]*\])/g;
   let m, lastOct = 4, lastPitch = null, canTie = false, pendingSlide = false;
   // Staccato may be written before or after the duration: normalize
   // "C5!/8" -> "C5/8!" so the /8 always parses (the note regex consumes
   // dur-then-bang only).
-  const text = src.replace(/[–—]/g, "|").replace(/!(\/\d+\.?t?)/g, "$1!");
+  const text = split.melody.join("\n").replace(/[–—]/g, "|")
+                 .replace(/!(\/\d+\.?t?)/g, "$1!");
   // Everything the grammar cannot consume becomes a visible "bad" chip
   // instead of silently vanishing (typos, multi-digit octaves like C10,
   // foreign words). Whitespace separators are legal; stray LETTERS are not
@@ -122,17 +147,11 @@ function parse(src) {
     const dur = pd.dur;
     const spellOct = oct;
     lastOct = oct;
-    let core = letter;
-    if (acc === "#" || acc === "s") core += "s";
-    else if (acc === "b") {
-      const flat = {C:["B",-1], D:["Cs",0], E:["Ds",0], F:["E",0], G:["Fs",0], A:["Gs",0], B:["As",0]};
-      const [n, d] = flat[letter];
-      core = n; oct += d;
-    }
+    const core = coreIdOf(letter, acc, oct);
     // s-spelling is for convenience (canonical ids); display wants the hash.
     if (acc === "s") acc = "#";
     const tok = {
-      type:"note", id: core + oct, dur, dotted: pd.dotted, triplet: pd.triplet, beats: pd.beats, raw: m[0],
+      type:"note", id: core, dur, dotted: pd.dotted, triplet: pd.triplet, beats: pd.beats, raw: m[0],
       spellLetter: letter, spellAcc: acc, spellOct
     };
     if (m[5]) tok.staccato = true;
@@ -146,6 +165,11 @@ function parse(src) {
     canTie = true;
   }
   if (scanPos < text.length) pushJunk(text.slice(scanPos));
+  // Invalid "#track" headers (bare header, unknown zone word, extra fields)
+  // open nothing and change no stream boundary — their lines stay where they
+  // were (a typo'd header's notes keep riding whatever stream was open) and
+  // the offending line occurs as a visible bad chip at the stream's end.
+  for (const badLine of split.melodyBads) tokens.push({ type: "bad", raw: badLine });
   return tokens;
 }
 
@@ -160,6 +184,99 @@ function parseDur(spec) {
   return { dur, dotted, triplet, beats };
 }
 
+// ---------------------------------------------------------------------------
+// Multi-track heads (parallel-line serialization decision, 2026-09-26):
+// "#track <name> [zen|audible]" opens a real second token stream in the
+// body text. The header is line-anchored, case-insensitive; a bare or
+// malformed header never splits anything — it only chips (bad-chip
+// philosophy: nothing unparsable may silently vanish). Valid headers split
+// melody/track and track/track at that line; same-name blocks append into
+// ONE stream (a bass written in two halves stays one line).
+// ---------------------------------------------------------------------------
+const TRACK_HEADER_RE = /^#[ \t]*track\b[ \t]*(.*?)[ \t]*$/i;
+const TRACK_NAME_RE = /^[A-Za-z][A-Za-z0-9_-]*$/;
+
+// Line-based pre-pass shared by parse() and parseTracks(): melody lines and
+// per-track line buffers. Invalid headers contribute to the owning stream's
+// bads and change NO stream boundary (their following lines stay put).
+function trackStreamLines(src) {
+  const lines = String(src == null ? "" : src).split("\n");
+  const melody = [], melodyBads = [], blocks = [];
+  const byName = new Map();
+  let block = null; // current open track block, or null = melody stream open
+  for (const line of lines) {
+    const m = TRACK_HEADER_RE.exec(line);
+    if (!m) { (block ? block.lines : melody).push(line); continue; }
+    const fields = (m[1] || "").split(/\s+/).filter(Boolean);
+    const name = fields[0] || "";
+    // A numeric second field is the volume with the zone at its default;
+    // keep the visible order (zone then percent) equally legal.
+    let zone = "audible", vol = null;
+    if (fields.length >= 2 && /^\d{1,3}$/.test(fields[1])) {
+      vol = fields[1];
+    } else if (fields.length >= 2) {
+      zone = fields[1];
+    }
+    if (fields.length === 3) vol = fields[2];
+    if (vol !== null && (!/^\d{1,3}$/.test(vol) || +vol < 1 || +vol > 100)) vol = null;
+    const valid = TRACK_NAME_RE.test(name) &&
+                  (zone === "audible" || zone === "zen") &&
+                  fields.length <= 3 &&
+                  (fields.length < 2 || vol !== null || fields[1] === zone) &&
+                  (fields.length !== 3 || vol !== null);
+    if (!valid) {
+      (block ? block.bads : melodyBads).push(line);
+      continue;
+    }
+    const lower = name.toLowerCase();
+    if (byName.has(lower)) {
+      // Same name again: CONTINUE that stream (append) instead of opening a
+      // second one; the newest zone word and volume win for it.
+      block = byName.get(lower);
+      block.zone = zone;
+      if (vol !== null) block.vol = vol;
+      continue;
+    }
+    block = { name: lower, zone, vol, lines: [], bads: [] };
+    byName.set(lower, block);
+    blocks.push(block);
+  }
+  return { melody, melodyBads, blocks };
+}
+
+// Chip shell for a support marker that got written inside a track block:
+// support markers are melody-stream syntax (inline `[C2]`, bar `|[Ab2]`,
+// extensions `[-/2]`) and a track stream must surface them, never silently
+// carry a hidden drone the melody never asked for.
+function trackSupportChip(tok) {
+  if (tok.ext != null) return { type: "bad", raw: "[-/…]" };
+  if (tok.id) return { type: "bad", raw: "[" + (tok.glide ? "~" : "") + pretty(tok.id) + "]" };
+  return { type: "bad", raw: "[...]" };
+}
+
+// One flat melody array per track, in header order:
+// [{ name, zone, tokens }] — each block parses with the same grammar, and a
+// block's collected bad headers ride its own stream's tail.
+function parseTracks(src) {
+  const split = trackStreamLines(src);
+  return split.blocks.map(b => {
+    const tokens = [];
+    for (const tok of parse(b.lines.join("\n"))) {
+      if (tok.type === "bass") { tokens.push(trackSupportChip(tok)); continue; }
+      if (tok.type === "bar" && tok.bass) {
+        const chip = trackSupportChip({ id: tok.bass, glide: tok.slide });
+        delete tok.bass; delete tok.beats; delete tok.slide;
+        tokens.push(tok);
+        tokens.push(chip);
+        continue;
+      }
+      tokens.push(tok);
+    }
+    for (const badLine of b.bads) tokens.push({ type: "bad", raw: badLine });
+    return { name: b.name, zone: b.zone, vol: (b.vol != null ? +b.vol : 100) / 100, tokens };
+  });
+}
+
 // Shared bracket-field grammar for bar brackets (|[C2]) and inline markers
 // ([C2]): the LAST comma part is either
 //   a pitch with optional duration  — C2, C2/4. (no staccato: a drone ring is
@@ -169,8 +286,12 @@ function parseDur(spec) {
 //   an extension                    — -/2 extends the pending support's ring
 //                                     by that many beats (bare - with no
 //                                     length means nothing).
-// Anything else is not a support note: callers fall back to desc-only and
-// silent-skip respectively, so old descriptions never break.
+// Pitch spellings accept #, s and b like melody notes do; everything
+// canonicalizes to the s-spelled chart id (Ab2 -> Gs2, Db2/4. -> Cs2/4.,
+// Cb3 -> B2) through the melody branch's own flat table, so a flat inside a
+// bracket reaches the same drone a sharp would. Anything else is not a
+// support note: callers fall back to desc-only and silent-skip respectively,
+// so old descriptions never break.
 function bracketContent(content) {
   const parts = String(content).split(",");
   const tail = parts[parts.length - 1].trim();
@@ -184,16 +305,16 @@ function bracketContent(content) {
     return { ext: parseDur(ext[1]).beats };
   }
   // Glide: ~ Pitch with optional duration.
-  const gl = tail.match(/^~\s*([A-G]s?[1-8])(.*)$/);
+  const gl = tail.match(/^~\s*([A-G])([#sb]?)([1-8])(.*)$/);
   if (gl) {
-    const rest = gl[2].trim();
+    const rest = gl[4].trim();
     let pd = null;
     if (rest) {
       if (!/^\/\d+\.?t?$/.test(rest)) return null; // junk tail → not a support note
       pd = parseDur(rest);
     }
     const out = {
-      bass: gl[1],
+      bass: coreIdOf(gl[1], gl[2], +gl[3]),
       dur: pd ? pd.dur : null,
       dotted: pd ? pd.dotted : false,
       triplet: pd ? pd.triplet : false,
@@ -204,16 +325,16 @@ function bracketContent(content) {
     return out;
   }
   // Plain pitch with optional duration.
-  const pm = tail.match(/^([A-G]s?[1-8])(.*)$/);
+  const pm = tail.match(/^([A-G])([#sb]?)([1-8])(.*)$/);
   if (!pm) return null;
-  const rest = pm[2].trim();
+  const rest = pm[4].trim();
   let pd = null;
   if (rest) {
     if (!/^\/\d+\.?t?$/.test(rest)) return null; // junk tail → not a support note
     pd = parseDur(rest);
   }
   const out = {
-    bass: pm[1],
+    bass: coreIdOf(pm[1], pm[2], +pm[3]),
     dur: pd ? pd.dur : null,
     dotted: pd ? pd.dotted : false,
     triplet: pd ? pd.triplet : false,
@@ -338,12 +459,13 @@ function withTitleAndTempo(body, name, bpm) {
   return withPlayHeaders(body, name, bpm, swing != null ? swing : 0);
 }
 
-export { durLabel, isOutOfRange, octSub, parse, pretty, rangeCheck, spelledLabel,
-         midiOf, swingFromText, tempoFromText, titleFromText, withPlayHeaders,
-         withTempoLine, withTitleAndTempo };
+export { durLabel, isOutOfRange, octSub, parse, parseTracks, pretty, rangeCheck,
+         spelledLabel, midiOf, swingFromText, tempoFromText, titleFromText,
+         withPlayHeaders, withTempoLine, withTitleAndTempo };
 
 // Classic-script compat surface (tests + dev console call these by global).
 window.parse = parse; window.titleFromText = titleFromText; window.pretty = pretty;
+window.parseTracks = parseTracks;
 window.tempoFromText = tempoFromText; window.swingFromText = swingFromText;
 window.durLabel = durLabel; window.withPlayHeaders = withPlayHeaders;
 window.midiOf = midiOf; window.octSub = octSub;

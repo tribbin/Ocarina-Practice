@@ -96,8 +96,13 @@ file sits at the repo root so every session finds it first.
 11. **Test-first (red→green) or pin-first for behavior changes.** No blanket
     upfront test pushes — tests are written for exactly what changes.
 12. Run suites via `.venv/bin/python3 tests/<name>.py` (plain python3 has no
-    playwright). **Claim "all green" only after running the full sweep** —
-    never imply from memory. New suites/legs are registered in
+    playwright). **The full sweep is NOT the standard set (Robin,
+    2026-09-26):** run it only when the change touches the sound engine;
+    data/song/copy changes run the directly-affected suites (shipped_songs,
+    the audit suite when source-mapped data changed, gen_pages for corpus
+    shapes, parse_edges for grammar, lint) plus registered CI steps. **Claim
+    "all green" only after running the affected suites** — never imply from
+    memory. New suites/legs are registered in
     `.github/workflows/practice-tests.yml` in the same commit; the CI run is
     a health check, not a deploy gate.
 13. Test-hardening lessons that cost real debugging — treat as rules:
