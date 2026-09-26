@@ -32,6 +32,7 @@ e.g. We might want per-note values instead of per-chamber.
 Also, maybe some existing variables are inaudible and can be removed to spare resources.
 Note that I will not have played perfectly, so the recording is an approximation for the tone + air-noise and our values should be a frequency-point on the curve instead of the exact note value.
 Will probably re-record double-alto-c notes to reanalyze the improved engine.
+The first 'layer' should be an accurate approximation; the second layer shall be tweaks to make the sound nicer for the user, e.g. a loudness curve over the note range that can be disabled from DEBUG to verify the reproduction of the tone of the real-live ocarina.
 
 THEMES
 
