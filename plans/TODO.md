@@ -467,3 +467,39 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   restarts its master envelope). HELD for Robin's field check as an
   audible-behavior decision (careful: practice's dip gate EXPECTS dips —
   a carry must live behind melody semantics, not knit under practice).
+
+- **2026-09-26 (session 17 cont. — Robin's field check round: the near-noise methodology lesson, quantified)** —
+
+  Bob did the field check on the first fitted voice and the finds cascade:
+  (1) A4 (unfitted) far too soft — root-caused to B4's row (the ladder's only
+      B4 take = the opening re-blow blip at −44 dBFS H1) whose slope-extrap-
+      olation drags A4 down; the fix rides the clean kokiri tail take for B4
+      (field-check bridge, re-record replaces).
+  (2) The noise sounds like "sand paper, not porcelain" (B5/C6 hovers) and
+      Robin names it a standing MODEL defect — he had tuned the old wind layer
+      down to near-inaudibility to hide it, still a defect. Measured roots:
+      the engine's narrow bandpass (Q up to ~9) rings a rough whistle; and
+      separably the ONSETS: the recorded tongue transient runs −40..−55 dB
+      rel plateau H1 while the shipped generic chiff bursts ~25 dB hotter
+      through the first 180 ms (render vs recording onset portrait).
+  (3) The traditional notch-band noise metrics were measuring pollution, not
+      breath: the inter-harmonic floor of the recording reads −67 dB rel H1
+      at band-1 (Robin's own held-part spectrum export, F6) while the earlier
+      per-frame Hann-notch pipeline read −14..−26 — the loud fundamental's
+      window skirt was the "noise" the fit chased. BH-window re-measure on
+      the same F6 cut reproduces the class (h2 −46/h3 −44 rel H1; floors
+      −92..−122 rel H1 before the ENBW-consistent scaling correction);
+      Robin points at research/analysis/12hole/F6_spectrum.txt as the
+      plotted-target reference and at cuts/ladder/10_F6.wav ("good, loud
+      noise") plus the short-drift-window rule.
+  (4) A real glide "tap" decision: between normal notes the dip stays, but
+      glide-connected notes transfer with fixed short tap length, independent
+      of the note duration ( AUDIO_DEBUG.slideTapMs 0.03, transients 10-60 ms
+      with a 0.2-0.5 dB dip as the target; engine edited, held for field check).
+  In flight when logged: wind-shape model re-search (broad wash, non-resonant
+  Q cap — analytic |H| search vs the corrected recordings, python loop timed
+  out once, switched to frequency-domain analytic responses), floor-method
+  re-measurement for both the recording cuts and the render side (same helper),
+  onset-fit (chiff rows per note from the takes), then re-fit + publish +
+  suites/full sweep. WAV data is the arbiter of truth (Robin): his texture
+  adjectives steer, the numbers decide.

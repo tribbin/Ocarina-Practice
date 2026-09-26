@@ -64,6 +64,25 @@ Workarounds are ALREADY built into `scripts/render_ours.py` — keep them on any
 8. `scripts/handvoice.html` is the graph bisection probe (URL `#drop=air,edge,chiff,ot` toggles layers) — the tool that found 1–3.
 
 ## Measurement conventions and traps (learned the hard way)
+- **The skirt trap (2026-09-26, Robin's field catch made it real): the
+  notch-band noise metrics read the LOUD FUNDAMENTAL'S WINDOW SKIRT, not
+  breath.** A per-frame Hann window's side lobes land right inside the
+  band bounds, so "band-1 noise" measured −14..−26 dB rel H1 while the
+  recording's true inter-harmonic floor is −65..−95 dB rel H1 (verified
+  against the recorder's own held-part spectrum export,
+  research/analysis/12hole/F6_spectrum.txt, and with a Blackman-Harris
+  long window on the same cut — both agree on ~−67..−92 class floors).
+  Consequences: every wind level fitted against the old band numbers is
+  ~40+ dB too hot; the fit's TRUE noise targets come from the inter-
+  harmonic floor method (BH window or the recorder's FFT export, wide
+  harmonic exclusion, ENBW-consistent scaling), never from the notch
+  bands. Harmonic RATIOS by the old per-frame pipeline remain valid
+  (±few dB vs the BH read).
+- **Short windows with hardly any drift** measure the instant truth
+  (Robin): drifting holds smear a long FFT, diluting H1 and apparently
+  shrinking the harmonic ratios — compare like windows, or better, take
+  the mean-f0 grid and a short stable window. The recorder's held-part
+  FFT export is the ground truth for a note's TIMBRE + noise floor.
 - Noise-band scales: per-bin DFT rms = σ×√(0.375·WIN) for a Hann window; forgetting the √(WIN) factor inflates noise by ~30-68 dB. The script self-calibrates — keep it that way.
 - Parabolic interpolation for frequencies/amplitudes: use dB domain for both; compare floats with tolerance (Float32Array literal amplitudes are not exact decimals).
 - Notch ±5-8 bins around integer harmonics and keep ≥30 Hz clear for inharmonic islands, else you measure window skirts (they masquerade as side tones).

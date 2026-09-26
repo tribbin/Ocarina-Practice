@@ -48,7 +48,7 @@ def fing_data(inst):
             open(os.path.join(REPO, "instruments", inst, "fingerings.json"), encoding="utf-8"))
     return _fing_cache[inst]
 
-def build_patched_module(inst):
+def build_patched_module(inst, with_layers=False):
     # 1. all relative imports of the module graph resolve on the repo server
     #    (parse.js and friends keep re-importing each other relative to THEMSELVES);
     # 2. audio.js imports freqOf from music-math — the pitch override needs a
@@ -67,12 +67,16 @@ def build_patched_module(inst):
     # offline hang log: air, edge and its wander LFO must never create REAL
     # oscillators in an OfflineAudioContext. Stub them at their call sites so
     # the surrounding wiring stays intact (buffer layers keep rendering).
-    src = src.replace("const air = ctx.createOscillator();",
-                      "const air = STUB_OSC(ctx);")
+    # --with-layers skips the stubs for air/edge (the offline sensitivity
+    # probes; wob LFOs stay real either way); expect possible hangs per the
+    # bug log's combos rule.
+    if not with_layers:
+        src = src.replace("const air = ctx.createOscillator();",
+                          "const air = STUB_OSC(ctx);")
     src = src.replace("const edge = ctx.createOscillator();",
-                      "const edge = STUB_OSC(ctx);")
+                      "const edge = " + ("ctx.createOscillator()" if with_layers else "STUB_OSC(ctx)") + ";")
     src = src.replace("const wander = ctx.createOscillator();",
-                      "const wander = STUB_OSC(ctx);")
+                      "const wander = " + ("ctx.createOscillator()" if with_layers else "STUB_OSC(ctx)") + ";")
     src = re.sub(r"function getReverbBus\(ctx\) \{.*?\n\}",
                  "function getReverbBus(ctx) {\n"
                  "  if (reverbBus && reverbBus.context === ctx) return reverbBus;\n"
@@ -152,7 +156,16 @@ function b64(buf8) {
   for (let i = 0; i < buf8.length; i += CH) s += String.fromCharCode.apply(null, buf8.subarray(i, i + CH));
   return btoa(s);
 }
-playNoteAt(CFG.note, null, CFG.dur, []);
+if (CFG.note) playNoteAt(CFG.note, CFG.when == null ? null : CFG.when, CFG.dur, []);
+if (CFG.seq && CFG.seq.length) {
+  // melody-sequence audit: absolute offline-clock starts, notes touch
+  // each other (no gap) so the transition behavior is what gets measured.
+  let t0 = CFG.seqStart;
+  for (const s of CFG.seq) {
+    playNoteAt(s.note, t0, s.dur, []);
+    t0 += s.dur;
+  }
+}
 const ctx = window.__oac;
 ctx.startRendering().then(function (buf) {
   try {
@@ -240,12 +253,26 @@ def main():
     out = opt("-o")
     inst = opt("--inst", "oot-alto-c-12")
     tone = opt("--tone", "auto")
+    seq_spec = opt("--seq")
     if not out:
         base = os.path.join(REPO, "research", "analysis", "12hole", "renders")
         out = os.path.join(base, f"{inst}_{note_id}.wav")
     build_patched_module(inst)
-    cfg = {"note": note_id, "instId": inst, "dur": dur,
-           "_fing": fing_data(inst)}
+    if seq_spec:
+        seq = []
+        total = 0.0
+        for part in seq_spec.split(","):
+            n, _, d = part.partition(":")
+            d = float(d) if d else 0.35
+            seq.append({"note": n, "dur": d})
+            total += d
+        lead = float(opt("--lead", "0.05"))
+        cfg = {"seq": seq, "seqStart": lead, "instId": inst,
+               "dur": round(lead + total + 1.2, 3),
+               "_fing": fing_data(inst)}
+    else:
+        cfg = {"note": note_id, "instId": inst, "dur": dur,
+               "_fing": fing_data(inst)}
     if tone == "auto":
         path = os.path.join(REPO, "instruments", inst, "tone.json")
         cfg["_tone"] = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else None
@@ -266,7 +293,7 @@ def main():
         cfg["set"] = dict((k, v) for k, v in sets)
     f0 = opt("--f0")
     if f0 is not None: cfg["f0"] = float(f0)
-    run_page(f"r12_{note_id}_{int(dur*1000)}.html", cfg, out)
+    run_page(f"r12_{note_id or 'seq'}_{int(dur*1000)}.html", cfg, out)
 
 import base64
 

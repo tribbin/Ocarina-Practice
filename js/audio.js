@@ -96,6 +96,9 @@ const AUDIO_DEFAULTS = {
   // recorded ~60-115 ms total (was 0.22-0.36 s).
   otBase: 0.00137, otEffort: 0.0011, otNoise: 0.35,
   otDurMax: 0.10, otDurEffort: 0.05,
+  // The glide "tap": fixed bend length between glide-connected notes
+  // (measured transients: 10-60 ms, tone carries); independent of duration.
+  slideTapMs: 0.03,
   // Full-voice master gain plateau (the breathy pre-tone and "tone speaks"
   // stages scale proportionally so the envelope shape holds). Kept at the
   // pre-tune playback loudness: the recording's absolute level is a mic-gain
@@ -918,11 +921,14 @@ const V_ANCHORS = {
 };
 
 // Wind-noise spectral-shape constants (mirrored in synth_replica.py):
-// white noise -> chamber bump (1.26xf0, pitch-keyed Q) -> steep noise
-// lowpass. The trims are an absolute calibration of the noise chain
-// against the band meters (white noise through the filters reads hotter
-// than the band-relative design targets).
-const WIND_SHAPE = { bumpRatio: 1.26, noiseLpRatio: 2.7, noiseLpQ: 1.2 };
+// broad wind bandpass (a smooth wash, not a resonant peak) -> steep noise
+// lowpass. Re-modelled after Robin's field catch ("porcelain vs sand
+// paper"): the recorded breath falls smoothly ~13 dB per band with NO
+// resonant hump — a 2-pole-ish tilt at ~2 x f0 — while the old narrow
+// bandpass (Q 5-9) rang a rough narrow whistle on top of the tone. Q is
+// capped non-resonant so a fitted row's sharper ask cannot bring the grain
+// back; the wash placement rides the lowpass corner + the row's own level.
+const WIND_SHAPE = { bumpRatio: 1.26, bumpQMax: 0.8, noiseLpRatio: 2.7, noiseLpQ: 1.1 };
 
 // Piecewise-linear interpolation in log2-f with slope-clamped extrapolation.
 function vInterp(pts, f) {
@@ -1231,7 +1237,11 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     const dur = Math.max(0.12, durSec);
     const tail = 0.03;
     const slideFrom = slideFromId && slideFromId !== id ? freqOf(slideFromId) : 0;
-    const glide = slideFrom ? Math.min(Math.max(0.0125, dur * 0.0875), 0.0375) : 0; // fast bend (4x the old portamento)
+    // The glide jump is a FINGER-TAP: the recorded transients (storms/kokiri
+    // plateau-to-plateau jumps in skills/tone-analysis) run 10-60 ms with the
+    // tone carrying through (0.2-0.5 dB dip on adjacent steps), so the bend
+    // length is a fixed short window anymore — never scaled by note duration.
+    const glide = slideFrom ? AUDIO_DEBUG.slideTapMs : 0;
     // A note flowing directly into a following ~ slide holds full level right
     // up to the junction, then crossfades briefly PAST it (the slide note
     // begins at the same pitch, so the seam is inaudible — no gap, no re-blow).

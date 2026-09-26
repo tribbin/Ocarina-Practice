@@ -28,6 +28,19 @@ CAND = os.path.join(AN, "candidate_tone.json")
 DRAFT_TONE = os.path.join(AN, "oot-alto-c-12.tone.draft.json")
 OUT_TONE = os.path.join(REPO, "instruments", INST, "tone.json")
 
+# Field-check bridges (Robin's ear over the default policy) — replaced when
+# the notes get re-recorded:
+#   B4: the ladder's only B4 take is the opening re-blow blip; Robin's field
+#       catch ("A4 far too soft vs the ladder recording") traced to its
+#       depressed level, so B4's row rides the clean sustained kokiri tail
+#       take (a real single held note; flagged in tone.json's metadata).
+TAKE_SOURCE_OVERRIDE = {"B4": "kokiri"}
+
+# Single-take smoothing of the wind rows (noiseLoDb): the take-to-take blow
+# variance is ±3 dB but single 12-hole takes sat 7-9 dB above their neighbors
+# (Robin's raspiness catch on B5/C6) — the row takes the median of the note
+# and its pitch neighbours, never the raw outlier alone.
+
 FREQ = {}
 def note_hz(n):
     NAMES = {"C": 0, "Cs": 1, "D": 2, "Ds": 3, "E": 4, "F": 5, "Fs": 6,
@@ -75,6 +88,25 @@ def load_sources(sources=("ladder", "kokiri", "storms"), primary="ladder"):
                 "islands": r.get("inharmonic_islands") or {},
             }
             take["span"] = max(0.01, s["off"] - s["on"])
+            # onset-derived chiff (the recorded tongue transient IS the aim —
+            # Robin: "use my recordings of transients for the tap"; the bursts
+            # run -40..-55 dB rel plateau H1 while the shipped generic chiff
+            # sits ~12 dB hotter, the sand-paper texture on the keyboard's
+            # B5/C6 hovers). peak = the burst's own dB rel plateau H1; len =
+            # where it first falls 6 dB under the peak (else 0.08 s).
+            burst = ((r.get("onset") or {}).get("burst_profile") or [])
+            early = [p for p in burst if p["t_ms"] <= 90]
+            if early:
+                pk = max(p["db_rel_plateau_H1"] for p in early)
+                take["chiffDb"] = pk
+                tail8 = [p for p in early if p["t_ms"] > 20]
+                after = [p for p in burst if p["t_ms"] > 20]
+                ln = None
+                for p in after:
+                    if p["db_rel_plateau_H1"] < pk - 6.0:
+                        ln = p["t_ms"] / 1000.0
+                        break
+                take["chiffLen"] = round(min(ln or 0.08, 0.12), 3)
             push(nid, take)
     # best take per note = the LONGEST steady sounding span (a melody's
     # fragment blips and tongued trios do not own the row; the ladder's
@@ -93,10 +125,16 @@ def stage_targets():
     targets = {}
     for nid, d in sorted(src.items()):
         takes = d["takes"]
-        fit_takes = [t for t in takes if t["source"] == "ladder"]
-        if fit_takes:
-            fit = dict(max(fit_takes, key=lambda t: t["span"]))  # best ladder take
+        fit_pool = [t for t in takes if t["source"] == "ladder"]
+        if nid in TAKE_SOURCE_OVERRIDE:
+            # the field-check bridge: prefer the override source's best take
+            ov = [t for t in takes if t["source"] == TAKE_SOURCE_OVERRIDE[nid]]
+            if ov:
+                fit_pool = ov
+        if fit_pool:
+            fit = dict(max(fit_pool, key=lambda t: t["span"]))  # best ladder take
             fit["fit"] = True
+            fit["took_source"] = fit["source"]
         else:
             # no ladder coverage: recorded for context, never fit from it
             fit = dict(takes[0])
@@ -208,7 +246,7 @@ def naive_candidate():
             "note": nid, "f": round(f, 2), "h": [round(v, 6) for v in h],
             "levelDb": levelDb,
             "noiseLoDb": round(noiseLoDb, 2),
-            "noiseBumpQ": round(v_interp(VA["noiseBumpQ"], f), 2),
+            "noiseBumpQ": 0.75,   # the wash profile: non-resonant (engine caps Q)
             "wanderC": round(t.get("wanderC") or 0, 2),
             "wobPct": round(t.get("wobPct") or 0, 2),
             "wobHz": round(t.get("wobHz") or 2.5, 2),
