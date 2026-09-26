@@ -123,6 +123,25 @@ This avoids Chrome entirely; the debug panel's "⤓ Export WAV" button (js/debug
    for a bare oscillator. One fresh context per render; ports 8137 (repo) /
    8138 (bench pages), CORS=* so cross-port module imports work.
 
+## Transition/glide dataset (the melodies' second material)
+`scripts/glide_span.py <wav> [--label L]` tracks plateaus (f0-stable runs,
+tol 35 cents, ≥70 ms) and measures every plateau-to-plateau jump: duration,
+cents span, the envelope dip mid-jump, where the f0 crosses halfway and the
+raw cents path per 10 ms hop. First findings (both committed WAVs):
+- storms (glide-joined): adjacent-step jumps 20-60 ms with NO dip (0.2-0.5 dB
+  — the tone carries through the finger transfer); the chamber-switching
+  F5→D6 leap 20-40 ms with a shallow dip; the octave drop 200 ms with a
+  -14.5 dB dip (a real breath change).
+- kokiri (tongued at tempo): joints 10-90 ms, dips −6..+7 dB (several show a
+  SWELL mid-jump, the plateaus are what's quiet there).
+- the ENGINE's own sequence (render_ours.py --seq "D5:0.35,F5:0.35,D6:0.35",
+  measured through the same glide_span): transitions 20 ms, dips −4.2..−6.0 dB
+  — the timing is already finger-tap territory, the carry is what's missing
+  (each note restarts its master envelope; the real tone keeps its level).
+  Held for Robin's field check; note the practice-mode dip gate EXPECTS
+  tunable dips, so a carry option must live behindZen/melody semantics,
+  not two note-envelopes knitting silently under practice's feet.
+
 ## Data locations
 - 12-hole fit working tree: `research/analysis/12hole/` (segments, cuts,
   targets, candidate + draft tone.json, fit renders) — gitignored, the repo

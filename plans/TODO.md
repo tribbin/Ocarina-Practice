@@ -454,3 +454,16 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   themselves, the level curve inside one chamber, the wind) own the next
   step; i will re-record when kids sleep done and the improved engine gets
   re-analyzed per IDEAS (re-record double-alto-c notes).
+
+- **2026-09-26 (session 17 cont. — the transition/glide dataset lands: the real jump is a finger-tap, the engine's carry is what's missing)** —
+  glide_span.py joins the tone-analysis skill (plateau tracking at 35-cent
+  tolerance, per-jump duration/cents path/dip/half-cross), the committed
+  storms + kokiri WAVs measured: adjacent-step transitions 20-60 ms with a
+  0.2-0.5 dB dip (the tone CARRIES through the transfer) and tongued
+  kokiri joints 10-90 ms at −6..+7 dB (several mid-jump swells); the
+  render_ours bench grew --seq so the ENGINE's own transitions measure in
+  the same terms: 20 ms timing but a −4.2..−6.0 dB dip per note change —
+  timing already finger-tap territory, the carry missing (each note
+  restarts its master envelope). HELD for Robin's field check as an
+  audible-behavior decision (careful: practice's dip gate EXPECTS dips —
+  a carry must live behind melody semantics, not knit under practice).
