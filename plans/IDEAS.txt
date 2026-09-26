@@ -26,6 +26,13 @@ Intead of having a 'support track', actually having multi-track arrangement.
 
 Use outset island to make [melody + bass + contrabass] song example.
 
+Recordings of the 12-hole are ready to be analyzed.
+The analyzation should be a phase to optimize our synth to better reproduce an ocarina.
+e.g. We might want per-note values instead of per-chamber.
+Also, maybe some existing variables are inaudible and can be removed to spare resources.
+Note that I will not have played perfectly, so the recording is an approximation for the tone + air-noise and our values should be a frequency-point on the curve instead of the exact note value.
+Will probably re-record double-alto-c notes to reanalyze the improved engine.
+
 THEMES
 
 Let's add theming (colors/preview/backdrop/...) to both the main page and song-links, that will show up when people paste a link in social media and for web searches.
