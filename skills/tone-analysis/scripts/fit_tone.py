@@ -674,15 +674,31 @@ def fit_rounds(rounds=3):
             deltas.append(("band1", sh))
             row["noiseLoDb"] = round(row["noiseLoDb"] + min(45.0, max(-45.0, sh)), 2)
             # per-note noise-wall: the LP position/Q rows move toward the
-            # take's own b2/b3 wall (rendered family: Δb2 ≈ 6.5 dB per Δratio,
-            # ≈ 6.7 dB per Δratio at b3; Q fine-trims b3 at ~2.5 dB per 0.1
-            # in this engine — measured on the rendered candidate matrix).
+            # take's own b2/b3 wall (rendered family on the LAYERED chain,
+            # 2026-09-27 wall_cal matrix at C5: Δb2 ≈ +4.1 dB per Δratio at
+            # Q0.8-1.6 (the bleed refills the band so the old 6.5 pre-layer
+            # number over-counted the wall's authority), Δb3 ≈ +3.3 dB per
+            # Δratio, Q near-inert (≈ ±1.4 dB per unit at b3).
             t2, t3 = t.get("fb2"), t.get("fb3")
+            # b3 gets its own correction word: on the recomposed chain the
+            # bleed fills 3.9-7×f0 while the wall row carves it, and the top
+            # register's compute diverges from b2's (the bleed is absolute,
+            # the wall is f0-relative — F6-class rows diverged +27 dB at b3
+            # with b2-driven moves only). Same row, coefficient re-measured.
+            # BOTH residuals act on the one row and the band-to-wall responses
+            # are NOT one constant per note (the round-over-round swing on
+            # A4-class notes read ~5x the C5-matrix slope under the ±1.2
+            # double-move) — the damped sum moves at a 0.4 gain and accepts
+            # slow convergence instead of the round oscillation.
+            t3c = t3
             if t2 is not None and r.get("fb2") is not None:
-                # Δlpr raises the rendered b2 by ~6.5 dB per unit (measured on
-                # the rendered matrix) — move by target−render, clamped.
                 base = row.get("noiseLpRatio") or NOISE_WALL["ratio"]
-                dl = max(-1.2, min(1.2, (t2 - r["fb2"]) / 6.5))
+                dl = 0.0
+                if r.get("fb2") is not None:
+                    dl += (t2 - r["fb2"]) / 4.1
+                if t3c is not None and r.get("fb3") is not None:
+                    dl += (t3c - r["fb3"]) / 3.3
+                dl = max(-0.9, min(0.9, dl * 0.4))
                 row["noiseLpRatio"] = round(max(1.4, min(4.6, base + dl)), 2)
             # wander/wobble direct (skipped when the take can't support it —
             # a short span implies nothing; the fallback keeps generic)
@@ -713,6 +729,7 @@ def fit_rounds(rounds=3):
                    "global": dict(LAYER_GLOBAL),
                    "chambers": {"1": rows}},
                   open(cand_path, "w"), indent=1)
+        write_intermediate(rows)
         # residual table
         print(f"== round {R} residuals (target − render; level relative to the anchor note)")
         print(f"{'note':5}{'h2':>7}{'h3':>7}{'h4':>7}{'h5':>7}{'H1rel':>7}{'b1':>7}{'b2':>7}{'b3':>7}{'wob%':>7}{'att':>8}{'os':>6}")
@@ -779,6 +796,38 @@ RECORDED_META = {
     "anchor": "loudest fitted note (levelDb 0); masterLevel untouched — "
               "headroom for support tracks and reverb preserved",
 }
+
+def write_intermediate(rows):
+    """Each round's converged rows land in the SHIPPED tone.json immediately
+    (Robin: the intermediate result is field-listenable without a publish
+    step — his ears decide between rounds; data-only, no sw bump). Per-row
+    keys the loop doesn't recompute (parkDb, noiseLpQ, ...) carry over from
+    the last published state so the intermediate voices keep their fitted
+    fields; publish() later only refreshes the recorded meta."""
+    out = []
+    for r in rows:
+        rr = dict(r)
+        rr["h"] = [round(1.0, 6), rr["h2"], rr["h3"], rr["h4"], rr["h5"]]
+        out.append(rr)
+    cand = {"instrument": INST, "model": "tone-fit-v1",
+            "recorded": dict(RECORDED_META),
+            "global": dict(LAYER_GLOBAL),
+            "chambers": {"1": out}}
+    try:
+        prior = json.load(open(OUT_TONE, encoding="utf-8"))
+        past = {r.get("note"): r for r in prior.get("chambers", {}).get("1", []) if r.get("note")}
+        if isinstance(prior.get("global"), dict):
+            cand["global"] = prior["global"]
+        for rr in out:
+            p = past.get(rr.get("note"))
+            if p:
+                for k, v in p.items():
+                    if k not in rr:
+                        rr[k] = v
+    except (OSError, ValueError):
+        pass
+    json.dump(cand, open(OUT_TONE, "w", encoding="utf-8"), indent=1)
+    print("intermediate rows ->", OUT_TONE, "(field-listenable, parkDb carried)")
 
 def publish():
     """Copy the converged draft into the shipped instrument path."""
