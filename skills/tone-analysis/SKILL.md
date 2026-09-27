@@ -206,10 +206,42 @@ nearest row (`vInterpHold`) — extrapolating the clamped slope below B4's
 bridge row turned A3/B3 wobble negative (−13% depth at 21 Hz, Robin's
 field catch).
 
+## Absolute noise-body layer (the 2026-09-27 rebuild unit)
+The complaint spectra (Robin's IDEAS note + complaint/C5_hold_spectrum_*.txt)
+proved the recorded held-noise BODY is not a broadband wash: it carries a
+warm FIXED-absolute pocket bump at ~273 Hz below the tone (in every
+recording), a broad warm shelf 330-650, deep holes BETWEEN the harmonics
+(~700-1000 + 1500-1900 for C5 — "very big holes", not band-scale roughness)
+and a rough upper bed surviving to 12 kHz (our old lp walls flattened it).
+Three structural means now exist on the fitted voice (audio.js WIND_ABS +
+tone.json's global gate):
+- **park** (fixed-absolute peaking 273 Hz Q2.2, magnitudes in
+  global.windPark) — its STRENGTH is per-note (`parkDb` rows) — measured
+  span −13..+13 dB across the eight held takes (F5 nearly silent, A4 the
+  loudest): the fixed-absolute bump rides per-note CAVITY COUPLING, so
+  neither a chamber constant nor set gain scaling expresses it.
+- **warm** (peaking 470 Q0.8) + **rough** (parallel BLEED past the per-note
+  lp wall: highpass 2900 Q1.1 → shelves 6000/−10 + 9500/−7 → bleed gain;
+  the series lp alone cannot carve the holes AND keep the rough tail).
+Unfitted voices stay byte-identical (the layer keys gate it off).
+- **abs_shape.py** measures the body: median levels per ABSOLUTE band
+  (pocket 200-330, warm 330-650, hole1/H2zone/hole2, rough2/3, tail,
+  airhead) rel to the hand-window's H1 envelope max, harmonics ±80 Hz
+  excluded — the txt files of BOTH sides feed the same table (acceptance =
+  full body agreement, not a few band medians). A 0.74 s window on wobbly
+  holds carries ±3-5 dB take noise — don't chase single-band ±2 residuals
+  across notes; the shape families and 8-note averages are the target.
+- The layer rerenders every measurement's context: after a layer change the
+  wind rows re-fit (fit_tone injects the global layer into all candidates).
+
 ## Data locations
-- 12-hole fit working tree: `research/analysis/12hole/` (segments, cuts,
-  targets, candidate + draft tone.json, fit renders) — gitignored, the repo
-  receives only the finished `instruments/<id>/tone.json`.
+- 12-hole fit working tree: `research/analysis/12hole/` — organized into
+  per-batch subfolders (truth/, v36/, v37/, v38/, held/, shape_candidates/,
+  isolation/, ladder/, early/, measures/ + fit/ with its per-round render
+  tree) with the live state at top level (targets.json, segments, segments, candidate/draft tone.json,
+  F6_spectrum.txt the arbiter, complaint/); targets.json paths are top-level
+  in the scripts. Gitignored, the repo receives only the finished
+  `instruments/<id>/tone.json`.
 - Melody recordings: `research/note-recordings/12hole/` (gitignored working
   copies) and the committed set under `reference-recordings/12hole/`.
 - Alto single-note pipeline (older): dataset

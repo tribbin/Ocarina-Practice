@@ -62,7 +62,7 @@ bloom and Robin's field check):
 
 | Item | Section |
 |---|---|
-| **The held-note noise, another attempt** — the fitted voice field-checked BAD; the complaint spectra name the recorded noise BODY: fixed 273 Hz pocket below the tone, very big holes (Robin), upper roughness — parked, spec'd in §1 | §1 |
+| **Field check the noise-body layer — the deciding pass** — the parked-pocket/warm/bleed engine shipped and re-fit (band-1 ±1.2 dB all 15 rows); his ears name the texture, then the wall-family residuals (band-2 −2..−8 under-carved, rough1 +5, per-note warm A5 +7) ride the next wall pass whose per-band calibrations must re-derive on the recompositioned chain | §1 |
 | **Robin's field check on the multi-track trio** — `outset-island-with-bass` now plays melody + audible bass groove (the bassline two octaves down) + contrabass root-holds; his ears name the balance, the contrabass register, the practice-session audibility and the groove's final-bar cut | §7 |
 | **Robin's eyeball pass** on the panel builds: the HiFi retune batch (`?hifi` — amber buttons, dark segment row/select, deeper zen red, LED fills) and the favorites stars in the library — his values, built to spec; he retunes anything that reads off | feel checks |
 | The tone.json measurement/fitting work per chamber (Robin's instrument data; the loader treats missing files as "no data yet") | §1 |
@@ -76,7 +76,7 @@ bloom and Robin's field check):
 
 - [ ] **Measure and fit the chambers** — Robin records tone.json per chamber (stein-double-alto-c, oot-alto-c-12, ico-contrabass-11-c declare the field ahead of data; missing files read as "no data yet"); each fitting feeds the tone engine, maybe dropping very-low-dB harmonics later. Robin's hands-on work as he gets time. The 12-hole per-note fit is done (tone.json shipped for oot-alto-c-12, work on the 12-hole-synth-tuning branch): ladder-cut melodies are the single-note-grade source (kokiri/storms kept as transition/glide context — Robin: the real ocarina's glide is as short as a finger-tap while the engine's is longer), levelDb anchors the loudest fitted note at 0 dB (recorded gain is a mic artifact, masterLevel untouched so support tracks + reverb keep headroom), and the offline reproduce bench (skills/tone-analysis/scripts/fit_tone.py + render_ours.py, module-era audio.js via import map, Playwright real-time render) closed the loop to ±2 dB harmonics / ±0.3 dB levels on 11 ladder notes; D5/Ds5 unfitted (loader interpolates). HELD for Robin's field check — his ears name the next layer (noise shape b2/b3 + wobble-depth residuals noted in skills/tone-analysis/SKILL.md). No sw VERSION bump (data-only, precedent 8e7b1d7). `🟩 ⚪ ⚙L`
 
-- [ ] **Another attempt at the held-note noise — model the recorded noise BODY, not a wash (Robin's complaint spectra, parked for the fresh session)** — Robin field-failed the fitted voice outright ("it sounds very bad currently") and added complaint spectra: `research/analysis/12hole/complaint/C5_hold_spectrum_{recording,render}.txt` + his IDEAS note. The measured shape (band medians rel H1): recording = warm pocket 273-600 Hz (−47.5/−46.4/−44.9 — the 273 Hz bump exists in EVERY recording: a fixed, f0-INDEPENDENT cavity resonance the synth never had), deep valley 900-1800 (−58.6/−57.4/−69.1), rough recovery 2600-5600 (−62..−75); our render = monotone shelf −48..−57 with the bump at 1.26×f0 (663 Hz for C5 — ABOVE the tone where the real pocket sits BELOW it) and no valley. The next unit: replace the 2-biquad wash with a shape that can express the BODY — Robin: "there are very big holes in the real noise profile; nothing like the broadband you have" — a fixed absolute low pocket (~270-650 Hz), the tone's own region, the big holes/valley between (verify how deep they run, not just the band medians), and the upper roughness (candidate structures: fixed absolute biquads + per-note walls already in rows; the fit target should be FULL held-spectra agreement across the held-note set, not a few band medians; verify through spectra_compare, one shape family per iteration, rendered-candidate matrix as tonight). The current tone.json state is NOT the target — expect a rebuild round; the wobble/per-note-wall/hold-at-edge plumbing from tonight stays valid. `🟧 🟠 ⚙M`
+- [ ] **Finish the noise-body fit: walls under the recompositioned chain + per-note warm/bleed rows, then full held-set agreement** — the structure landed (`0149570` + `a73f9c9`, 2026-09-27): the wind chain gained the absolute layer the complaint spectra demanded — a FIXED-absolute parked pocket (peaking 273 Hz Q2.2, `global.windPark` gate, unfitted voices byte-identical) whose STRENGTH is per-note (`parkDb` rows fitted from the eight held takes: measured span −13..+13 dB — F5's pocket nearly silent, A4's strongest — the bump rides per-note cavity coupling, not take gain), a warm shelf (470 Q0.8) and the upper roughness as a PARALLEL bleed past the per-note lp wall (highpass 2900 Q1.1 → shelves 6000/−10 + 9500/−7 → bleed gain — the series lp cannot both carve the holes and keep the tail the recording shows out to 12 kHz). fit_tone carries `global` through every candidate + the draft so the wall re-fit shaped against the recomposed chain: round-3 landed band-1 within ±1.2 dB on all 15 fitted rows, harmonics small; the acceptance measure is the new `abs_shape.py` absolute-body table (pocket/warm/holes/rough/tail/airhead rel-H1; ±3-5 dB take noise per 0.74 s window). OPEN residuals: band-2 wall family −2..−8 under-carved (the wall's dB-per-unit calibrations were measured on the pre-layer chain — re-derive through rendered rounds), the mid-body holes (C5 hole2 +10, H2zone +4), rough1 +5, per-note warm (A5 +7.4 with pocket fixed; warmDb or bed-relative scaling candidate), A5/A4-class bleed tail (−11..−14). Held for Robin's field check as the deciding pass (his ears own the texture; the numbers steer). `🟧 🟠 ⚙M`
 
 ## 2. Robustness / error handling
 
@@ -636,3 +636,46 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   the target next fresh session: full held-spectra agreement across the
   held-note set, not a few band medians. Board §1 carries the item verbatim
   from his IDEAS entry; nothing mooted, nothing executed at high context.
+
+- **2026-09-27 (session 17-cont. #4 — the noise-body layer becomes the engine, the wall re-fit rides it, Robin's meter rule lands)** —
+  The fresh session opened on the parked noise-BODY unit; four commits:
+  (1) `d62aad2` **AGENTS §18**: the context-meter number is distrusted in a
+      FRESH session (Robin's rule — the session-open reading confused the
+      AI every single time it was trusted; the zone becomes truth again
+      only once the session's own work stands behind it). This session's
+      own 322K "watch" verdict was exactly that class.
+  (2) `0149570` **the engine unit**: the wind chain gained the absolute
+      noise-body layer ahead of the tone-tracking chain — parked pocket
+      peaking 273 Hz Q2.2 (fixed-absolute, gated by tone.json's global
+      `windPark` so unfitted voices stay byte-identical), warm shelf 470
+      Q0.8, and the upper roughness as a PARALLEL bleed past the per-note
+      lp wall (highpass 2900 Q1.1 → shelves 6000/−10 + 9500/−7 → bleed
+      gain: the recording's rough bed survives to 12 kHz where the walls
+      carve 700-1900 holes — one series chain cannot express both; the
+      first bleed anchor rendered +30 dB raw-bed-hot and went 2400/Q0.6 →
+      2900/Q1.1 + a −33 dB gain anchor through five rendered rounds).
+      render_ours grew --parkDb/--warmDb/--roughDb candidate injection;
+      parkDb is per-note row-expressible. C5 body matrix converged (pocket
+      +0.9, warm −2.0, trough +1.8, rough2 −1.1, tail −0.4 rel-H1).
+      Full sweep 46/46, lint clean, sw oco-pwa-v39.
+  (3) `a73f9c9` **the data unit**: fit_tone injects the layer global into
+      every candidate + draft (the wall re-fit must shape against the
+      recomposed chain) and publish() keeps it; fit --rounds 3 landed
+      band-1 ±1.2 dB on all 15 fitted rows; per-note parkDb rows measured
+      from the eight held takes (span −13..+13: F5 nearly silent, A4 the
+      loudest — the fixed bump rides per-note cavity coupling, so rows not
+      set gain) written into tone.json; after the rows, pocket within ±3
+      on every measured note. data_validator/instruments_load/
+      console_hygiene green; sw stays v39 (data + fit tooling only).
+  (4) Skill maintenance carried the method: abs_shape.py promoted (absolute
+      band table, ±80 Hz harmonic exclusion, both sides one method; ±3-5 dB
+      take noise per 0.74 s window doctrine), the layer's docs + the
+      research-tree folderization (12hole batches now truth/v36/v37/v38/
+      held/shape_candidates/isolation/ladder/early/measures with the live
+      state at top level; targets.json paths untouched) noted in place.
+  OPEN (§1 item rewritten): the wall-family residuals — band-2 −2..−8
+  under-carved (the wall's dB-per-unit calibrations measured pre-layer),
+  hole2 +10/H2zone +4 (C5), rough1 +5, per-note warm (A5 +7.4), A5-class
+  bleed tail −11..−14 — plus the fit loop learning parkDb itself.
+  HELD for Robin: field check on the recomposed voice (the layers are
+  audible by design).
