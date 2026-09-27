@@ -36,6 +36,14 @@ def boot_instrument(browser, base, inst_id, failures, tag):
     page.on("pageerror", lambda e: errs.append(str(e)))
     page.goto(f"{base}?inst={inst_id}")
     page.wait_for_function(BOOT_WAIT)
+    # the tone AND twin model round-trips are the tail of loadInstrument
+    # (the twin fetch runs first now) — both installs land as defined
+    # (null is a legal "no data" answer; undefined means not-yet-installed)
+    page.wait_for_function(
+        "() => typeof OCA_DEBUG !== 'undefined' && OCA_DEBUG.toneModel"
+        " && OCA_DEBUG.twinModel"
+        " && OCA_DEBUG.toneModel() !== undefined"
+        " && OCA_DEBUG.twinModel() !== undefined", timeout=10000)
     state = page.evaluate("""() => ({
       notes: window.NOTES.length,
       fingered: !!(window.FING && window.FING.notes && window.FING.notes.length)

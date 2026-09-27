@@ -32,8 +32,9 @@ shelves + edge whistle + chiff/ot bursts, `voiceProfileFor`, `V_ANCHORS`)
 is the LEGACY voice: it still serves ocarinas whose chambers aren't
 twins yet, and disappears wholesale once the last one is converted —
 drop `installToneModel`, `voiceProfileFor` and everything it feeds, keep
-the twin branch delete-simple. tone.json stays on disk while an
-instrument is mid-swap (offline tooling + the tone-analysis skill read it).
+the twin branch delete-simple. tone.json stays on disk only while the
+additive voice still reads it: the 12-hole's was removed with its swap
+(the fit history lives in git).
 
 tone.json — schema v1 ("tone-fit-v1")
 -------------------------------------

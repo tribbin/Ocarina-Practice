@@ -47,7 +47,7 @@ jobs:
         run: python tests/data_validator.py
       - name: Install Playwright + Chromium
         run: |
-          pip install playwright
+          pip install playwright scipy soundfile
           playwright install --with-deps chromium
       - name: Run console-hygiene boot error scan
         run: python tests/console_hygiene.py
