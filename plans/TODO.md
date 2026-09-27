@@ -56,13 +56,13 @@ first circle → urgency, last letter → effort.
 ## Hot list (importance across all types)
 
 Picks for the next session(s), roughly damage × imminence ÷ effort
-(refreshed 2026-09-27, session 17-cont.: the held-spectrum night landed the
-white-noise roots — comb, shape mid-wall, A3/B3 hold — plus the attack-stage
-rows; everything now waits on Robin's ears):
+(refreshed 2026-09-27, session 17-cont. #2: the held-note recording set landed
+as the primary rows; the remaining audible work concentrates on the onset
+bloom and Robin's field check):
 
 | Item | Section |
 |---|---|
-| **Robin's field check on the noise night** — the fitted voice's texture after the comb fix + mid-wall shape (wind buffer 4 s, WIND_SHAPE 0.6/2.6/0.8, wind rows at b1 ±0.9 dB, F6 delivered ≈ his export), the attack character (atk rows, pre-tone 0.19·M → 0.01·M), and the A3/B3 hold-at-anchor delivery | §1 |
+| **Robin's field check on the held-note row set** — A4/A5/C5/D5 direct rows, the wobble class 6.5-9.3% @ 2-6 Hz, per-note noise walls, F6/G5/E5 texture; AND the puff question: the remaining root is the engine's own onset bloom (the layers exonerated) — next unit makes the attack shape row-expressible | §1 |
 | **Robin's field check on the multi-track trio** — `outset-island-with-bass` now plays melody + audible bass groove (the bassline two octaves down) + contrabass root-holds; his ears name the balance, the contrabass register, the practice-session audibility and the groove's final-bar cut | §7 |
 | **Robin's eyeball pass** on the panel builds: the HiFi retune batch (`?hifi` — amber buttons, dark segment row/select, deeper zen red, LED fills) and the favorites stars in the library — his values, built to spec; he retunes anything that reads off | feel checks |
 | The tone.json measurement/fitting work per chamber (Robin's instrument data; the loader treats missing files as "no data yet") | §1 |
@@ -76,7 +76,7 @@ rows; everything now waits on Robin's ears):
 
 - [ ] **Measure and fit the chambers** — Robin records tone.json per chamber (stein-double-alto-c, oot-alto-c-12, ico-contrabass-11-c declare the field ahead of data; missing files read as "no data yet"); each fitting feeds the tone engine, maybe dropping very-low-dB harmonics later. Robin's hands-on work as he gets time. The 12-hole per-note fit is done (tone.json shipped for oot-alto-c-12, work on the 12-hole-synth-tuning branch): ladder-cut melodies are the single-note-grade source (kokiri/storms kept as transition/glide context — Robin: the real ocarina's glide is as short as a finger-tap while the engine's is longer), levelDb anchors the loudest fitted note at 0 dB (recorded gain is a mic artifact, masterLevel untouched so support tracks + reverb keep headroom), and the offline reproduce bench (skills/tone-analysis/scripts/fit_tone.py + render_ours.py, module-era audio.js via import map, Playwright real-time render) closed the loop to ±2 dB harmonics / ±0.3 dB levels on 11 ladder notes; D5/Ds5 unfitted (loader interpolates). HELD for Robin's field check — his ears name the next layer (noise shape b2/b3 + wobble-depth residuals noted in skills/tone-analysis/SKILL.md). No sw VERSION bump (data-only, precedent 8e7b1d7). `🟩 ⚪ ⚙L`
 
-- [ ] **Finish the noise fix — field check on the landed roots, then the next layer** — the held-spectrum night (2026-09-27, `302a20f`/`450991f`) landed three roots: the wind buffer's 0.5 s loop was a 2 Hz-spaced LINE COMB (every render's "noise" line sat at k×2 Hz; now a 4 s loop, stochastic texture); WIND_SHAPE re-targeted to the rendered-candidate mid-wall (0.6/2.6/0.8 — delivered b1→b2 falls ~4-7 dB where the takes fall −1.4..−16, vs the old flat ~2.4); and the fitted model HOLDS the nearest anchor beyond its range (clamped-slope extrapolation below B4's bridge row had turned A3/B3 wobble NEGATIVE, −13.2%/21.5 Hz — Robin's A3/B3 catch, fixed by vInterpHold; interpolation between anchors untouched). Per-note wind rows re-fit to b1 ±0.9 dB on all 11 notes; F6's delivered floor −67.4 vs Robin's own export −67 (the arbiter case). Open for the field check: (a) the whole voice's texture on his ears; (b) the B4 bridge take carries a 9.4 Hz/10.7% wobble reading — hold-at-anchor delivers it to A3/B3 too, his ears say re-record or keep; (c) WIND_SHAPE b2/b3 remains the take-spread compromise (−8..+3 dB residual); the shim: if he wants the F6-exemplar wall exactly, per-note lpRatio/lpQ rows are the next structural build (skill notes the candidate-matrix method). The tool-convention lesson (cross-tool floor scales differ 2-4 dB; compare within one tool, export = arbiter) is in the skill. ATTACK STAGE (the WIP unit, `79ca6e8`): the engine reads per-note `atk {speak, pre}` rows (a fitted row replaces the generic `dur*0.08` speak and the fixed 0.05/0.26 pre-tone fraction; null-safe fallback keeps generic voices byte-identical), fit_tone extracts atkPre from the onset portrait and corrects speak per round — rows re-fit through the same three rounds; his ears arbitrate the attack character (the pre-breath fraction went from 0.19·M to 0.01·M on fitted rows — 25 dB quieter lead-in). Artifact note preserved: `windBp.Q.value = Math.min(vp.windQ, WIND_SHAPE.bumpQMax)` stays the defensive clamp against sharp fitted rows re-ringing the whistle — retire-or-keep rides the next shape build if any. `🟧 🟠 ⚙M`
+- [ ] **Finish the noise fix — the onset-namesake unit (bisected to the tone's own bloom) + his field check on the landed set** — Robin's held-note recordings (A4 A5 B4 C5 D5 E5 F5 G5) are the primary rows now (`d9826f3`): the wobble class the takes carry is a coherent 6.5-9.3% @ 2-6 Hz (his A3/B3/B4 catches — the bridge's 9.4 Hz/10.7% and the melody cuts' 21-54% were onset/context artifacts; the short-cut rule: the spans <0.40 s skip the wobble fields and the loader's generic doctrine keeps the low end), the burst extractor is arrival-bounded (the A4 taken burst was the rising tone at a 200% chiff), unresolvable onsets fall through to the entry take/nearest fitted neighbor, per-note `noiseLpRatio/noiseLpQ` rows replace the saturated global family (delivered b1 within ±1.3, b2 −3..−9 toward the takes' walls, lpq corrections PARKED pending his ears), the fitted model stays hold-at-edge beyond its anchors (A3/B3 ride A4's row now — a real clean anchor), and the aged generic fallbacks no longer surface on unfitted per-note onsets. REMAINING, bisected tonight: **the puff on A4-class CLEAN takes is the engine's own onset bloom** — the chiff/wind/air/edge/ot layers are exonerated (burst profiles with each zeroed are byte-close), the culprit is the tone's level envelope + "pitch catch-up" sweep lasting ~80 ms where the takes speak within ~15-20 ms; the NEXT ENGINE UNIT: a row-expressible attack shape (a fitted row flattens the bloom to the take's clock — target: A4-class renders match the take's 20 ms entry) with the wobble off, re-fit, his play test, full sweep. His field check still owns the whole voice after that. `🟧 🟠 ⚙M`
 
 ## 2. Robustness / error handling
 
@@ -597,3 +597,24 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
     0.021 at the top retuned only by his ears).
   - If the F6 exemplar wall must be exact, the next structural build is
     per-note lpRatio/lpQ rows (candidate-matrix method in the skill).
+
+- **2026-09-27 (session 17-cont. #2 — the held-note recordings land, the kokiri/storms rule becomes law, the puff bisects to the engine's own bloom)** —
+  Robin's field catches drove the night: B4's wobble was onset-implied
+  (never in his takes), F6 grit is engine-general, and the E5/F5/G5/A4 "tongue
+  puff" he never recorded. His morning additions
+  (research/note-recordings/12hole/*-held.wav, 8 notes) became the primary
+  rows: A4/A5/C5/D5 direct anchors, the coherent wobble class 6.5-9.3% @
+  2-6 Hz, and the rules landed hard — kokiri/storms NEVER note values (context
+  rows interpolate/extrapolate from the fitted ladder rows), short spans
+  (<0.40 s) can't imply a wobble, the burst extractor must bound the window by
+  the tone's own arrival (the A4 take's rising tone once became a 200% chiff),
+  and unresolvable onsets fall through to the entry take or the nearest fitted
+  neighbor (the engine's generic chiff fallback was making puffs the takes
+  never carried). Engine gains per-note noiseLpRatio/noiseLpQ (the 2-biquad
+  family was saturated: b2 −4..−5.6 regardless; the walls now move per note),
+  a row chiff delay (his swells start ~55 ms in), and sw v38. The puff's last
+  root bisected clean tonight: NOT chiff/wind/air/edge/ot (profiles identical
+  with each zeroed) — the tone's own level+pitch bloom (~80 ms) where the
+  takes speak in ~15-20 ms; the next engine unit makes the fitted attack shape
+  row-expressible. Full sweep 46/46 at both commit points; lint clean;
+  `12-hole-synth-tuning` carries `79ca6e8`, `302a20f`, `450991f`, `d9826f3`.
