@@ -921,14 +921,17 @@ const V_ANCHORS = {
 };
 
 // Wind-noise spectral-shape constants (mirrored in synth_replica.py):
-// broad wind bandpass (a smooth wash, not a resonant peak) -> steep noise
-// lowpass. Re-modelled after Robin's field catch ("porcelain vs sand
-// paper"): the recorded breath falls smoothly ~13 dB per band with NO
-// resonant hump — a 2-pole-ish tilt at ~2 x f0 — while the old narrow
-// bandpass (Q 5-9) rang a rough narrow whistle on top of the tone. Q is
-// capped non-resonant so a fitted row's sharper ask cannot bring the grain
-// back; the wash placement rides the lowpass corner + the row's own level.
-const WIND_SHAPE = { bumpRatio: 1.26, bumpQMax: 0.8, noiseLpRatio: 2.7, noiseLpQ: 1.1 };
+// broad non-resonant wind bandpass (a smooth wash, not a resonant peak) ->
+// gentle noise lowpass. Constants picked by the analytic |H| search against
+// the recordings' corrected inter-harmonic floors
+// (skills/tone-analysis/scripts/wind_shape_search.py; the notch-band
+// pipeline's band numbers were the fundamental's window skirt, ~45-70 dB
+// hotter than the real breath). Re-modelled after Robin's field catch
+// ("porcelain vs sand paper"): the recorded breath falls ~6/14/26 dB per
+// band with no resonant hump. Q is capped so a fitted row's sharper ask
+// cannot bring the grain back; the wash placement rides the lowpass
+// corner + the row's own level.
+const WIND_SHAPE = { bumpRatio: 1.26, bumpQMax: 0.6, noiseLpRatio: 3.4, noiseLpQ: 0.4 };
 
 // Piecewise-linear interpolation in log2-f with slope-clamped extrapolation.
 function vInterp(pts, f) {
@@ -1679,7 +1682,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       const windBp = ctx.createBiquadFilter();
       windBp.type = "bandpass";
       windBp.frequency.value = Math.min(9000, freq * WIND_SHAPE.bumpRatio);
-      windBp.Q.value = vp.windQ;
+      windBp.Q.value = Math.min(vp.windQ, WIND_SHAPE.bumpQMax);
       // Steep noise lowpass: keeps the hiss hugging the tone instead of a
       // bright wash at the octave+ (the recordings show the upper noise
       // bands dropping ~14+ dB by 4×f0).

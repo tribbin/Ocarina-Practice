@@ -503,3 +503,43 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   onset-fit (chiff rows per note from the takes), then re-fit + publish +
   suites/full sweep. WAV data is the arbiter of truth (Robin): his texture
   adjectives steer, the numbers decide.
+
+- **2026-09-26 (session 17 cont. — the corrected floors ship: wash profile published, hold_spectrum joins the skill, the onset sand-paper root-caused; context limit wraps the session)** —
+  Robin's requests through the turn: find+generate held-tone spectra as part
+  of the skill (holdspectrum built), WAV data as the sound-truth arbiter, the
+  10_F6.wav cut + his own F6_spectrum.txt export as the reference case, short
+  drift-free windows for the truth:
+  (1) fit_tone gains the floor_bands method (Blackman-Harris held window,
+      inter-harmonic floor medians, ±80 Hz harmonic exclusion, consistent on
+      the RECORDING cuts AND the render side) — the fit's wind rows now ride
+      the recording's true breath: floors land at −62..−68 dB rel H1 at
+      band-1 (45-70 dB under the published-tabulated skirt values).
+  (2) The wind-shape search (analytic |H|, no timed-out loop) picked the
+      wash profile: broad non-resonant bp Q 0.4 at 1.26 f0 + gentle lp
+      3.4 f0 Q 0.4 — the ENGINE caps windQ (bumpQMax 0.6, noiseLp 3.4/0.4)
+      and synth_replica mirrors it; per-note wind rows re-fit landed the
+      render correctness checks: floors −68..−87 across B5/C6/F6/A4 vs
+      recording truths (b1 ±4 dB, b2/b3 ±4-7 dB as the shape model's
+      residual; A4's render H1 −28.9 with the B4 bridge — the
+      "A4 too soft" catch addressed).
+  (3) hold_spectrum.py — the tool copy: finds the held tone, writes the
+      txt-format spectrum + hold summary; reproduces the F6 ground truth
+      class (floors −70..−100 rel H1 vs the export's −67..−96);
+      documented as the arbiter when measurements disagree.
+  (4) The onset sand-paper isolated: the render's onset burst survives
+      zeroing air/wind/ot and the fitted chiff (the loop corrected rows to
+      −43..−74 dB peak while the measured burst sat at −11 dB) — the burst
+      is the ENGINE's pre-tone stage: the attacking fundamental's swept
+      skirt rides at the −14.3 dB pre-tone level (measured: the cluster at
+      1.01-1.05 f0 exactly at the pre-tone fraction) while the real
+      recording's lead-in is a quiet 20 ms swell (−45 dB). NEXT UNIT SPEC:
+      engine attack-stage fields from the recorded attacks (rows carry the
+      per-take attack_to_plateau 10-30 ms — the engine floor 0.04-0.05 s
+      still measures 0.07-0.1), the chiff row paths keep their onsets, then
+      re-fit onsets; held for Robin's field check as audible.
+  (5) Suites: full sweep 46/46 (352 s, engine touch → policy sweep) + eslint
+      clean; sw VERSION → oco-pwa-v35 (rule 15 — engine js changed).
+  Held for Robin: the field check on the whole round (A4 loudness, the
+  porcelain wash, the onset character after the next unit's attack fields);
+  the glide-tap engine constant already drafted; B4 re-record + the
+  double-alto-c re-record per IDEAS when he gets hands-on time.

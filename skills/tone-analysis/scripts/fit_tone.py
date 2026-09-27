@@ -18,6 +18,8 @@
 #   python fit_tone.py fit [--rounds 3] # stage 2
 #   python fit_tone.py render           # render BASELINE (generic model) set
 import json, os, subprocess, sys, statistics
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from tone_report import load_wav as _load_wav
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
@@ -72,6 +74,7 @@ def load_sources(sources=("ladder", "kokiri", "storms"), primary="ladder"):
             p = r["pitch"]
             take = {
                 "source": name, "on": s["on"], "off": s["off"],
+                "cutStart": s["t0"], "cut": s.get("cut"),
                 "cents": p["cents_vs_et"],
                 "h2": h[0], "h3": h[1], "h4": h[2], "h5": h[3],
                 "h1db": t["H1_plateau_rms_dbfs"],
@@ -139,6 +142,24 @@ def stage_targets():
             # no ladder coverage: recorded for context, never fit from it
             fit = dict(takes[0])
             fit["fit"] = False
+        # corrected noise floors for the fit take (the inter-harmonic floor
+        # method — the old notch-band numbers measure the fundamental's skirt)
+        if fit.get("fit") and fit.get("cut"):
+            try:
+                rate, xw = _load_wav(fit["cut"])
+                mw = (xw[:, 0] + xw[:, 1]) / 2 if xw.shape[1] > 1 else xw[:, 0]
+                import tone_report as _tr
+                f0m = note_hz(nid) * (2 ** (fit.get("cents", 0) / 1200))
+                on_rel = fit["on"] - fit.get("cutStart", 0.0)
+                hold = max(0.30, min(0.8, fit["span"] * 0.75))
+                t0 = on_rel + 0.10
+                n = min(int(hold * 44100.0), len(mw) - int(t0 * 44100.0))
+                if n >= 8192:
+                    fb = floor_bands(mw[int(t0 * 44100.0):int(t0 * 44100.0) + n], f0m)
+                    if fb:
+                        fit.update(fb)
+            except Exception as e:
+                print(f"  floor re-cache {nid}: {e}")
         fit["n_takes"] = len(takes)
         fit["level_ref_db"] = lvl_ref
         fit["sources"] = sorted(set(t["source"] for t in takes))
@@ -208,7 +229,7 @@ def measure_note(wav, note):
     h = r["timbre"]["harmonic_ratio_re_H1_median"]
     bands = r["noise"]["bands"]
     env = r["envelope"]
-    return {
+    out = {
         "h2": h[0], "h3": h[1], "h4": h[2], "h5": h[3],
         "h1db": r["timbre"]["H1_plateau_rms_dbfs"],
         "band1": bands["0.85-1.95xf0"]["db_rel_H1_median"],
@@ -220,6 +241,23 @@ def measure_note(wav, note):
         "osDb": env["attack_overshoot_db"],
         "wanderC": r["pitch"]["wobble_std_cents"],
     }
+    burst = ((r.get("onset") or {}).get("burst_profile") or [])
+    early = [p for p in burst if p["t_ms"] <= 90]
+    if early:
+        out["chiffDb"] = max(p["db_rel_plateau_H1"] for p in early)
+    try:
+        rate, xr = _load_wav(wav)
+        mr = (xr[:, 0] + xr[:, 1]) / 2 if xr.shape[1] > 1 else xr[:, 0]
+        f0 = note_hz(note)
+        n = int(min(1.4, max(0.5, 2.0 - r["envelope"]["attack_to_plateau_s"])) * 44100.0)
+        n = min(n, len(mr) - int(0.35 * 44100.0))
+        if n >= 8192:
+            fb = floor_bands(mr[int(0.35 * 44100.0):int(0.35 * 44100.0) + n], f0)
+            if fb:
+                out.update(fb)
+    except Exception as e:
+        print(f"  render floor {note}: {e}")
+    return out
 
 def db(x):
     import math
@@ -227,6 +265,43 @@ def db(x):
 
 def lin(dbv):
     return 10 ** (dbv / 20) if dbv > -119.5 else 0.000011
+
+# ---------------------------------------------------------------------------
+# floor_bands — the corrected noise measurement (the skirt-trap fix): a
+# Blackman-Harris window over the held part, inter-harmonic floor medians
+# per band with ±80 Hz harmonic exclusion, scaled consistently on both the
+# recording and the render side. The old notch-band numbers were the loud
+# fundamental's window skirt (~45-70 dB hotter than the real breath).
+# ---------------------------------------------------------------------------
+import numpy as _np
+
+def floor_bands(seg, f0, sr=44100.0, pad=1 << 17, excl=80.0):
+    n = len(seg)
+    if n < 4096:
+        return None
+    t = _np.arange(n) / n
+    w = (0.35875 - 0.48829 * _np.cos(2 * _np.pi * t)
+         + 0.14128 * _np.cos(4 * _np.pi * t) - 0.01168 * _np.cos(6 * _np.pi * t))
+    wsum = float(_np.sum(w))
+    enbw_db = 10 * _np.log10(n * float(_np.sum(w ** 2)) / wsum ** 2)
+    S = _np.abs(_np.fft.rfft(seg * w, pad)) * 2 / wsum
+    fs = _np.fft.rfftfreq(pad, 1 / sr)
+    bin_hz = sr / pad
+    i1 = int(_np.searchsorted(fs, f0 * 0.94)); l1 = max(1, i1 - 1)
+    h1i = int(_np.searchsorted(fs, f0 * 1.06))
+    k = l1 + int(_np.argmax(S[l1:h1i]))
+    pk = db(float(S[k]))
+    out = {}
+    for bi, (r1, r2) in enumerate([(0.85, 1.95), (1.95, 3.9), (3.9, 7.0), (7.0, 12.0)]):
+        i_lo, i_hi = int(r1 * f0 / bin_hz), int(min(r2 * f0, sr / 2 - 300) / bin_hz)
+        keep = [i for i in range(max(0, i_lo), max(0, i_hi))
+                if all(abs(fs[i] - hk * f0) > excl for hk in range(1, 9))]
+        if len(keep) < 40:
+            out[f"fb{bi+1}"] = None
+            continue
+        med = db(float(_np.median(S[keep]))) - enbw_db
+        out[f"fb{bi+1}"] = med - pk
+    return out
 
 def naive_candidate():
     targets = per_note_targets()
@@ -241,18 +316,25 @@ def naive_candidate():
         h = [1.0] + [min(max(t.get(k) or 0.0, 0.0), 0.5) for k in ("h2", "h3", "h4", "h5")]
         h1db = t.get("h1db") or 0.0
         levelDb = round(h1db - max_h1, 2)
-        noiseLoDb = round((t.get("band1") or -26.0), 2) + 2.0
+        noiseLoDb = round((t.get("fb1") or t.get("band1") or -26.0), 2) + 2.0
         rows.append({
             "note": nid, "f": round(f, 2), "h": [round(v, 6) for v in h],
             "levelDb": levelDb,
             "noiseLoDb": round(noiseLoDb, 2),
-            "noiseBumpQ": 0.75,   # the wash profile: non-resonant (engine caps Q)
+            "noiseBumpQ": 0.4,    # the wash profile: broad, non-resonant (search winner)
             "wanderC": round(t.get("wanderC") or 0, 2),
             "wobPct": round(t.get("wobPct") or 0, 2),
             "wobHz": round(t.get("wobHz") or 2.5, 2),
             "attackF": None,   # filled from the baseline render ratio
             "osDb": round(t.get("osDb") or 1.0, 2),
         })
+        # the recorded tongue transient IS the aim (Robin): the burst runs
+        # -40..-55 dB rel plateau H1 while the shipped generic chiff sits
+        # ~25 dB hotter (the sand-paper onsets). A linear peak + the measured
+        # length; startHz/endHz/attack stay generic per-field fallbacks.
+        if t.get("chiffDb") is not None:
+            rows[-1]["chiff"] = {"peak": round(2 * lin(t["chiffDb"]), 6),
+                                 "len": round(t.get("chiffLen") or 0.08, 3)}
     return {"instrument": INST, "model": "tone-fit-v1",
             "recorded": {"date": "2026-09-26",
                          "takes": "12-hole melodies (ladder primary, kokiri/storms corroboration)",
@@ -348,11 +430,11 @@ def fit_rounds(rounds=3):
             shift = target_rel - render_rel
             deltas.append(("level", shift))
             row["levelDb"] = round(row["levelDb"] + min(8.0, max(-8.0, shift)), 2)
-            # wind: band-1 level shift
-            shift1 = t.get("band1") or -26.0
-            sh = shift1 - r["band1"]
+            # wind: corrected inter-harmonic floor band-1 level shift
+            shift1 = t.get("fb1") or t.get("band1") or -26.0
+            sh = shift1 - (r.get("fb1") or r["band1"])
             deltas.append(("band1", sh))
-            row["noiseLoDb"] = round(row["noiseLoDb"] + min(6.0, max(-6.0, sh)), 2)
+            row["noiseLoDb"] = round(row["noiseLoDb"] + min(45.0, max(-45.0, sh)), 2)
             # wander/wobble direct
             row["wanderC"] = round(t.get("wanderC") or 0, 2)
             row["wobPct"] = round(t.get("wobPct") or 0, 2)
@@ -366,6 +448,11 @@ def fit_rounds(rounds=3):
             t_os = t.get("osDb")
             if t_os is not None and t_att and t_att > 0.08:
                 row["osDb"] = round(row["osDb"] + max(-4, min(4, t_os - r["osDb"])), 2)
+            # onset burst (the transient target): the render's own burst
+            # peak vs the recording's, one shift per round
+            if "chiff" in row and t.get("chiffDb") is not None and r.get("chiffDb") is not None:
+                dsh = max(-12, min(12, t["chiffDb"] - r["chiffDb"]))
+                row["chiff"]["peak"] = round(max(row["chiff"]["peak"] * lin(dsh), 1e-6), 6)
         json.dump({"instrument": INST, "model": "tone-fit-v1",
                    "recorded": naive_candidate()["recorded"],
                    "chambers": {"1": rows}},
@@ -386,12 +473,17 @@ def fit_rounds(rounds=3):
                   (r["h1db"] - res[anchor]["h1db"])) if anchor else 0.0
             worst = max(worst, max(abs(float(x)) for x in dh if x) if any(dh) else 0.0,
                         abs(lh))
-            b1 = t.get("band1"); b2 = t.get("band2"); b3 = t.get("band3")
+            b1 = t.get("fb1") or t.get("band1")
+            b2 = t.get("fb2") or t.get("band2")
+            b3 = t.get("fb3") or t.get("band3")
+            if r.get("fb2"): r2_, r3_ = r["fb2"], r["fb3"]
+            else: r2_, r3_ = r["band2"], r["band3"]
+            r1_ = r.get("fb1") or r["band1"]
             wp = t.get("wobPct"); at = t.get("attack"); osv = t.get("osDb")
             tail = ""
-            tail += "" if b1 is None else f"{b1 - r['band1']:7.1f}"
-            tail += "" if b2 is None else f"{b2 - r['band2']:7.1f}"
-            tail += "" if b3 is None else f"{b3 - r['band3']:7.1f}"
+            tail += "" if b1 is None else f"{b1 - r1_:7.1f}"
+            tail += "" if b2 is None else f"{b2 - r2_:7.1f}"
+            tail += "" if b3 is None else f"{b3 - r3_:7.1f}"
             tail += "" if wp is None else f"{wp - r['wobPct']:7.1f}"
             tail += "" if at is None else f"{at - r['attack']:8.3f}"
             tail += "" if osv is None else f"{osv - r['osDb']:6.1f}"

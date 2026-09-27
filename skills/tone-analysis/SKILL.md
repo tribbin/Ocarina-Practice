@@ -161,6 +161,16 @@ raw cents path per 10 ms hop. First findings (both committed WAVs):
   tunable dips, so a carry option must live behindZen/melody semantics,
   not two note-envelopes knitting silently under practice's feet.
 
+## Held-tone spectrum (the ground-truth maker)
+`scripts/hold_spectrum.py <wav> [--nominal C5]` finds the longest stable
+hold inside a recording, windows it with a Blackman-Harris envelope and
+writes the recorder-format spectrum (`Frequency (Hz) \t Level (dB)`, the
+exact shape of Robin's own F6 export) plus a `_hold.json` summary (harmonic
+spikes rel H1, corrected inter-harmonic band floors). When two
+measurements disagree about a note's timbre or noise, THE HELD-PART
+SPECTRUM WINS (Robin's own export is the reference; the fit's floor method
+matches it within a few dB on the F6).
+
 ## Data locations
 - 12-hole fit working tree: `research/analysis/12hole/` (segments, cuts,
   targets, candidate + draft tone.json, fit renders) — gitignored, the repo

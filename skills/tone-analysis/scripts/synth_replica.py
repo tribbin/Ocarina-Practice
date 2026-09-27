@@ -60,9 +60,11 @@ V_ANCHORS = {
 }
 
 # Wind-noise spectral-shape constants (mirrored in js/audio.js):
-# white -> chamber bump (1.26*f0, pitch-keyed Q) -> steep noise lowpass.
-WIND_SHAPE = dict(bumpRatio=1.26, noiseLpRatio=2.7, noiseLpQ=1.2,
-                  bumpTrim=-2.0)
+# broad non-resonant bp wash (Q capped) -> gentle lowpass; constants from
+# the analytic |H| search against the recordings' corrected floors
+# (wind_shape_search.py — the old notch-band numbers were window skirt).
+WIND_SHAPE = dict(bumpRatio=1.26, bumpQMax=0.6, noiseLpRatio=3.4,
+                  noiseLpQ=0.4, bumpTrim=-2.0)
 
 def v_interp(pts, f):
     for i in range(len(pts) - 1):
@@ -309,7 +311,7 @@ def render(params, note="C5", dur=1.54, seed=12345, sr=SR, vib=False):
         reps = int(np.ceil(N / nb))
         nsrc = np.tile(nbuf, reps)[:N]
         wb, _ = bq(nsrc, rbj("bandpass", min(9000, freq * WIND_SHAPE["bumpRatio"]),
-                             vp["windQ"], sr))
+                             min(vp["windQ"], WIND_SHAPE["bumpQMax"]), sr))
         wb, _ = bq(wb, rbj("lowpass", min(SR * 0.45, freq * WIND_SHAPE["noiseLpRatio"]),
                            WIND_SHAPE["noiseLpQ"], sr))
         wl_env = env_([("set", 0, 0.0001), ("lin", 0.06, 1.0), ("set", relStart, 1.0),
