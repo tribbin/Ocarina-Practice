@@ -48,7 +48,7 @@ def fing_data(inst):
             open(os.path.join(REPO, "instruments", inst, "fingerings.json"), encoding="utf-8"))
     return _fing_cache[inst]
 
-def build_patched_module(inst, with_layers=False, wind=None):
+def build_patched_module(inst, with_layers=False, wind=None, with_comp=False):
     # 1. all relative imports of the module graph resolve on the repo server
     #    (parse.js and friends keep re-importing each other relative to THEMSELVES);
     # 2. audio.js imports freqOf from music-math — the pitch override needs a
@@ -67,6 +67,11 @@ def build_patched_module(inst, with_layers=False, wind=None):
     # offline hang log: air, edge and its wander LFO must never create REAL
     # oscillators in an OfflineAudioContext. Stub them at their call sites so
     # the surrounding wiring stays intact (buffer layers keep rendering).
+    # --with-comp: keep the app bus limiter in the rendered path (dry →
+    # limiter(-6/6/12/0.006/0.2) → outGain 0.6 → destination, convolver still
+    # out). The old offline hang was the compressor + tremolo passthrough
+    # combo; the compressor alone renders here. Without this flag the bench
+    # stays dry-wire (the historical comparison contract).
     # --with-layers skips the stubs for air/edge (the offline sensitivity
     # probes; wob LFOs stay real either way); expect possible hangs per the
     # bug log's combos rule.
@@ -77,7 +82,27 @@ def build_patched_module(inst, with_layers=False, wind=None):
                       "const edge = " + ("ctx.createOscillator()" if with_layers else "STUB_OSC(ctx)") + ";")
     src = src.replace("const wander = ctx.createOscillator();",
                       "const wander = " + ("ctx.createOscillator()" if with_layers else "STUB_OSC(ctx)") + ";")
-    src = re.sub(r"function getReverbBus\(ctx\) \{.*?\n\}",
+    if with_comp:
+        src = re.sub(r"function getReverbBus\(ctx\) \{.*?\n\}",
+                     "function getReverbBus(ctx) {\n"
+                     "  if (reverbBus && reverbBus.context === ctx) return reverbBus;\n"
+                     "  const input = ctx.createGain();\n"
+                     "  const dry = ctx.createGain();\n"
+                     "  dry.gain.value = 1.0;\n"
+                     "  const limiter = ctx.createDynamicsCompressor();\n"
+                     "  limiter.threshold.value = -6;\n"
+                     "  limiter.knee.value = 6;\n"
+                     "  limiter.ratio.value = 12;\n"
+                     "  limiter.attack.value = 0.006;\n"
+                     "  limiter.release.value = 0.2;\n"
+                     "  input.connect(dry); dry.connect(limiter);\n"
+                     "  const outGain = ctx.createGain();\n"
+                     "  outGain.gain.value = 0.6;\n"
+                     "  limiter.connect(outGain); outGain.connect(ctx.destination);\n"
+                     "  return reverbBus;\n"
+                     "}", src, count=1)
+    else:
+        src = re.sub(r"function getReverbBus\(ctx\) \{.*?\n\}",
                  "function getReverbBus(ctx) {\n"
                  "  if (reverbBus && reverbBus.context === ctx) return reverbBus;\n"
                  "  const input = ctx.createGain();\n"
@@ -211,9 +236,10 @@ def ensure_servers():
 
 CHROME = None
 
-def run_page(name, cfg, out_wav, wind=None):
+def run_page(name, cfg, out_wav, wind=None, with_comp=False):
     ensure_servers()
-    build_patched_module(cfg.get("instId", "oot-alto-c-12"), wind=wind)
+    build_patched_module(cfg.get("instId", "oot-alto-c-12"), wind=wind,
+                         with_comp=with_comp)
     page = TEMPLATE.replace("__FING__", json.dumps(cfg.get("_fing"))).replace(
         "__TONE__", json.dumps(cfg.get("_tone"))).replace(
         "__CFG__", json.dumps({k: v for k, v in cfg.items() if not k.startswith("_")})).replace(
@@ -303,7 +329,8 @@ def main():
     f0 = opt("--f0")
     if f0 is not None: cfg["f0"] = float(f0)
     run_page(f"r12_{note_id or 'seq'}_{int(dur*1000)}.html", cfg, out,
-             wind=[s.strip() for s in wind.split(",")] if wind else None)
+             wind=[s.strip() for s in wind.split(",")] if wind else None,
+             with_comp="--with-comp" in argv)
 
 import base64
 

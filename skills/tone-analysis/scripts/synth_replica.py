@@ -91,6 +91,8 @@ def _profile(note_id, freq, P, rng):
         "levelLin": db2lin(v_interp(V_ANCHORS["levelDb"], freq) * P["levelCurveAmt"]),
         "windBump": db2lin(v_interp(V_ANCHORS["noiseLoDb"], freq) + WIND_SHAPE["bumpTrim"]) * P["windAmt"],
         "windQ": v_interp(V_ANCHORS["noiseBumpQ"], freq),
+        "noiseLpRatio": WIND_SHAPE["noiseLpRatio"],
+        "noiseLpQ": WIND_SHAPE["noiseLpQ"],
         "wanderC": (v_interp(V_ANCHORS["wanderC"], freq) + 2.0 * hh) * P["wanderAmt"],
         "wobDepth": (v_interp(V_ANCHORS["wobPct"], freq) + 2.5 * hh) / 100 * P["wobbleAmt"],
         "wobRate": (v_interp(V_ANCHORS["wobHz"], freq) + 1.2 * hh) * (0.9 + 0.2 * float(rng.random())),
@@ -312,8 +314,8 @@ def render(params, note="C5", dur=1.54, seed=12345, sr=SR, vib=False):
         nsrc = np.tile(nbuf, reps)[:N]
         wb, _ = bq(nsrc, rbj("bandpass", min(9000, freq * WIND_SHAPE["bumpRatio"]),
                              min(vp["windQ"], WIND_SHAPE["bumpQMax"]), sr))
-        wb, _ = bq(wb, rbj("lowpass", min(SR * 0.45, freq * WIND_SHAPE["noiseLpRatio"]),
-                           WIND_SHAPE["noiseLpQ"], sr))
+        wb, _ = bq(wb, rbj("lowpass", min(SR * 0.45, freq * vp["noiseLpRatio"]),
+                           vp["noiseLpQ"], sr))
         wl_env = env_([("set", 0, 0.0001), ("lin", 0.06, 1.0), ("set", relStart, 1.0),
                        ("lin", dur, 0.0001)], N, sr)
         core = core + wb * (vp["windBump"] * wl_env)

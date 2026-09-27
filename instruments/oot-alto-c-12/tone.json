@@ -2,352 +2,497 @@
  "instrument": "oot-alto-c-12",
  "model": "tone-fit-v1",
  "recorded": {
-  "date": "2026-09-26",
-  "takes": "12-hole tone ladder (the clean single-note-grade cuts), kokiri + storms kept as transition/glide context, not row sources; recording gain is a mic-chain artifact \u2014 levelDb anchors the loudest fitted note at 0 dB, only the note-to-note curve ships",
+  "date": "2026-09-27",
+  "takes": "12-hole tone ladder melody cuts + Robin's held-note recordings (research/note-recordings/12hole/*-held.wav); kokiri + storms stay transition/glide context, NEVER note values; notes without takes ride the fitted ladder rows interpolated; recording gain is a mic-chain artifact \u2014 levelDb anchors the loudest fitted note at 0 dB, only the note-to-note curve ships",
   "anchor": "loudest fitted note (levelDb 0); masterLevel untouched \u2014 headroom for support tracks and reverb preserved"
  },
  "chambers": {
   "1": [
    {
-    "note": "B4",
-    "f": 493.88,
+    "note": "A4",
+    "f": 440.0,
     "h": [
      1.0,
-     0.004918,
-     0.004396,
-     6.9e-05,
-     0.000576
+     0.008294,
+     0.010087,
+     0.000119,
+     0.000436
     ],
-    "levelDb": -12.76,
-    "noiseLoDb": -18.87,
+    "levelDb": -16.22,
+    "noiseLoDb": -18.63,
     "noiseBumpQ": 0.4,
-    "wanderC": 7.56,
-    "wobPct": 10.74,
-    "wobHz": 9.4,
     "attackF": 0.5,
-    "osDb": -1.23,
+    "osDb": 0.76,
+    "wanderC": 5.5,
+    "wobPct": 7.67,
+    "wobHz": 4.6,
     "chiff": {
-     "peak": 18.643695,
-     "len": 0.023
+     "peak": 0.00186,
+     "len": 0.023,
+     "delay": 0.053
     },
     "atk": {
      "speak": 0.004,
      "pre": 0.01
     },
-    "h2": 0.004918,
-    "h3": 0.004396,
-    "h4": 6.9e-05,
-    "h5": 0.000576
+    "h2": 0.008294,
+    "h3": 0.010087,
+    "h4": 0.000119,
+    "h5": 0.000436,
+    "noiseLpRatio": 1.98
+   },
+   {
+    "note": "B4",
+    "f": 493.88,
+    "h": [
+     1.0,
+     0.013509,
+     0.018601,
+     0.003785,
+     0.001825
+    ],
+    "levelDb": -21.6,
+    "noiseLoDb": -15.74,
+    "noiseBumpQ": 0.4,
+    "attackF": 1.0,
+    "osDb": 1.08,
+    "wanderC": 4.78,
+    "wobPct": 8.48,
+    "wobHz": 3.62,
+    "chiff": {
+     "peak": 0.000115,
+     "len": 0.08,
+     "delay": 0.013
+    },
+    "atk": {
+     "speak": 0.005,
+     "pre": 0.01
+    },
+    "h2": 0.013509,
+    "h3": 0.018601,
+    "h4": 0.003785,
+    "h5": 0.001825,
+    "noiseLpRatio": 2.44
+   },
+   {
+    "note": "C5",
+    "f": 523.25,
+    "h": [
+     1.0,
+     0.029552,
+     0.034243,
+     0.000597,
+     0.004229
+    ],
+    "levelDb": -13.47,
+    "noiseLoDb": -18.4,
+    "noiseBumpQ": 0.4,
+    "attackF": 0.5,
+    "osDb": 3.78,
+    "wanderC": 3.14,
+    "wobPct": 8.59,
+    "wobHz": 5.48,
+    "chiff": {
+     "peak": 0.004623,
+     "len": 0.023,
+     "delay": 0.113
+    },
+    "atk": {
+     "speak": 0.004,
+     "pre": 0.01
+    },
+    "h2": 0.029552,
+    "h3": 0.034243,
+    "h4": 0.000597,
+    "h5": 0.004229,
+    "noiseLpRatio": 2.71
    },
    {
     "note": "Cs5",
     "f": 554.37,
     "h": [
      1.0,
-     0.013893,
-     0.000326,
-     0.000445,
-     0.00028
+     0.014694,
+     0.000219,
+     0.000186,
+     0.000106
     ],
-    "levelDb": -9.77,
-    "noiseLoDb": -17.03,
+    "levelDb": -9.63,
+    "noiseLoDb": -16.11,
     "noiseBumpQ": 0.4,
+    "attackF": 0.5,
+    "osDb": 1.09,
     "wanderC": 4.04,
     "wobPct": 26.72,
     "wobHz": 1.37,
-    "attackF": 0.5,
-    "osDb": 1.09,
     "chiff": {
      "peak": 0.000457,
-     "len": 0.023
+     "len": 0.023,
+     "delay": 0.073
     },
     "atk": {
      "speak": 0.004,
      "pre": 0.01
     },
-    "h2": 0.013893,
-    "h3": 0.000326,
-    "h4": 0.000445,
-    "h5": 0.00028
+    "h2": 0.014694,
+    "h3": 0.000219,
+    "h4": 0.000186,
+    "h5": 0.000106,
+    "noiseLpRatio": 2.02
+   },
+   {
+    "note": "D5",
+    "f": 587.33,
+    "h": [
+     1.0,
+     0.017623,
+     0.010751,
+     0.001688,
+     0.004324
+    ],
+    "levelDb": -10.56,
+    "noiseLoDb": -19.89,
+    "noiseBumpQ": 0.4,
+    "attackF": 0.5,
+    "osDb": 0.85,
+    "wanderC": 2.45,
+    "wobPct": 7.88,
+    "wobHz": 5.87,
+    "chiff": {
+     "peak": 0.007936,
+     "len": 0.023,
+     "delay": 0.133
+    },
+    "atk": {
+     "speak": 0.004,
+     "pre": 0.01
+    },
+    "h2": 0.017623,
+    "h3": 0.010751,
+    "h4": 0.001688,
+    "h5": 0.004324,
+    "noiseLpRatio": 2.87
    },
    {
     "note": "E5",
     "f": 659.26,
     "h": [
      1.0,
-     0.005512,
-     0.000736,
-     0.000181,
-     0.002378
+     0.006113,
+     0.003005,
+     7.9e-05,
+     0.000456
     ],
-    "levelDb": -6.04,
-    "noiseLoDb": -20.92,
+    "levelDb": -1.07,
+    "noiseLoDb": -27.23,
     "noiseBumpQ": 0.4,
-    "wanderC": 4.08,
-    "wobPct": 27.22,
-    "wobHz": 4.6,
     "attackF": 0.5,
-    "osDb": 0.48,
+    "osDb": -0.54,
+    "wanderC": 3.64,
+    "wobPct": 6.53,
+    "wobHz": 5.68,
     "chiff": {
-     "peak": 10.855845,
-     "len": 0.023
+     "peak": 9e-06,
+     "len": 0.08,
+     "delay": 0.013
     },
     "atk": {
-     "speak": 0.004,
+     "speak": 0.005,
      "pre": 0.01
     },
-    "h2": 0.005512,
-    "h3": 0.000736,
-    "h4": 0.000181,
-    "h5": 0.002378
+    "h2": 0.006113,
+    "h3": 0.003005,
+    "h4": 7.9e-05,
+    "h5": 0.000456,
+    "noiseLpRatio": 3.11
    },
    {
     "note": "F5",
     "f": 698.46,
     "h": [
      1.0,
-     0.009502,
-     0.00085,
-     0.00027,
-     0.002172
+     0.012173,
+     0.000491,
+     0.000797,
+     0.003125
     ],
-    "levelDb": -8.5,
-    "noiseLoDb": -22.75,
+    "levelDb": -9.28,
+    "noiseLoDb": -19.73,
     "noiseBumpQ": 0.4,
-    "wanderC": 1.08,
-    "wobPct": 21.19,
-    "wobHz": 0.39,
-    "attackF": 0.5,
-    "osDb": 1.29,
+    "attackF": 0.667,
+    "osDb": 10.73,
+    "wanderC": 2.69,
+    "wobPct": 8.06,
+    "wobHz": 4.11,
     "chiff": {
-     "peak": 14.222951,
-     "len": 0.023
-    },
-    "atk": {
-     "speak": 0.004,
-     "pre": 0.01
-    },
-    "h2": 0.009502,
-    "h3": 0.00085,
-    "h4": 0.00027,
-    "h5": 0.002172
-   },
-   {
-    "note": "G5",
-    "f": 783.99,
-    "h": [
-     1.0,
-     0.003298,
-     0.002686,
-     0.000761,
-     0.000255
-    ],
-    "levelDb": -6.88,
-    "noiseLoDb": -18.36,
-    "noiseBumpQ": 0.4,
-    "wanderC": 0.63,
-    "wobPct": 27.99,
-    "wobHz": 0.39,
-    "attackF": 0.5,
-    "osDb": 2.51,
-    "chiff": {
-     "peak": 21.935715,
-     "len": 0.023
-    },
-    "atk": {
-     "speak": 0.004,
-     "pre": 0.01
-    },
-    "h2": 0.003298,
-    "h3": 0.002686,
-    "h4": 0.000761,
-    "h5": 0.000255
-   },
-   {
-    "note": "Gs5",
-    "f": 830.61,
-    "h": [
-     1.0,
-     0.001192,
-     0.000526,
-     0.000587,
-     0.000523
-    ],
-    "levelDb": -1.9,
-    "noiseLoDb": -25.43,
-    "noiseBumpQ": 0.4,
-    "wanderC": 1.93,
-    "wobPct": 28.97,
-    "wobHz": 3.92,
-    "attackF": 0.5,
-    "osDb": 1.62,
-    "chiff": {
-     "peak": 4.3e-05,
-     "len": 0.08
-    },
-    "atk": {
-     "speak": 0.004,
-     "pre": 0.01
-    },
-    "h2": 0.001192,
-    "h3": 0.000526,
-    "h4": 0.000587,
-    "h5": 0.000523
-   },
-   {
-    "note": "As5",
-    "f": 932.33,
-    "h": [
-     1.0,
-     0.001402,
-     0.000683,
-     0.000213,
-     0.000255
-    ],
-    "levelDb": -1.64,
-    "noiseLoDb": -22.92,
-    "noiseBumpQ": 0.4,
-    "wanderC": 1.82,
-    "wobPct": 41.76,
-    "wobHz": 8.71,
-    "attackF": 0.5,
-    "osDb": 0.62,
-    "chiff": {
-     "peak": 4.822619,
+     "peak": 0.000936,
      "len": 0.023
     },
     "atk": {
      "speak": 0.007,
      "pre": 0.01
     },
-    "h2": 0.001402,
-    "h3": 0.000683,
-    "h4": 0.000213,
-    "h5": 0.000255
+    "h2": 0.012173,
+    "h3": 0.000491,
+    "h4": 0.000797,
+    "h5": 0.003125,
+    "noiseLpRatio": 1.85
+   },
+   {
+    "note": "G5",
+    "f": 783.99,
+    "h": [
+     1.0,
+     0.003388,
+     0.001941,
+     0.000685,
+     0.000414
+    ],
+    "levelDb": -3.05,
+    "noiseLoDb": -27.33,
+    "noiseBumpQ": 0.4,
+    "attackF": 0.5,
+    "osDb": 8.24,
+    "wanderC": 2.69,
+    "wobPct": 9.28,
+    "wobHz": 2.06,
+    "chiff": {
+     "peak": 0.000605,
+     "len": 0.023
+    },
+    "atk": {
+     "speak": 0.004,
+     "pre": 0.01
+    },
+    "h2": 0.003388,
+    "h3": 0.001941,
+    "h4": 0.000685,
+    "h5": 0.000414,
+    "noiseLpRatio": 2.02
+   },
+   {
+    "note": "Gs5",
+    "f": 830.61,
+    "h": [
+     1.0,
+     0.001156,
+     0.000445,
+     0.000408,
+     0.000182
+    ],
+    "levelDb": -2.11,
+    "noiseLoDb": -24.72,
+    "noiseBumpQ": 0.4,
+    "attackF": 0.5,
+    "osDb": 1.62,
+    "wanderC": 1.93,
+    "wobPct": 28.97,
+    "wobHz": 3.92,
+    "chiff": {
+     "peak": 4.3e-05,
+     "len": 0.08,
+     "delay": 0.013
+    },
+    "atk": {
+     "speak": 0.004,
+     "pre": 0.01
+    },
+    "h2": 0.001156,
+    "h3": 0.000445,
+    "h4": 0.000408,
+    "h5": 0.000182,
+    "noiseLpRatio": 2.66
+   },
+   {
+    "note": "A5",
+    "f": 880.0,
+    "h": [
+     1.0,
+     0.002422,
+     0.001787,
+     0.000136,
+     9.7e-05
+    ],
+    "levelDb": -2.15,
+    "noiseLoDb": -25.69,
+    "noiseBumpQ": 0.4,
+    "attackF": 0.5,
+    "osDb": 5.19,
+    "wanderC": 2.32,
+    "wobPct": 6.63,
+    "wobHz": 4.21,
+    "chiff": {
+     "peak": 0.044905,
+     "len": 0.023
+    },
+    "atk": {
+     "speak": 0.004,
+     "pre": 0.01
+    },
+    "h2": 0.002422,
+    "h3": 0.001787,
+    "h4": 0.000136,
+    "h5": 9.7e-05,
+    "noiseLpRatio": 1.49
+   },
+   {
+    "note": "As5",
+    "f": 932.33,
+    "h": [
+     1.0,
+     0.001378,
+     0.000541,
+     9.3e-05,
+     7.5e-05
+    ],
+    "levelDb": -1.64,
+    "noiseLoDb": -22.65,
+    "noiseBumpQ": 0.4,
+    "attackF": 0.5,
+    "osDb": 0.62,
+    "wanderC": 1.82,
+    "wobPct": 41.76,
+    "wobHz": 8.71,
+    "chiff": {
+     "peak": 0.013555,
+     "len": 0.023,
+     "delay": 0.053
+    },
+    "atk": {
+     "speak": 0.007,
+     "pre": 0.01
+    },
+    "h2": 0.001378,
+    "h3": 0.000541,
+    "h4": 9.3e-05,
+    "h5": 7.5e-05,
+    "noiseLpRatio": 3.01
    },
    {
     "note": "B5",
     "f": 987.77,
     "h": [
      1.0,
-     0.005375,
-     0.003558,
-     0.000681,
-     0.000853
+     0.005369,
+     0.003999,
+     0.000211,
+     0.000165
     ],
-    "levelDb": -5.32,
-    "noiseLoDb": -19.09,
+    "levelDb": -5.01,
+    "noiseLoDb": -19.1,
     "noiseBumpQ": 0.4,
+    "attackF": 0.5,
+    "osDb": 0.99,
     "wanderC": 2.75,
     "wobPct": 24.64,
     "wobHz": 1.57,
-    "attackF": 0.5,
-    "osDb": 0.99,
     "chiff": {
      "peak": 0.0018,
-     "len": 0.023
+     "len": 0.023,
+     "delay": 0.073
     },
     "atk": {
      "speak": 0.004,
      "pre": 0.01
     },
-    "h2": 0.005375,
-    "h3": 0.003558,
-    "h4": 0.000681,
-    "h5": 0.000853
+    "h2": 0.005369,
+    "h3": 0.003999,
+    "h4": 0.000211,
+    "h5": 0.000165,
+    "noiseLpRatio": 3.17
    },
    {
     "note": "D6",
     "f": 1174.66,
     "h": [
      1.0,
-     0.005339,
-     0.001842,
-     0.000156,
-     0.001715
+     0.005252,
+     0.001813,
+     9.5e-05,
+     0.001041
     ],
-    "levelDb": -1.52,
-    "noiseLoDb": -20.6,
+    "levelDb": -1.51,
+    "noiseLoDb": -21.67,
     "noiseBumpQ": 0.4,
-    "wanderC": 0.55,
-    "wobPct": 54.64,
-    "wobHz": 8.22,
     "attackF": 0.5,
     "osDb": 0.45,
     "chiff": {
      "peak": 1e-05,
-     "len": 0.08
+     "len": 0.08,
+     "delay": 0.013
     },
     "atk": {
      "speak": 0.005,
      "pre": 0.01
     },
-    "h2": 0.005339,
-    "h3": 0.001842,
-    "h4": 0.000156,
-    "h5": 0.001715
+    "h2": 0.005252,
+    "h3": 0.001813,
+    "h4": 9.5e-05,
+    "h5": 0.001041,
+    "noiseLpRatio": 4.22
    },
    {
     "note": "Ds6",
     "f": 1244.51,
     "h": [
      1.0,
-     0.018809,
-     0.006936,
-     0.000372,
-     0.001172
+     0.016539,
+     0.006823,
+     0.000202,
+     0.000377
     ],
-    "levelDb": -12.28,
-    "noiseLoDb": -8.34,
+    "levelDb": -10.17,
+    "noiseLoDb": -11.87,
     "noiseBumpQ": 0.4,
-    "wanderC": 2.08,
-    "wobPct": 41.29,
-    "wobHz": 0.39,
     "attackF": 1.0,
     "osDb": 8.9,
     "chiff": {
-     "peak": 2e-05,
-     "len": 0.08
+     "peak": 0.000803,
+     "len": 0.023,
+     "delay": 0.153
     },
     "atk": {
      "speak": 0.004,
      "pre": 0.01
     },
-    "h2": 0.018809,
-    "h3": 0.006936,
-    "h4": 0.000372,
-    "h5": 0.001172
+    "h2": 0.016539,
+    "h3": 0.006823,
+    "h4": 0.000202,
+    "h5": 0.000377,
+    "noiseLpRatio": 2.46
    },
    {
     "note": "F6",
     "f": 1396.91,
     "h": [
      1.0,
-     0.00466,
-     0.005998,
-     0.000755,
-     0.001579
+     0.004768,
+     0.005775,
+     0.000494,
+     0.001214
     ],
     "levelDb": 0.0,
-    "noiseLoDb": -21.92,
+    "noiseLoDb": -21.51,
     "noiseBumpQ": 0.4,
+    "attackF": 0.5,
+    "osDb": 1.29,
     "wanderC": 4.23,
     "wobPct": 8.71,
     "wobHz": 4.8,
-    "attackF": 0.5,
-    "osDb": 1.29,
     "chiff": {
      "peak": 4.8e-05,
-     "len": 0.023
+     "len": 0.023,
+     "delay": 0.013
     },
     "atk": {
      "speak": 0.004,
      "pre": 0.01
     },
-    "h2": 0.00466,
-    "h3": 0.005998,
-    "h4": 0.000755,
-    "h5": 0.001579
+    "h2": 0.004768,
+    "h3": 0.005775,
+    "h4": 0.000494,
+    "h5": 0.001214,
+    "noiseLpRatio": 1.87
    }
   ]
  }

@@ -1045,7 +1045,7 @@ function toneEnvelopeFor(rows, freq) {
   };
   const g = (TONE_MODEL && TONE_MODEL.globalOb) || {};
   return {
-    chiff: sub("chiff", ["peak", "len", "startHz", "endHz", "attack"]),
+    chiff: sub("chiff", ["peak", "len", "startHz", "endHz", "attack", "delay"]),
     ot: sub("ot", ["peak", "dur", "noise"]),
     edge: sub("edge", ["level", "detune", "spread"]),
     atk: sub("atk", ["speak", "pre"]),
@@ -1081,6 +1081,11 @@ function voiceProfileFor(id, freq) {
       windBump: db2lin(toneVal(rows, "noiseLoDb", V_ANCHORS.noiseLoDb, freq) - 2.0) *
                 AUDIO_DEBUG.windAmt,
       windQ: toneVal(rows, "noiseBumpQ", V_ANCHORS.noiseBumpQ, freq),
+      // Per-note noise-wall position/shape (rows may carry noiseLpRatio /
+      // noiseLpQ from the takes; the global WIND_SHAPE constants are the
+      // fallback a missing field keeps).
+      noiseLpRatio: toneVal(rows, "noiseLpRatio", WIND_SHAPE.noiseLpRatio, freq),
+      noiseLpQ: toneVal(rows, "noiseLpQ", WIND_SHAPE.noiseLpQ, freq),
       wanderC: toneVal(rows, "wanderC", V_ANCHORS.wanderC, freq) * AUDIO_DEBUG.wanderAmt,
       wobDepth: toneVal(rows, "wobPct", V_ANCHORS.wobPct, freq) / 100 * AUDIO_DEBUG.wobbleAmt,
       wobRate: toneVal(rows, "wobHz", V_ANCHORS.wobHz, freq) * (0.9 + 0.2 * Math.random()),
@@ -1104,6 +1109,9 @@ function voiceProfileFor(id, freq) {
     // absolute noise growth with breath pressure).
     windBump: db2lin(vInterp(V_ANCHORS.noiseLoDb, freq) - 2.0) * AUDIO_DEBUG.windAmt,
     windQ: vInterp(V_ANCHORS.noiseBumpQ, freq),
+    // Generic voices keep the global shape (no per-note walls measured yet).
+    noiseLpRatio: WIND_SHAPE.noiseLpRatio,
+    noiseLpQ: WIND_SHAPE.noiseLpQ,
     // Slow intrinsic wander (one LFO drives pitch + loudness in phase,
     // like breath pressure does physically; deeper + faster on hard blow).
     wanderC: (vInterp(V_ANCHORS.wanderC, freq) + 2.0 * hh) * AUDIO_DEBUG.wanderAmt,
@@ -1720,8 +1728,8 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       // bands dropping ~14+ dB by 4×f0).
       const windLp = ctx.createBiquadFilter();
       windLp.type = "lowpass";
-      windLp.frequency.value = Math.min(ctx.sampleRate * 0.45, freq * WIND_SHAPE.noiseLpRatio);
-      windLp.Q.value = WIND_SHAPE.noiseLpQ;
+      windLp.frequency.value = Math.min(ctx.sampleRate * 0.45, freq * (vp.noiseLpRatio != null ? vp.noiseLpRatio : WIND_SHAPE.noiseLpRatio));
+      windLp.Q.value = vp.noiseLpQ != null ? vp.noiseLpQ : WIND_SHAPE.noiseLpQ;
       const windGain = ctx.createGain();
       windGain.gain.setValueAtTime(0.0001, t0);
       windGain.gain.linearRampToValueAtTime(vp.windBump, t0 + 0.06);
@@ -1788,13 +1796,18 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       const chAtk = Math.max(0.012, Math.min(0.025,
         eChiff && eChiff.attack != null ? Math.min(eChiff.attack, chiffLen)
         : chiffLen * 0.3)); // softer attack, min 12ms
-      chiffGain.gain.setValueAtTime(0.0001, t0);
-      chiffGain.gain.linearRampToValueAtTime(chiffPeak, t0 + chAtk);
-      chiffGain.gain.linearRampToValueAtTime(chiffPeak * 0.85, t0 + chiffLen * 0.5);
-      chiffGain.gain.linearRampToValueAtTime(0.0, t0 + chiffLen); // reach true zero
+      // Row "delay" — the recorded swells do not begin at tone onset: the A4
+      // held take's silent lead runs ~55 ms before its own swell starts
+      // (Robin: "the tongue puff I don't hear in my recording"). 0 keeps the
+      // legacy t0 start for takes that speak their burst immediately.
+      const chDelay = eChiff && eChiff.delay != null ? Math.max(0, eChiff.delay) : 0;
+      chiffGain.gain.setValueAtTime(0.0001, t0 + chDelay);
+      chiffGain.gain.linearRampToValueAtTime(chiffPeak, t0 + chDelay + chAtk);
+      chiffGain.gain.linearRampToValueAtTime(chiffPeak * 0.85, t0 + chDelay + chiffLen * 0.5);
+      chiffGain.gain.linearRampToValueAtTime(0.0, t0 + chDelay + chiffLen); // reach true zero
       cutFades.push({ g: chiffGain, level: 0.0001 });
       chiffSrc.connect(chiffHp); chiffHp.connect(chiffLp); chiffLp.connect(chiffGain); chiffGain.connect(master);
-      chiffSrc.start(t0); chiffSrc.stop(t0 + chiffLen + 0.02);
+      chiffSrc.start(t0); chiffSrc.stop(t0 + chDelay + chiffLen + 0.02);
     }
 
     // Overblown-mode ONSET overtone ("blowing on a bottle"): when the jet first

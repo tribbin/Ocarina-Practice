@@ -19,7 +19,8 @@ from tone_report import load_wav, note_hz
 SR = 44100.0
 BANDS = [(0.85, 1.95), (1.95, 3.9), (3.9, 7.0), (7.0, 12.0)]
 NOTCH_EXCL = 80.0     # Hz excluded around every harmonic for the floor
-TAKE_SOURCE_OVERRIDE = {"B4": "kokiri"}  # keep in step with fit_tone.py
+# Robin's hard rule: ladder cuts only for held-tone reference — kokiri/storms
+# never feed any fitting anywhere (2026-09-27).
 
 def rbj_coefs(kind, fc, q):
     w = min(max(fc, 1.0), 0.45 * SR) * 2 * np.pi / SR
@@ -68,9 +69,15 @@ def recorded_floor_profile():
         t = targets[nid]
         if not t.get("fit"):
             continue
-        cuts = sorted(glob.glob(os.path.join(HERE, "..", "..", "..", "research",
-                                             "analysis", "12hole", "cuts",
-                                             t["source"], f"*_{nid}.wav")))
+        # prefer the target's own cut path (held_* sources live in per-note
+        # dirs the old glob pattern never matched)
+        cuts = []
+        if t.get("cut") and os.path.exists(t["cut"]):
+            cuts = [t["cut"]]
+        else:
+            cuts = sorted(glob.glob(os.path.join(HERE, "..", "..", "..", "research",
+                                                 "analysis", "12hole", "cuts",
+                                                 t["source"], f"*_{nid}.wav")))
         if not cuts:
             continue
         rate, x = load_wav(cuts[-1])

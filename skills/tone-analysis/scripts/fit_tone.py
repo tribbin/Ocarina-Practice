@@ -17,7 +17,7 @@
 #   python fit_tone.py targets          # stage 1
 #   python fit_tone.py fit [--rounds 3] # stage 2
 #   python fit_tone.py render           # render BASELINE (generic model) set
-import json, os, subprocess, sys, statistics
+import json, os, subprocess, sys, statistics, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from tone_report import load_wav as _load_wav
 
@@ -30,13 +30,36 @@ CAND = os.path.join(AN, "candidate_tone.json")
 DRAFT_TONE = os.path.join(AN, "oot-alto-c-12.tone.draft.json")
 OUT_TONE = os.path.join(REPO, "instruments", INST, "tone.json")
 
-# Field-check bridges (Robin's ear over the default policy) — replaced when
-# the notes get re-recorded:
-#   B4: the ladder's only B4 take is the opening re-blow blip; Robin's field
-#       catch ("A4 far too soft vs the ladder recording") traced to its
-#       depressed level, so B4's row rides the clean sustained kokiri tail
-#       take (a real single held note; flagged in tone.json's metadata).
-TAKE_SOURCE_OVERRIDE = {"B4": "kokiri"}
+# Robin's hard rule (2026-09-27): kokiri and storms are NEVER held-tone
+# references — they stay transition/glide CONTEXT only, for every tool and
+# every fitting (the old B4 kokiri bridge is retired with the rule). Notes
+# the ladder can't support value the ladder's own held part, and any field
+# a short/blipped ladder take can't carry (onset domains) holds the nearest
+# clean ladder neighbor:
+#   B4: the ladder's only take opens with the re-blow blip — held-part
+#       fields (harmonics/level/wobble/wind) come from its plateau frames;
+#       the onset fields (atk/chiff) hold Cs5's (the pivot whose take has
+#       the earliest clean ladder onset), so the blip's own burst never
+#       becomes B4's row.
+# (The B4 onset hold retired 2026-09-27: Robin's held-note recording
+# (research/note-recordings/12hole/B4-held.wav) gives B4 a real take with
+# its own clean onset — no neighbor fields needed.)
+NEIGHBOR_ONSET_HOLD = {}
+
+# The global noise-wall constants the shipped engine carries (WIND_SHAPE in
+# js/audio.js, mirrored here and in synth_replica/wind_shape_search); the
+# per-note rows noiseLpRatio/noiseLpQ grow from these in the fit loop.
+NOISE_WALL = {"ratio": 2.6, "q": 0.8}
+
+
+def wobble_measurable(t):
+    """Robin, 2026-09-27: a short held span cannot imply a wobble (the B4
+    bridge's 9.4 Hz/10.7% reading was onset-driven; his recording carries none
+    worth louder). A plateau statistic needs real cycles after the 220 ms
+    attack margin — takes under 0.40 s span skip the wobble/wander fields and
+    the load-time fallback keeps the generic anchored doctrine (interpolate
+    from the ladder, exactly as the loader's missing-field fallback does)."""
+    return (t.get("span") or 0.0) >= 0.40
 
 # Single-take smoothing of the wind rows (noiseLoDb): the take-to-take blow
 # variance is ±3 dB but single 12-hole takes sat 7-9 dB above their neighbors
@@ -50,7 +73,7 @@ def note_hz(n):
     objects = NAMES[n[:-1]] + (int(n[-1]) + 1) * 12
     return 440.0 * 2 ** ((objects - 69) / 12)
 
-def load_sources(sources=("ladder", "kokiri", "storms"), primary="ladder"):
+def load_sources(sources=("ladder", "held", "kokiri", "storms"), primary="ladder"):
     out = {}  # note -> [take dicts, best first]
     def push(nid, take):
         if nid is None:
@@ -105,18 +128,42 @@ def load_sources(sources=("ladder", "kokiri", "storms"), primary="ladder"):
             # B5/C6 hovers). peak = the burst's own dB rel plateau H1; len =
             # where it first falls 6 dB under the peak (else 0.08 s).
             burst = ((r.get("onset") or {}).get("burst_profile") or [])
-            early = [p for p in burst if p["t_ms"] <= 90]
+            # The burst window must end BEFORE the tone arrives: the notched
+            # profile reads the tone's own establishment swell otherwise (the
+            # A4 held take measured a "-0.045 dB burst" = its rising tone —
+            # which the fit turned into a 200%-gain chiff: Robin's "tongue
+            # puff I don't hear in my recording", 2026-09-27).
+            prof = ((r.get("onset") or {}).get("portrait") or [])
+            arrive_ms = 90.0
+            for p in prof:
+                if p["H1_dbfs"] >= t["H1_plateau_rms_dbfs"] - 14.0:
+                    arrive_ms = p["t_ms"]
+                    break
+            early = [p for p in burst if p["t_ms"] < arrive_ms - 8.0]
             if early:
                 pk = max(p["db_rel_plateau_H1"] for p in early)
+                take["arrivalMs"] = arrive_ms
+                take["burstPre"] = [{"t_ms": p["t_ms"],
+                                     "db_rel_plateau_H1": p["db_rel_plateau_H1"]}
+                                    for p in early]
                 take["chiffDb"] = pk
-                tail8 = [p for p in early if p["t_ms"] > 20]
-                after = [p for p in burst if p["t_ms"] > 20]
+                after = [p for p in early if p["t_ms"] > 20]
                 ln = None
                 for p in after:
                     if p["db_rel_plateau_H1"] < pk - 6.0:
                         ln = p["t_ms"] / 1000.0
                         break
                 take["chiffLen"] = round(min(ln or 0.08, 0.12), 3)
+                # the burst's own band edges (Robin's puff catch on
+                # E5/F5/G5: the shipped sweeps read broad/bright; the row's
+                # startHz/endHz carry the sweep the take actually made —
+                # the engine's eChiff sub already reads both fields)
+                try:
+                    edges = onset_band_edges(s, note_hz(nid))
+                    if edges:
+                        take["chiffStartHz"], take["chiffEndHz"] = edges
+                except Exception as e:
+                    print(f"  onset spectrum {nid}: {e}")
             push(nid, take)
     # best take per note = the LONGEST steady sounding span (a melody's
     # fragment blips and tongued trios do not own the row; the ladder's
@@ -135,20 +182,34 @@ def stage_targets():
     targets = {}
     for nid, d in sorted(src.items()):
         takes = d["takes"]
-        fit_pool = [t for t in takes if t["source"] == "ladder"]
-        if nid in TAKE_SOURCE_OVERRIDE:
-            # the field-check bridge: prefer the override source's best take
-            ov = [t for t in takes if t["source"] == TAKE_SOURCE_OVERRIDE[nid]]
-            if ov:
-                fit_pool = ov
+        # single-note-grade sources: the ladder's melody cuts AND Robin's
+        # dedicated held-note recordings (2026-09-27 — the cleanest take wins
+        # by span, which the held set usually is). kokiri/storms stay context.
+        fit_pool = [t for t in takes if t["source"] in ("ladder", "held")]
         if fit_pool:
             fit = dict(max(fit_pool, key=lambda t: t["span"]))  # best ladder take
             fit["fit"] = True
             fit["took_source"] = fit["source"]
         else:
-            # no ladder coverage: recorded for context, never fit from it
-            fit = dict(takes[0])
-            fit["fit"] = False
+            # no ladder coverage: the note's values arrive by the post-pass
+            # interpolation from the fitted ladder rows — kokiri/storms takes
+            # stay context-only (Robin's rule), never note values at any tier
+            fit = {"fit": False, "took_source": "interp", "source": "interp",
+                   "takes": d["takes"]}
+        # Onset-domain fields a blipped/short ladder take can't carry ride
+        # the nearest clean ladder neighbor's own take (the B4 re-blow blip:
+        # its burst is a real attack of THAT take, not B4's serial character).
+        if fit.get("fit") and nid in NEIGHBOR_ONSET_HOLD:
+            nb = NEIGHBOR_ONSET_HOLD[nid]
+            nt = [p for p in (src.get(nb) or {}).get("takes", [])
+                  if p["source"] == "ladder"]
+            if nt:
+                npick = max(nt, key=lambda t: t["span"])
+                for f in ("atkPre", "chiffDb", "chiffLen", "attack",
+                          "chiffStartHz", "chiffEndHz"):
+                    if npick.get(f) is not None:
+                        fit[f] = npick[f]
+                fit["onset_from"] = nb
         # corrected noise floors for the fit take (the inter-harmonic floor
         # method — the old notch-band numbers measure the fundamental's skirt)
         if fit.get("fit") and fit.get("cut"):
@@ -172,6 +233,86 @@ def stage_targets():
         fit["sources"] = sorted(set(t["source"] for t in takes))
         fit["takes"] = takes
         targets[nid] = fit
+
+    # The notes the ladder never carries get their values INTERPOLATED (or
+    # slope-extrapolated, clamped) from the nearest fitted ladder rows —
+    # Robin's rule: kokiri/storms never supply note values at any tier; they
+    # stay in takes[] as context only.
+    fitted = {n: t for n, t in targets.items() if t.get("fit")}
+    RATIO_KEYS = ("h2", "h3", "h4", "h5")
+    LINEAR_KEYS = ("h1db", "plateau", "band1", "band2", "band3", "band4",
+                   "fb1", "fb2", "fb3", "fb4", "osDb", "attack", "atkPre",
+                   "chiffDb", "chiffLen", "chiffStartHz", "chiffEndHz",
+                   "wobPct", "wobHz", "wanderC")
+
+    def _lerp_notes(k0, k1, tfrac):
+        a, b = targets[k0], targets[k1]
+        vals = {}
+        for k in RATIO_KEYS:
+            va, vb = a.get(k), b.get(k)
+            if va and vb:
+                da, dbe = 20 * math.log10(va), 20 * math.log10(vb)
+                vals[k] = 10 ** ((da + (dbe - da) * tfrac) / 20)
+        for k in LINEAR_KEYS:
+            va, vb = a.get(k), b.get(k)
+            if va is not None and vb is not None:
+                vals[k] = va + (vb - va) * tfrac
+        return vals
+
+    def _fill_interp(nid):
+        f = note_hz(nid)
+        anchor = sorted((note_hz(k), k) for k in fitted)
+        below = [x for x in anchor if x[0] <= f]
+        above = [x for x in anchor if x[0] > f]
+        import math as _m
+        if not above:
+            (mf0, k0), (mf1, k1) = anchor[-2], anchor[-1]
+        elif not below:
+            (mf0, k0), (mf1, k1) = anchor[0], anchor[1]
+        else:
+            (mf0, k0), (mf1, k1) = below[-1], above[0]
+        tf = _m.log2(f / mf0) / _m.log2(mf1 / mf0)
+        tf = max(-0.75, min(1.75, tf))
+        targets[nid].update(_lerp_notes(k0, k1, tf))
+
+    for nid in targets:
+        if targets[nid].get("took_source") == "interp":
+            _fill_interp(nid)
+
+    # Onset resolution from OTHER takes of the same note (a continuation
+    # fragment after the segmenter's breath split starts inside the first
+    # portrait frame — no pre-state for the fit to read; the engine would
+    # then fall back to its loud generic chiff: Robin's puff catches).
+    ONSET_FIELDS = ("atkPre", "chiffDb", "chiffLen", "attack",
+                    "chiffStartHz", "chiffEndHz")
+    for nid, t in targets.items():
+        if not t.get("fit") or 0 < (t.get("atkPre") or 0) <= 0.4:
+            continue
+        got = False
+        for cand in [x for x in (src.get(nid) or {}).get("takes", [])
+                     if x["source"] in ("ladder", "held")
+                     and x.get("atkPre") is not None and x["atkPre"] <= 0.4]:
+            for f in ONSET_FIELDS:
+                if cand.get(f) is not None:
+                    t[f] = cand[f]
+            t["onset_from"] = f"{cand['source']} entry take"
+            got = True
+            break
+        if got:
+            continue
+        # no resolvable take: the nearest fitted pitch neighbor that CAN
+        # speak its own onset (Robin's rule: interpolate from the ladder)
+        pool = sorted((abs(note_hz(n2) - note_hz(nid)), n2)
+                      for n2, t2n in targets.items()
+                      if t2n.get("fit") and 0 < (t2n.get("atkPre") or 0) <= 0.4
+                      and t2n.get("chiffDb") is not None)
+        if pool and (t.get("atkPre") is None or t["atkPre"] > 0.4):
+            nb = pool[0][1]
+            for f in ONSET_FIELDS:
+                if targets[nb].get(f) is not None:
+                    t[f] = targets[nb][f]
+            t["onset_from"] = f"{nb} (no resolvable onset)"
+
     os.makedirs(AN, exist_ok=True)
     path = os.path.join(AN, "targets.json")
     json.dump(targets, open(path, "w"), indent=1)
@@ -179,7 +320,6 @@ def stage_targets():
     notes = sorted(targets, key=note_hz)
     print(f"{'note':5}{'s':>1} {'h2 dB':>7}{'h3':>7}{'h4':>7}{'h5':>7} {'H1':>7}"
           f"{'b1':>7}{'b2':>7}{'b3':>7} {'wob%':>6}{'hz':>6} {'att':>6} {'os':>6} {'sc':>5} {'cents':>6} src(span)")
-    import math
     for nid in notes:
         t = targets[nid]
         def dd(key):
@@ -193,7 +333,7 @@ def stage_targets():
               f" {fmt(t.get('wobPct'), '{:5.1f}')}{fmt(t.get('wobHz'), '{:.1f}')}"
               f" {fmt(t.get('attack'), '{:.3f}')} {fmt(t.get('osDb'), '{:5.1f}')}"
               f" {fmt(t.get('wanderC'), '{:.1f}')} {fmt(t.get('cents'), '{:+.0f}')}"
-              f" {'/'.join(t['sources'])}({t['span']:.2f}s) took {t['source']}")
+              f" {'/'.join(t.get('sources') or []) or 'interp(ladder rows)'}({(t.get('span') or 0):.2f}s) took {t['source']}")
     print("wrote", path)
 
 def per_note_targets():
@@ -310,6 +450,65 @@ def floor_bands(seg, f0, sr=44100.0, pad=1 << 17, excl=80.0):
         out[f"fb{bi+1}"] = med - pk
     return out
 
+def onset_band_edges(s, f0, sr=44100.0, burst_s=0.055, ref_at=0.10, excl=80.0):
+    """The recorded tongue burst's own band edges: BH window over the burst
+    (spanning its own ~60 ms before and past the plateau start) vs a quiet
+    window early in the plateau; log-spaced 1/3-oct medians with harmonic
+    exclusion; the burst's span is where the excess stays > 4 dB (the burst
+    dilutes ~1-2 dB inside the window — the threshold stays conservative).
+    Returns (startHz, endHz) — the sweep bounds the shipped chiff should use —
+    or None when fewer than two bands qualify."""
+    cut = s.get("cut")
+    if not cut:
+        return None
+    rate, x = _load_wav(cut)
+    mono = (x[:, 0] + x[:, 1]) / 2 if x.shape[1] > 1 else x[:, 0]
+    n = int(burst_s * sr)
+    if n < 4096:
+        return None
+    t = _np.arange(n) / n
+    w = (0.35875 - 0.48829 * _np.cos(2 * _np.pi * t)
+         + 0.14128 * _np.cos(4 * _np.pi * t) - 0.01168 * _np.cos(6 * _np.pi * t))
+    wsum = float(_np.sum(w))
+    wsq = float(_np.sum(w ** 2))
+    enbw_db = 10 * _np.log10(n * wsq / wsum ** 2)
+    on_rel = s["on"] - s.get("t0", 0.0)
+    b0 = int(max(0.0, on_rel - 0.05) * sr)   # the burst rides the attack
+    r0 = int((on_rel + ref_at) * sr)         # ref: early plateau, cut time
+    if b0 + n > len(mono) or r0 + n > len(mono):
+        return None
+    B = _np.abs(_np.fft.rfft(mono[b0:b0 + n] * w, 1 << 16)) * 2 / wsum
+    Q = _np.abs(_np.fft.rfft(mono[r0:r0 + n] * w, 1 << 16)) * 2 / wsum
+    fs = _np.fft.rfftfreq(1 << 16, 1 / sr)
+    bins = fs[1] - fs[0]
+    edges_loud = []
+    lvl = [250.0, 353.0, 500.0, 707.0, 1000.0, 1414.0, 2000.0,
+           2828.0, 4000.0, 5657.0, 8000.0]  # log 1/3-oct grid
+    fm = f0 * (2 ** (s.get("cents", 0.0) / 1200.0))
+    excess = []
+    for hi_b in lvl:
+        a = hi_b / (2 ** (1.0 / 6.0))
+        bl = hi_b * (2 ** (1.0 / 6.0))
+        keep = [i for i in range(max(1, int(a / bins)), int(bl / bins))
+                if all(abs(fs[i] - hk * fm) > excl for hk in range(1, 12))]
+        if len(keep) < 20:
+            excess.append(None)
+            continue
+        eb = 20 * _np.log10(float(_np.median(B[keep])) + 1e-15) - enbw_db
+        er = 20 * _np.log10(float(_np.median(Q[keep])) + 1e-15) - enbw_db
+        excess.append((eb, er, hi_b))
+    # contiguous span of >6 dB excess from the first qualifying band outward
+    bands = [e for e in excess if e]
+    loud = [e for e in bands if e[0] - e[1] > 4.0]
+    if len(loud) < 2:
+        return None
+    top = max(e[2] for e in loud)
+    bot = min(e[2] for e in loud)
+    if top <= bot:
+        return None
+    return (round(min(11000, top), 1), round(max(200, bot), 1))
+
+
 def naive_candidate():
     targets = per_note_targets()
     rows = []
@@ -329,19 +528,36 @@ def naive_candidate():
             "levelDb": levelDb,
             "noiseLoDb": round(noiseLoDb, 2),
             "noiseBumpQ": 0.4,    # the wash profile: broad, non-resonant (search winner)
-            "wanderC": round(t.get("wanderC") or 0, 2),
-            "wobPct": round(t.get("wobPct") or 0, 2),
-            "wobHz": round(t.get("wobHz") or 2.5, 2),
             "attackF": None,   # filled from the baseline render ratio
             "osDb": round(t.get("osDb") or 1.0, 2),
         })
+        # wobble/wander fields only when the take's plateau supports the
+        # statistic — missing fields are the loader's job (generic doctrine).
+        if wobble_measurable(t):
+            rows[-1]["wanderC"] = round(t.get("wanderC") or 0, 2)
+            rows[-1]["wobPct"] = round(t.get("wobPct") or 0, 2)
+            rows[-1]["wobHz"] = round(t.get("wobHz") or 2.5, 2)
         # the recorded tongue transient IS the aim (Robin): the burst runs
         # -40..-55 dB rel plateau H1 while the shipped generic chiff sits
         # ~25 dB hotter (the sand-paper onsets). A linear peak + the measured
         # length; startHz/endHz/attack stay generic per-field fallbacks.
         if t.get("chiffDb") is not None:
-            rows[-1]["chiff"] = {"peak": round(2 * lin(t["chiffDb"]), 6),
-                                 "len": round(t.get("chiffLen") or 0.08, 3)}
+                ch = {"peak": round(2 * lin(t["chiffDb"]), 6),
+                      "len": round(t.get("chiffLen") or 0.08, 3)}
+                # the take's own swell start: the first pre-tone frame within
+                # 12 dB of the burst peak (0 keeps the legacy t0 start)
+                bmp = None
+                if t.get("arrivalMs") is not None:
+                    cand = [p for p in (t.get("burstPre") or [])
+                            if p["db_rel_plateau_H1"] >= t["chiffDb"] - 12.0]
+                    if cand:
+                        bmp = cand[0]["t_ms"] / 1000.0
+                if bmp is not None:
+                    ch["delay"] = round(max(0.0, bmp - 0.01), 3)
+                if t.get("chiffStartHz") is not None:
+                    ch["startHz"] = round(max(400, min(11000, t["chiffStartHz"])), 1)
+                    ch["endHz"] = round(max(200, min(9000, t["chiffEndHz"])), 1)
+                rows[-1]["chiff"] = ch
         # the row-expressible attack stages (the engine reads eAtk.speak/pre)
         rows[-1]["atk"] = {"speak": round(min(0.12, max(0.004, t.get("attack") or 0.02)), 3)}
         if t.get("atkPre") is not None:
@@ -446,10 +662,27 @@ def fit_rounds(rounds=3):
             sh = shift1 - (r.get("fb1") or r["band1"])
             deltas.append(("band1", sh))
             row["noiseLoDb"] = round(row["noiseLoDb"] + min(45.0, max(-45.0, sh)), 2)
-            # wander/wobble direct
-            row["wanderC"] = round(t.get("wanderC") or 0, 2)
-            row["wobPct"] = round(t.get("wobPct") or 0, 2)
-            row["wobHz"] = round(t.get("wobHz") or 2.5, 2)
+            # per-note noise-wall: the LP position/Q rows move toward the
+            # take's own b2/b3 wall (rendered family: Δb2 ≈ 6.5 dB per Δratio,
+            # ≈ 6.7 dB per Δratio at b3; Q fine-trims b3 at ~2.5 dB per 0.1
+            # in this engine — measured on the rendered candidate matrix).
+            t2, t3 = t.get("fb2"), t.get("fb3")
+            if t2 is not None and r.get("fb2") is not None:
+                # Δlpr raises the rendered b2 by ~6.5 dB per unit (measured on
+                # the rendered matrix) — move by target−render, clamped.
+                base = row.get("noiseLpRatio") or NOISE_WALL["ratio"]
+                dl = max(-1.2, min(1.2, (t2 - r["fb2"]) / 6.5))
+                row["noiseLpRatio"] = round(max(1.4, min(4.6, base + dl)), 2)
+            # wander/wobble direct (skipped when the take can't support it —
+            # a short span implies nothing; the fallback keeps generic)
+            if wobble_measurable(t):
+                row["wanderC"] = round(t.get("wanderC") or 0, 2)
+                row["wobPct"] = round(t.get("wobPct") or 0, 2)
+                row["wobHz"] = round(t.get("wobHz") or 2.5, 2)
+            else:
+                row.pop("wanderC", None)
+                row.pop("wobPct", None)
+                row.pop("wobHz", None)
             # attack stage loop (candidate-feedback on the expressible rows)
             t_att = t.get("attack")
             if t_att and t_att >= 0.006 and r["attack"] >= 0.004 and "atk" in row:
@@ -505,9 +738,13 @@ def fit_rounds(rounds=3):
         r["h"] = [round(1.0, 6), r["h2"], r["h3"], r["h4"], r["h5"]]
     final = {"instrument": INST, "model": "tone-fit-v1",
              "recorded": {
-                 "date": "2026-09-26",
-                 "takes": "12-hole tone ladder (the clean single-note-grade cuts), "
-                          "kokiri + storms kept as transition/glide context, not row sources; "
+                 "date": "2026-09-27",
+                 "takes": "12-hole tone ladder melody cuts + Robin's dedicated "
+                          "held-note recordings (research/note-recordings/12hole/*-held.wav, "
+                          "2026-09-27: the cleanest single-note-grade sources), "
+                          "kokiri + storms kept as transition/glide context, NEVER note "
+                          "values (Robin 2026-09-27); notes without takes are interpolated "
+                          "or extrapolated from the fitted ladder rows; "
                           "recording gain is a mic-chain artifact — levelDb anchors the "
                           "loudest fitted note at 0 dB, only the note-to-note curve ships",
                  "anchor": "loudest fitted note (levelDb 0); masterLevel untouched — "
@@ -519,9 +756,11 @@ def fit_rounds(rounds=3):
     print("wrote", CAND, "and", DRAFT_TONE)
 
 RECORDED_META = {
-    "date": "2026-09-26",
-    "takes": "12-hole tone ladder (the clean single-note-grade cuts), "
-             "kokiri + storms kept as transition/glide context, not row sources; "
+    "date": "2026-09-27",
+    "takes": "12-hole tone ladder melody cuts + Robin's held-note recordings "
+             "(research/note-recordings/12hole/*-held.wav); kokiri + storms stay "
+             "transition/glide context, NEVER note values; notes without takes "
+             "ride the fitted ladder rows interpolated; "
              "recording gain is a mic-chain artifact — levelDb anchors the "
              "loudest fitted note at 0 dB, only the note-to-note curve ships",
     "anchor": "loudest fitted note (levelDb 0); masterLevel untouched — "
