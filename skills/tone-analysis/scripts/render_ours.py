@@ -313,6 +313,19 @@ def main():
         cfg["_tone"] = None
     else:
         cfg["_tone"] = json.load(open(tone, encoding="utf-8"))
+    # Candidate magnitudes for the absolute noise-body layer: injected into
+    # the tone's global gate (park/warm/rough db), so matrix rounds render
+    # candidates without rewriting tone.json. Requires a loaded tone model.
+    gk = {}
+    for flag, key, seed in (("--parkDb", "windPark", {"f": 273, "Q": 2.2}),
+                            ("--warmDb", "windWarm", {"f": 470, "Q": 0.8}),
+                            ("--roughDb", "windRough", {})):
+        v = opt(flag)
+        if v is not None and cfg.get("_tone"):
+            seed["db"] = float(v)
+            gk[key] = seed
+    if gk:
+        cfg["_tone"].setdefault("global", {}).update(gk)
     if "--no-vib" in argv: cfg["noVib"] = True
     if "--no-wob" in argv: cfg["noWob"] = True
     ml = opt("--master-level")

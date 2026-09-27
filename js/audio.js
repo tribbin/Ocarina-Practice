@@ -933,6 +933,19 @@ const V_ANCHORS = {
 // corner + the row's own level.
 const WIND_SHAPE = { bumpRatio: 1.26, bumpQMax: 0.6, noiseLpRatio: 2.6, noiseLpQ: 0.8 };
 
+// ABSOLUTE noise-body layer — the recorded held-noise BODY has fixed,
+// f0-independent structures the tone-tracking bp/lp chain cannot express
+// (the complaint spectra: a warm pocket bump at ~273 Hz below the tone in
+// every recording, a broad warm shelf through 330-650, and a rough HF
+// tail our lp walls flatten away). Applied only when the instrument's
+// tone.json declares them (global windPark/windWarm/windRough) — unfitted
+// voices render byte-identical to the pre-layer chain. parkDb stays
+// per-note row-expressible; the recorded bump strength clearly varies
+// with the note (A4's core reads ~+9 rel-H1, F5's nearly absent).
+const WIND_ABS = { parkF: 273, parkQ: 2.2, parkDb: 11, warmF: 470, warmQ: 0.8, warmDb: 4,
+  roughDb: 8, bleedHp: 2900, bleedTiltF: 6000, bleedTiltDb: -10,
+  bleedTilt2F: 9500, bleedTilt2Db: -7 };
+
 // Piecewise-linear interpolation in log2-f with slope-clamped extrapolation.
 function vInterp(pts, f) {
   for (let i = 0; i < pts.length - 1; i++) {
@@ -1070,6 +1083,24 @@ function voiceProfileFor(id, freq) {
   if (rows) {
     // FITTED ocarina: the measured chamber speaks for itself — the generic
     // hard-blow offsets drop out (the anchors already encode the real blow).
+    // The absolute noise-body layer rides the instrument's global keys;
+    // parkDb per-note rows override the chamber constant.
+    const glob = (TONE_MODEL && TONE_MODEL.globalOb) || {};
+    const windAbs = (glob.windPark || glob.windWarm || glob.windRough) ? {
+      park: glob.windPark ? {
+        f: +glob.windPark.f || WIND_ABS.parkF,
+        Q: +glob.windPark.Q || WIND_ABS.parkQ,
+        db: toneVal(rows, "parkDb", +glob.windPark.db || WIND_ABS.parkDb, freq),
+      } : null,
+      warm: glob.windWarm ? {
+        f: +glob.windWarm.f || WIND_ABS.warmF,
+        Q: +glob.windWarm.Q || WIND_ABS.warmQ,
+        db: +glob.windWarm.db || WIND_ABS.warmDb,
+      } : null,
+      rough: glob.windRough ? {
+        db: +glob.windRough.db || WIND_ABS.roughDb,
+      } : null,
+    } : null;
     return {
       h: [1,
           toneVal(rows, "h2", V_ANCHORS.h2, freq) * AUDIO_DEBUG.h2Mul,
@@ -1092,6 +1123,7 @@ function voiceProfileFor(id, freq) {
       attackF: toneVal(rows, "attackF", V_ANCHORS.attackF, freq),
       osDb: toneVal(rows, "osDb", 0.8 + 3.2 * hh, freq),
       en: toneEnvelopeFor(rows, freq),
+      windAbs,
     };
   }
   return {
@@ -1718,6 +1750,54 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       const windSrc = ctx.createBufferSource();
       windSrc.buffer = getWindBuffer(ctx);
       windSrc.loop = true;
+      // Fitted-instrument absolute noise-body layer, two routes:
+      //  1. SERIES (park + warm): the fixed-absolute pocket bump and warm
+      //     shelf shape the low-mid bed ahead of the tone-tracking chain.
+      //  2. PARALLEL BLEED (rough): the upper roughness is measured to
+      //     SURVIVE the wall region — the recording keeps a rough
+      //     -84..-103 dBrel bed from 3.9 to 12 kHz while the per-note lp
+      //     wall carves the 700-1900 holes, so one series chain cannot
+      //     express both. A high-passed roughness stream bypasses the wall
+      //     and mixes into the shaped bed before the gain (the gain node
+      //     after it also owns the cavity-side sizing through windQ).
+      let windAbs0 = windSrc;
+      const absRow = vp.windAbs;
+      if (absRow && absRow.park) {
+        const parkBp = ctx.createBiquadFilter();
+        parkBp.type = "peaking";
+        parkBp.frequency.value = Math.min(6000, Math.max(60, absRow.park.f));
+        parkBp.Q.value = Math.max(0.2, Math.min(9, absRow.park.Q));
+        parkBp.gain.value = Math.max(-30, Math.min(30, absRow.park.db));
+        windAbs0.connect(parkBp); windAbs0 = parkBp;
+      }
+      if (absRow && absRow.warm) {
+        const warmBp = ctx.createBiquadFilter();
+        warmBp.type = "peaking";
+        warmBp.frequency.value = Math.min(8000, Math.max(100, absRow.warm.f));
+        warmBp.Q.value = Math.max(0.2, Math.min(9, absRow.warm.Q));
+        warmBp.gain.value = Math.max(-30, Math.min(30, absRow.warm.db));
+        windAbs0.connect(warmBp); windAbs0 = warmBp;
+      }
+      let bleedTail = null;
+      if (absRow && absRow.rough) {
+        const bleedHp = ctx.createBiquadFilter();
+        bleedHp.type = "highpass";
+        bleedHp.frequency.value = WIND_ABS.bleedHp;
+        bleedHp.Q.value = 1.1;
+        const bleedTilt = ctx.createBiquadFilter();
+        bleedTilt.type = "highshelf";
+        bleedTilt.frequency.value = WIND_ABS.bleedTiltF;
+        bleedTilt.gain.value = WIND_ABS.bleedTiltDb;
+        const bleedGain = ctx.createGain();
+        bleedGain.gain.value = db2lin(Math.max(-40, Math.min(20, absRow.rough.db - 33)));
+        windSrc.connect(bleedHp); bleedHp.connect(bleedTilt);
+        const bleedTilt2 = ctx.createBiquadFilter();
+        bleedTilt2.type = "highshelf";
+        bleedTilt2.frequency.value = WIND_ABS.bleedTilt2F;
+        bleedTilt2.gain.value = WIND_ABS.bleedTilt2Db;
+        bleedTilt.connect(bleedTilt2); bleedTilt2.connect(bleedGain);
+        bleedTail = bleedGain;
+      }
       // Chamber-resonance bump just above the tone.
       const windBp = ctx.createBiquadFilter();
       windBp.type = "bandpass";
@@ -1736,7 +1816,8 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       windGain.gain.setValueAtTime(vp.windBump, t0 + relStart);
       windGain.gain.linearRampToValueAtTime(0.0001, t0 + dur);
       cutFades.push({ g: windGain, level: vp.windBump });
-      windSrc.connect(windBp); windBp.connect(windLp); windLp.connect(windGain);
+      windAbs0.connect(windBp); windBp.connect(windLp); windLp.connect(windGain);
+      if (bleedTail) bleedTail.connect(windGain);
       windGain.connect(master);
       windSrc.start(t0);
       windSrc.stop(t0 + dur + tail);
