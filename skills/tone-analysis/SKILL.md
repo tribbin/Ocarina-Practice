@@ -192,6 +192,21 @@ partner (extrapolation probes) print bare.
 - Per-band SHAPE deltas (band−band relations inside one tool) remain valid
   across the tool fence.
 
+## Stage verification (the DEFAULT gate after synth or note-value changes)
+`tests/tone_stages.py` (CI-registered) and `scripts/stage_spectra.py` are the
+2026-09-27 doctrine: every synth-code or note-value change is verified
+WAV-vs-WAV per STAGE — onset (~0.12 s), hold (plateau), decay — against the
+HELD-NOTE takes (the cleanest recordings; they ride the committed reference
+set skills/tone-analysis/reference-recordings/12hole, other notes
+interpolate/extrapolate their classes). Plateau windows alone never caught
+the white-wash-onset class (Robin: "lots of white noise, sustain but much
+much more during the onset" — the bleed path was feeding RAW highpassed
+white while every other noise path is chamber-shaped; the fix was a second
+chamber-colored lobe, not a hidden-path hunt). Broadband + absolute-band
+caps carry a declared known-open allowlist cleared wholesale as the row
+family lands; wobble-window luck pairs declare per note-stage instead of
+flapping green->red between runs.
+
 ## Wind-shape search through real renders
 `render_ours.py ... --wind bpQ,lpRatio,lpQ` re-targets the engine's
 WIND_SHAPE constants in the patched module — candidates MUST be verified by
