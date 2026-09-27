@@ -100,10 +100,30 @@ residual bump ON the note] → highpass 2.8 kHz [hiss, bypasses the cavity]
 
 ## Known-open items (logged 2026-09-27)
 
-- The shipped model (fitted from Robin's 8 held takes A4–A5) clamps at
-  A5: notes above ride A5's row — record the top register and refit.
-- sync_amt maps sinφ through a fixed-f0 waveshaper; the python reference
-  tracks the instantaneous phase. Small color drift expected; the stage
-  gate decides whether it matters.
-- The residual-split numbers in the shipped model came from Grok's run on
-  the same held takes; the refit-reproduce run lands in the session log.
+- THE FIELD RULING (the skill's first law): the handoff's voice + model
+  (js/helmholtz-voice.js with the handoff twin_model.json) is the ADOPTED
+  baseline — Robin field-checked it and it stands. A follow-up pass
+  algebraically rewrote the model's noise rows (a span fix for synthetic
+  renders + a render-closing calibration) to make the rows numerically
+  self-consistent with the renderers; his ears rejected it ("the wobble at
+  A4 is very bad... some onset noise and shit back"), it was reverted, the
+  model file and the module are the handoff state again (only the 4 s
+  crossfaded noise buffer stayed — the line-comb lesson). Numbers steer
+  analysis; HIS EARS decide the sound. Any future row rewrite waits on his
+  field check wording, never closes numerically alone.
+- The span fix itself STAYS in fit.py (peak·0.08: the old median*4 guard
+  collapsed every span onto the 0.15/0.85 fallback — releases and silence
+  fitted as sustain — for flat synthetic sustains AND for these quiet
+  takes; a future refit measures honest spans). It re-fits differently
+  than the shipped model does; that is fine — the shipped file is the
+  adopted reference, not "the fit", and refits go through the field check.
+- No amplitude-wobble layer in the web voice (the module interpolates
+  wobble_pct and leaves it unused — the handoff's choice, field-blessed:
+  synthetic loudness wobble read as bad pumping at A4; the liked wobble
+  around E5 is the pitch wander). Do not "complete" it without Robin's ask.
+- The shipped model clamps at A5: notes above ride A5's row — record the
+  top register and refit.
+- The ring-up: the render's attack rise measures ~0.08 s where the
+  envelope rows say 8-26 ms (the cavity Q rings up from silence; the
+  takes' rises are player breath + the same ring). A Q-ramp "assist" is a
+  held idea — audible behavior, his ears first.

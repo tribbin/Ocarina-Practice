@@ -141,10 +141,11 @@ TEMPLATE = r"""<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>
 <script>
 const FING_DATA = __FING__;
 const TONE_DATA = __TONE__;
+const TWIN_DATA = __TWIN__;
 const CFG = __CFG__;
 </script>
 <script type="module">
-import { playNoteAt, installToneModel } from "__PAGE__/audio_patched.mjs";
+import { playNoteAt, installToneModel, installTwinModel } from "__PAGE__/audio_patched.mjs";
 try {
 window.FING = FING_DATA;
 window.NOTES = FING_DATA.notes.map(function (n) { return n.id; });
@@ -161,6 +162,7 @@ window.AudioContext = function () {
   return o;
 };
 if (TONE_DATA && installToneModel) installToneModel(TONE_DATA, CFG.instId);
+if (TWIN_DATA && installTwinModel) installTwinModel(TWIN_DATA, CFG.instId);
 if (window.OCA_DEBUG) {
   if (CFG.noVib) { OCA_DEBUG.params.vibDepth = 0; OCA_DEBUG.params.tremDepth = 0; }
   if (CFG.noWob) { OCA_DEBUG.params.wobbAmt = 0; OCA_DEBUG.params.wanderAmt = 0; }
@@ -242,6 +244,7 @@ def run_page(name, cfg, out_wav, wind=None, with_comp=False):
                          with_comp=with_comp)
     page = TEMPLATE.replace("__FING__", json.dumps(cfg.get("_fing"))).replace(
         "__TONE__", json.dumps(cfg.get("_tone"))).replace(
+        "__TWIN__", json.dumps(cfg.get("_twin"))).replace(
         "__CFG__", json.dumps({k: v for k, v in cfg.items() if not k.startswith("_")})).replace(
         "__PAGE__", PAGE).replace("__JSURL__", JS)
     html = os.path.join(TMP, name)

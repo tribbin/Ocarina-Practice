@@ -1465,6 +1465,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
           for (const h of twVoices) {
             try { if (h._pan) h._pan.disconnect(); } catch (e) {}
             try { h.out.disconnect(); } catch (e) {}
+            try { h.out.disconnect(); } catch (e) {}
           }
         };
         bag.push({

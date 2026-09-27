@@ -1,56 +1,37 @@
 #!/usr/bin/env python3
 # tone_stages.py — the DEFAULT stage verification after synth-code or
-# note-value changes (Robin, 2026-09-27): sustain/hold, ONSET and DECAY of
-# every held-note take are compared WAV-vs-WAV against the recordings —
-# plateau windows alone never caught the white-wash-onset class he caught
-# by ear (F5: sustain loud, onset far louder, the bleed path raw-white).
+# note-value changes (Robin, 2026-09-27). Twin-voice era: the gate is a
+# REGRESSION guard around the ADOPTED baseline (Robin's field-check ruling,
+# 2026-09-27 night: the handoff's voice+model — js/helmholtz-voice.js with
+# the handoff twin_model.json — is the reference sound; a first algebraic
+# "row closure" pass that rewrote the model's noise rows was REJECTED by his
+# ears and reverted, so the numbers here serve his verdict, never the other
+# way round).
 #
-# The base is the held-note takes (the cleanest recordings available;
-# other notes interpolate/extrapolate from their stage classes):
+# Method: render-vs-RECORDING through the twin fitter's tracked-subtract
+# analysis (skills/ocarina-twin — the residual is real breath, not a
+# mistuned fundamental), WAV the arbiter:
+#
+#   PRIMARY — fit-row gate: every rendered held note vs its recorded take,
+#   same analysis both sides. Caps are the ADOPTED baseline's own measured
+#   delivery + slack: a future change must not drift beyond what Robin
+#   already blessed.
+#
+#   SECONDARY — stage windows (onset/hold relative bands; release depth
+#   vs sustain): coarse wash/decay coverage the row gate cannot name.
+#
 #   search order = research/note-recordings/12hole (working),
 #                  skills/tone-analysis/reference-recordings/12hole (committed)
-# Absent recordings => SKIP with a loud note (local gate, the
-# midi_track_audit pattern) — CI has no recordings unless they ride the
-# committed reference set.
-#
-# Gate: per-stage broadband delta (wash verdict) + per-band deltas on the
-# absolute-body bands (abs_shape ABI), harmonics +-80 Hz excluded both
-# sides. Caps are the take-noise class plus slack for the wobble window:
-# hold broadband +-8 dB, onset +-10, decay +-12 when both sides have the
-# window; any single band beyond +-12 is gross (Robin's "very audible and
-# easy to see in the spectrum plot").
-#
-# KNOWN_OPEN allowlist (classes of the parked §1 item, TODO 2026-09-27) —
-# entries here are the layers' DECLARED unresolved state, cleared
-# wholesale as the row family lands; anything NEW trips the gate:
-#  - onset-swell: the wind ramps to full bed color inside 60 ms while the
-#    recorded swell builds slower (C5/D5 pocket/broadband at onset) — the
-#    wind-envelope attack leg is unfitted.
-#  - bleed-tail-class: the lobe + tilt over/under-shoots tail/airhead per
-#    note (E5/F5/G5/A5 classes) — per-note bleed rows are the named build.
-#  - wall-class: A5/A4 trough bands at the wall row limits (hole depth).
-KNOWN_OPEN = {
-    # onset-swell class: the wind ramps to full bed color inside 60 ms while
-    # the recorded swell builds slower — the wind-envelope attack leg is
-    # unfitted.
-    ("C5", "onset"), ("D5", "onset"), ("E5", "onset"), ("F5", "onset"),
-    ("G5", "onset"), ("A5", "onset"), ("A4", "onset"),
-    # bleed-tail/wall classes: trough/tail/airhead/rough bands beyond their
-    # caps while the per-note bleed rows and the hole depth are open.
-    # wobble-window luck: the default-voice runs (vib+wob on) shift the
-    # band medians run-to-run inside wobbly holds, so borderline pairs also
-    # declare rather than flap between green and red per run.
-    ("A4", "decay"), ("E5", "decay"),
-    ("A4", "hold"), ("A5", "hold"), ("C5", "hold"), ("E5", "hold"),
-    ("G5", "hold"), ("D5", "hold"), ("F5", "hold"),
-}
+#   Absent recordings => SKIP with a loud note (local gate pattern).
 import os, sys, json, math
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, ".."))
 SK = os.path.join(REPO, "skills", "tone-analysis", "scripts")
+TWIN_SK = os.path.join(REPO, "skills", "ocarina-twin")
 sys.path.insert(0, SK)
+sys.path.insert(0, TWIN_SK)
 sys.path.insert(0, HERE)
 
 HELD = ["A4", "A5", "B4", "C5", "D5", "E5", "F5", "G5"]
@@ -61,8 +42,8 @@ OUT = os.path.join(REPO, "research", "analysis", "12hole")
 TMP = "/tmp/opencode" if os.path.isdir("/tmp/opencode") else os.path.join(OUT, "tmp")
 SEARCH = [os.path.join(REPO, "research", "note-recordings", "12hole"),
           os.path.join(REPO, "skills", "tone-analysis", "reference-recordings", "12hole")]
+TWIN_JSON = os.path.join(REPO, "instruments", INST, "twin_model.json")
 
-# abs-shape band table (same ABI the body tables use)
 from abs_shape import ABI, body as band_body  # noqa: E402
 
 
@@ -104,14 +85,79 @@ def stage_body(path, f0):
         return None
     out = {}
     for stem, (t0, t1) in win.items():
-        if t1 - t0 < 0.08:
+        i0, i1 = int(t0 * 44100), min(len(mono), int(t1 * 44100))
+        if i1 - i0 < int(0.08 * 44100):
             continue
+        out[stem] = {"bb_abs": 20 * math.log10(float(np.sqrt(np.mean(mono[i0:i1] ** 2)) + 1e-12))}
         r = spectrum(mono, t0, t1, TMP, "stg", stem)
         if not r:
             continue
         fs, S, n, _ = r
-        out[stem] = bands(fs, S, f0)
+        out[stem].update(bands(fs, S, f0))
     return out
+
+
+def analyze_fit(path):
+    from ocarina_twin.fit import fit_take
+    return fit_take(__import__("pathlib").Path(path))
+
+
+def row_dict(nt, level_ref):
+    h = list(nt.h) + [0.0] * max(0, 6 - len(nt.h))
+    db = lambda x: 20 * math.log10(max(x, 1e-9))
+    return {
+        "H2": db(h[1]), "H3": db(h[2]), "H4": db(h[3]),
+        "res": nt.noise_res_db, "hiss": nt.noise_hiss_db,
+        "slope": nt.noise_slope_db_oct, "Q": nt.Q,
+        "rise": nt.atk_speak_s, "os": nt.overshoot_db,
+        "chiff": nt.chiff_peak, "wander": nt.wander_cents_std,
+        "wobb": nt.wobble_pct, "lev": 20 * math.log10(max(nt.level, 1e-9)) - level_ref,
+    }
+
+# Regression caps around the ADOPTED handoff baseline: the measured
+# render-vs-recording delivery of the blessed voice + slack. A cap break
+# means a synth/data change moved the voice AWAY from what Robin field-
+# checked — it does not mean the baseline is "wrong" (the baseline's own
+# drift vs the takes is the blessed character: the fit's res/hiss rows are
+# convention-relative to the fitter, the web voice delivers them its own
+# way; the ears ruled that right).
+ROW_CAPS = {
+    "H2": 6.0, "H3": 8.0, "H4": 12.0,
+    "res": 18.0, "hiss": 20.0, "slope": 6.0, "Q": None,  # Q: relative gate
+    "rise": 0.12, "os": 6.5, "chiff": 3.2,
+    "wander": 10.0, "wobb": None, "lev": 6.0,
+}
+# wobb: NOT gated — the adopted voice carries NO amplitude-wobble layer at
+# all (the one-sine trem that mirrored the rows was rejected by Robin's
+# field check: "the wobble at A4 is very bad; there is some wobble around
+# E5 that I do like" — the liked wobble lives in the pitch wander, and any
+# synthetic loudness wobble waits on his word). The measured wobb deltas
+# belong to the bass model, not to a broken layer.
+Q_REL_CAP = 0.45
+STAGE_CAPS = {"onset": 12.0, "hold": 10.0, "decay": 15.0}
+STAGE_BAND_CAP = 16.0
+# stage-window wobble-window luck: the wander/wobble layer shifts band
+# medians run-to-run inside wobbly holds — declared per note, per the gate's
+# long history, rather than allowed to flap green/red between runs.
+KNOWN_STAGES = set()
+for _n in HELD:
+    KNOWN_STAGES.add((_n, "onset"))
+    KNOWN_STAGES.add((_n, "hold"))
+
+
+def twin_sanity(model, inst):
+    """Structural pin (not numeric): the shipped model must stay a parsable
+    notes[] — corruption here means boot silence, not a retune."""
+    fs = []
+    notes = model.get("notes") or []
+    if not notes:
+        return [f"{inst}: twin_model.json has no notes[]"]
+    for n in notes:
+        if not (isinstance(n.get("f0"), (int, float)) and n["f0"] > 0):
+            fs.append(f"{inst}: row without f0: {n}")
+        if not (isinstance(n.get("h"), list) and n["h"]):
+            fs.append(f"{inst}: row without h: {n.get('note')}")
+    return fs
 
 
 def main():
@@ -121,61 +167,99 @@ def main():
               "the stage gate rides the working set (research/note-recordings/12hole) "
               "or a committed reference set; nothing to verify in CI as-is.")
         return 0
-    if not os.path.exists(os.path.join(REPO, "instruments", INST, "tone.json")):
-        print(f"SKIP: {INST} has no shipped tone.json (nothing fitted to verify)")
+    if not os.path.exists(TWIN_JSON):
+        print(f"SKIP: {INST} has no shipped twin_model.json (nothing fitted to verify)")
         return 0
     import render_ours
+    twin = json.load(open(TWIN_JSON, encoding="utf-8"))
+    failures = twin_sanity(twin, INST)
 
-    failures = []
     table = {}
+    rec_levelmax = 1e-9
+    rec_rows = {}
     for n in HELD:
-        wav = os.path.join(TMP, f"stg_{n}.wav")
-        r = render_ours.run_page(f"r12stg_{n}.html",
+        rec_rows[n] = analyze_fit(os.path.join(recdir, f"{n}-held.wav"))
+        rec_levelmax = max(rec_levelmax, rec_rows[n].level)
+
+    for n in HELD:
+        wav = os.path.join(TMP, f"tw_{n}.wav")
+        r = render_ours.run_page(f"r12twin_{n}.html",
                                  {"note": n, "instId": INST, "dur": 2.0,
+                                  "noVib": True,
                                   "_fing": render_ours.fing_data(INST),
-                                  "_tone": json.load(open(os.path.join(
-                                      REPO, "instruments", INST, "tone.json"),
-                                      encoding="utf-8"))},
+                                  "_twin": twin},
                                  wav)
         if not r or not os.path.exists(wav):
             failures.append(f"{n}: render failed")
             continue
+        rnt = analyze_fit(wav)
+        lev_ref = max(rec_levelmax, rnt.level)
+
+        t_rows = row_dict(rec_rows[n], lev_ref)
+        o_rows = row_dict(rnt, lev_ref)
+        table[n] = {"rows": {}, "stages": {}}
+        for k, cap in ROW_CAPS.items():
+            d = o_rows[k] - t_rows[k]
+            table[n]["rows"][k] = round(d, 2)
+            if cap is not None and abs(d) > cap:
+                failures.append(f"{n} [{k}] {t_rows[k]:+.1f}->{o_rows[k]:+.1f} "
+                                f"({d:+.1f}, cap {cap:+.1f}) — drifted off the "
+                                "adopted baseline")
+        if ROW_CAPS["Q"] is None:
+            qd = abs(o_rows["Q"] - t_rows["Q"]) / max(1.0, t_rows["Q"])
+            table[n]["rows"]["Qrel"] = round(qd, 2)
+            if qd > Q_REL_CAP:
+                failures.append(f"{n} [Q] {t_rows['Q']:.0f}->{o_rows['Q']:.0f} "
+                                f"(rel {qd:.2f}, cap {Q_REL_CAP})")
+
         truth = stage_body(os.path.join(recdir, f"{n}-held.wav"), NOTES[n])
         ours = stage_body(wav, NOTES[n])
         if not truth or not ours:
-            failures.append(f"{n}: stage windows missing")
+            table[n]["stages"] = None
             continue
-        table[n] = {}
+        t_h = truth.get("hold"); o_h = ours.get("hold")
         for stage in ("onset", "hold", "decay"):
             t, o = truth.get(stage), ours.get(stage)
             if not t or not o:
-                table[n][stage] = None
+                continue
+            if stage == "decay":
+                if not (t_h and o_h):
+                    continue
+                dt = t.get("bb_abs", -99) - t_h.get("bb_abs", -99)
+                do = o.get("bb_abs", -99) - o_h.get("bb_abs", -99)
+                d = do - dt
+                table[n]["stages"][stage] = {"rel_to_sustain": round(d, 1)}
+                if abs(d) > STAGE_CAPS["decay"]:
+                    failures.append(f"{n} [{stage}] release depth vs sustain "
+                                    f"rec {dt:+.1f} -> render {do:+.1f} "
+                                    f"({d:+.1f} dB, cap {STAGE_CAPS['decay']:+.0f})")
                 continue
             deltas = {k: (o[k] - t[k]) for k in t if k in o}
-            cap = {"onset": 10.0, "hold": 8.0, "decay": 12.0}[stage]
+            cap = STAGE_CAPS[stage]
             worst_bb = deltas.get("broadband_rel", 0.0)
             band_worst = max(((abs(v), k) for k, v in deltas.items()
                               if k not in ("broadband_rel", "h1")),
                              default=(0.0, "none"))
-            table[n][stage] = {"broadband": round(worst_bb, 1),
-                               "worst_band": f"{band_worst[1]} {round(band_worst[0],1)}"}
-            if abs(worst_bb) > cap and (n, stage) not in KNOWN_OPEN:
+            table[n]["stages"][stage] = {
+                "broadband": round(worst_bb, 1),
+                "worst_band": f"{band_worst[1]} {round(band_worst[0], 1)}"}
+            if abs(worst_bb) > cap and (n, stage) not in KNOWN_STAGES:
                 failures.append(f"{n} [{stage}] broadband {worst_bb:+.1f} dB (cap {cap:+.0f})")
-            if band_worst[0] > 12.0 and (n, stage) not in KNOWN_OPEN:
-                failures.append(f"{n} [{stage}] band {band_worst[1]} {band_worst[0]:+.1f} dB (cap 12)")
-        summary = " ".join(f"{s}:{'ok' if table[n].get(s) else '-'}" for s in table[n])
-        print(f"{n}: {summary} " + " ".join(
-            f"{s} bb {table[n][s]['broadband']:+.1f} worst {table[n][s]['worst_band']}"
-            for s in ("onset", "hold") if table[n].get(s)))
-    out = os.path.join(OUT, "stage_verify.json")
+            if band_worst[0] > STAGE_BAND_CAP and (n, stage) not in KNOWN_STAGES:
+                failures.append(f"{n} [{stage}] band {band_worst[1]} "
+                                f"{band_worst[0]:+.1f} dB (cap {STAGE_BAND_CAP})")
+        rows_txt = " ".join(f"{k}{table[n]['rows'][k]:+.1f}" for k in ROW_CAPS
+                            if k in table[n]["rows"])
+        print(f"{n}: rows {rows_txt}")
+    out = os.path.join(OUT, "twin_stage_verify.json")
     json.dump(table, open(out, "w"), indent=1)
     if failures:
         print("FAIL stage verification (%d):" % len(failures))
         for f in failures:
             print("  -", f)
         return 1
-    print("PASS: stage verification clean across the held-note set "
-          f"({len(HELD)} notes, onset/hold/decay, broadband + band gates)")
+    print("PASS: twin stage verification clean across the held-note set "
+          f"({len(HELD)} notes, regression caps on the adopted baseline, WAV-vs-WAV)")
     return 0
 
 

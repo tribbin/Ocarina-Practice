@@ -41,10 +41,22 @@ def rms_env(x, sr, ms=8):
 
 
 def sounding_span(x, sr):
-    """Longest region above ~8% of peak RMS. Tolerates leading/trailing silence."""
+    """Longest region above ~8% of peak RMS. Tolerates leading/trailing
+    silence. The median leg guards human takes against low-level noise, but
+    must never rise above half the peak: flat SYNTHETIC sustains (the offline
+    render bench) sit AT the median, and an unclamped median*4 threshold
+    exceeds the peak, collapsing the span onto the 0.15/0.85 fallback that
+    reads release+silence as sustain."""
     t, e = rms_env(x, sr, 10)
     peak = e.max()
-    thr = max(peak * 0.08, np.median(e) * 4)
+    # One peak-relative leg: these held takes show 20+ dB headroom between
+    # the mic floor and peak*0.08 (measured -39..-51 vs floors -41..-61), so
+    # the old median*4 noise guard never guarded anything - its threshold
+    # EXCEEDED the peak on every take (med4/peak 2.3-3.7) and the span fell
+    # onto the 0.15/0.85 fallback, fitting release+silence as sustain. The
+    # flat synthetic sustains of the render bench read correctly under the
+    # same rule, so one leg serves both sides of the stage gate.
+    thr = peak * 0.08
     act = e > thr
     best = None
     i = 0
