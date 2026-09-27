@@ -41,3 +41,12 @@ Let's add theming (colors/preview/backdrop/...) to both the main page and song-l
 SONGS
 
 Wind Waker - Outset Island
+
+SOUND engine
+
+Our ocarina renders have a 'broadband noise' with low/high pass filters. This sounds NOTHING like a real ocarina recording.
+Just take a look at the spectrums:
+research/analysis/12hole/complaint/C5_hold_spectrum_recording.txt
+research/analysis/12hole/complaint/C5_hold_spectrum_render.txt
+The recording has a much more complex (and pleasing) noise shape.
+Note the 'bump' at 273 Hz. That exists in every recording. This makes it sound warmer.
