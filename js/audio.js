@@ -943,8 +943,8 @@ const WIND_SHAPE = { bumpRatio: 1.26, bumpQMax: 0.6, noiseLpRatio: 2.6, noiseLpQ
 // per-note row-expressible; the recorded bump strength clearly varies
 // with the note (A4's core reads ~+9 rel-H1, F5's nearly absent).
 const WIND_ABS = { parkF: 273, parkQ: 2.2, parkDb: 11, warmF: 470, warmQ: 0.8, warmDb: 4,
-  roughDb: 8, bleedHp: 2900, bleedTiltF: 6000, bleedTiltDb: -10,
-  bleedTilt2F: 9500, bleedTilt2Db: -7 };
+  roughDb: 8, bleedBpRatio: 2.7, bleedBpQ: 0.9, bleedTiltF: 6000, bleedTiltDb: -6,
+  bleedTilt2F: 9500, bleedTilt2Db: -3 };
 
 // Piecewise-linear interpolation in log2-f with slope-clamped extrapolation.
 function vInterp(pts, f) {
@@ -1780,21 +1780,25 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       }
       let bleedTail = null;
       if (absRow && absRow.rough) {
-        const bleedHp = ctx.createBiquadFilter();
-        bleedHp.type = "highpass";
-        bleedHp.frequency.value = WIND_ABS.bleedHp;
-        bleedHp.Q.value = 1.1;
+        // The roughness lobe is CHAMBER-COLORED like every other noise
+        // path: the raw highpassed white this replaced read as a foreign
+        // white wash (Robin's F5 field catch, 2026-09-27) — the recordings'
+        // upper bed is a falling chamber lobe near ~2.7×f0, not white.
+        const bleedBp = ctx.createBiquadFilter();
+        bleedBp.type = "bandpass";
+        bleedBp.frequency.value = Math.min(9000, freq * WIND_ABS.bleedBpRatio);
+        bleedBp.Q.value = WIND_ABS.bleedBpQ;
         const bleedTilt = ctx.createBiquadFilter();
         bleedTilt.type = "highshelf";
         bleedTilt.frequency.value = WIND_ABS.bleedTiltF;
         bleedTilt.gain.value = WIND_ABS.bleedTiltDb;
-        const bleedGain = ctx.createGain();
-        bleedGain.gain.value = db2lin(Math.max(-40, Math.min(20, absRow.rough.db - 33)));
-        windSrc.connect(bleedHp); bleedHp.connect(bleedTilt);
         const bleedTilt2 = ctx.createBiquadFilter();
         bleedTilt2.type = "highshelf";
         bleedTilt2.frequency.value = WIND_ABS.bleedTilt2F;
         bleedTilt2.gain.value = WIND_ABS.bleedTilt2Db;
+        const bleedGain = ctx.createGain();
+        bleedGain.gain.value = db2lin(Math.max(-40, Math.min(20, absRow.rough.db - 33)));
+        windSrc.connect(bleedBp); bleedBp.connect(bleedTilt);
         bleedTilt.connect(bleedTilt2); bleedTilt2.connect(bleedGain);
         bleedTail = bleedGain;
       }

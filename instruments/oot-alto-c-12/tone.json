@@ -54,7 +54,8 @@
     "h3": 0.007234,
     "h4": 8.8e-05,
     "h5": 0.000809,
-    "noiseLpRatio": 2.15
+    "noiseLpRatio": 2.15,
+    "parkDb": 13.0
    },
    {
     "note": "B4",
@@ -87,7 +88,8 @@
     "h3": 0.013303,
     "h4": 0.003061,
     "h5": 0.003299,
-    "noiseLpRatio": 2.35
+    "noiseLpRatio": 2.35,
+    "parkDb": 2.5
    },
    {
     "note": "C5",
@@ -120,7 +122,8 @@
     "h3": 0.02476,
     "h4": 0.000519,
     "h5": 0.007029,
-    "noiseLpRatio": 2.78
+    "noiseLpRatio": 2.78,
+    "parkDb": 6.5
    },
    {
     "note": "Cs5",
@@ -186,7 +189,8 @@
     "h3": 0.007564,
     "h4": 0.001221,
     "h5": 0.007595,
-    "noiseLpRatio": 2.92
+    "noiseLpRatio": 2.92,
+    "parkDb": -3.0
    },
    {
     "note": "E5",
@@ -219,7 +223,8 @@
     "h3": 0.001986,
     "h4": 0.000166,
     "h5": 0.000571,
-    "noiseLpRatio": 3.07
+    "noiseLpRatio": 3.07,
+    "parkDb": 2.5
    },
    {
     "note": "F5",
@@ -251,7 +256,8 @@
     "h3": 0.00019,
     "h4": 0.000428,
     "h5": 0.003759,
-    "noiseLpRatio": 3.23
+    "noiseLpRatio": 3.23,
+    "parkDb": -13.0
    },
    {
     "note": "G5",
@@ -283,7 +289,8 @@
     "h3": 0.001442,
     "h4": 0.000487,
     "h5": 0.000303,
-    "noiseLpRatio": 3.29
+    "noiseLpRatio": 3.29,
+    "parkDb": -5.0
    },
    {
     "note": "Gs5",
@@ -348,7 +355,8 @@
     "h3": 0.001136,
     "h4": 7.6e-05,
     "h5": 0.000144,
-    "noiseLpRatio": 2.59
+    "noiseLpRatio": 2.59,
+    "parkDb": -5.5
    },
    {
     "note": "As5",

@@ -830,9 +830,26 @@ def write_intermediate(rows):
     print("intermediate rows ->", OUT_TONE, "(field-listenable, parkDb carried)")
 
 def publish():
-    """Copy the converged draft into the shipped instrument path."""
+    """Copy the converged draft into the shipped instrument path. Per-row
+    keys the fit loop never recomputes (parkDb, noiseLpQ, ...) carry over
+    from the current shipped state — a wholesale draft copy would stomp
+    them (the park rows vanished once exactly this way)."""
     d = json.load(open(DRAFT_TONE, encoding="utf-8"))
     d["recorded"] = dict(RECORDED_META)
+    try:
+        prior = json.load(open(OUT_TONE, encoding="utf-8"))
+        past = {r.get("note"): r
+                for r in prior.get("chambers", {}).get("1", []) if r.get("note")}
+        for r in d.get("chambers", {}).get("1", []):
+            p = past.get(r.get("note"))
+            if p:
+                for k, v in p.items():
+                    if k not in r:
+                        r[k] = v
+        if prior.get("global") and not d.get("global"):
+            d["global"] = prior["global"]
+    except (OSError, ValueError):
+        pass
     json.dump(d, open(OUT_TONE, "w", encoding="utf-8"), indent=1)
     print("published", OUT_TONE)
 

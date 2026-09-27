@@ -133,3 +133,5 @@ jobs:
         run: python tests/seo_shell.py
       - name: Run MIDI-track source-audit tests
         run: python tests/midi_track_audit.py
+      - name: Run held-note stage verification (onset/hold/decay)
+        run: python tests/tone_stages.py
