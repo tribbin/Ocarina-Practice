@@ -5,6 +5,7 @@ import { bumpHoverQuiet, clearHighlight, cueFirstNote, freezeZenGlow,
          highlightToken, isFocusMode, quarterSec, tokenSeconds, updateTransportUI } from "./ui.js";
 import { isPracticeActive } from "./practice.js";
 import { wakeHold, wakeDrop } from "./wakelock.js";
+import { loadTwinModelFromObject, interpNote, scheduleHelmholtzNote } from "./helmholtz-voice.js";
 let audioCtx = null;
 let liveVoices = [];
 let melodyBag = [];
@@ -207,6 +208,9 @@ window.OCA_DEBUG = {
   // The installed per-ocarina tone model (instruments/<id>/tone.json) —
   // null when the instrument has no fitted chambers yet (generic model).
   toneModel() { return TONE_MODEL; },
+  // The installed Helmholtz twin model (instruments/<id>/twin_model.json) —
+  // null while no twin model is installed for the CURRENT instrument.
+  twinModel() { return TWIN_MODEL; },
   // DEBUG panel "Induce lag": fakes audio-clock starvation. Seeds what
   // raisePerfAlert needs (a running ctx + one alive voice, the button click
   // itself is the user gesture), then loads the lag budget; the next
@@ -1018,6 +1022,25 @@ function toneRowsForChamber(ch) {
   return null;
 }
 
+// PER-OCARINA TWIN MODEL — instruments/<id>/twin_model.json: the Helmholtz
+// cavity voice (skills/ocarina-twin/SKILL.md), fitted per chamber from held
+// notes. An installed model REPLACES the additive voice for that instrument
+// outright — every note rides interpNote's log-f interpolation inside the
+// chamber (clamped at the fitted range ends). The manifest declares the
+// field with "twin"; a 404/corrupt file installs null and the instrument
+// keeps the generic additive voice. Same contract as tone.json: data must
+// never break boot.
+let TWIN_MODEL = null; // { instrumentId, model } | null
+function installTwinModel(data, instId) {
+  if (!data || typeof data !== "object") { TWIN_MODEL = null; return; }
+  try {
+    const model = loadTwinModelFromObject(data);
+    TWIN_MODEL = { instrumentId: instId || null, model };
+  } catch (e) {
+    TWIN_MODEL = null;
+  }
+}
+
 // One pitch-keyed field of the chamber, interpolated at `freq` in log-f
 // between the fitted anchors (slope-clamped extrapolation at the chamber
 // edges — vInterp's own math). `fallback` may be the generic point-table OR
@@ -1317,6 +1340,153 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // this voice (its layers and their tails through the output bus) counts
     // as site-made sound for practice-mode deafness
     markSystemSound(t0 + dur + stopOff);
+
+    // HELMHOLTZ TWIN VOICE (this instrument's twin_model.json is installed):
+    // the cavity-resonator voice replaces the additive builder outright —
+    // same slot arithmetic, same bags/buses/track mix — and the additive
+    // profile/wind/edge/chiff stack below never runs for it. See
+    // skills/ocarina-twin/SKILL.md for the model and the wiring doctrine.
+    if (TWIN_MODEL) {
+      const tmDest = isMelodyBag(bag) ? getMelodyCutBus(ctx, getReverbBus(ctx)) : getReverbBus(ctx);
+      const nf = interpNote(TWIN_MODEL.model, freq);
+      // Dev-panel retunes scale the model's own wander/wobble rows (the
+      // defaults are 1, so an untouched panel plays the fit verbatim).
+      nf.wander_cents_std = (nf.wander_cents_std || 0) * AUDIO_DEBUG.wanderAmt;
+      nf.wobble_pct = (nf.wobble_pct || 0) * AUDIO_DEBUG.wobbleAmt;
+      const twRel = Math.max(0.04, nf.rel_s || 0.07);
+      // LITE TWIN: the handoff's reduced voice — a sine through the cavity
+      // resonator (bandpass at f0, the model's own Q) — replaces the
+      // additive lite's osc→lowpass chain. Same envelope/level shape as the
+      // legacy lite voice.
+      if (liteMode()) {
+        const lvM = AUDIO_DEBUG.masterLevel * voiceGain * (nf.level || 1);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.linearRampToValueAtTime(lvM, t0 + Math.min(0.03, dur * (slideFrom ? 0.4 : 0.2)));
+        g.gain.setValueAtTime(lvM, intoSlide ? t0 + dur : t0 + Math.max(0.02, dur - twRel));
+        g.gain.linearRampToValueAtTime(0.0001, t0 + dur + fadeOff);
+        const bw = ctx.createBiquadFilter();
+        bw.type = "bandpass";
+        bw.Q.value = Math.max(8, Math.min(80, nf.Q || 45));
+        const osc2 = ctx.createOscillator();
+        osc2.type = "sine";
+        if (slideFrom) {
+          bw.frequency.setValueAtTime(Math.max(40, slideFrom), t0);
+          bw.frequency.linearRampToValueAtTime(Math.max(40, freq), t0 + glide);
+          osc2.frequency.setValueAtTime(slideFrom, t0);
+          osc2.frequency.linearRampToValueAtTime(freq, t0 + glide);
+        } else {
+          bw.frequency.value = freq;
+          osc2.frequency.setValueAtTime(freq, t0);
+        }
+        osc2.connect(bw); bw.connect(g); g.connect(tmDest);
+        osc2.start(t0); osc2.stop(t0 + dur + stopOff);
+        if (bag) bag.push({
+          until: t0 + dur + stopOff + 0.08,
+          stop() { try { osc2.stop(); } catch (e) {} },
+          kill() { g.disconnect(); },
+          fade() {
+            if (isMelodyBag(bag)) {
+              try { osc2.stop(melodyStopAt(ctx)); } catch (e) {}
+              return;
+            }
+            const now = ctx.currentTime;
+            try {
+              g.gain.cancelScheduledValues(now);
+              g.gain.setValueAtTime(Math.max(0.0001, g.gain.value || AUDIO_DEBUG.masterLevel), now);
+              g.gain.linearRampToValueAtTime(0.0001, now + 0.03);
+              osc2.stop(now + 0.05);
+            } catch (e) {}
+          }
+        });
+        return;
+      }
+      // The module's release is a plateau→0 taper spanning hold−rel →
+      // hold+rel, so `hold` places it: a plain note ends AT t0+dur
+      // (release inside the slot, as the additive envelope did); a note
+      // flowing into a ~ slide holds full level through the junction and
+      // crossfades past it (the slide target starts at the same pitch).
+      const twHold = intoSlide
+        ? Math.max(0.05, dur + twRel)
+        : Math.max(0.05, dur - twRel);
+      const VIB_DELAY = AUDIO_DEBUG.vibDelay;
+      const vibOn = vibratoEnabled &&
+        (AUDIO_DEBUG.vibDepth > 1e-4 || AUDIO_DEBUG.tremDepth > 1e-4);
+      const twChorus = vibOn && dur > VIB_DELAY + 0.1;
+      const hiF = Math.max(0, Math.min(1, (freq - AUDIO_DEBUG.hiFrom) /
+        Math.max(60, AUDIO_DEBUG.hiTo - AUDIO_DEBUG.hiFrom)));
+      const zenPan2 = Math.max(0, Math.min(1, AUDIO_DEBUG.zenPan));
+      const baseOpts = {
+        model: TWIN_MODEL.model,
+        f0: freq,
+        when: t0,
+        holdSec: twHold,
+        dest: tmDest,
+        master: AUDIO_DEBUG.masterLevel * voiceGain,
+      };
+      if (slideFrom) {
+        baseOpts.slideFromHz = slideFrom;
+        baseOpts.slideSec = glide;
+      }
+      const twVoices = [];
+      if (twChorus) {
+        // Zen stereo chorus on the twin voice: the clean cavity core goes
+        // hard LEFT, the vibrato twin (pitch LFO on the model's f0, depth
+        // receding up the range as before) hard RIGHT. Both carry the same
+        // fitted envelope; every layer of the voice pans with the core.
+        const mkTwin = (vib, pan) => {
+          const o = Object.assign({}, baseOpts);
+          o.vibrato = vib ? {
+            rate: AUDIO_DEBUG.vibRate,
+            depth: AUDIO_DEBUG.vibDepth * (1 - AUDIO_DEBUG.vibHighFade * hiF),
+            delay: VIB_DELAY,
+          } : null;
+          const h = scheduleHelmholtzNote(ctx, tmDest, o);
+          if (pan) {
+            const p = ctx.createStereoPanner();
+            p.pan.value = pan;
+            h.out.disconnect();
+            h.out.connect(p);
+            p.connect(tmDest);
+            h._pan = p;
+          }
+          return h;
+        };
+        twVoices.push(mkTwin(false, -zenPan2), mkTwin(true, zenPan2));
+      } else {
+        const o = Object.assign({}, baseOpts);
+        o.vibrato = null; // plain notes stay clean (gated like the reverb)
+        twVoices.push(scheduleHelmholtzNote(ctx, tmDest, o));
+      }
+      // the twin's own tail can outlast the additive slot math — re-mark
+      markSystemSound(twVoices[0].until);
+      if (bag) {
+        const twKill = () => {
+          for (const h of twVoices) {
+            try { if (h._pan) h._pan.disconnect(); } catch (e) {}
+            try { h.out.disconnect(); } catch (e) {}
+          }
+        };
+        bag.push({
+          until: twVoices[0].until + 0.06,
+          stop() { twVoices.forEach(h => { try { h.stop(); } catch (e) {} }); },
+          kill() { twKill(); },
+          fade() {
+            // Melody cuts: the cut-bus decay owns the audible fade — the
+            // voices' own ramps land strictly past it (level ~0 there), and
+            // the sources stop right behind. Live/hover cuts take the
+            // module's own 30 ms fade.
+            if (isMelodyBag(bag)) {
+              const stopAt = melodyStopAt(ctx);
+              twVoices.forEach(h => { try { h.fade(stopAt - 0.03); } catch (e) {} });
+              return;
+            }
+            twVoices.forEach(h => { try { h.fade(); } catch (e) {} });
+          }
+        });
+      }
+      return;
+    }
 
     // Per-note voice profile (pitch-keyed harmonics, chamber-relative
     // loudness, wobble/wind levels, attack shape) — derived live so the
@@ -2614,7 +2784,7 @@ function scheduleMelody(when) {
 }
 
 export { AUDIO_DEFAULTS, audioCtx, audioPerfReset, audioPerfSnapshot, cutLive, freqOf,
-         getReverbBus, installToneModel, isMelodyPaused, isMelodyPlaying, liteMode,
+         getReverbBus, installToneModel, installTwinModel, isMelodyPaused, isMelodyPlaying, liteMode,
          pauseMelody, perf, playMelody, playNote, playNoteAt, quarterSecFor, resumeMelody,
          reverbEnabled, setBassEnabled, setPerfAlertListener, setReverbEnabled,
          setVibratoEnabled, soundingGridBeats, stopMelody, syncTransport,
@@ -2636,4 +2806,5 @@ window.tokenGridBeats = tokenGridBeats; window.swungBeats = swungBeats;
 window.soundingGridBeats = soundingGridBeats; window.lastHoldIndex = lastHoldIndex;
 window.quarterSecFor = quarterSecFor; window.freqOf = freqOf; window.cutLive = cutLive;
 window.installToneModel = installToneModel;
+window.installTwinModel = installTwinModel;
 window.stopMelody = stopMelody;

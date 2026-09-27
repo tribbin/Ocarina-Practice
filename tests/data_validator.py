@@ -23,6 +23,7 @@
 #   python tests/data_validator.py         # sandbox battery + real corpus
 #
 import json
+import math
 import re
 import sys
 import tempfile
@@ -47,6 +48,11 @@ def _no_dup(pairs):
             raise ValueError("duplicate key %r" % k)
         obj[k] = v
     return obj
+
+
+def isFiniteNum(v):
+    return isinstance(v, (int, float)) and not isinstance(v, bool) \
+        and (math.isfinite(v) if isinstance(v, float) else True)
 
 
 def load_json(path, errors, label):
@@ -87,6 +93,22 @@ class V:
         if not isinstance(tone, dict) or not isinstance(tone.get("chambers"), dict):
             self.err(rel, "bad-shape",
                      f"tone for {inst_id} needs a chambers object")
+
+    def _check_twin(self, rel, inst_id):
+        p = self.root / rel
+        if not p.is_file():
+            # Same deliberate-404s contract as tone: the field may be
+            # declared ahead of the held-note fit (instruments/README.md).
+            return
+        twin = load_json(p, self.errors, rel)
+        if twin is None:
+            return
+        if not isinstance(twin, dict) or not isinstance(twin.get("notes"), list) \
+                or not [n for n in twin["notes"]
+                        if isinstance(n, dict) and isFiniteNum(n.get("f0"))
+                        and isinstance(n.get("h"), list)]:
+            self.err(rel, "bad-shape",
+                     f"twin for {inst_id} needs a notes[] of f0/h rows")
 
     def instruments(self):
         m = load_json(self.root / "instruments.json", self.errors, "instruments.json")
@@ -129,6 +151,12 @@ class V:
                     self.err("instruments.json", "bad-shape", f"{iid}: bad tone path")
                 else:
                     self._check_tone(tone, iid)
+            twin = row.get("twin")
+            if twin is not None:
+                if not isinstance(twin, str) or not twin:
+                    self.err("instruments.json", "bad-shape", f"{iid}: bad twin path")
+                else:
+                    self._check_twin(twin, iid)
             when = row.get("svgWhen")
             if when is not None:
                 if not isinstance(when, list):

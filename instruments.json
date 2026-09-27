@@ -26,6 +26,7 @@
       "fingerings": "instruments/oot-alto-c-12/fingerings.json",
       "svg": "instruments/oot-alto-c-12/ocarina-template.svg",
       "tone": "instruments/oot-alto-c-12/tone.json",
+      "twin": "instruments/oot-alto-c-12/twin_model.json",
       "svgWhen": [
         {
           "theme": "oot",

@@ -9,14 +9,31 @@ range and the file paths stay there). Folder contents:
       fingerings.json        fingering chart (notes, chambers, covered holes)
       ocarina-template.svg   the SVG body template (theme variants live here too)
       tone.json              OPTIONAL: fitted per-chamber tone anchors
+      twin_model.json        OPTIONAL: fitted Helmholtz twin model
 
-`instruments.json` entries may carry `"tone": "instruments/<id>/tone.json"`.
+`instruments.json` entries may carry `"tone": "instruments/<id>/tone.json"`
+and `"twin": "instruments/<id>/twin_model.json"`.
 A missing file is normal — that ocarina then keeps the baked-in generic model
 (the alto-derived extrapolation in `js/audio.js`), and nobody notices. A
 manifest entry may also declare the field ahead of its measurements (the
 per-chamber tuning work is planned for every ocarina); until the file lands
 the loader treats the 404 as "no data yet". If the file exists but is corrupt,
 the loader also falls back — tone data must never break boot.
+
+## Voice swap (twin vs additive)
+
+`twin_model.json` switches the instrument's VOICE to the Helmholtz twin
+(`js/helmholtz-voice.js`, python fitter + reference renderer in
+`skills/ocarina-twin/`): near-sine fundamental through the cavity bandpass,
+period-synchronous turbulence for the on-the-note breath, highpassed hiss
+bypassing the cavity, minute dry H2–H6 labium partials. The additive
+timbre/wind machinery in `js/audio.js` (PeriodicWave + windPark/warm/rough
+shelves + edge whistle + chiff/ot bursts, `voiceProfileFor`, `V_ANCHORS`)
+is the LEGACY voice: it still serves ocarinas whose chambers aren't
+twins yet, and disappears wholesale once the last one is converted —
+drop `installToneModel`, `voiceProfileFor` and everything it feeds, keep
+the twin branch delete-simple. tone.json stays on disk while an
+instrument is mid-swap (offline tooling + the tone-analysis skill read it).
 
 tone.json — schema v1 ("tone-fit-v1")
 -------------------------------------
