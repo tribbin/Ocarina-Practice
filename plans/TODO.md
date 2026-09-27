@@ -62,7 +62,7 @@ bloom and Robin's field check):
 
 | Item | Section |
 |---|---|
-| **Field check the noise-body layer — the deciding pass** — the parked-pocket/warm/bleed engine shipped and re-fit (band-1 ±1.2 dB all 15 rows); his ears name the texture, then the wall-family residuals (band-2 −2..−8 under-carved, rough1 +5, per-note warm A5 +7) ride the next wall pass whose per-band calibrations must re-derive on the recompositioned chain | §1 |
+| **Field check the noise-body layer — the deciding pass** — the layer is live and the wall pass re-fit on it (round-5: band-1 ±1.5, band-2 mostly ±4, C5 trough/rough2/tail/airhead ±2); his ears name the texture and steer the top-register row family (per-note bleed/warm, hole dips) and the expressibility build | §1 |
 | **Robin's field check on the multi-track trio** — `outset-island-with-bass` now plays melody + audible bass groove (the bassline two octaves down) + contrabass root-holds; his ears name the balance, the contrabass register, the practice-session audibility and the groove's final-bar cut | §7 |
 | **Robin's eyeball pass** on the panel builds: the HiFi retune batch (`?hifi` — amber buttons, dark segment row/select, deeper zen red, LED fills) and the favorites stars in the library — his values, built to spec; he retunes anything that reads off | feel checks |
 | The tone.json measurement/fitting work per chamber (Robin's instrument data; the loader treats missing files as "no data yet") | §1 |
@@ -76,7 +76,7 @@ bloom and Robin's field check):
 
 - [ ] **Measure and fit the chambers** — Robin records tone.json per chamber (stein-double-alto-c, oot-alto-c-12, ico-contrabass-11-c declare the field ahead of data; missing files read as "no data yet"); each fitting feeds the tone engine, maybe dropping very-low-dB harmonics later. Robin's hands-on work as he gets time. The 12-hole per-note fit is done (tone.json shipped for oot-alto-c-12, work on the 12-hole-synth-tuning branch): ladder-cut melodies are the single-note-grade source (kokiri/storms kept as transition/glide context — Robin: the real ocarina's glide is as short as a finger-tap while the engine's is longer), levelDb anchors the loudest fitted note at 0 dB (recorded gain is a mic artifact, masterLevel untouched so support tracks + reverb keep headroom), and the offline reproduce bench (skills/tone-analysis/scripts/fit_tone.py + render_ours.py, module-era audio.js via import map, Playwright real-time render) closed the loop to ±2 dB harmonics / ±0.3 dB levels on 11 ladder notes; D5/Ds5 unfitted (loader interpolates). HELD for Robin's field check — his ears name the next layer (noise shape b2/b3 + wobble-depth residuals noted in skills/tone-analysis/SKILL.md). No sw VERSION bump (data-only, precedent 8e7b1d7). `🟩 ⚪ ⚙L`
 
-- [ ] **Finish the noise-body fit: walls under the recompositioned chain + per-note warm/bleed rows, then full held-set agreement** — the structure landed (`0149570` + `a73f9c9`, 2026-09-27): the wind chain gained the absolute layer the complaint spectra demanded — a FIXED-absolute parked pocket (peaking 273 Hz Q2.2, `global.windPark` gate, unfitted voices byte-identical) whose STRENGTH is per-note (`parkDb` rows fitted from the eight held takes: measured span −13..+13 dB — F5's pocket nearly silent, A4's strongest — the bump rides per-note cavity coupling, not take gain), a warm shelf (470 Q0.8) and the upper roughness as a PARALLEL bleed past the per-note lp wall (highpass 2900 Q1.1 → shelves 6000/−10 + 9500/−7 → bleed gain — the series lp cannot both carve the holes and keep the tail the recording shows out to 12 kHz). fit_tone carries `global` through every candidate + the draft so the wall re-fit shaped against the recomposed chain: round-3 landed band-1 within ±1.2 dB on all 15 fitted rows, harmonics small; the acceptance measure is the new `abs_shape.py` absolute-body table (pocket/warm/holes/rough/tail/airhead rel-H1; ±3-5 dB take noise per 0.74 s window). OPEN residuals: band-2 wall family −2..−8 under-carved (the wall's dB-per-unit calibrations were measured on the pre-layer chain — re-derive through rendered rounds), the mid-body holes (C5 hole2 +10, H2zone +4), rough1 +5, per-note warm (A5 +7.4 with pocket fixed; warmDb or bed-relative scaling candidate), A5/A4-class bleed tail (−11..−14). Held for Robin's field check as the deciding pass (his ears own the texture; the numbers steer). `🟧 🟠 ⚙M`
+- [ ] **Finish the noise-body fit: the top-register row family + hole depth, then full held-set agreement** — the structure landed and the wall pass re-fit ON the recomposed chain through 2026-09-27 night (`0149570` engine + `a73f9c9` data + `6c49ef6` fit-tooling): parked pocket (273 Q2.2, parkDb rows −13..+13 per note fitted from the eight takes — the bump rides cavity coupling, not take gain) + warm shelf (470) + parallel roughness bleed past the wall (hp 2900 Q1.1, shelves 6000/−10 + 9500/−7, bleed gain), wall calibrations re-measured through real renders (b2 +4.1 dB/Δratio at Q0.8-1.6, b3 +3.3, Q near-inert — the pre-layer 6.5/6.7 over-counted the wall's authority), dual-residual damped wall leg (0.4 gain — per-note response is not one constant; A4 swung 11 dB on a 0.68 move) converging round-5: band-1 ±1.5, band-2 mostly ±4 (A4-E5 −0.2..−3.8), trough/rough2/tail/airhead at C5 within ±2 on the absolute-body table (`abs_shape.py`); write_intermediate now lands each round's converged rows straight into the shipped tone.json (parkDb/noiseLpQ etc. carried through — a mid-run listen always hears a fully-fitted voice). OPEN: (a) the between-harmonic hole DEPTH is not expressible with one lowpass — hole2 +8.8 (C5), H2zone +4.0, rough1 +4.5 — needs per-note hole-dip rows or a Q/second-filter family; (b) the A5/F5-class rough1-to-tail split (+13.1/+8.6 vs −10.8/−18: bleed too loud low, too quiet high per note) needs per-note roughDb/warmDb rows (A5 pocket fixed by its row; its warm still +8.3) — the bleed is absolute while the wall is f0-relative, the divergence is structural; (c) h4/h5 outliers on the context rows (Cs5/Gs5/As5/B5/D6/Ds6 wob 16-48%) are the ladder-cut noise class, untouched; (d) the loop's parkDb leg stays unfitted (the pocket targets don't ride targets.json's schema yet). Robin's field check is the deciding pass. `🟧 🟠 ⚙M`
 
 ## 2. Robustness / error handling
 
@@ -679,3 +679,24 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   bleed tail −11..−14 — plus the fit loop learning parkDb itself.
   HELD for Robin: field check on the recomposed voice (the layers are
   audible by design).
+
+- **2026-09-27 (session 17-cont. #5 — the wall pass re-fits on the layered chain, the intermediate writer ships, Robin listens)** —
+  Robin's turnback ("more out of curiosity… dying to hear some result") set
+  the unit's shape: (1) the wall_cal candidate matrix re-measured the
+  band-to-wall responses through real renders on the layered chain — b2
+  +4.1 dB per Δratio (not the pre-layer 6.5 — the bleed refills the bands,
+  which is where round-3's under-carve came from), b3 ~+3.3, Q near-inert;
+  (2) the fit loop's wall leg converged via a damped dual-residual sum (0.4
+  gain, ±0.9 — per-note response is not one constant; A4 swung ~11 dB per
+  0.68 move under the dual ±1.2 form), round-5 landing band-1 ±1.5 and
+  band-2 mostly ±4 (A4-E5 −0.2..−3.8; F5/G5/A5/F6 keep −6.9..−8.7 where the
+  expressible row set bottoms out); (3) write_intermediate now puts each
+  round's converged rows straight into the SHIPPED tone.json so a mid-run
+  listen always hears a fully-fitted voice (per-row keys the loop never
+  recomputes — parkDb/noiseLpQ — carry over from the last published state);
+  (4) body-table spot check on the live state: C5 trough/rough2/tail/
+  airhead within ~±2, pocket/warm/in-take class; the open residuals named
+  in the item (hole depth, rough1-vs-tail per-note split, parkDb loop leg).
+  Commit `6c49ef6`; data_validator/instruments_load/console_hygiene green;
+  sw stays v39. Robin is playing the intermediate state — his field check
+  steers the next row family.
