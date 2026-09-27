@@ -1031,6 +1031,7 @@ function toneEnvelopeFor(rows, freq) {
     chiff: sub("chiff", ["peak", "len", "startHz", "endHz", "attack"]),
     ot: sub("ot", ["peak", "dur", "noise"]),
     edge: sub("edge", ["level", "detune", "spread"]),
+    atk: sub("atk", ["speak", "pre"]),
     lpMult: g.lpMult != null ? +g.lpMult : null,
     lpQ: g.lpQ != null ? +g.lpQ : null,
   };
@@ -1343,8 +1344,16 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // original proportions of 0.26 so the envelope shape is unchanged at the
     // default and simply scales with the level.
     const M = AUDIO_DEBUG.masterLevel * vp.levelLin * voiceGain;
-    const preLevel = M * (0.05 / 0.26);   // breathy pre-tone (exactly 0.05 at default M)
-    const toneLevel = M * (0.16 / 0.26);  // tone begins to speak (exactly 0.16 at default M)
+    // Per-note ATTACK STAGES (row "atk"): the recordings' lead-in is a quiet
+    // 10-30 ms swell (the takes' measured attack_to_plateau) — not a long
+    // gasp; a fitted row replaces the generic speak computation so a fitted
+    // ocarina attacks on its own measured clock, and the pre-breath fraction
+    // can ride lower with it (the old fixed 0.05/0.26 pre-tone turned the
+    // attacking fundamental's sweep into the "sand paper" onset Robin heard).
+    const eAtk = EN.atk;
+    const preFrac = eAtk && eAtk.pre != null ? eAtk.pre : (0.05 / 0.26);
+    const preLevel = M * preFrac;         // breathy pre-tone
+    const toneLevel = M * (0.16 / 0.26);  // tone begins to speak
     // Tone speaks slightly after onset (breathy pre-tone → full), pairing with
     // the pitch "catch up" bloom below for a soft ocarina attack. Larger
     // chambers + more open holes build pressure slower → a longer, softer
@@ -1354,7 +1363,9 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // equilibrium.
     const art = noteArticulation(id);
     const effort = attackEffort(id, freq);
-    const speak = Math.min(0.05, Math.max(0.006, dur * 0.08)) * (0.5 + effort) * vp.attackF;
+    const speak = eAtk && eAtk.speak != null
+      ? Math.min(0.12, Math.max(0.004, eAtk.speak))
+      : Math.min(0.05, Math.max(0.006, dur * 0.08)) * (0.5 + effort) * vp.attackF;
     const equilib = Math.min(dur * 0.4, art.sizeF * art.sizeF * 0.16); // big chamber = slow to settle
     const t1 = t0 + speak * 0.5;
     const t2 = t0 + speak + 0.015;

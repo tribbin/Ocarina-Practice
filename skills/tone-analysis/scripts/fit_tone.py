@@ -91,6 +91,13 @@ def load_sources(sources=("ladder", "kokiri", "storms"), primary="ladder"):
                 "islands": r.get("inharmonic_islands") or {},
             }
             take["span"] = max(0.01, s["off"] - s["on"])
+            # attack stages: the time to full level is the mask-free plateau
+            # metric already measured; the pre-breath fraction rides the
+            # onset portrait's own H1 level at ~10 ms vs the plateau H1.
+            prof = ((r.get("onset") or {}).get("portrait") or [])
+            early_h1 = [p["H1_dbfs"] for p in prof if p["t_ms"] <= 14]
+            if early_h1:
+                take["atkPre"] = round(min(0.999, 2 ** ((early_h1[0] - t["H1_plateau_rms_dbfs"]) / 6.02)), 4)
             # onset-derived chiff (the recorded tongue transient IS the aim —
             # Robin: "use my recordings of transients for the tap"; the bursts
             # run -40..-55 dB rel plateau H1 while the shipped generic chiff
@@ -335,6 +342,10 @@ def naive_candidate():
         if t.get("chiffDb") is not None:
             rows[-1]["chiff"] = {"peak": round(2 * lin(t["chiffDb"]), 6),
                                  "len": round(t.get("chiffLen") or 0.08, 3)}
+        # the row-expressible attack stages (the engine reads eAtk.speak/pre)
+        rows[-1]["atk"] = {"speak": round(min(0.12, max(0.004, t.get("attack") or 0.02)), 3)}
+        if t.get("atkPre") is not None:
+            rows[-1]["atk"]["pre"] = round(max(0.01, min(0.6, t["atkPre"])), 3)
     return {"instrument": INST, "model": "tone-fit-v1",
             "recorded": {"date": "2026-09-26",
                          "takes": "12-hole melodies (ladder primary, kokiri/storms corroboration)",
@@ -439,11 +450,11 @@ def fit_rounds(rounds=3):
             row["wanderC"] = round(t.get("wanderC") or 0, 2)
             row["wobPct"] = round(t.get("wobPct") or 0, 2)
             row["wobHz"] = round(t.get("wobHz") or 2.5, 2)
-            # attack loop (candidate-feedback)
+            # attack stage loop (candidate-feedback on the expressible rows)
             t_att = t.get("attack")
-            if t_att and t_att > 0.04 and r["attack"] > 0.02:
-                f_old = row.get("attackF") or 1.0
-                row["attackF"] = round(max(0.5, min(2.5, f_old * t_att / r["attack"])), 3)
+            if t_att and t_att >= 0.006 and r["attack"] >= 0.004 and "atk" in row:
+                sp = row["atk"]["speak"] * max(0.6, min(1.6, t_att / r["attack"]))
+                row["atk"]["speak"] = round(min(0.12, max(0.004, sp)), 3)
             # overshoot gain (only when the take showed a real spike)
             t_os = t.get("osDb")
             if t_os is not None and t_att and t_att > 0.08:
