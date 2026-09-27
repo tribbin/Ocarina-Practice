@@ -62,7 +62,7 @@ bloom and Robin's field check):
 
 | Item | Section |
 |---|---|
-| **Robin's field check on the held-note row set** — A4/A5/C5/D5 direct rows, the wobble class 6.5-9.3% @ 2-6 Hz, per-note noise walls, F6/G5/E5 texture; AND the puff question: the remaining root is the engine's own onset bloom (the layers exonerated) — next unit makes the attack shape row-expressible | §1 |
+| **The held-note noise, another attempt** — the fitted voice field-checked BAD; the complaint spectra name the recorded noise BODY: fixed 273 Hz pocket below the tone, very big holes (Robin), upper roughness — parked, spec'd in §1 | §1 |
 | **Robin's field check on the multi-track trio** — `outset-island-with-bass` now plays melody + audible bass groove (the bassline two octaves down) + contrabass root-holds; his ears name the balance, the contrabass register, the practice-session audibility and the groove's final-bar cut | §7 |
 | **Robin's eyeball pass** on the panel builds: the HiFi retune batch (`?hifi` — amber buttons, dark segment row/select, deeper zen red, LED fills) and the favorites stars in the library — his values, built to spec; he retunes anything that reads off | feel checks |
 | The tone.json measurement/fitting work per chamber (Robin's instrument data; the loader treats missing files as "no data yet") | §1 |
@@ -76,7 +76,7 @@ bloom and Robin's field check):
 
 - [ ] **Measure and fit the chambers** — Robin records tone.json per chamber (stein-double-alto-c, oot-alto-c-12, ico-contrabass-11-c declare the field ahead of data; missing files read as "no data yet"); each fitting feeds the tone engine, maybe dropping very-low-dB harmonics later. Robin's hands-on work as he gets time. The 12-hole per-note fit is done (tone.json shipped for oot-alto-c-12, work on the 12-hole-synth-tuning branch): ladder-cut melodies are the single-note-grade source (kokiri/storms kept as transition/glide context — Robin: the real ocarina's glide is as short as a finger-tap while the engine's is longer), levelDb anchors the loudest fitted note at 0 dB (recorded gain is a mic artifact, masterLevel untouched so support tracks + reverb keep headroom), and the offline reproduce bench (skills/tone-analysis/scripts/fit_tone.py + render_ours.py, module-era audio.js via import map, Playwright real-time render) closed the loop to ±2 dB harmonics / ±0.3 dB levels on 11 ladder notes; D5/Ds5 unfitted (loader interpolates). HELD for Robin's field check — his ears name the next layer (noise shape b2/b3 + wobble-depth residuals noted in skills/tone-analysis/SKILL.md). No sw VERSION bump (data-only, precedent 8e7b1d7). `🟩 ⚪ ⚙L`
 
-- [ ] **Finish the noise fix — the onset-namesake unit (bisected to the tone's own bloom) + his field check on the landed set** — Robin's held-note recordings (A4 A5 B4 C5 D5 E5 F5 G5) are the primary rows now (`d9826f3`): the wobble class the takes carry is a coherent 6.5-9.3% @ 2-6 Hz (his A3/B3/B4 catches — the bridge's 9.4 Hz/10.7% and the melody cuts' 21-54% were onset/context artifacts; the short-cut rule: the spans <0.40 s skip the wobble fields and the loader's generic doctrine keeps the low end), the burst extractor is arrival-bounded (the A4 taken burst was the rising tone at a 200% chiff), unresolvable onsets fall through to the entry take/nearest fitted neighbor, per-note `noiseLpRatio/noiseLpQ` rows replace the saturated global family (delivered b1 within ±1.3, b2 −3..−9 toward the takes' walls, lpq corrections PARKED pending his ears), the fitted model stays hold-at-edge beyond its anchors (A3/B3 ride A4's row now — a real clean anchor), and the aged generic fallbacks no longer surface on unfitted per-note onsets. REMAINING, bisected tonight: **the puff on A4-class CLEAN takes is the engine's own onset bloom** — the chiff/wind/air/edge/ot layers are exonerated (burst profiles with each zeroed are byte-close), the culprit is the tone's level envelope + "pitch catch-up" sweep lasting ~80 ms where the takes speak within ~15-20 ms; the NEXT ENGINE UNIT: a row-expressible attack shape (a fitted row flattens the bloom to the take's clock — target: A4-class renders match the take's 20 ms entry) with the wobble off, re-fit, his play test, full sweep. His field check still owns the whole voice after that. `🟧 🟠 ⚙M`
+- [ ] **Another attempt at the held-note noise — model the recorded noise BODY, not a wash (Robin's complaint spectra, parked for the fresh session)** — Robin field-failed the fitted voice outright ("it sounds very bad currently") and added complaint spectra: `research/analysis/12hole/complaint/C5_hold_spectrum_{recording,render}.txt` + his IDEAS note. The measured shape (band medians rel H1): recording = warm pocket 273-600 Hz (−47.5/−46.4/−44.9 — the 273 Hz bump exists in EVERY recording: a fixed, f0-INDEPENDENT cavity resonance the synth never had), deep valley 900-1800 (−58.6/−57.4/−69.1), rough recovery 2600-5600 (−62..−75); our render = monotone shelf −48..−57 with the bump at 1.26×f0 (663 Hz for C5 — ABOVE the tone where the real pocket sits BELOW it) and no valley. The next unit: replace the 2-biquad wash with a shape that can express the BODY — Robin: "there are very big holes in the real noise profile; nothing like the broadband you have" — a fixed absolute low pocket (~270-650 Hz), the tone's own region, the big holes/valley between (verify how deep they run, not just the band medians), and the upper roughness (candidate structures: fixed absolute biquads + per-note walls already in rows; the fit target should be FULL held-spectra agreement across the held-note set, not a few band medians; verify through spectra_compare, one shape family per iteration, rendered-candidate matrix as tonight). The current tone.json state is NOT the target — expect a rebuild round; the wobble/per-note-wall/hold-at-edge plumbing from tonight stays valid. `🟧 🟠 ⚙M`
 
 ## 2. Robustness / error handling
 
@@ -618,3 +618,21 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   takes speak in ~15-20 ms; the next engine unit makes the fitted attack shape
   row-expressible. Full sweep 46/46 at both commit points; lint clean;
   `12-hole-synth-tuning` carries `79ca6e8`, `302a20f`, `450991f`, `d9826f3`.
+
+- **2026-09-27 (session 17-cont. #3 — the field check fails the voice; the complaint spectra are the next unit's ground truth)** —
+  Robin's verdict stands above everything tonight shipped: the fitted voice
+  "sounds very bad currently." His IDEAS note names it precisely — the
+  broadband-with-filters model sounds NOTHING like a real ocarina — and the
+  complaint spectra (research/analysis/12hole/complaint/
+  C5_hold_spectrum_{recording,render}.txt) measure why: the recording's noise
+  is a BODY with a warm fixed pocket at 273-600 Hz (the 273 Hz bump exists in
+  every recording — a physical, f0-independent cavity resonance the synth
+  never had), a deep valley through 900-1800 (Robin: "very big holes in the
+  real noise profile; nothing like the broadband you have"), and rough upper
+  bands — while our render is a monotone shelf with its bump ABOVE the tone
+  (1.26×f0) where the real pocket sits BELOW it. The held-note per-note
+  walls/wobble/hold-at-edge plumbing of tonight survives (verified rows, b1
+  tone accuracy, no invented extrapolation), but the NOISE SHAPE MODEL is
+  the target next fresh session: full held-spectra agreement across the
+  held-note set, not a few band medians. Board §1 carries the item verbatim
+  from his IDEAS entry; nothing mooted, nothing executed at high context.
