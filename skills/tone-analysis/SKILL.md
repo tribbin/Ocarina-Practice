@@ -162,14 +162,49 @@ raw cents path per 10 ms hop. First findings (both committed WAVs):
   not two note-envelopes knitting silently under practice's feet.
 
 ## Held-tone spectrum (the ground-truth maker)
-`scripts/hold_spectrum.py <wav> [--nominal C5]` finds the longest stable
+`scripts/hold_spectrum.py <wav> [--nominal C5] [--span ON,OFF]` finds the longest stable
 hold inside a recording, windows it with a Blackman-Harris envelope and
 writes the recorder-format spectrum (`Frequency (Hz) \t Level (dB)`, the
 exact shape of Robin's own F6 export) plus a `_hold.json` summary (harmonic
-spikes rel H1, corrected inter-harmonic band floors). When two
-measurements disagree about a note's timbre or noise, THE HELD-PART
-SPECTRUM WINS (Robin's own export is the reference; the fit's floor method
-matches it within a few dB on the F6).
+spikes rel H1, corrected inter-harmonic band floors). `--span` forces the
+window in file-seconds — for cuts whose plateau tracker misses (B4/D6-class
+wobbly holds); pass targets.json's on/off MINUS cutStart for the cut-relative
+window. When two measurements disagree about a note's timbre or noise, THE
+HELD-PART SPECTRUM WINS (Robin's own export is the reference; the fit's floor
+method matches it within a few dB on the F6).
+
+## Held-spectrum comparison at scale (`scripts/spectra_compare.py`)
+```
+python spectra_compare.py truth:B4:/abs/cut.wav:0.06,1.1 v36:B4:/abs/ours.wav ...
+```
+Measures every pair through hold_spectrum (one method both sides — required,
+see the convention note) and prints truth-vs-ours rows + per-band deltas to
+spectra_compare.json. Groups come from the label; rows without a truth
+partner (extrapolation probes) print bare.
+- **Tool-convention lesson (2026-09-27): the floor numbers are NOT
+  comparable across methods.** hold_spectrum (long BH window, per-bin
+  medians + ENBW correction), tone_report's floor_bands and the recorder's
+  own FFT export disagree on ABSOLUTE band floors by 2-4 dB for the same
+  WAV (bin-width/ENBW conventions). The FIT therefore converges b1 against
+  tone_report's scale (targets) and stays self-consistent; acceptance vs
+  the RECORDING must use one tool for both sides, and F6's export stays the
+  cross-tool arbiter (delivered F6 −67.4 vs export −67, 2026-09-27).
+- Per-band SHAPE deltas (band−band relations inside one tool) remain valid
+  across the tool fence.
+
+## Wind-shape search through real renders
+`render_ours.py ... --wind bpQ,lpRatio,lpQ` re-targets the engine's
+WIND_SHAPE constants in the patched module — candidates MUST be verified by
+rendering (the delivered WebAudio chain deviates from the analytic RBJ |H|
+model by 3-6 dB per band at the 2-biquad level, and the deviation
+magnitudes drift per candidate; the 2026-09-27 mid-wall pick
+(0.6/2.6/0.8) came from a rendered candidate matrix, not the grid search).
+The shipped wind buffer is 4 s (the 0.5 s loop was a 2 Hz-spaced line comb:
+every "noise" line in the renders sat at k×2 Hz and the texture was
+audibly wrong). Beyond the fitted anchors the fitted model HOLDS the
+nearest row (`vInterpHold`) — extrapolating the clamped slope below B4's
+bridge row turned A3/B3 wobble negative (−13% depth at 21 Hz, Robin's
+field catch).
 
 ## Data locations
 - 12-hole fit working tree: `research/analysis/12hole/` (segments, cuts,

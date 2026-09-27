@@ -71,7 +71,15 @@ def main():
     assert rate == 44100
     mono = (x[:, 0] + x[:, 1]) / 2 if x.shape[1] > 1 else x[:, 0]
     f_guess = note_hz(nominal) if nominal else None
-    hold = find_hold(mono, f_guess)
+    # --span ON,OFF forces the window (secs) — for cuts whose plateau tracker
+    # misses (short/wobbly holds); targets.json's per-note on/off is the same
+    # truth window the fit aggregates, so pass it through here.
+    span = opt("--span")
+    if span:
+        a, _, b = span.partition(",")
+        hold = (float(a), float(b))
+    else:
+        hold = find_hold(mono, f_guess)
     if not hold:
         print("no held tone found"); return 2
     t0, t1 = hold
@@ -83,6 +91,10 @@ def main():
     w = bh(WIN); wsum = float(np.sum(w)); wsq = float(np.sum(w ** 2))
     enbw = 10 * math.log10(WIN * wsq / wsum ** 2)
     seg = mono[int(t0 * SR):int(t0 * SR) + WIN]
+    if len(seg) < 2048:
+        print(f"window {t0:.2f}-{t1:.2f} s leaves <2048 samples in {os.path.basename(wav)} "
+              f"({len(mono)/SR:.2f} s long)")
+        return 2
     pad = 1 << 18
     S = np.abs(np.fft.rfft(seg * w, pad)) * 2 / wsum
     fs = np.fft.rfftfreq(pad, 1 / SR)

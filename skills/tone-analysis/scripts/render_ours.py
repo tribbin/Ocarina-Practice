@@ -48,7 +48,7 @@ def fing_data(inst):
             open(os.path.join(REPO, "instruments", inst, "fingerings.json"), encoding="utf-8"))
     return _fing_cache[inst]
 
-def build_patched_module(inst, with_layers=False):
+def build_patched_module(inst, with_layers=False, wind=None):
     # 1. all relative imports of the module graph resolve on the repo server
     #    (parse.js and friends keep re-importing each other relative to THEMSELVES);
     # 2. audio.js imports freqOf from music-math — the pitch override needs a
@@ -97,6 +97,13 @@ def build_patched_module(inst, with_layers=False):
                  "  liteBus = input;\n"
                  "  return liteBus;\n"
                  "}", src, count=1)
+    # --wind bpQ,lpRatio,lpQ: re-target the WIND_SHAPE constants for shape
+    # searches (the delivered chain differs from the analytic RBJ model, so
+    # candidate constants must be verified through real renders).
+    if wind and len(wind) == 3:
+        rep = ("const WIND_SHAPE = { bumpRatio: 1.26, bumpQMax: %s, "
+               "noiseLpRatio: %s, noiseLpQ: %s };" % tuple(wind))
+        src = re.sub(r"const WIND_SHAPE = \{[^}]*\};", rep, src, count=1)
     out = os.path.join(TMP, "audio_patched.mjs")
     open(out, "w", encoding="utf-8").write(src)
     return out
@@ -204,9 +211,9 @@ def ensure_servers():
 
 CHROME = None
 
-def run_page(name, cfg, out_wav):
+def run_page(name, cfg, out_wav, wind=None):
     ensure_servers()
-    build_patched_module(cfg.get("instId", "oot-alto-c-12"))
+    build_patched_module(cfg.get("instId", "oot-alto-c-12"), wind=wind)
     page = TEMPLATE.replace("__FING__", json.dumps(cfg.get("_fing"))).replace(
         "__TONE__", json.dumps(cfg.get("_tone"))).replace(
         "__CFG__", json.dumps({k: v for k, v in cfg.items() if not k.startswith("_")})).replace(
@@ -284,6 +291,8 @@ def main():
     if "--no-wob" in argv: cfg["noWob"] = True
     ml = opt("--master-level")
     if ml is not None: cfg["masterLevel"] = float(ml)
+    wind = opt("--wind")
+    build_patched_module(inst, wind=wind.split(",") if wind else None)
     sets = []
     for a in argv:
         if a.startswith("--set:") and "=" in a:
@@ -293,7 +302,8 @@ def main():
         cfg["set"] = dict((k, v) for k, v in sets)
     f0 = opt("--f0")
     if f0 is not None: cfg["f0"] = float(f0)
-    run_page(f"r12_{note_id or 'seq'}_{int(dur*1000)}.html", cfg, out)
+    run_page(f"r12_{note_id or 'seq'}_{int(dur*1000)}.html", cfg, out,
+             wind=[s.strip() for s in wind.split(",")] if wind else None)
 
 import base64
 
