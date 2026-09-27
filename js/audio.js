@@ -931,7 +931,7 @@ const V_ANCHORS = {
 // band with no resonant hump. Q is capped so a fitted row's sharper ask
 // cannot bring the grain back; the wash placement rides the lowpass
 // corner + the row's own level.
-const WIND_SHAPE = { bumpRatio: 1.26, bumpQMax: 0.6, noiseLpRatio: 3.4, noiseLpQ: 0.4 };
+const WIND_SHAPE = { bumpRatio: 1.26, bumpQMax: 0.6, noiseLpRatio: 2.6, noiseLpQ: 0.8 };
 
 // Piecewise-linear interpolation in log2-f with slope-clamped extrapolation.
 function vInterp(pts, f) {
@@ -948,6 +948,23 @@ function vInterp(pts, f) {
   const [f0, v0] = pts[n - 1], [f1, v1] = pts[n];
   const slope = (v1 - v0) / Math.log2(f1 / f0);
   return v1 + slope * Math.max(-1.5, Math.min(1.5, Math.log2(f / f1)));
+}
+
+// Fitted-anchor interpolation with a FLAT HOLD at the edges: between the
+// fitted rows this is plain linear-in-log-f, beyond the lowest/highest
+// fitted note it returns the edge anchor's own value. The slope-clamped
+// extrapolation invented values over a full clamped octave span — at B4's
+// contaminated a low anchor the clamped slope turned A3/B3 wobble negative
+// (wobPct extrapolated to −13% with a 21 Hz rate: a fast inverted tremolo,
+// Robin's field catch "something weird at A3, B3 suspect"). Below/above the
+// fitted anchors no better measurement exists, so the measurement the
+// chamber actually carries is the honest delivery.
+function vInterpHold(pts, f) {
+  const n = pts.length;
+  if (n < 2) return pts[0][1];
+  if (f <= pts[0][0]) return pts[0][1];
+  if (f >= pts[n - 1][0]) return pts[n - 1][1];
+  return vInterp(pts, f);
 }
 const db2lin = db => Math.pow(10, db / 20);
 
@@ -1001,7 +1018,7 @@ function toneVal(rows, key, fallback, freq) {
       pts.push([+r.f, +v]);
     }
     if (pts.length === 1) return pts[0][1]; // one measured point: constant
-    if (pts.length > 1) return vInterp(pts, freq);
+    if (pts.length > 1) return vInterpHold(pts, freq);
   }
   return Array.isArray(fallback) ? vInterp(fallback, freq) : fallback;
 }
@@ -1021,7 +1038,7 @@ function toneEnvelopeFor(rows, freq) {
           pts.push([+r.f, +v]);
         }
         if (pts.length === 1) out[f] = pts[0][1];
-        else if (pts.length > 1) out[f] = vInterp(pts, freq);
+        else if (pts.length > 1) out[f] = vInterpHold(pts, freq);
       }
     }
     return out;
@@ -1116,10 +1133,14 @@ function getChiffBuffer(ctx) {
 // Overwrite the buffer tail with a short crossfade INTO THE HEAD so the
 // wrap is continuous; the head itself stays untouched for chiff/ot (which
 // only read the first ~150 ms and never reach the tail).
+// LENGTH note (2026-09-27): the original 0.5 s loop is a 2 Hz-spaced line
+// comb, measurable in every render (the "noise" floor lives at k×2 Hz bins)
+// and audibly textured; a 4 s loop spaces the comb at 0.25 Hz so the noise
+// reads stochastic again (render-verified against the fitting bench).
 let windBuf = null;
 function getWindBuffer(ctx) {
   if (windBuf && windBuf.sampleRate === ctx.sampleRate) return windBuf;
-  const len = Math.floor(ctx.sampleRate * 0.5);
+  const len = Math.floor(ctx.sampleRate * 4.0);
   const buf = ctx.createBuffer(1, len, ctx.sampleRate);
   const d = buf.getChannelData(0);
   for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;

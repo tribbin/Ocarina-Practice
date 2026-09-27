@@ -63,8 +63,8 @@ V_ANCHORS = {
 # broad non-resonant bp wash (Q capped) -> gentle lowpass; constants from
 # the analytic |H| search against the recordings' corrected floors
 # (wind_shape_search.py — the old notch-band numbers were window skirt).
-WIND_SHAPE = dict(bumpRatio=1.26, bumpQMax=0.6, noiseLpRatio=3.4,
-                  noiseLpQ=0.4, bumpTrim=-2.0)
+WIND_SHAPE = dict(bumpRatio=1.26, bumpQMax=0.6, noiseLpRatio=2.6,
+                  noiseLpQ=0.8, bumpTrim=-2.0)
 
 def v_interp(pts, f):
     for i in range(len(pts) - 1):
@@ -303,7 +303,7 @@ def render(params, note="C5", dur=1.54, seed=12345, sr=SR, vib=False):
 
     # ---- broadband wind noise: white -> chamber bump -> steep noise LP ----
     if vp["windBump"] > 1e-5:
-        nb = int(sr * 0.5)
+        nb = int(sr * 4.0)  # 4 s loop — parity with the engine's comb fix
         nbuf = rng.random(nb) * 2 - 1
         k = int(sr * 0.01)  # 10 ms seam crossfade — mirror of getWindBuffer
         w = (np.arange(k) + 1) / (k + 1)
