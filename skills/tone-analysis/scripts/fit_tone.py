@@ -51,6 +51,16 @@ NEIGHBOR_ONSET_HOLD = {}
 # per-note rows noiseLpRatio/noiseLpQ grow from these in the fit loop.
 NOISE_WALL = {"ratio": 2.6, "q": 0.8}
 
+# The absolute noise-body layer the shipped engine reads from tone.json's
+# global gate (js/audio.js WIND_ABS carries the internals; these are the
+# FITTED magnitudes, verified through the rendered C5 body matrix — the
+# pocket/bump strength stays per-note row-expressible via parkDb).
+LAYER_GLOBAL = {
+    "windPark": {"f": 273, "Q": 2.2, "db": 7},
+    "windWarm": {"f": 470, "Q": 0.8, "db": 2},
+    "windRough": {"db": 12},
+}
+
 
 def wobble_measurable(t):
     """Robin, 2026-09-27: a short held span cannot imply a wobble (the B4
@@ -573,6 +583,7 @@ def kv(nid):
 
 def write_candidate(data, path=CAND):
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    data.setdefault("global", dict(LAYER_GLOBAL))
     json.dump(data, open(path, "w"), indent=1)
 
 def render_compare(cand_data, tag, notes):
@@ -699,6 +710,7 @@ def fit_rounds(rounds=3):
                 row["chiff"]["peak"] = round(max(row["chiff"]["peak"] * lin(dsh), 1e-6), 6)
         json.dump({"instrument": INST, "model": "tone-fit-v1",
                    "recorded": naive_candidate()["recorded"],
+                   "global": dict(LAYER_GLOBAL),
                    "chambers": {"1": rows}},
                   open(cand_path, "w"), indent=1)
         # residual table
@@ -747,10 +759,11 @@ def fit_rounds(rounds=3):
                           "or extrapolated from the fitted ladder rows; "
                           "recording gain is a mic-chain artifact — levelDb anchors the "
                           "loudest fitted note at 0 dB, only the note-to-note curve ships",
-                 "anchor": "loudest fitted note (levelDb 0); masterLevel untouched — "
-                           "headroom for support tracks and reverb preserved",
-             },
-             "chambers": {"1": rows}}
+                  "anchor": "loudest fitted note (levelDb 0); masterLevel untouched — "
+                            "headroom for support tracks and reverb preserved",
+              },
+              "global": dict(LAYER_GLOBAL),
+              "chambers": {"1": rows}}
     write_candidate(final, CAND)
     json.dump(final, open(DRAFT_TONE, "w"), indent=1)
     print("wrote", CAND, "and", DRAFT_TONE)
