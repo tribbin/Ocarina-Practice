@@ -54,9 +54,18 @@ residual bump ON the note] → highpass 2.8 kHz [hiss, bypasses the cavity]
   lerp across V — the fitter is run once per chamber, never with mixed
   chambers.
 - temp twins: too few rows mean whole-range clamps (the first stein twin:
-  chamber 1 = C5+D6 rows, chamber 2 = G6's single row). Expected artifacts:
+  chamber 1 = C5+D6 rows, chamber 2 = G6's single row — retired 2026-09-28
+  for its full ladder fit). Expected artifacts:
   interpolated rows drift across the wide gaps and every unfitted section
   rides its chamber's edge row. Field check steers; more takes fix it.
+- cross-instrument relative volume: within an instrument, each chamber's
+  `gain` carries its raw peak vs the instrument's loudest raw take; an
+  instrument-level scale folds into every chamber gain so the instrument's
+  max-volume sits against its anchor instrument (the 12-hole's ladder
+  session anchored the stein, both recorded "similarly" so the land sits
+  close — Robin records a dedicated one-take calibration for the true
+  cross-instrument relative volume; never assume separate sessions are
+  calibrated without that word).
 
 ## Refit a chamber (the whole loop)
 
@@ -134,8 +143,12 @@ residual bump ON the note] → highpass 2.8 kHz [hiss, bypasses the cavity]
   wobble_pct and leaves it unused — the handoff's choice, field-blessed:
   synthetic loudness wobble read as bad pumping at A4; the liked wobble
   around E5 is the pitch wander). Do not "complete" it without Robin's ask.
-- The shipped model clamps at A5: notes above ride A5's row — record the
-  top register and refit.
+- The shipped 12-hole model spans C5-F6 (2026-09-28 ladder retune; the
+  placeholder 8-take fit A4-A5 it replaced was only installed to proof the
+  synth). Notes below the fit's bottom end ride the edge row the same way a
+  top-end note would (the 12-hole's A4/As4/B4 ride C5's row). Refit when
+  recordings cover a wider span; end-clamped notes are the tell to listen
+  for after a refit.
 - The ring-up: the render's attack rise measures ~0.08 s where the
   envelope rows say 8-26 ms (the cavity Q rings up from silence; the
   takes' rises are player breath + the same ring). A Q-ramp "assist" is a

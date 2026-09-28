@@ -8,7 +8,7 @@
 # ears and reverted, so the numbers here serve his verdict, never the other
 #   way round).
 #
-#   2026-09-29: Robin replaced the placeholder model (fitted from the first
+#   2026-09-28: Robin replaced the placeholder model (fitted from the first
 #   8 held takes, shipped to proof the new synth) with a full-range single-
 #   take ladder fit (C5-F6, one session, research/recording/12-hole-ladder.
 #   wav): "should overrule what is already there". The gate's recording set
