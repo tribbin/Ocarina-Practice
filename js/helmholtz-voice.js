@@ -1,5 +1,5 @@
 /**
- * Helmholtz voice — Grok mid-air revision 2026-09-28.
+ * Helmholtz voice — Grok mid-air revision 2026-09-29 (noise cap / no unit-RMS).
  *
  * LEAD SPEC. Do not put air on a 2.2 kHz highshelf. E6/F6 air is
  * the [1.25 f0, 4 kHz] pedestal. 4–12 kHz must stay quieter than that.
@@ -131,9 +131,9 @@ function noiseBuffer(ctx) {
     const w = (i + 1) / (k + 1);
     d[n - k + i] = d[n - k + i] * (1 - w) + d[i] * w;
   }
-  const rms = Math.sqrt(d.reduce((s, v) => s + v * v, 0) / n);
-  const g = 1 / Math.max(rms, 1e-6);
-  for (let i = 0; i < n; i++) d[i] *= g;
+  // Do NOT unit-RMS this buffer. pinkBandComp assumes the quiet
+  // leaky-integrator level (acc*0.15). Forcing RMS=1 + dividing by
+  // pinkBandComp turned every note into a noise bed on the site.
   _noiseBuf = buf;
   return buf;
 }
@@ -152,9 +152,15 @@ function envGain(node, when, tOn, tSpeak, tHoldEnd, rel, peak, intoSlide, os) {
   }
 }
 
+function airGain(db, loHz, hiHz, extra) {
+  const raw = dbToLin(db) / pinkBandComp(loHz, hiHz) * (extra == null ? 1 : extra);
+  return clamp(raw, 0, 0.12);
+}
+
 export function scheduleHelmholtzNote(ctx, dest, opts) {
   const model = opts.model;
   const f0 = +opts.f0;
+  if (!isFinite(f0) || f0 < 40) return { until: ctx.currentTime, fade() {}, stop() {}, frequency: null, out: dest };
   const when = Math.max(ctx.currentTime + 0.012, opts.when == null ? ctx.currentTime + 0.02 : opts.when);
   const hold = Math.max(0.05, +opts.holdSec || 0.4);
   const nf = interpNote(model, f0);
@@ -219,7 +225,7 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
   noiseBp.Q.value = effectiveNoiseQ(nf);
   const resGain = ctx.createGain();
   const resComp = pinkBandComp(f0 * 0.7, f0 * 1.25);
-  resGain.gain.value = dbToLin(nf.noise_res_db || -28) / resComp;
+  resGain.gain.value = airGain(nf.noise_res_db || -28, f0 * 0.7, f0 * 1.25);
   syncGain.connect(noiseBp); noiseBp.connect(resGain); resGain.connect(bodyGain);
 
   // MID AIR — the 12-hole top. Bandpass 1.25 f0 … 4 kHz. NO highshelf.
@@ -236,7 +242,7 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
   const midG = ctx.createGain();
   midG.gain.value = 0;
   const midDb = nf.noise_mid_db != null ? nf.noise_mid_db : (nf.noise_hiss_db || -50) + 8;
-  const midPeak = dbToLin(midDb) / pinkBandComp(midLo, 4000) * lowNotePresence(f0);
+  const midPeak = airGain(midDb, midLo, 4000, lowNotePresence(f0));
   const dry = dryMidFrac(f0, model);
   const midDryG = ctx.createGain();
   const midSyncG = ctx.createGain();
@@ -291,7 +297,7 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
   envGain(bodyGain, when, tOn, tSpeak, tHoldEnd, rel, 1, opts.intoSlide, os);
   envGain(midG, when, tOn, tSpeak, tHoldEnd, rel, midPeak, opts.intoSlide, os);
   envGain(hissG, when, tOn, tSpeak, tHoldEnd, rel,
-    dbToLin(nf.noise_hiss_db || -55) / pinkBandComp(4000, 12000),
+    airGain(nf.noise_hiss_db || -55, 4000, 12000),
     opts.intoSlide, os);
 
   const chiffPeak = Math.max(0, (nf.chiff_peak || 1) - 1) * dbToLin(nf.noise_res_db || -28);
