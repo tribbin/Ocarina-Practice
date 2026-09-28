@@ -111,6 +111,7 @@ import { audioCtx, cutLive, freqOf, getReverbBus, playNote, reverbEnabled, setRe
     ]},
     { t: "Output", r: [
       ["masterLevel", "Master level", 0.05, 1, 0.01],
+      ["supportLevel", "Support (tracks) level ×", 0.05, 3, 0.01],
       ["reverbWet", "Reverb wet", 0, 1, 0.01],
     ]},
   ];
