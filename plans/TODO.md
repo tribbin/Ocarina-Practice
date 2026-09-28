@@ -1254,3 +1254,18 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   HELD for Robin: the low-note field check (does C5/D5/E5/F5 read as
   full-bodied now rather than muffled; the Q cap's ring character),
   including on the stein (its ch1 low rows ride the same voice).
+
+- **2026-09-28 (session 21 wrap — the shipped streak moves to DONE on Robin's field word)** —
+  Robin field-checked the low-note presence fix ("Sounds perfect") and
+  ordered the completed streak into DONE (board-only unit; tests scoped
+  to the todo/done machinery by his instruction):
+  (1) Grok's low-note presence fix -> DONE (commit `ecc5413`, his field
+      verdict inside the struck line);
+  (2) the per-instrument loudness dial -> DONE (commit `7f44c98`; the
+      dial is in live use — his settled dB numbers ride back into code
+      whenever he names them);
+  (3) the dead tone.json declarations removal -> DONE (commit `b7ac225`).
+  The board's open set stays honest: the guessed-voices field check, the
+  one-take calibration recording, the §5 additive-path teardown, the
+  chamber-fits still waiting on real recordings, and the multi-track/
+  Epona/HiFi holds that are his ears' passes.
