@@ -16,7 +16,8 @@
       "range": "A4–C7",
       "fingerings": "instruments/stein-double-alto-c/fingerings.json",
       "svg": "instruments/stein-double-alto-c/ocarina-template.svg",
-      "tone": "instruments/stein-double-alto-c/tone.json"
+      "tone": "instruments/stein-double-alto-c/tone.json",
+      "twin": "instruments/stein-double-alto-c/twin_model.json"
     },
     {
       "id": "oot-alto-c-12",

@@ -103,12 +103,28 @@ class V:
         twin = load_json(p, self.errors, rel)
         if twin is None:
             return
-        if not isinstance(twin, dict) or not isinstance(twin.get("notes"), list) \
-                or not [n for n in twin["notes"]
-                        if isinstance(n, dict) and isFiniteNum(n.get("f0"))
-                        and isinstance(n.get("h"), list)]:
+        if not isinstance(twin, dict):
+            self.err(rel, "bad-shape", f"twin for {inst_id} must be an object")
+            return
+        single = self._twin_model_ok(twin)
+        multi = (isinstance(twin.get("chambers"), dict)
+                 and bool(twin["chambers"])
+                 and all(self._twin_model_ok(
+                     c.get("model") if isinstance(c, dict) else c)
+                     for c in twin["chambers"].values()))
+        if not (single or multi):
             self.err(rel, "bad-shape",
-                     f"twin for {inst_id} needs a notes[] of f0/h rows")
+                     f"twin for {inst_id} needs notes[] rows or a chambers "
+                     "{ch: {model}} wrapper (ocarina-twin-multi-v1)")
+
+    @staticmethod
+    def _twin_model_ok(m):
+        return (isinstance(m, dict)
+                and isinstance(m.get("notes"), list)
+                and bool(m["notes"])
+                and all(isinstance(n, dict) and isFiniteNum(n.get("f0"))
+                        and isinstance(n.get("h"), list)
+                        for n in m["notes"]))
 
     def instruments(self):
         m = load_json(self.root / "instruments.json", self.errors, "instruments.json")

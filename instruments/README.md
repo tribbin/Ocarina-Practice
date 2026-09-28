@@ -36,6 +36,30 @@ the twin branch delete-simple. tone.json stays on disk only while the
 additive voice still reads it: the 12-hole's was removed with its swap
 (the fit history lives in git).
 
+### The twin file shapes
+
+Single-chamber schema ("ocarina-twin-v2" — the 12-hole):
+
+    { "schema": "...", "notes": [...] }        // one chamber, all notes
+
+Multi-chamber wrapper ("ocarina-twin-multi-v1" — a double/triple mid-fit;
+each note's OWN chamber must carry a model — a chamber without one keeps
+its notes on the additive voice, and chambers never lerp across V):
+
+    { "schema": "ocarina-twin-multi-v1",
+      "chambers": {
+        "1": { "gain": 1.0,  "model": { "schema": "...", "chamber": "1", "notes": [...] } },
+        "2": { "gain": 0.57, "model": { "schema": "...", "chamber": "2", "notes": [...] } }
+      } }
+
+`gain` carries the cross-chamber loudness (raw take level vs the whole
+chain's loudest take): each chamber's internal `level` rows normalize to
+that chamber's own peak, so the wrapper's gain is what keeps chamber 2
+from sounding as loud as chamber 1 without any recording to say so.
+A temp twin (3 notes measured, big gaps) interpolates across them and
+CLAMPS outside — the temp whole-chamber rows hold through the unfitted
+ranges until real held takes land.
+
 tone.json — schema v1 ("tone-fit-v1")
 -------------------------------------
 One row per RECORDED ANCHOR NOTE. Each chamber gets 3 anchors: near-low,

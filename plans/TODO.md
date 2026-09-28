@@ -77,7 +77,7 @@ rides his ruling):
 
 - [ ] **Twin voice for the 12-hole: the adopted baseline and its open classes** — the Helmholtz twin (`js/helmholtz-voice.js` + `instruments/oot-alto-c-12/twin_model.json`, handoff from Grok via Robin) REPLACES the additive voice outright — Robin field-checked the handoff state and ruled it the baseline ("it was perfect before" as handed over; the pass that rewrote the model's noise rows algebraically was REVERTED by his ears — A4's metronomic one-sine wobble "very bad", the liked E5 wobble is the pitch wander's). Standing structure: module + model are the handoff state byte-identical (only the 4 s crossfaded noise buffer differs — the line-comb lesson), the manifest declares `twin` and tone.json is retired with the swap (removed; the additive voice still serves stein double + contrabass). OPEN classes, ears-first per the skill's first law: (a) ATTACK ring-up — the render's rise measures ~0.08 s where the model rows say 8-26 ms (the cavity Q rings up from silence; a Q-ramp assist is the held idea, audible, his word first); (b) top register A5-F6 clamps to A5's row (interpNote end-clamp) — record the top and refit; (c) NO amplitude-wobble layer persists (the module interpolates wobble_pct unused — do not "complete" it without his ask); (d) release taper: the model rel_s 0.07 reads shallower than the takes' hand releases (stage gate's decay-depth leg ~-12 dB); (e) future refits may NOT reproduce the shipped file (the peak*0.08 span fix stays in fit.py — the shipped model is the blessed reference, not "the fit"). Regression gate: tests/tone_stages fit-row caps + stage windows measured off the blessed delivery. `🟧 🔴 ⚙M`
 
-- [ ] **Fit the twin model per chamber (Robin records held takes; the tone-analysis era closed for the 12-hole)** — skills/ocarina-twin/run_fit.py refits a chamber from held takes (one per fingering; the subtract analysis tracks f0 so the residual is real breath); the handoff model reproduced bit-for-bit from research/note-recordings/12hole's 8 held takes (A4-A5). REMAINING chambers: stein-double-alto-c (2 chambers — never bridge V, one fit per chamber), ico-contrabass-11-c, ico-oak-leaf-bass-c-triple (declare `twin` in the manifest when data lands; the additive voice + tone.json carries them until then); the 12-hole's own refit waits on his top-register recordings. The fitter's span rule is now peak*0.08 (the old median*4 guard collapsed EVERY span onto the 0.15/0.85 fallback — release+silence fitted as sustain — so historical fitted levels/wobble read through that window). His hands-on work as he gets time. `🟩 ⚪ ⚙L`
+- [ ] **Fit the twin model per chamber (Robin records held takes; the tone-analysis era closed for the 12-hole)** — skills/ocarina-twin/run_fit.py refits a chamber from held takes (one per fingering; the subtract analysis tracks f0 so the residual is real breath); the handoff model reproduced bit-for-bit from research/note-recordings/12hole's 8 held takes (A4-A5). REMAINING chambers: stein-double-alto-c now carries a TEMP twin from the sep-17 3-take session (multi-wrapper: chamber 1 = C5 2nd-take + D6 rows, chamber 2 = G6's single row clamped at both ends, the cross-chamber gain rides the wrapper) — his real refit waits on a proper held-take sweep per chamber (chambers NEVER bridge); ico-contrabass-11-c, ico-oak-leaf-bass-c-triple (declare `twin` when data lands; the additive voice + tone.json carries them until then); the 12-hole's own refit waits on his top-register recordings. The fitter's span rule is now peak*0.08 (the old median*4 guard collapsed EVERY span onto the 0.15/0.85 fallback — release+silence fitted as sustain — so historical fitted levels/wobble read through that window; the fitter's nominal table now carries G6..Cs7 — a missing key had read G6 at a 500 Hz default and the whole subtract built on a wrong octave). His hands-on work as he gets time. `🟩 ⚪ ⚙L`
 
 ## 2. Robustness / error handling
 
@@ -786,3 +786,37 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   (texture/attack/glide/practice); the top register A5-F6 takes when he has
   hands-on time; the twin-skill file map lives in skills/ocarina-twin/SKILL.md
   with the first law — HIS EARS, not row math.
+
+- **2026-09-28 (session 18 cont. — the stein's temp twin: 3 recorded notes become a two-chamber voice)** —
+  Robin's ask: three recorded notes of the Focalink Stein double alto C
+  (research/note-recordings/double-alto-c: C5 + its 2nd take, D6, G6 — a sep-17
+  session), "a temp twin until I record more". Landed `<<twin-ste` commit(s)
+  (see git log — two commits: the multi-shape engine + the temp data):
+  (1) The fitter's nominal table gained G6..Cs7 — G6 had FALLEN THROUGH to
+      the 500 Hz default (the NOM table topped at F6) and the whole tracked
+      subtract built on a wrong octave (f0 read 557 with H2/H3 "louder than
+      H1"); after the fix G6 reads f0 1566.3 (-1.7 cts of nominal).
+  (2) The multi-chamber wrapper ("ocarina-twin-multi-v1" =
+      chambers: {ch: {model, gain}}): installTwinModel stores per-chamber
+      models + gain; playNoteAt routes EVERY NOTE by its chart chamber and a
+      chamber WITHOUT a model keeps that note on the additive voice
+      (temp-twin instruments may cover only part of their range; the
+      chambers never lerp across V). The single 12-hole shape installs as
+      chambers {"1"} — one code path, the 12-hole unaffected.
+  (3) The temp data: chamber 1 = C5 (2nd take, f0 +11 cts, wander 8.8 vs the
+      first take's clamped-12 tracking) + D6 (chart says chamber 1 runs
+      A4-Ds6!); chamber 2 = G6 alone clamped at both ends. Per-chamber
+      internal levels normalize to their own peak; the CROSS-chamber
+      loudness rides the wrapper gain (ch2 0.57 = G6's raw level vs the
+      chain's D6 peak — the takes' 15 dB C5-under-D6 gap stays relative,
+      flagged in the file's head).
+  (4) Verified: validator (multi shapes), instruments_load (multi install
+      legs + a wrapper probe with a gain-less entry), the render bench
+      routing three notes (clamped C5, interpolated G5, chamber-2 G6 — the
+      gain math checked: predicted G5/G6 ratio 0.2 dB, measured 0.2),
+      console hygiene, full sweep 47/47 twice at the wrap, lint clean,
+      sw oco-pwa-v42 (engine touched for the routing). README carries the
+      twin file shapes; the skill carries the multi/temp doctrine.
+  HELD for Robin's field check: the temp voice's character across the wide
+  unfitted spans (the whole second chamber rides one row; chamber 1
+  interpolates across 2.2 octaves) — his retune/refit wording steers.

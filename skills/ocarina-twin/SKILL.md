@@ -45,6 +45,19 @@ by a gain driven through a waveshaper, feeds bandpass(f0, noise_Q) [the
 residual bump ON the note] → highpass 2.8 kHz [hiss, bypasses the cavity]
 → bandpass(f0, 2.2) envelope = chiff; H2.. tiny dry oscillators.
 
+- multi-chamber wrapper ("ocarina-twin-multi-v1"): `chambers: {ch: {model,
+  gain}}` — the web voice routes each NOTE by its chart chamber and a chamber
+  without a model keeps that note on the additive voice (a temp twin can
+  cover as much as the takes do). `gain` = the chamber's raw take level vs
+  the chain's loudest take (each chamber's internal levels normalize to
+  their own peak; the gain carries cross-chamber loudness). Chambers never
+  lerp across V — the fitter is run once per chamber, never with mixed
+  chambers.
+- temp twins: too few rows mean whole-range clamps (the first stein twin:
+  chamber 1 = C5+D6 rows, chamber 2 = G6's single row). Expected artifacts:
+  interpolated rows drift across the wide gaps and every unfitted section
+  rides its chamber's edge row. Field check steers; more takes fix it.
+
 ## Refit a chamber (the whole loop)
 
 1. One held take per fingering, silence at both ends is fine. Sustain
