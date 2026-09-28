@@ -68,11 +68,17 @@ SCHEMA = "ocarina-twin-v2"
 class ChamberGlobals:
     """Shared by every note in one cavity."""
     volume_hint_ml: float | None = None
-    Q_prior: float = 45.0          # literature + linewidth prior
-    hiss_hp_hz: float = 2800.0     # direct-radiated windway/holes
-    chiff_q: float = 2.2           # unlocked jet, wide
-    sync_amt: float = 0.65         # period-synchronous noise mix
-    drive_gain: float = 0.55       # tanh drive → H2/H3 floor
+    Q_prior: float = 45.0
+    # hiss_hp_hz is a FALLBACK only. Playback cutoff is hiss_hp_ratio × f0.
+    hiss_hp_hz: float = 2800.0
+    hiss_hp_ratio: float = 1.6
+    chiff_q: float = 2.2
+    sync_amt: float = 0.65
+    drive_gain: float = 0.55
+    dry_hiss_lo: float = 0.15
+    dry_hiss_hi: float = 0.70
+    dry_hiss_f_lo: float = 520.0
+    dry_hiss_f_hi: float = 1400.0
 
 
 @dataclass

@@ -5,6 +5,7 @@ import numpy as np
 from scipy.signal import butter, sosfilt, lfilter
 
 from .model import TwinModel, NoteFit, ChamberGlobals
+from .air import dry_hiss_frac, effective_noise_q, hiss_hp_hz
 
 
 def _biquad_bandpass(sr: float, f0: float, Q: float):
@@ -154,17 +155,21 @@ def render_note(model: TwinModel, f0: float, dur_s: float, sr: int = 44100,
     # Helmholtz path: H1 through a modest-Q cavity (ring + lock).
     # Resonant noise uses a WIDER Q — the measured bump around f0 is a
     # few hundred Hz across, not a second oscillator.
-    b, a = _biquad_bandpass(sr, f0, max(8.0, nf.Q * 0.35))
     n_res = 10 ** (nf.noise_res_db / 20.0)
+    nq = effective_noise_q(nf.noise_Q, nf.open_holes, f0)
     helm_tone = lfilter(*_biquad_bandpass(sr, f0, nf.Q), sine * env * amp_wob)
-    helm_noise = lfilter(*_biquad_bandpass(sr, f0, max(4.0, nf.noise_Q)),
+    helm_noise = lfilter(*_biquad_bandpass(sr, f0, nq),
                          turb * n_res * env * amp_wob)
     body = helm_tone + helm_noise
 
-    # direct hiss (bypasses cavity)
+    # Hole-rush: same cutoff as the fitter (1.6×f0). Split dry / synced.
     n_hiss = 10 ** (nf.noise_hiss_db / 20.0)
-    hp = butter(2, min(g.hiss_hp_hz, sr * 0.45 - 100) / (sr / 2), btype="high", output="sos")
-    hiss = sosfilt(hp, turb) * n_hiss * env * amp_wob
+    hp_f = min(hiss_hp_hz(f0), sr * 0.45 - 100)
+    hp = butter(2, hp_f / (sr / 2), btype="high", output="sos")
+    dry = dry_hiss_frac(f0)
+    hiss_sync = sosfilt(hp, turb) * n_hiss * (1.0 - dry) * env * amp_wob
+    hiss_dry = sosfilt(hp, raw) * n_hiss * dry * env * amp_wob
+    hiss = hiss_sync + hiss_dry
 
     # chiff: extra wide-Q burst of turbulence at onset
     chiff_env = np.zeros(n)

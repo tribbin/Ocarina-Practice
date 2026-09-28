@@ -33,17 +33,32 @@ never across a chamber boundary (a second chamber is a different V).
 ```
 skills/ocarina-twin/
   ocarina_twin/          the python package (fit.py fitter, synth.py
-                         offline reference renderer, model.py dataclasses)
+                         offline reference renderer, model.py dataclasses,
+                         air.py THE SHARED AIR DEFINITION)
   run_fit.py             CLI: refit a chamber from held-note WAVs
+  validate.py            rec-vs-offline-synth air-band check (same cutoffs)
 instruments/<id>/twin_model.json   the fitted chamber (shipped data)
 js/helmholtz-voice.js    the Web Audio voice audio.js drives with it
 ```
 
 The online voice (js/helmholtz-voice.js) mirrors synth.py graph-for-graph:
 sine osc → bandpass(f0, Q) = the cavity tone; the same noise, period-synced
-by a gain driven through a waveshaper, feeds bandpass(f0, noise_Q) [the
-residual bump ON the note] → highpass 2.8 kHz [hiss, bypasses the cavity]
-→ bandpass(f0, 2.2) envelope = chiff; H2.. tiny dry oscillators.
+by a gain driven through a waveshaper, feeds bandpass(f0, effectiveNoiseQ)
+[the residual bump ON the note] → highpass **1.6×f0 clipped 700–3500 Hz**
+[hole-rush, bypasses the cavity, split dry/synced by dry_hiss_frac and
+shelved by the fitted slope] → bandpass(f0, 2.2) envelope = chiff; H2..
+tiny dry oscillators. **One air definition** — canonical numbers live in
+`ocarina_twin/air.py`; the JS duplicates them in `hissHpHz`, `dryHissFrac`,
+`effectiveNoiseQ`, `slopeShelfDb`; change one, change both. The adopted
+pipeline (2026-09-28) is the Grok handoff's (`research/
+ocarina-twin-pipeline.zip`, HANDOFF.md inside); `fitted_noise_q` writes
+already-open-hole-scaled rows and BOTH engines re-apply the open-hole
+derate onto the row the same way — internally consistent, do not
+"correct" one side alone. The fitter's NOM table carries the double-
+chamber upper range (Fs6..Cs7) — a missing key rebuilt the whole subtract
+on a 500 Hz default once; do not trim the table back. A slipped tracked
+subtract (residual reads ~sin level, "res -0.0") = exclude that take from
+the fit; its WAV stays committed for later re-blows (stein ch2's E6).
 
 - multi-chamber wrapper ("ocarina-twin-multi-v1"): `chambers: {ch: {model,
   gain}}` — the web voice routes each NOTE by its chart chamber and a chamber
@@ -82,14 +97,24 @@ residual bump ON the note] → highpass 2.8 kHz [hiss, bypasses the cavity]
    The fitter measures per take: tracked-subtract harmonic ratios (h[0..5]
    linear re H1), Q from the tone's 3 dB width (clamped 18..80),
    noise_res_db = residual RMS in [0.65, 1.35]×f0 re H1, noise_hiss_db =
-   residual RMS above 2.8 kHz, residual slope (dB/octave, 250–8000 Hz),
-   onset chiff multiplier + 10–90 % rise, overshoot, wander/wobble.
+   residual RMS above hiss_hp_ratio×f0 (clip 700–3500) — the SAME band the
+   voice plays — residual slope (dB/octave, 250–8000 Hz), per-note
+   noise_Q from the open-hole count (floor 4.5), onset chiff multiplier +
+   10–90 % rise, overshoot, wander/wobble.
    Levels normalize to the loudest take of the chamber (mic gain is a mic-
    chain artifact, never an instrument parameter).
 3. Sanity peeks (fit_take exposes everything; the JSON is the contract):
    residual should sound like breath through the clay with NO singing
-   sine left — a sine remaining means the tracker slipped.
-4. `python -c "from ocarina_twin ..."` renders the reference WAVs:
+   sine left — a sine remaining means the tracker slipped (the numeric
+   tell: res_hiss_db ≈ 0 or res ≈ 0 re tone — exclude the take).
+4. ```
+   python skills/ocarina-twin/validate.py --model <model.json> \
+     <C5-held.wav> <F6-held.wav>
+   ```
+   compares recorded vs offline-synth air bands on the shared cutoffs;
+   dHiss within ~4 dB is the handoff's acceptance at the top, and C5 must
+   stay QUIETER than the take in 1.5–2.8 kHz (never brighter).
+5. `python -c "from ocarina_twin ..."` renders the reference WAVs:
    `render_note(model, f0, dur_s, hold_s=...)` — buffer length includes
    release (`hold_s` = musical length, `dur_s = hold_s + rel_s`).
    `render_model_scale` renders the whole ladder.
@@ -120,25 +145,24 @@ residual bump ON the note] → highpass 2.8 kHz [hiss, bypasses the cavity]
   (h2Mul..windAmt, lp*, edge*, chiff*, ot*, air*, windPark/Warm/Rough)
   belong to the legacy voice only — inert where a twin model is installed.
 
-## Known-open items (logged 2026-09-27)
+## Known-open items (logged 2026-09-27; air pipeline adopted 2026-09-28)
 
-- THE FIELD RULING (the skill's first law): the handoff's voice + model
-  (js/helmholtz-voice.js with the handoff twin_model.json) is the ADOPTED
-  baseline — Robin field-checked it and it stands. A follow-up pass
-  algebraically rewrote the model's noise rows (a span fix for synthetic
-  renders + a render-closing calibration) to make the rows numerically
-  self-consistent with the renderers; his ears rejected it ("the wobble at
-  A4 is very bad... some onset noise and shit back"), it was reverted, the
-  model file and the module are the handoff state again (only the 4 s
-  crossfaded noise buffer stayed — the line-comb lesson). Numbers steer
-  analysis; HIS EARS decide the sound. Any future row rewrite waits on his
-  field check wording, never closes numerically alone.
-- The span fix itself STAYS in fit.py (peak·0.08: the old median*4 guard
-  collapsed every span onto the 0.15/0.85 fallback — releases and silence
-  fitted as sustain — for flat synthetic sustains AND for these quiet
-  takes; a future refit measures honest spans). It re-fits differently
-  than the shipped model does; that is fine — the shipped file is the
-  adopted reference, not "the fit", and refits go through the field check.
+- THE FIELD RULING (the skill's first law): Robin's ears decide the sound.
+  The adopted AIR pipeline is the second Grok handoff (2026-09-28,
+  research/ocarina-twin-pipeline.zip: shared air.py definition, per-note
+  hiss HP at 1.6×f0, open-hole noise_Q, offline validate.py) — Robin's
+  order was wholesale adoption ("Don't keep both — only keep the
+  chorus/reverb and the rest use Grok's stuff"); the earlier session's row
+  rewrite was REJECTED by his ears (the A4 one-sine wobble class) and its
+  history stays the cautionary tale. Numbers steer analysis; his ears rule.
+- The SPAN rule is Grok's (2026-09-28): thr = max(peak·0.08, median·4).
+  The med·4 leg can collapse a span onto the 0.15/0.85 fallback when the
+  take is sustain-heavy (release + silence fitted as sustain) AND a
+  fallback slice that swallows the attack can slide the tracker into a
+  wrong well on a wobbly take (stein ch2's E6: res −0.0, excluded — the
+  tell is scipy-level: ftrack glued inside the refine band). Watched, not
+  re-engineered — Robin's "don't keep both" order owns it; a take that
+  fails this way is input curation, not a code fix.
 - No amplitude-wobble layer in the web voice (the module interpolates
   wobble_pct and leaves it unused — the handoff's choice, field-blessed:
   synthetic loudness wobble read as bad pumping at A4; the liked wobble
