@@ -154,7 +154,14 @@ def main():
     mono = (x[:, 0] + x[:, 1]) / 2.0 if x.shape[1] > 1 else x[:, 0]
     hop = int(0.02 * SR)
     env0 = np.array([dbfs(mono[i * hop:(i + 1) * hop]) for i in range(len(mono) // hop)])
-    floor_db = float(np.percentile(env0, 10))
+    # edited recordings keep TRUE digital-silence gaps (recorder-cleared to
+    # ~-240 dBFS); a raw percentile lands on the zeros and drags the adaptive
+    # thresholds into the void (gaps then close only on true zeros and
+    # neighbor takes merge). The floor must be the quiet NON-silent level,
+    # measured over frames above the digital-zero belt; identical to the raw
+    # percentile when the file has no digital silence.
+    nonzero = env0[env0 > -110.0]
+    floor_db = float(np.percentile(nonzero, 10)) if len(nonzero) else float(np.percentile(env0, 10))
     segs, env, on_t, off_t, floor = segment(mono, floor_db)
     print(f"{label}: floor {floor_db:.1f} dBFS, on {on_t:.1f}, off {off_t:.1f}, {len(segs)} segments")
 
