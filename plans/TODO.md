@@ -1187,3 +1187,40 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
       additive voice path + the additive-only knobs + the test
       entanglements), queued behind the guessed-voices field check.
   HELD: nothing — the console is clean on file:// and http:// alike.
+
+- **2026-09-28 (session 21 cont. — the instrument-loudness dial unites the debug panel)** —
+  Robin's ask: tweak each instrument's loudness as a whole, fine-tunable in
+  DEBUG. The answered batch: SESSION-ONLY (his words: "It is just so I can
+  feed you the persistent numbers to put in code" — a tuning probe, the
+  settled dB values become code constants), a TABLE OF ALL FIVE, range
+  -3..+9 dB. Landed:
+  (1) js/audio.js: five flat AUDIO_DEBUG keys (instOotDb/instSteinDb/
+      instOakDb/instContraDb/instDummyDb, defaults 0), one INST_DB_KEYS
+      map by instrument id, and instLevelGain() = 10^(dB/20) read off the
+      loaded instrument (window.CURRENT_INSTRUMENT, set by app.js) —
+      multiplied into ALL FOUR voice masters (twin full + twin lite +
+      additive full + additive lite at the playNoteAt seats), so melody,
+      supports and tracks all carry the instrument's own offset; a
+      non-declared/no id reads 1 (0 dB = untouched default, so every
+      existing suite baseline is unchanged).
+  (2) js/debug.js: the new "Instrument level dB (session-only)" group
+      with the five rows (-3..9 step 0.1) flagged volatile — the panel's
+      save()/restore path now EXCLUDES volatile keys (the panel persists
+      everything else to 'oco-debug-audio' as before), so the dial never
+      writes or re-applies storage; doubles as the honest workflow: he
+      dials, then the settling numbers land in code constants.
+  (3) tests/debug_panel.py grew three legs (red-first on the baseline:
+      'instLevelGain is not a function' before the js edits stashed out):
+      the five rows exist with the -3/9/0.1/0 shape and the session-only
+      banner, the dial gain math via window.OCA_DEBUG.instLevelGain (the
+      loaded instrument's own key; +6 -> 1.9953, -3 -> 0.7079, +9 ->
+      2.8184; a foreign id and null read 1), and the two-sided volatility
+      contract driven through the REAL rows: an instOotDb edit must never
+      enter 'oco-debug-audio' while a masterLevel edit must persist.
+  (4) Suites: full sweep 46/47 with the long support_accepts_brackets
+      timing out in the loaded sweep, PASS isolated, full-sweep rerun
+      green (the known heavyweight-browser flake class - the practice
+      arbiter family); debug_panel green; console_hygiene/
+      instruments_load/data_validator in-sweep green; lint clean; sw
+      oco-pwa-v48 (audio.js + debug.js changed).
+  NEXT: Robin dials his five numbers, then the values become code.
