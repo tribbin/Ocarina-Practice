@@ -30,6 +30,7 @@ const CORE = [
   "js/pitch-ac-worker.js",
   "js/app.js",
   "js/debug.js",
+  "js/helmholtz-voice.js",
 ];
 
 function cacheOf() {
