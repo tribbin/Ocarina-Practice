@@ -84,7 +84,7 @@ front is the guessed bass voices):
 
 ## 4. Performance
 
-- [ ] **Deprecated createScriptProcessor for WAV export** — also taps the reverb bus into a second destination chain, so the dry bus sounds at limiter-bypassed level during capture (debug-only). **Reframed ⚪ backlog**: the AudioWorklet replacement means module loading + a new file for a debug-only tool; revisit only when a worklet exists elsewhere in the app or the tap misbehaves on a real device. (debug.js WAV export) `🟨 ⚪ ⚙M`
+Nothing open — the WAV-export backlog dropped by Robin's audit 2026-09-28 (the createScriptProcessor reframe; its AudioWorklet trigger doesn't exist anywhere and debug.js stays untouched by election).
 
 ## 5. Architecture / maintenance
 
@@ -109,8 +109,6 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
 - [ ] **Standardize shipped songs to the `skills/ocarina-melodies` conventions** (barline at wrap start, named sections where players want headers) — HELD for Robin's later-stage pass; verify/shipped_songs are the gates; no playback changes expected. `🟢 ⚪ ⚙M`
 
 - [ ] **Library search / pinning widening** — favorites pinning SHIPPED 2026-09-26 `390c431` (star + first persisted Favorites group); the widening (search box, reordering beyond the pin, grouping options) stays parked until Robin elects it. `🟢 ⚪ ⚙S`
-
-- [ ] **Per-song landing maintenance (the permalink residue)** — new shipped songs follow the frozen URL grammar (tests/shipped_songs pins slugs + suffix chain; tests/gen_pages boots the stub set + seed ladder); per-song `intended` values plant on Robin's word; the sitemap set stays frozen-permanent; nothing else opens here. `🟢 ⚪ ⚙S`
 
 > **Idle idea pool: `plans/IDEAS.txt`.** A live document Robin edits over time and ROBIN'S ALONE — the AI never writes it (it may be read, and only lifted into TODO.md when Robin explicitly asks). TODO carries no copy or summary: when an idea from it is picked up, read the FILE fresh at that moment; never rely on a remembered or transcribed version.
 
@@ -331,3 +329,18 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   one-take calibration recording, the §5 additive-path teardown, the
   chamber-fits still waiting on real recordings, and the multi-track/
   Epona/HiFi holds that are his ears' passes.
+
+- **2026-09-28 (session 21 wrap cont. — the audit's approval forks land: both stale items vanish, the teardown stays queued)** —
+  Robin's answers on the remaining forks: the §9 per-song landing
+  maintenance item DELETED as obsolete (the frozen URL grammar +
+  intended-planting rules live in tests/shipped_songs, gen_pages and the
+  skills - the item restated what the gates enforce), the §4
+  createScriptProcessor WAV-export backlog DELETED (its AudioWorklet
+  trigger doesn't exist anywhere; debug.js stays untouched by election;
+  the section carries the nothing-open line), and the §5 additive-path
+  teardown STAYS QUEUED on his word ("Wait - keep it queued"). The open
+  set drops to 5: the slim real-recording refits item (§1), the teardown
+  (§5), the Outset arrangement field check (§7), and the two standing §9
+  holds (shipped-songs standardization, library widening). Obsolete
+  vanishes per the conventions - no DONE entries for deletions; board
+  verify + board_tool 12/12 green (todo/done machinery only, per scope).
