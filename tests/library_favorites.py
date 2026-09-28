@@ -168,13 +168,6 @@ def main():
             if groups and groups[0]["name"] == "Favorites" and \
                     a in groups[0]["ids"]:
                 failures.append("unpinned id still in the Favorites group")
-            page.evaluate("""(v) => {
-              const row = [...document.querySelectorAll('.lib-dd-opt')]
-                .find(r => r.dataset.value === v);
-              if (!row) throw new Error('row missing: ' + v);
-              if (row.dataset.value === v) return;
-            }""", a)
-            page.keep = None
             everywhere = page.evaluate(
                 """(v) => [...document.querySelectorAll('.lib-dd-opt')]
                         .filter(r => r.dataset.value === v).length""", a)

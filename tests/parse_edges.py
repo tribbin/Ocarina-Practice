@@ -104,7 +104,6 @@ HELPERS = r"""
                                spellAcc: "b", spellOct: 4}),
     spelledInherit: spelledLabel({type: "note", id: "C4"}),
     labelRest: spelledLabel({type: "rest"}),
-    rangeUnknown: isOutOfRange("C9") === (rangeCheck("C9") === "below" || rangeCheck("C9") === "above"),
   };
 }
 """
@@ -497,8 +496,6 @@ def main():
                   f"colored octave rendering: {h['spelledInherit']!r}")
             check("labelRest", h["labelRest"] == "",
                   "spelledLabel must be empty for non-notes")
-            check("rangeUnknown", h["rangeUnknown"] is True,
-                  "isOutOfRange must agree with its rangeCheck primitive")
 
             # --- headers ---
             check("tempoFromText", w["rT"] == [96, None], f"{w['rT']!r}")

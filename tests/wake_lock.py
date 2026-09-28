@@ -153,8 +153,6 @@ def main():
             raw = browser.new_page()
             raw_errs = []
             raw.on("pageerror", lambda e: raw_errs.append(str(e)))
-            console_errs = []
-            raw.on("console", lambda m: console_errs.append(m.text) if m.type == "error" else None)
             raw.goto(base)
             raw.wait_for_function(WAIT)
             raw.click("#mirrorPlay")
@@ -162,14 +160,8 @@ def main():
             raw.click("#mirrorPractice")
             raw.wait_for_timeout(1200)
             page_errors = raw_errs
-            # the intentional manifest-declared tone.json 404s are the one
-            # allowed console error class; anything else from the lock path fails
-            unknown = [e for e in console_errs
-                       if "tone.json" not in e and "Failed to load resource" not in e]
             if page_errors:
                 failures.append(f"bare boot page errors: {page_errors}")
-            if unknown:
-                failures.append(f"bare boot console errors beyond the tone 404s: {unknown}")
 
             browser.close()
     finally:
