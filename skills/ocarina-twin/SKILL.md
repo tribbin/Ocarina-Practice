@@ -81,6 +81,21 @@ ch2's E6 — re-probed under the lead fitter 2026-09-28, still slips).
   for its full ladder fit). Expected artifacts:
   interpolated rows drift across the wide gaps and every unfitted section
   rides its chamber's edge row. Field check steers; more takes fix it.
+- GUESSED twins (`guessed: true`; installed 2026-09-28 on the dummy,
+  contrabass and oak triple from `research/guessed-twins.zip`): Grok
+  scaled the three bass instruments from the MEASURED 12-hole mid-air
+  model — hand-chosen chambers that match each chart's own chamber marks
+  (dummy ch1 A3-Ds5 + ch2 E5-C6; oak triple adds ch3 Cs6-G6; contrabass
+  B2-F4 flat with `guessed` inside globals and its dry-mid split
+  retuned to B2-F4; lowest V = lowest Q_prior 38, most halo, least hiss;
+  harmonics weaker than the alto for the bass hoot). THEY ARE
+  PLACEHOLDERS, not digital twins — Grok's do-nots: the 4 kHz hiss split
+  is still the ALTO split (a real bass whoosh is lower); do not treat
+  F6-on-the-alto mid numbers as gospel on a contrabass; do not mix all
+  triple chambers into one notes[]. Refit from real held takes per
+  chamber (triple: three short sessions, one chamber each, normal blow
+  only) and throw the guesses away. Support/track voices ride them
+  through the anchored TWIN_SUPPORT_LEVEL path like fitted twins do.
 - cross-instrument relative volume: within an instrument, each chamber's
   `gain` carries its raw peak vs the instrument's loudest raw take; an
   instrument-level scale folds into every chamber gain so the instrument's

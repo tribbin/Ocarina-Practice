@@ -31,10 +31,13 @@ mid pedestal bandpassed [1.25 f0, 4 kHz] with a QUIETER high hiss above
 handoff replaced), minute dry H2–H6 labium partials. The additive
 timbre/wind machinery in `js/audio.js` (PeriodicWave + windPark/warm/rough
 shelves + edge whistle + chiff/ot bursts, `voiceProfileFor`, `V_ANCHORS`)
-is the LEGACY voice: it still serves ocarinas whose chambers aren't
-twins yet, and disappears wholesale once the last one is converted —
-drop `installToneModel`, `voiceProfileFor` and everything it feeds, keep
-the twin branch delete-simple. tone.json stays on disk only while the
+is the LEGACY voice: dormant while a twin model drives the instrument —
+every ocarina currently declares `twin` (steins and 12-hole on fitted
+ladder models, the three bass instruments on Grok's GUESSED ones —
+`guessed: true`, scaled from the measured 12-hole, placeholders until
+real held-take refits land); removal is a later cleanup on Robin's word
+(the additive path still backs the support red-green comparisons).
+tone.json stays on disk only while the
 additive voice still reads it: the 12-hole's was removed with its swap
 (the fit history lives in git).
 
@@ -61,6 +64,13 @@ from sounding as loud as chamber 1 without any recording to say so.
 A temp twin (3 notes measured, big gaps) interpolates across them and
 CLAMPS outside — the temp whole-chamber rows hold through the unfitted
 ranges until real held takes land.
+
+Guessed twins carry `"guessed": true` (wrapper top-level, or inside
+`globals` on the flat schema) and are PLACEHOLDERS scaled from another
+instrument's measured model — not digital twins; the file-shape plumbing
+reads them identically. Refit per chamber from real held takes when
+recordings exist and discard them (the bass triple wants one short
+session per chamber).
 
 tone.json — schema v1 ("tone-fit-v1")
 -------------------------------------
