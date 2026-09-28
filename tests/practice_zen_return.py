@@ -238,7 +238,130 @@ def main():
                     f"tuner expects {r['spot']!r} — zen entry's stopMelody tail "
                     "re-cued playback's pickup note over the running practice seat")
 
-            # ---- leg 3: the card-band tuner is zen-only in plain single ----
+            # ---- leg 3: the zen share carries the loop toggle's CURRENT
+            # setting and a ?loop var applies at boot (Robin, 2026-09-28:
+            # "the loop on/off should be shareable"); both values ride
+            # explicitly so a receiver's transport matches the sender's ----
+            page = browser.new_page()
+            errs = []
+            page.on("pageerror", lambda e: errs.append(str(e)))
+            page.goto(base + "?practiceTest=1")
+            page.wait_for_function(
+                "window.NOTES && window.NOTES.length"
+                " && (function () { const s ="
+                " document.getElementById('scale');"
+                " return s && s.options.length > 0; })()"
+                " && typeof window.zenShareUrl === 'function'")
+            urls = page.evaluate("""() => {
+              const cb = document.getElementById('loopMel');
+              cb.checked = false;
+              const off = window.zenShareUrl();
+              cb.checked = true;
+              const on = window.zenShareUrl();
+              cb.checked = false;
+              cb.dispatchEvent(new Event('change'));
+              return { off, on };
+            }""")
+            def share_for(extra):
+                pg = browser.new_page()
+                pg.goto(base + extra)
+                pg.wait_for_function(
+                    "window.NOTES && window.NOTES.length"
+                    " && (function () { const s ="
+                    " document.getElementById('scale');"
+                    " return s && s.options.length > 0; })()")
+                u = pg.evaluate("window.zenShareUrl()")
+                pg.close()
+                return u
+            urls2 = {
+                "epona": share_for("?song=eponas-song"),
+                "sariasBass": share_for("?song=sarias-song-bass"),
+                "botwDown": share_for("?song=botw-theme-down3"),
+            }
+            # the synthesized scales and typed content have no stub page
+            share_pg = share_for.__self__ if False else browser.new_page()
+            share_pg.goto(base + "?practiceTest=1")
+            share_pg.wait_for_function(
+                "window.NOTES && window.NOTES.length"
+                " && (function () { const s ="
+                " document.getElementById('scale');"
+                " return s && s.options.length > 0; })()")
+            share_pg.evaluate(
+                "() => { const s = document.getElementById('scale');"
+                " s.value = 'major';"
+                " s.dispatchEvent(new Event('change')); }")
+            urls2["scale"] = share_pg.evaluate("window.zenShareUrl()")
+            share_pg.evaluate(
+                "() => { const s = document.getElementById('src');"
+                " s.value = 'z5 | c4';"
+                " s.dispatchEvent(new Event('input')); }")
+            urls2["typed"] = share_pg.evaluate("window.zenShareUrl()")
+            share_pg.close()
+
+            print(f"== share deep links: {urls2!r}", flush=True)
+            checks = [
+                ("epona", "/song/zelda/eponas-song/", "song=eponas-song"),
+                ("sariasBass", "/song/zelda/sarias-song/", "song=sarias-song-bass"),
+                ("botwDown", "/song/zelda/botw-theme/", "song=botw-theme-down3"),
+            ]
+            for key, path, songvar in checks:
+                u = urls2[key]
+                if not u or path not in u or songvar not in u or "zen=1" not in u:
+                    failures.append(
+                        f"share deep-link leg: {key} must point at {path} with "
+                        f"{songvar} riding the GET vars for the app (got {u!r}")
+            for key in ("scale", "typed"):
+                u = urls2[key]
+                if u and "/song/" in u.split("?")[0]:
+                    failures.append(
+                        f"share deep-link leg: {key} has no stub page — the "
+                        f"share must fall back to root+query (got {u!r})")
+
+
+            page.close()
+            print(f"== share loop vars: {urls!r}", flush=True)
+            if "loop=1" not in urls["on"]:
+                failures.append(
+                    f"share leg: a looping song's share link must carry loop=1 "
+                    f"(got {urls['on']!r})")
+            if "loop=0" not in urls["off"]:
+                failures.append(
+                    f"share leg: a non-looping song's share link must carry "
+                    f"loop=0 explicitly (got {urls['off']!r})")
+            # Robin 2026-09-28: the Zen share must point at the song's own
+            # stub page so social/chat previews read the per-song metadata
+            # (og:title/description/image). Rules mirrored from
+            # tools/gen_song_pages.py: base keys get their own page; variant
+            # suffixes and family -bass members ride the base page's path
+            # with ?song=; hidden WIPs, the synthesized scales and anything
+            # outside the library fall back to root+query.
+            # ---- leg 4: ?loop applies at boot before anything plays ----
+            page = browser.new_page()
+            page.goto(base + "?loop=1&practiceTest=1")
+            page.wait_for_function(
+                "window.NOTES && window.NOTES.length"
+                " && (function () { const s ="
+                " document.getElementById('scale');"
+                " return s && s.options.length > 0; })()")
+            loop_on = page.evaluate("document.getElementById('loopMel').checked")
+            page.close()
+            page = browser.new_page()
+            page.goto(base + "?loop=0&practiceTest=1")
+            page.wait_for_function(
+                "window.NOTES && window.NOTES.length"
+                " && (function () { const s ="
+                " document.getElementById('scale');"
+                " return s && s.options.length > 0; })()")
+            loop_off = page.evaluate("document.getElementById('loopMel').checked")
+            page.close()
+            print(f"== boot loop vars: on {loop_on} off {loop_off}", flush=True)
+            if not loop_on:
+                failures.append("boot leg: ?loop=1 must land the transport looping")
+            if loop_off:
+                failures.append("boot leg: ?loop=0 must land the transport "
+                                "not looping (explicit off beats any default)")
+
+            # ---- leg 5: the card-band tuner is zen-only in plain single ----
             page = browser.new_page()
             errs = []
             page.on("pageerror", lambda e: errs.append(str(e)))

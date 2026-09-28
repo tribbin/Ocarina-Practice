@@ -910,3 +910,34 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
       design.
   QUEUED on his word: the E5/A5 mid-range stein takes (the melody's own
   balance fix, unblocks the wrapper-only paths), PR copy for the pair.
+
+- **2026-09-28 (session 19 cont. — the transport/JOIN set: notick defaults, the loop rides the share, the Zen link goes deep)** —
+  Three small shipments on `volume-fix` after the batch answers:
+  (1) **notick defaults**: the five multi-track songs (sarias both, eponas
+      both, outset-island-midi) carry `"tick": false` — the tick contract
+      (library.js, IDEAS 2026-09-25) makes the song's own declaration the
+      in-session override, so the metronome now starts OFF when an
+      accompaniment carries the beat; the user's re-enable still overrides
+      per session and persists nothing. tick_override green.
+  (2) **the loop state is shareable** (Robin: "the loop on/off should be
+      shareable"): the Zen share URL carries `?loop=1|0` — the sender's
+      current setting, both values explicit — and boot applies it before
+      anything plays (the change event doubles as the mirror/focus loop
+      sync). practice_zen_return legs pin both directions red-first.
+  (3) **the Zen share uses the per-song deep link** (Robin: social/chat
+      previews must show the song's metadata): zenShareUrl points at
+      `song/<category>/<base>/` (the stub's og:title/description/image)
+      with `?song=<id>&inst=<inst>&zen=1&loop=<x>` riding for the app —
+      the stub's own seed only fires on an empty search so it never fights
+      the shared state. The path rules mirror tools/gen_song_pages.py
+      exactly (registered variant suffixes and family -bass members ride
+      the base page's path; hidden WIPs, the runtime-synthesized scales —
+      tagged `generated: true` — and non-library content fall back to
+      root+query); the URL resolves through the page's <base href> so the
+      share stays correct on the mount and on a root domain. The build
+      surfaced a real share hole: a song outside the current ocarina's
+      picker range (the range filter hides the option) shared with NO song
+      identity — zenShareUrl now reads the loaded library id instead of
+      the picker. practice_zen_return deep-link + fallback legs red-first;
+      shipped_songs + gen_pages + console_hygiene + tick_override green;
+      eslint clean. (The notick data change rides the same unpushed v45.)

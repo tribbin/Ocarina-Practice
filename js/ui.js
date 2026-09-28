@@ -8,7 +8,7 @@ import { audioCtx, audioPerfReset, audioPerfSnapshot, isMelodyPaused,
          setVibratoEnabled, soundingGridBeats, stopMelody, togglePlayPause,
          unlockAudio } from "./audio.js";
 import { applySwing, applyTempoPct, clearLibrarySelection, currentSwing, libToast,
-         safeAlert, songTempo, tempoPct } from "./library.js";
+         loadedLibraryId, safeAlert, songTempo, tempoPct } from "./library.js";
 import { isPracticeActive, isPracticePaused, practiceInvalidate,
          practiceRelocatePanel, practiceSpot, practiceToggle } from "./practice.js";
 import { applyTheme, currentTemplatePath, ensureOcarinaTemplate,
@@ -1835,19 +1835,69 @@ function stopZenWaves() {
   document.querySelectorAll(".zen-wave").forEach(x => x.remove());
 }
 
-// Shareable link for the current view: `?inst=<ocarina id>&song=<library id>
-// &zen=1`. Opened anywhere, the app starts on that ocarina with that song
-// loaded and straight in the zen view (boot reads the parameters back).
-// The hidden `?oot` theme rides along when it is on.
+// Shareable link policy (Robin, 2026-09-28): the Zen share points at the
+// song's own stub page so social/chat previews read the per-song metadata
+// (og:title / og:description / og:image — built by tools/gen_song_pages.py).
+// The GET vars ride along for the app; the stub's pre-boot seed skips them
+// (it only fires on an empty search), so the receiver lands in the exact
+// shared state. The page-path rules are mirrored from the generator (and
+// tests/shipped_songs is the contract for both): registered variant
+// suffixes and family -bass members ride their base page's path with
+// ?song=; hidden WIPs, the runtime-synthesized scale entries and anything
+// outside the library fall back to root+query.
+const ZEN_VARIANT = /-(?:alto|12|contrabass|c|up\d+|down\d+|midi)$/;
+
+function zenStubCategory(group) {
+  const g = (group || "").toLowerCase();
+  if (g.indexOf("zelda") >= 0) return "zelda";
+  if (g.indexOf("scale") === 0) return "scales";
+  if (g === "other" || g === "") return "other";
+  const first = g.split(/\s+/)[0] || "other";
+  return first.replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "") || "other";
+}
+
+// The family key → its stub path, or null when no deep link exists. The
+// suffix registry mirrors tools/gen_song_pages.py (keep them in step —
+// tests/shipped_songs enforces the pair).
+function zenStubPath(songId) {
+  if (location.protocol !== "http:" && location.protocol !== "https:") return null;
+  const lib = window.BUILTIN || {};
+  const item = lib[songId];
+  if (!item || item.generated) return null;
+  let base = songId;
+  const suf = songId.match(ZEN_VARIANT);
+  if (suf) base = songId.slice(0, songId.length - suf[0].length);
+  else if (base.slice(-5) === "-bass" && lib[base.slice(0, -5)]) base = base.slice(0, -5);
+  const baseItem = lib[base];
+  if (!baseItem || baseItem.hidden) return null;
+  return "/song/" + zenStubCategory(baseItem.group) + "/" + base + "/";
+}
+
 function zenShareUrl() {
   const p = new URLSearchParams();
   const inst = window.CURRENT_INSTRUMENT;
   if (inst && inst.id) p.set("inst", inst.id);
   const sel = document.getElementById("scale");
-  if (sel && sel.value) p.set("song", sel.value);
+  // The LOADED library id, not the picker's option: a deep-link share of a
+  // song outside the current ocarina's picker range (the range filter hides
+  // the option) must still carry its song identity.
+  const songId = (sel && sel.value) || loadedLibraryId() || "";
+  if (songId) p.set("song", songId);
   p.set("zen", "1");
+  // The loop toggle rides the share as its CURRENT setting (Robin,
+  // 2026-09-28: "the loop on/off should be shareable") — both values ride
+  // explicitly so a receiver's transport matches the sender's.
+  p.set("loop", loopOn() ? "1" : "0");
   try { if (new URLSearchParams(location.search).has("oot")) p.set("oot", ""); } catch (e) {}
   const q = p.toString();
+  // The deep link resolves through <base href> so the URL stays correct on
+  // a mounted project-pages site and on the root domain alike.
+  const stub = songId ? zenStubPath(songId) : null;
+  if (stub) {
+    const probe = document.createElement("a");
+    probe.href = stub.slice(1) + (q ? "?" + q : "");
+    return probe.href;
+  }
   return location.origin + location.pathname + (q ? "?" + q : "");
 }
 
@@ -2221,6 +2271,7 @@ export { bumpHoverQuiet, buildKB, clearHighlight, cueFirstNote, enterZenFromLink
 window.render = render; window.highlightToken = highlightToken;
 window.clearHighlight = clearHighlight; window.quarterSec = quarterSec;
 window.buildKB = buildKB; window.loopOn = loopOn; window.updateTransportUI = updateTransportUI;
+window.zenShareUrl = zenShareUrl;
 window.isFullscreen = isFullscreen; window.enterZenFromLink = enterZenFromLink;
 window.resetLiveTab = resetLiveTab; window.setAppCss = setAppCss;
 window.setDisplayMode = setDisplayMode;
