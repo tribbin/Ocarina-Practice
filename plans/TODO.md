@@ -857,3 +857,56 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   final state: twin_derive, parse_edges, shipped_songs (5 multi-track songs
   align bar-for-bar), gen_pages; eslint clean; sw oco-pwa-v44 (app js
   changed).
+
+- **2026-09-28 (session 19 cont. — the support voices flatten; the phone's data staleness dies)** —
+  Two builds on `volume-fix` (Robin renamed update_songs mid-session; PR #19
+  merged to main and deployed through 9531b1e, sw v44, by SHA/job: deploy
+  site run 36411531795):
+  (1) `240fbe8` **the support-level flat anchor** (Robin's ear: the 12-hole's
+      Epona support was softer than the oak-leaf triple's — THIS was a
+      real engine asymmetry on the bass instruments, additive-generic
+      support vs twin's fitted clamped level rows, measured 12.7-13.1 dB
+      apart): TWIN_SUPPORT_LEVEL 0.75 — every melodyRoute bag that is not
+      the melody's own (track walker both zones + playSupportAt; never the
+      melody bag, never the flag-less preview voices) divides the
+      interpolated level back out and plays the anchored constant × a new
+      `supportLevel` debug-panel multiplier; timbre keeps the fit. The
+      stein's support lifts the same +13 dB with it. Red→green
+      tests/twin_support_level.py (CI-registered; the bench gained a real
+      bag override __BAG__): E3/G3 twin-vs-additive within 1.5 dB, red
+      carried the defect verbatim. Full sweep 48/48 at it; sw v45. HELD
+      for Robin's field check: the new support balance on every
+      instrument.
+  (2) **the PWA data-freshness pair** (Robin: the phone couldn't reach the
+      new songs by refreshing; the answer batch: data → network-first
+      WITH cached fallback, resume silent re-fetch → build both, js/css
+      stay SWR):
+      sw.js: DATA_NETWORK_FIRST = songs.json + instruments.json + every
+      instrument's tone/twin model, served network-first with cached
+      fallback, fetched with `cache:"no-cache"` (the browser HTTP cache's
+      heuristic freshness — 10% of the served file's age — once answered
+      the worker's fetch with a stale-200 that held for over an hour);
+      the install derive now precaches inst.twin beside inst.tone;
+      js/app.js: on visibility→visible with nothing running (no melody,
+      no practice) a silent songs.json re-fetch swaps BUILTIN + the
+      generated scales + the library when the text changed (30 s rate
+      gap; failures silent).
+      The debug's own two traps, both lesson-class: python's
+      If-Modified-Since revalidation compares mtime at WHOLE-SECOND
+      precision — a file rewritten within the same wall-second as the
+      previous serve revalidates as 304 with the cached body (the suite's
+      sentinel rewrite raced its own freshness clock; one real clock
+      second now separates the legs), and correctness demanded ∼7
+      instrumentation rounds before the layer that lied (the worker
+      served the HTTP cache's stale-200, not the network) was found by
+      watching the server itself.
+      tests/offline_pwa.py gained two supervisor legs: an online reload
+      lands the released data on the FIRST reload (red carried the
+      stale-while-revalidate lag), a resume re-fetch swaps the library
+      (red carried the no-re-check defect). Green ×3 at the final state;
+      console_hygiene + asset_versions green; eslint clean.
+      HELD for his phone: one deploy cycle of refreshing/cold-starting
+      with the new worker; the resumed-app library swap is idle-gated by
+      design.
+  QUEUED on his word: the E5/A5 mid-range stein takes (the melody's own
+  balance fix, unblocks the wrapper-only paths), PR copy for the pair.

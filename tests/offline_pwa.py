@@ -9,6 +9,7 @@
 #   python3 tests/offline_pwa.py      # headless & silent
 
 import sys
+import time
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
@@ -96,6 +97,74 @@ def main():
                     "an offline instrument swap must render the sheet")
 
             context.set_offline(False)
+            # The Chromium offline→online transition leaves service-worker
+            # fetches rejected for a stretch (observed: the data-freshness
+            # legs below failed right after set_offline(False) while a later
+            # fetch succeeded — the network-first fallback had answered their
+            # requests from the cached copies). The legs' real rendezvous is
+            # a fresh fetch succeeding through the worker.
+            page.wait_for_function(
+                "() => fetch('songs.json').then(r => r.ok)", timeout=30000)
+
+            # --- data freshness legs (Robin, 2026-09-28: deployed songs had
+            # to ride a SECOND reload under stale-while-revalidate, and a
+            # phone-app resume never re-checked anything) ---
+            songs_path = ROOT / "songs.json"
+            pristine = songs_path.read_bytes()
+            try:
+                # (a) an online RELOAD lands the deployed data on the FIRST
+                # reload: the same installed worker now serves the released
+                # data before its cached copy (network-first with cached
+                # fallback), instead of stale-while-revalidate's one-reload
+                # lag.
+                def with_sentinel(key):
+                    import json as _json
+                    data = _json.loads(pristine.decode("utf-8"))
+                    data[key] = {
+                        "name": "PWA Freshness Sentinel",
+                        "group": "Other", "tempo": 97,
+                        "body": "C4 D4 E4 | r/2.",
+                    }
+                    songs_path.write_text(
+                        _json.dumps(data, separators=(",", ":")),
+                        encoding="utf-8")
+                with_sentinel("pwa-freshness-sentinel-a")
+                page.reload()
+                page.wait_for_function(WAIT)
+                try:
+                    page.wait_for_function(
+                        "() => Object.keys(window.BUILTIN)"
+                        ".includes('pwa-freshness-sentinel-a')", timeout=15000)
+                except Exception:
+                    failures.append(
+                        "an online reload must land the released data on "
+                        "the FIRST reload (stale-while-revalidate lag)")
+
+                # (b) a RESUME (visibility back to visible, nothing running)
+                # re-fetches the data network-first and swaps the library
+                # when the bytes changed.
+                # The server's conditional revalidation compares mtime at
+                # whole-SECOND precision, and the sentinel rewrite lands
+                # within the same wall-second as the previous serve — the
+                # revalidation would answer 304 with the cached pre-mutation
+                # body and the legs would race their own freshness clock.
+                # One real clock-second separates the serve before any
+                # rewrite.
+                time.sleep(1.1)
+                with_sentinel("pwa-freshness-sentinel-b")
+                page.evaluate(
+                    "() => document.dispatchEvent"
+                    "(new Event('visibilitychange'))")
+                try:
+                    page.wait_for_function(
+                        "() => Object.keys(window.BUILTIN)"
+                        ".includes('pwa-freshness-sentinel-b')", timeout=15000)
+                except Exception:
+                    failures.append(
+                        "an app resume must re-fetch songs.json and swap "
+                        "the library when the bytes changed")
+            finally:
+                songs_path.write_bytes(pristine)
 
             if errs:
                 failures.append(f"page errors {errs}")
