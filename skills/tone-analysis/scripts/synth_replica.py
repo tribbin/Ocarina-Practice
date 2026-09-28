@@ -60,9 +60,11 @@ V_ANCHORS = {
 }
 
 # Wind-noise spectral-shape constants (mirrored in js/audio.js):
-# white -> chamber bump (1.26*f0, pitch-keyed Q) -> steep noise lowpass.
-WIND_SHAPE = dict(bumpRatio=1.26, noiseLpRatio=2.7, noiseLpQ=1.2,
-                  bumpTrim=-2.0)
+# broad non-resonant bp wash (Q capped) -> gentle lowpass; constants from
+# the analytic |H| search against the recordings' corrected floors
+# (wind_shape_search.py — the old notch-band numbers were window skirt).
+WIND_SHAPE = dict(bumpRatio=1.26, bumpQMax=0.6, noiseLpRatio=2.6,
+                  noiseLpQ=0.8, bumpTrim=-2.0)
 
 def v_interp(pts, f):
     for i in range(len(pts) - 1):
@@ -89,6 +91,8 @@ def _profile(note_id, freq, P, rng):
         "levelLin": db2lin(v_interp(V_ANCHORS["levelDb"], freq) * P["levelCurveAmt"]),
         "windBump": db2lin(v_interp(V_ANCHORS["noiseLoDb"], freq) + WIND_SHAPE["bumpTrim"]) * P["windAmt"],
         "windQ": v_interp(V_ANCHORS["noiseBumpQ"], freq),
+        "noiseLpRatio": WIND_SHAPE["noiseLpRatio"],
+        "noiseLpQ": WIND_SHAPE["noiseLpQ"],
         "wanderC": (v_interp(V_ANCHORS["wanderC"], freq) + 2.0 * hh) * P["wanderAmt"],
         "wobDepth": (v_interp(V_ANCHORS["wobPct"], freq) + 2.5 * hh) / 100 * P["wobbleAmt"],
         "wobRate": (v_interp(V_ANCHORS["wobHz"], freq) + 1.2 * hh) * (0.9 + 0.2 * float(rng.random())),
@@ -301,7 +305,7 @@ def render(params, note="C5", dur=1.54, seed=12345, sr=SR, vib=False):
 
     # ---- broadband wind noise: white -> chamber bump -> steep noise LP ----
     if vp["windBump"] > 1e-5:
-        nb = int(sr * 0.5)
+        nb = int(sr * 4.0)  # 4 s loop — parity with the engine's comb fix
         nbuf = rng.random(nb) * 2 - 1
         k = int(sr * 0.01)  # 10 ms seam crossfade — mirror of getWindBuffer
         w = (np.arange(k) + 1) / (k + 1)
@@ -309,9 +313,9 @@ def render(params, note="C5", dur=1.54, seed=12345, sr=SR, vib=False):
         reps = int(np.ceil(N / nb))
         nsrc = np.tile(nbuf, reps)[:N]
         wb, _ = bq(nsrc, rbj("bandpass", min(9000, freq * WIND_SHAPE["bumpRatio"]),
-                             vp["windQ"], sr))
-        wb, _ = bq(wb, rbj("lowpass", min(SR * 0.45, freq * WIND_SHAPE["noiseLpRatio"]),
-                           WIND_SHAPE["noiseLpQ"], sr))
+                             min(vp["windQ"], WIND_SHAPE["bumpQMax"]), sr))
+        wb, _ = bq(wb, rbj("lowpass", min(SR * 0.45, freq * vp["noiseLpRatio"]),
+                           vp["noiseLpQ"], sr))
         wl_env = env_([("set", 0, 0.0001), ("lin", 0.06, 1.0), ("set", relStart, 1.0),
                        ("lin", dur, 0.0001)], N, sr)
         core = core + wb * (vp["windBump"] * wl_env)

@@ -1,0 +1,147 @@
+{
+  "schema": "ocarina-twin-multi-v1",
+  "instrument": "Focalink Stein Double Alto C (temp twin: 3 recorded notes, 2026-09-17 session)",
+  "note": "TEMP until Robin records more held takes per chamber; chamber 1 has C5+D6 rows only, chamber 2 rides G6's single row clamped at both ends",
+  "chambers": {
+    "1": {
+      "gain": 1.0,
+      "model": {
+        "schema": "ocarina-twin-v2",
+        "instrument": "Focalink Stein Double Alto C",
+        "chamber": "1",
+        "globals": {
+          "volume_hint_ml": null,
+          "Q_prior": 45.0,
+          "hiss_hp_hz": 2800.0,
+          "chiff_q": 2.2,
+          "sync_amt": 0.65,
+          "drive_gain": 0.55
+        },
+        "notes": [
+          {
+            "note": "C5",
+            "f0": 526.5122410013672,
+            "open_holes": null,
+            "level": 0.17614847704862088,
+            "h": [
+              0.9999999999864337,
+              0.004467989765709792,
+              0.006872563399348444,
+              0.0006318013527353228,
+              0.0008207590363947777,
+              0.000688468040176466
+            ],
+            "Q": 80.0,
+            "noise_Q": 12.0,
+            "noise_res_db": -32.31676958828789,
+            "noise_hiss_db": -58.8433118724997,
+            "noise_slope_db_oct": -8.43440447133142,
+            "atk_pre_s": 0.006,
+            "atk_speak_s": 0.008,
+            "overshoot_db": 1.2633342317278329,
+            "chiff_peak": 2.150347268938697,
+            "chiff_len_s": 0.045,
+            "rel_s": 0.07,
+            "wander_cents_std": 8.771990944287552,
+            "wobble_pct": 7.075584255974318,
+            "wobble_hz": 4.0
+          },
+          {
+            "note": "D6",
+            "f0": 1174.1381738400585,
+            "open_holes": null,
+            "level": 1.0,
+            "h": [
+              0.999999999997589,
+              0.00619067331134558,
+              0.0026046533883105137,
+              0.00050574431316217,
+              0.0002185830338671419,
+              0.00017950398938720136
+            ],
+            "Q": 80.0,
+            "noise_Q": 12.0,
+            "noise_res_db": -34.650379836052736,
+            "noise_hiss_db": -48.98227825060673,
+            "noise_slope_db_oct": -3.4019977107487915,
+            "atk_pre_s": 0.006,
+            "atk_speak_s": 0.019954648526077097,
+            "overshoot_db": 0.7898592218435512,
+            "chiff_peak": 4.0,
+            "chiff_len_s": 0.045,
+            "rel_s": 0.07,
+            "wander_cents_std": 1.946259073061333,
+            "wobble_pct": 3.506080457381644,
+            "wobble_hz": 4.0
+          }
+        ],
+        "recorded": {
+          "takes": [
+            "C5_2nd_recording.wav",
+            "D6.wav"
+          ],
+          "rule": "per-chamber log-f interpolation only; never cross a chamber boundary",
+          "level": "relative to the loudest take IN THIS CHAMBER (D6)"
+        }
+      }
+    },
+    "2": {
+      "gain": 0.5714,
+      "model": {
+        "schema": "ocarina-twin-v2",
+        "instrument": "Focalink Stein Double Alto C",
+        "chamber": "2",
+        "globals": {
+          "volume_hint_ml": null,
+          "Q_prior": 45.0,
+          "hiss_hp_hz": 2800.0,
+          "chiff_q": 2.2,
+          "sync_amt": 0.65,
+          "drive_gain": 0.55
+        },
+        "notes": [
+          {
+            "note": "G6",
+            "f0": 1566.3060653848272,
+            "open_holes": null,
+            "level": 1.0,
+            "h": [
+              0.9999999999958257,
+              0.003174431771379963,
+              0.020433900699054455,
+              0.00895885388542225,
+              0.0015536188096328583,
+              0.00019602126255464285
+            ],
+            "Q": 80.0,
+            "noise_Q": 12.0,
+            "noise_res_db": -35.356970742747905,
+            "noise_hiss_db": -43.77595853319794,
+            "noise_slope_db_oct": -2.0,
+            "atk_pre_s": 0.006,
+            "atk_speak_s": 0.011972789115646258,
+            "overshoot_db": 1.169609286394288,
+            "chiff_peak": 4.0,
+            "chiff_len_s": 0.045,
+            "rel_s": 0.07,
+            "wander_cents_std": 2.2991224056597512,
+            "wobble_pct": 4.994667292088393,
+            "wobble_hz": 4.0
+          }
+        ],
+        "recorded": {
+          "takes": [
+            "G6.wav"
+          ],
+          "rule": "per-chamber log-f interpolation only; never cross a chamber boundary",
+          "level": "single take: whole second chamber rides this row (clamped at both ends)"
+        }
+      }
+    }
+  },
+  "recorded": {
+    "folder": "research/note-recordings/double-alto-c",
+    "gains": "cross-chamber loudness rides each chamber's `gain` (raw take level vs the chain's loudest take); inside a chamber the fit normalizes to its own peak",
+    "heads_up": "C5's raw take reads ~15 dB under D6's \u2014 relative blow/chain, kept (levels are relative by doctrine)"
+  }
+}

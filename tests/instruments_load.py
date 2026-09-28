@@ -36,6 +36,14 @@ def boot_instrument(browser, base, inst_id, failures, tag):
     page.on("pageerror", lambda e: errs.append(str(e)))
     page.goto(f"{base}?inst={inst_id}")
     page.wait_for_function(BOOT_WAIT)
+    # the tone AND twin model round-trips are the tail of loadInstrument
+    # (the twin fetch runs first now) — both installs land as defined
+    # (null is a legal "no data" answer; undefined means not-yet-installed)
+    page.wait_for_function(
+        "() => typeof OCA_DEBUG !== 'undefined' && OCA_DEBUG.toneModel"
+        " && OCA_DEBUG.twinModel"
+        " && OCA_DEBUG.toneModel() !== undefined"
+        " && OCA_DEBUG.twinModel() !== undefined", timeout=10000)
     state = page.evaluate("""() => ({
       notes: window.NOTES.length,
       fingered: !!(window.FING && window.FING.notes && window.FING.notes.length)
@@ -44,17 +52,60 @@ def boot_instrument(browser, base, inst_id, failures, tag):
       chambered: Object.keys(window.CHAMBER).length > 0,
       tone: window.OCA_DEBUG && window.OCA_DEBUG.toneModel
               ? window.OCA_DEBUG.toneModel() : "MISSING",
+      twin: typeof window.installTwinModel === "function"
+              ? (window.OCA_DEBUG && window.OCA_DEBUG.twinModel
+                  ? window.OCA_DEBUG.twinModel() : "MISSING")
+              : "MISSING",
     })""")
     for key in ("fingered", "templated", "chambered"):
         if not state[key]:
             failures.append(f"{tag}: {key} not installed for {inst_id}")
     if state["notes"] < 5:
         failures.append(f"{tag}: {inst_id} has only {state['notes']} notes")
-    if state["tone"] not in (None, "MISSING"):
-        failures.append(f"{tag}: {inst_id} shipped no tone.json but installed "
-                        f"{state['tone']}")
     if state["tone"] == "MISSING":
         failures.append(f"{tag}: OCA_DEBUG.toneModel() missing (audio.js change?)")
+    tone_path = ROOT / "instruments" / inst_id / "tone.json"
+    if tone_path.exists():
+        # a shipped tone.json must install as the model, with its rows intact
+        m = state["tone"] if isinstance(state["tone"], dict) else None
+        ok = (isinstance(m, dict) and m.get("instrumentId") == inst_id
+              and m.get("chambers") and isinstance(m["chambers"], list)
+              and m["chambers"] and m["chambers"][0].get("rows"))
+        if not ok:
+            failures.append(f"{tag}: {inst_id} ships tone.json but the installed "
+                            f"model is wrong/empty: {str(state['tone'])[:160]}")
+    elif state["tone"] not in (None, "MISSING"):
+        failures.append(f"{tag}: {inst_id} shipped no tone.json but installed "
+                        f"{str(state['tone'])[:160]}")
+    # twin_model.json: a shipped fit must install as the chamber model —
+    # single-chamber schema ({model: {notes}}) or the multi wrapper
+    # ({chambers: {ch: {model, gain}}})
+    twin_path = ROOT / "instruments" / inst_id / "twin_model.json"
+    if twin_path.exists():
+        twin = state["twin"] if isinstance(state["twin"], dict) else None
+        if state["twin"] == "MISSING":
+            failures.append(f"{tag}: OCA_DEBUG.twinModel() missing (audio.js change?)")
+        elif not twin:
+            failures.append(f"{tag}: {inst_id} ships twin_model.json but none installed")
+        else:
+            def model_ok(d):
+                return isinstance(d, dict) and isinstance(d.get("notes"), list) \
+                    and d["notes"] and isinstance(d["notes"][0], dict) \
+                    and d["notes"][0].get("f0") > 0
+            if isinstance(twin.get("model"), dict):
+                ok = model_ok(twin["model"])
+            elif isinstance(twin.get("chambers"), dict) and twin["chambers"]:
+                ok = all(
+                    model_ok((c.get("model") if isinstance(c, dict) else c))
+                    for c in twin["chambers"].values())
+            else:
+                ok = False
+            if not ok:
+                failures.append(f"{tag}: {inst_id} ships twin_model.json but the installed "
+                                f"model is wrong/empty: {str(state['twin'])[:160]}")
+    elif state["twin"] not in (None, "MISSING"):
+        failures.append(f"{tag}: {inst_id} shipped no twin_model.json but installed "
+                        f"{str(state['twin'])[:160]}")
     if errs:
         failures.append(f"{tag}: {inst_id} page errors {errs}")
     return page
@@ -167,6 +218,62 @@ TPL_PROBE = """
 })
 """
 
+TWIN_PROBE = """
+() => {
+  // A well-formed twin model installs; corrupt input uninstalls (never boot).
+  const MODEL = {
+    schema: "ocarina-twin-v2", instrument: "probe", chamber: "1",
+    globals: {hiss_hp_hz: 2800, chiff_q: 2.2, sync_amt: 0.65},
+    notes: [
+      {note: "A4", f0: 440.0, level: 0.5, h: [1, 0.01, 0.01, 0, 0, 0],
+       Q: 60, noise_Q: 12, noise_res_db: -28, noise_hiss_db: -50,
+       noise_slope_db_oct: -8, atk_pre_s: 0.006, atk_speak_s: 0.01,
+       overshoot_db: 0.5, chiff_peak: 1.2, chiff_len_s: 0.045, rel_s: 0.06,
+       wander_cents_std: 3, wobble_pct: 6, wobble_hz: 4},
+      {note: "A5", f0: 880.0, level: 1.0, h: [1, 0.02, 0.01, 0, 0, 0],
+       Q: 70, noise_Q: 12, noise_res_db: -30, noise_hiss_db: -48,
+       noise_slope_db_oct: -6, atk_pre_s: 0.006, atk_speak_s: 0.02,
+       overshoot_db: 0.2, chiff_peak: 1.0, chiff_len_s: 0.045, rel_s: 0.08,
+       wander_cents_std: 2, wobble_pct: 4, wobble_hz: 4},
+    ]};
+  installTwinModel(MODEL, "probe");
+  const okShape = !!OCA_DEBUG.twinModel()
+    && OCA_DEBUG.twinModel().chambers
+    && OCA_DEBUG.twinModel().chambers["1"].model.notes.length === 2
+    && OCA_DEBUG.twinModel().chambers["1"].model.notes[0].f0 === 440.0
+    && OCA_DEBUG.twinModel().chambers["1"].gain === 1;
+  installTwinModel({instrument: "junk"}, "junk");
+  const junkNull = OCA_DEBUG.twinModel() === null;
+  installTwinModel("nope", "junk2");
+  const strNull = OCA_DEBUG.twinModel() === null;
+  installTwinModel(null, "reset");
+  const resetNull = OCA_DEBUG.twinModel() === null;
+  // multi-chamber wrapper: per-chamber models + chain-relative gains
+  const wrap = (ch) => Object.assign({}, MODEL, {chamber: String(ch),
+    instrument: "probe-multi-" + ch});
+  const MULTI = {schema: "ocarina-twin-multi-v1", instrument: "multi",
+    chambers: {
+      "1": {gain: 1.0, model: wrap(1)},
+      "2": {gain: 0.5714, model: wrap(2)},
+      "3": wrap(3),
+    }};
+  installTwinModel(MULTI, "multi");
+  const mt = OCA_DEBUG.twinModel();
+  const multiOk = !!mt && mt.chambers
+    && mt.chambers["1"] && mt.chambers["1"].model.notes.length === 2
+    && mt.chambers["1"].gain === 1.0
+    && mt.chambers["2"].gain === 0.5714
+    && mt.chambers["3"] && mt.chambers["3"].gain === 1;
+  installTwinModel(MODEL, "probe"); // restore single shape over the multi
+  const afterMulti = !!OCA_DEBUG.twinModel()
+    && OCA_DEBUG.twinModel().chambers["1"].model.notes.length === 2;
+  installTwinModel(null, "reset");
+  const resetNull2 = OCA_DEBUG.twinModel() === null;
+  return {okShape, junkNull, strNull, resetNull,
+          multiOk, afterMulti, resetNull2};
+}
+"""
+
 TYPED = """
 async (title) => {
   // Typed input renders on a short settle (the per-keystroke debounce):
@@ -266,6 +373,32 @@ def main():
                 if not r["genericParity"]:
                     failures.append("parity: uninstalling must restore the generic "
                                     "profile bit-for-bit (incl. en === null)")
+            page.close()
+            # 2b — twin model plumbing: install/shapes on the default instrument
+            print("== twin model install / shapes", flush=True)
+            page = browser.new_page()
+            errs = []
+            page.on("pageerror", lambda e: errs.append(str(e)))
+            page.goto(base + "?inst=" + inst_ids[0])
+            page.wait_for_function(BOOT_WAIT)
+            r = page.evaluate(TWIN_PROBE)
+            if errs:
+                failures.append(f"twin model: page errors {errs}")
+            if not r or not isinstance(r, dict):
+                failures.append(f"twin model: probe failed {r}")
+            else:
+                if not r["okShape"]:
+                    failures.append("twin model: well-formed model not installed")
+                if not (r["junkNull"] and r["strNull"] and r["resetNull"]):
+                    failures.append(f"twin shapes: corrupt input must uninstall "
+                                    f"(junk {r['junkNull']} str {r['strNull']} "
+                                    f"reset {r['resetNull']})")
+                if not r["multiOk"]:
+                    failures.append("twin shapes: multi-chamber wrapper must install "
+                                    "per-chamber models with their gains")
+                if not (r["afterMulti"] and r["resetNull2"]):
+                    failures.append("twin shapes: single-over-multi restore / final "
+                                    "reset failed")
             page.close()
             # 3 — per-song ocarina template selection (svgWhen): the saria
             # rule fires when the loaded song's TITLE matches (both by ?song

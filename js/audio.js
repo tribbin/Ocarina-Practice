@@ -5,6 +5,7 @@ import { bumpHoverQuiet, clearHighlight, cueFirstNote, freezeZenGlow,
          highlightToken, isFocusMode, quarterSec, tokenSeconds, updateTransportUI } from "./ui.js";
 import { isPracticeActive } from "./practice.js";
 import { wakeHold, wakeDrop } from "./wakelock.js";
+import { loadTwinModelFromObject, interpNote, scheduleHelmholtzNote } from "./helmholtz-voice.js";
 let audioCtx = null;
 let liveVoices = [];
 let melodyBag = [];
@@ -96,6 +97,9 @@ const AUDIO_DEFAULTS = {
   // recorded ~60-115 ms total (was 0.22-0.36 s).
   otBase: 0.00137, otEffort: 0.0011, otNoise: 0.35,
   otDurMax: 0.10, otDurEffort: 0.05,
+  // The glide "tap": fixed bend length between glide-connected notes
+  // (measured transients: 10-60 ms, tone carries); independent of duration.
+  slideTapMs: 0.03,
   // Full-voice master gain plateau (the breathy pre-tone and "tone speaks"
   // stages scale proportionally so the envelope shape holds). Kept at the
   // pre-tune playback loudness: the recording's absolute level is a mic-gain
@@ -204,6 +208,9 @@ window.OCA_DEBUG = {
   // The installed per-ocarina tone model (instruments/<id>/tone.json) —
   // null when the instrument has no fitted chambers yet (generic model).
   toneModel() { return TONE_MODEL; },
+  // The installed Helmholtz twin model (instruments/<id>/twin_model.json) —
+  // null while no twin model is installed for the CURRENT instrument.
+  twinModel() { return TWIN_MODEL; },
   // DEBUG panel "Induce lag": fakes audio-clock starvation. Seeds what
   // raisePerfAlert needs (a running ctx + one alive voice, the button click
   // itself is the user gesture), then loads the lag budget; the next
@@ -918,11 +925,30 @@ const V_ANCHORS = {
 };
 
 // Wind-noise spectral-shape constants (mirrored in synth_replica.py):
-// white noise -> chamber bump (1.26xf0, pitch-keyed Q) -> steep noise
-// lowpass. The trims are an absolute calibration of the noise chain
-// against the band meters (white noise through the filters reads hotter
-// than the band-relative design targets).
-const WIND_SHAPE = { bumpRatio: 1.26, noiseLpRatio: 2.7, noiseLpQ: 1.2 };
+// broad non-resonant wind bandpass (a smooth wash, not a resonant peak) ->
+// gentle noise lowpass. Constants picked by the analytic |H| search against
+// the recordings' corrected inter-harmonic floors
+// (skills/tone-analysis/scripts/wind_shape_search.py; the notch-band
+// pipeline's band numbers were the fundamental's window skirt, ~45-70 dB
+// hotter than the real breath). Re-modelled after Robin's field catch
+// ("porcelain vs sand paper"): the recorded breath falls ~6/14/26 dB per
+// band with no resonant hump. Q is capped so a fitted row's sharper ask
+// cannot bring the grain back; the wash placement rides the lowpass
+// corner + the row's own level.
+const WIND_SHAPE = { bumpRatio: 1.26, bumpQMax: 0.6, noiseLpRatio: 2.6, noiseLpQ: 0.8 };
+
+// ABSOLUTE noise-body layer — the recorded held-noise BODY has fixed,
+// f0-independent structures the tone-tracking bp/lp chain cannot express
+// (the complaint spectra: a warm pocket bump at ~273 Hz below the tone in
+// every recording, a broad warm shelf through 330-650, and a rough HF
+// tail our lp walls flatten away). Applied only when the instrument's
+// tone.json declares them (global windPark/windWarm/windRough) — unfitted
+// voices render byte-identical to the pre-layer chain. parkDb stays
+// per-note row-expressible; the recorded bump strength clearly varies
+// with the note (A4's core reads ~+9 rel-H1, F5's nearly absent).
+const WIND_ABS = { parkF: 273, parkQ: 2.2, parkDb: 11, warmF: 470, warmQ: 0.8, warmDb: 4,
+  roughDb: 8, bleedBpRatio: 2.7, bleedBpQ: 0.9, bleedTiltF: 6000, bleedTiltDb: -6,
+  bleedTilt2F: 9500, bleedTilt2Db: -3 };
 
 // Piecewise-linear interpolation in log2-f with slope-clamped extrapolation.
 function vInterp(pts, f) {
@@ -939,6 +965,23 @@ function vInterp(pts, f) {
   const [f0, v0] = pts[n - 1], [f1, v1] = pts[n];
   const slope = (v1 - v0) / Math.log2(f1 / f0);
   return v1 + slope * Math.max(-1.5, Math.min(1.5, Math.log2(f / f1)));
+}
+
+// Fitted-anchor interpolation with a FLAT HOLD at the edges: between the
+// fitted rows this is plain linear-in-log-f, beyond the lowest/highest
+// fitted note it returns the edge anchor's own value. The slope-clamped
+// extrapolation invented values over a full clamped octave span — at B4's
+// contaminated a low anchor the clamped slope turned A3/B3 wobble negative
+// (wobPct extrapolated to −13% with a 21 Hz rate: a fast inverted tremolo,
+// Robin's field catch "something weird at A3, B3 suspect"). Below/above the
+// fitted anchors no better measurement exists, so the measurement the
+// chamber actually carries is the honest delivery.
+function vInterpHold(pts, f) {
+  const n = pts.length;
+  if (n < 2) return pts[0][1];
+  if (f <= pts[0][0]) return pts[0][1];
+  if (f >= pts[n - 1][0]) return pts[n - 1][1];
+  return vInterp(pts, f);
 }
 const db2lin = db => Math.pow(10, db / 20);
 
@@ -979,6 +1022,43 @@ function toneRowsForChamber(ch) {
   return null;
 }
 
+// PER-OCARINA TWIN MODEL — instruments/<id>/twin_model.json: the Helmholtz
+// cavity voice (skills/ocarina-twin/SKILL.md), fitted per chamber from held
+// notes. An installed model REPLACES the additive voice for that instrument
+// outright — every note rides interpNote's log-f interpolation inside the
+// chamber (clamped at the fitted range ends). The manifest declares the
+// field with "twin"; a 404/corrupt file installs null and the instrument
+// keeps the generic additive voice. Same contract as tone.json: data must
+// never break boot.
+let TWIN_MODEL = null; // { instrumentId, chambers: { ch: { model, gain } } } | null
+function installTwinModel(data, instId) {
+  if (!data || typeof data !== "object") { TWIN_MODEL = null; return; }
+  try {
+    let chambers;
+    if (data.chambers && typeof data.chambers === "object" &&
+        !Array.isArray(data.chambers)) {
+      // multi-chamber wrapper ("ocarina-twin-multi-v1"): one model + one
+      // chain-relative gain per chamber; each entry may also BE a bare
+      // model (gain-less). Never lerps across a chamber boundary.
+      chambers = {};
+      for (const [ch, entry] of Object.entries(data.chambers)) {
+        const base = entry && typeof entry.model === "object" ? entry.model : entry;
+        chambers[String(ch)] = {
+          model: loadTwinModelFromObject(base),
+          gain: entry && isFinite(entry.gain) ? +entry.gain : 1,
+        };
+      }
+      if (!Object.keys(chambers).length) throw new Error("twin: empty chambers");
+    } else {
+      // the single-chamber schema (the 12-hole's shape): one model, all notes
+      chambers = { "1": { model: loadTwinModelFromObject(data), gain: 1 } };
+    }
+    TWIN_MODEL = { instrumentId: instId || null, chambers };
+  } catch (e) {
+    TWIN_MODEL = null;
+  }
+}
+
 // One pitch-keyed field of the chamber, interpolated at `freq` in log-f
 // between the fitted anchors (slope-clamped extrapolation at the chamber
 // edges — vInterp's own math). `fallback` may be the generic point-table OR
@@ -992,7 +1072,7 @@ function toneVal(rows, key, fallback, freq) {
       pts.push([+r.f, +v]);
     }
     if (pts.length === 1) return pts[0][1]; // one measured point: constant
-    if (pts.length > 1) return vInterp(pts, freq);
+    if (pts.length > 1) return vInterpHold(pts, freq);
   }
   return Array.isArray(fallback) ? vInterp(fallback, freq) : fallback;
 }
@@ -1012,16 +1092,17 @@ function toneEnvelopeFor(rows, freq) {
           pts.push([+r.f, +v]);
         }
         if (pts.length === 1) out[f] = pts[0][1];
-        else if (pts.length > 1) out[f] = vInterp(pts, freq);
+        else if (pts.length > 1) out[f] = vInterpHold(pts, freq);
       }
     }
     return out;
   };
   const g = (TONE_MODEL && TONE_MODEL.globalOb) || {};
   return {
-    chiff: sub("chiff", ["peak", "len", "startHz", "endHz", "attack"]),
+    chiff: sub("chiff", ["peak", "len", "startHz", "endHz", "attack", "delay"]),
     ot: sub("ot", ["peak", "dur", "noise"]),
     edge: sub("edge", ["level", "detune", "spread"]),
+    atk: sub("atk", ["speak", "pre"]),
     lpMult: g.lpMult != null ? +g.lpMult : null,
     lpQ: g.lpQ != null ? +g.lpQ : null,
   };
@@ -1043,6 +1124,24 @@ function voiceProfileFor(id, freq) {
   if (rows) {
     // FITTED ocarina: the measured chamber speaks for itself — the generic
     // hard-blow offsets drop out (the anchors already encode the real blow).
+    // The absolute noise-body layer rides the instrument's global keys;
+    // parkDb per-note rows override the chamber constant.
+    const glob = (TONE_MODEL && TONE_MODEL.globalOb) || {};
+    const windAbs = (glob.windPark || glob.windWarm || glob.windRough) ? {
+      park: glob.windPark ? {
+        f: +glob.windPark.f || WIND_ABS.parkF,
+        Q: +glob.windPark.Q || WIND_ABS.parkQ,
+        db: toneVal(rows, "parkDb", +glob.windPark.db || WIND_ABS.parkDb, freq),
+      } : null,
+      warm: glob.windWarm ? {
+        f: +glob.windWarm.f || WIND_ABS.warmF,
+        Q: +glob.windWarm.Q || WIND_ABS.warmQ,
+        db: +glob.windWarm.db || WIND_ABS.warmDb,
+      } : null,
+      rough: glob.windRough ? {
+        db: +glob.windRough.db || WIND_ABS.roughDb,
+      } : null,
+    } : null;
     return {
       h: [1,
           toneVal(rows, "h2", V_ANCHORS.h2, freq) * AUDIO_DEBUG.h2Mul,
@@ -1054,12 +1153,18 @@ function voiceProfileFor(id, freq) {
       windBump: db2lin(toneVal(rows, "noiseLoDb", V_ANCHORS.noiseLoDb, freq) - 2.0) *
                 AUDIO_DEBUG.windAmt,
       windQ: toneVal(rows, "noiseBumpQ", V_ANCHORS.noiseBumpQ, freq),
+      // Per-note noise-wall position/shape (rows may carry noiseLpRatio /
+      // noiseLpQ from the takes; the global WIND_SHAPE constants are the
+      // fallback a missing field keeps).
+      noiseLpRatio: toneVal(rows, "noiseLpRatio", WIND_SHAPE.noiseLpRatio, freq),
+      noiseLpQ: toneVal(rows, "noiseLpQ", WIND_SHAPE.noiseLpQ, freq),
       wanderC: toneVal(rows, "wanderC", V_ANCHORS.wanderC, freq) * AUDIO_DEBUG.wanderAmt,
       wobDepth: toneVal(rows, "wobPct", V_ANCHORS.wobPct, freq) / 100 * AUDIO_DEBUG.wobbleAmt,
       wobRate: toneVal(rows, "wobHz", V_ANCHORS.wobHz, freq) * (0.9 + 0.2 * Math.random()),
       attackF: toneVal(rows, "attackF", V_ANCHORS.attackF, freq),
       osDb: toneVal(rows, "osDb", 0.8 + 3.2 * hh, freq),
       en: toneEnvelopeFor(rows, freq),
+      windAbs,
     };
   }
   return {
@@ -1077,6 +1182,9 @@ function voiceProfileFor(id, freq) {
     // absolute noise growth with breath pressure).
     windBump: db2lin(vInterp(V_ANCHORS.noiseLoDb, freq) - 2.0) * AUDIO_DEBUG.windAmt,
     windQ: vInterp(V_ANCHORS.noiseBumpQ, freq),
+    // Generic voices keep the global shape (no per-note walls measured yet).
+    noiseLpRatio: WIND_SHAPE.noiseLpRatio,
+    noiseLpQ: WIND_SHAPE.noiseLpQ,
     // Slow intrinsic wander (one LFO drives pitch + loudness in phase,
     // like breath pressure does physically; deeper + faster on hard blow).
     wanderC: (vInterp(V_ANCHORS.wanderC, freq) + 2.0 * hh) * AUDIO_DEBUG.wanderAmt,
@@ -1106,10 +1214,14 @@ function getChiffBuffer(ctx) {
 // Overwrite the buffer tail with a short crossfade INTO THE HEAD so the
 // wrap is continuous; the head itself stays untouched for chiff/ot (which
 // only read the first ~150 ms and never reach the tail).
+// LENGTH note (2026-09-27): the original 0.5 s loop is a 2 Hz-spaced line
+// comb, measurable in every render (the "noise" floor lives at k×2 Hz bins)
+// and audibly textured; a 4 s loop spaces the comb at 0.25 Hz so the noise
+// reads stochastic again (render-verified against the fitting bench).
 let windBuf = null;
 function getWindBuffer(ctx) {
   if (windBuf && windBuf.sampleRate === ctx.sampleRate) return windBuf;
-  const len = Math.floor(ctx.sampleRate * 0.5);
+  const len = Math.floor(ctx.sampleRate * 4.0);
   const buf = ctx.createBuffer(1, len, ctx.sampleRate);
   const d = buf.getChannelData(0);
   for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
@@ -1231,7 +1343,11 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     const dur = Math.max(0.12, durSec);
     const tail = 0.03;
     const slideFrom = slideFromId && slideFromId !== id ? freqOf(slideFromId) : 0;
-    const glide = slideFrom ? Math.min(Math.max(0.0125, dur * 0.0875), 0.0375) : 0; // fast bend (4x the old portamento)
+    // The glide jump is a FINGER-TAP: the recorded transients (storms/kokiri
+    // plateau-to-plateau jumps in skills/tone-analysis) run 10-60 ms with the
+    // tone carrying through (0.2-0.5 dB dip on adjacent steps), so the bend
+    // length is a fixed short window anymore — never scaled by note duration.
+    const glide = slideFrom ? AUDIO_DEBUG.slideTapMs : 0;
     // A note flowing directly into a following ~ slide holds full level right
     // up to the junction, then crossfades briefly PAST it (the slide note
     // begins at the same pitch, so the seam is inaudible — no gap, no re-blow).
@@ -1242,6 +1358,164 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // this voice (its layers and their tails through the output bus) counts
     // as site-made sound for practice-mode deafness
     markSystemSound(t0 + dur + stopOff);
+
+    // HELMHOLTZ TWIN VOICE (this instrument's twin_model.json is installed):
+    // the cavity-resonator voice replaces the additive builder outright —
+    // same slot arithmetic, same bags/buses/track mix — and the additive
+    // profile/wind/edge/chiff stack below never runs for it. See
+    // skills/ocarina-twin/SKILL.md for the model and the wiring doctrine.
+    if (TWIN_MODEL) {
+      // Per-note chamber routing: the note's chamber must carry a fitted
+      // model — a chamber WITHOUT one (a temp twin's other chamber) keeps
+      // this note on the additive voice below. One chamber's physics never
+      // speaks for another (the models must never lerp across V).
+      const chKey = typeof CHAMBER !== "undefined" && CHAMBER && CHAMBER[id] != null
+        ? String(CHAMBER[id]) : "1";
+      const twEntry = TWIN_MODEL.chambers[chKey] || null;
+      if (twEntry) {
+        const tmDest = isMelodyBag(bag) ? getMelodyCutBus(ctx, getReverbBus(ctx)) : getReverbBus(ctx);
+        const nf = interpNote(twEntry.model, freq);
+        // Dev-panel retunes scale the model's own wander/wobble rows (the
+        // defaults are 1, so an untouched panel plays the fit verbatim).
+        nf.wander_cents_std = (nf.wander_cents_std || 0) * AUDIO_DEBUG.wanderAmt;
+        nf.wobble_pct = (nf.wobble_pct || 0) * AUDIO_DEBUG.wobbleAmt;
+        const twRel = Math.max(0.04, nf.rel_s || 0.07);
+        // LITE TWIN: the handoff's reduced voice — a sine through the cavity
+        // resonator (bandpass at f0, the model's own Q) — replaces the
+        // additive lite's osc→lowpass chain. Same envelope/level shape as the
+        // legacy lite voice.
+        if (liteMode()) {
+          const lvM = AUDIO_DEBUG.masterLevel * voiceGain * (nf.level || 1);
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.linearRampToValueAtTime(lvM, t0 + Math.min(0.03, dur * (slideFrom ? 0.4 : 0.2)));
+          g.gain.setValueAtTime(lvM, intoSlide ? t0 + dur : t0 + Math.max(0.02, dur - twRel));
+          g.gain.linearRampToValueAtTime(0.0001, t0 + dur + fadeOff);
+          const bw = ctx.createBiquadFilter();
+          bw.type = "bandpass";
+          bw.Q.value = Math.max(8, Math.min(80, nf.Q || 45));
+          const osc2 = ctx.createOscillator();
+          osc2.type = "sine";
+          if (slideFrom) {
+            bw.frequency.setValueAtTime(Math.max(40, slideFrom), t0);
+            bw.frequency.linearRampToValueAtTime(Math.max(40, freq), t0 + glide);
+            osc2.frequency.setValueAtTime(slideFrom, t0);
+            osc2.frequency.linearRampToValueAtTime(freq, t0 + glide);
+          } else {
+            bw.frequency.value = freq;
+            osc2.frequency.setValueAtTime(freq, t0);
+          }
+          osc2.connect(bw); bw.connect(g); g.connect(tmDest);
+          osc2.start(t0); osc2.stop(t0 + dur + stopOff);
+          if (bag) bag.push({
+            until: t0 + dur + stopOff + 0.08,
+            stop() { try { osc2.stop(); } catch (e) {} },
+            kill() { g.disconnect(); },
+            fade() {
+              if (isMelodyBag(bag)) {
+                try { osc2.stop(melodyStopAt(ctx)); } catch (e) {}
+                return;
+              }
+              const now = ctx.currentTime;
+              try {
+                g.gain.cancelScheduledValues(now);
+                g.gain.setValueAtTime(Math.max(0.0001, g.gain.value || AUDIO_DEBUG.masterLevel), now);
+                g.gain.linearRampToValueAtTime(0.0001, now + 0.03);
+                osc2.stop(now + 0.05);
+              } catch (e) {}
+            }
+          });
+          return;
+        }
+        // The module's release is a plateau→0 taper spanning hold−rel →
+        // hold+rel, so `hold` places it: a plain note ends AT t0+dur
+        // (release inside the slot, as the additive envelope did); a note
+        // flowing into a ~ slide holds full level through the junction and
+        // crossfades past it (the slide target starts at the same pitch).
+        const twHold = intoSlide
+          ? Math.max(0.05, dur + twRel)
+          : Math.max(0.05, dur - twRel);
+        const VIB_DELAY = AUDIO_DEBUG.vibDelay;
+        const vibOn = vibratoEnabled &&
+          (AUDIO_DEBUG.vibDepth > 1e-4 || AUDIO_DEBUG.tremDepth > 1e-4);
+        const twChorus = vibOn && dur > VIB_DELAY + 0.1;
+        const hiF = Math.max(0, Math.min(1, (freq - AUDIO_DEBUG.hiFrom) /
+          Math.max(60, AUDIO_DEBUG.hiTo - AUDIO_DEBUG.hiFrom)));
+        const zenPan2 = Math.max(0, Math.min(1, AUDIO_DEBUG.zenPan));
+        const baseOpts = {
+          model: twEntry.model,
+          f0: freq,
+          when: t0,
+          holdSec: twHold,
+          dest: tmDest,
+          master: AUDIO_DEBUG.masterLevel * voiceGain * twEntry.gain,
+        };
+        if (slideFrom) {
+          baseOpts.slideFromHz = slideFrom;
+          baseOpts.slideSec = glide;
+        }
+        const twVoices = [];
+        if (twChorus) {
+          // Zen stereo chorus on the twin voice: the clean cavity core goes
+          // hard LEFT, the vibrato twin (pitch LFO on the model's f0, depth
+          // receding up the range as before) hard RIGHT. Both carry the same
+          // fitted envelope; every layer of the voice pans with the core.
+          const mkTwin = (vib, pan) => {
+            const o = Object.assign({}, baseOpts);
+            o.vibrato = vib ? {
+              rate: AUDIO_DEBUG.vibRate,
+              depth: AUDIO_DEBUG.vibDepth * (1 - AUDIO_DEBUG.vibHighFade * hiF),
+              delay: VIB_DELAY,
+            } : null;
+            const h = scheduleHelmholtzNote(ctx, tmDest, o);
+            if (pan) {
+              const p = ctx.createStereoPanner();
+              p.pan.value = pan;
+              h.out.disconnect();
+              h.out.connect(p);
+              p.connect(tmDest);
+              h._pan = p;
+            }
+            return h;
+          };
+          twVoices.push(mkTwin(false, -zenPan2), mkTwin(true, zenPan2));
+        } else {
+          const o = Object.assign({}, baseOpts);
+          o.vibrato = null; // plain notes stay clean (gated like the reverb)
+          twVoices.push(scheduleHelmholtzNote(ctx, tmDest, o));
+        }
+        // the twin's own tail can outlast the additive slot math — re-mark
+        markSystemSound(twVoices[0].until);
+        if (bag) {
+          const twKill = () => {
+            for (const h of twVoices) {
+              try { if (h._pan) h._pan.disconnect(); } catch (e) {}
+              try { h.out.disconnect(); } catch (e) {}
+            }
+          };
+          bag.push({
+            until: twVoices[0].until + 0.06,
+            stop() { twVoices.forEach(h => { try { h.stop(); } catch (e) {} }); },
+            kill() { twKill(); },
+            fade() {
+              // Melody cuts: the cut-bus decay owns the audible fade — the
+              // voices' own ramps land strictly past it (level ~0 there), and
+              // the sources stop right behind. Live/hover cuts take the
+              // module's own 30 ms fade.
+              if (isMelodyBag(bag)) {
+                const stopAt = melodyStopAt(ctx);
+                twVoices.forEach(h => { try { h.fade(stopAt - 0.03); } catch (e) {} });
+                return;
+              }
+              twVoices.forEach(h => { try { h.fade(); } catch (e) {} });
+            }
+          });
+        }
+        return;
+      } // end of the chamber's twin voice — a chamber without a model
+      // (temp-twin instruments) lets the note fall through to the additive
+      // voice below
+    }
 
     // Per-note voice profile (pitch-keyed harmonics, chamber-relative
     // loudness, wobble/wind levels, attack shape) — derived live so the
@@ -1330,8 +1604,16 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // original proportions of 0.26 so the envelope shape is unchanged at the
     // default and simply scales with the level.
     const M = AUDIO_DEBUG.masterLevel * vp.levelLin * voiceGain;
-    const preLevel = M * (0.05 / 0.26);   // breathy pre-tone (exactly 0.05 at default M)
-    const toneLevel = M * (0.16 / 0.26);  // tone begins to speak (exactly 0.16 at default M)
+    // Per-note ATTACK STAGES (row "atk"): the recordings' lead-in is a quiet
+    // 10-30 ms swell (the takes' measured attack_to_plateau) — not a long
+    // gasp; a fitted row replaces the generic speak computation so a fitted
+    // ocarina attacks on its own measured clock, and the pre-breath fraction
+    // can ride lower with it (the old fixed 0.05/0.26 pre-tone turned the
+    // attacking fundamental's sweep into the "sand paper" onset Robin heard).
+    const eAtk = EN.atk;
+    const preFrac = eAtk && eAtk.pre != null ? eAtk.pre : (0.05 / 0.26);
+    const preLevel = M * preFrac;         // breathy pre-tone
+    const toneLevel = M * (0.16 / 0.26);  // tone begins to speak
     // Tone speaks slightly after onset (breathy pre-tone → full), pairing with
     // the pitch "catch up" bloom below for a soft ocarina attack. Larger
     // chambers + more open holes build pressure slower → a longer, softer
@@ -1341,7 +1623,9 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // equilibrium.
     const art = noteArticulation(id);
     const effort = attackEffort(id, freq);
-    const speak = Math.min(0.05, Math.max(0.006, dur * 0.08)) * (0.5 + effort) * vp.attackF;
+    const speak = eAtk && eAtk.speak != null
+      ? Math.min(0.12, Math.max(0.004, eAtk.speak))
+      : Math.min(0.05, Math.max(0.006, dur * 0.08)) * (0.5 + effort) * vp.attackF;
     const equilib = Math.min(dur * 0.4, art.sizeF * art.sizeF * 0.16); // big chamber = slow to settle
     const t1 = t0 + speak * 0.5;
     const t2 = t0 + speak + 0.015;
@@ -1665,25 +1949,78 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       const windSrc = ctx.createBufferSource();
       windSrc.buffer = getWindBuffer(ctx);
       windSrc.loop = true;
+      // Fitted-instrument absolute noise-body layer, two routes:
+      //  1. SERIES (park + warm): the fixed-absolute pocket bump and warm
+      //     shelf shape the low-mid bed ahead of the tone-tracking chain.
+      //  2. PARALLEL BLEED (rough): the upper roughness is measured to
+      //     SURVIVE the wall region — the recording keeps a rough
+      //     -84..-103 dBrel bed from 3.9 to 12 kHz while the per-note lp
+      //     wall carves the 700-1900 holes, so one series chain cannot
+      //     express both. A high-passed roughness stream bypasses the wall
+      //     and mixes into the shaped bed before the gain (the gain node
+      //     after it also owns the cavity-side sizing through windQ).
+      let windAbs0 = windSrc;
+      const absRow = vp.windAbs;
+      if (absRow && absRow.park) {
+        const parkBp = ctx.createBiquadFilter();
+        parkBp.type = "peaking";
+        parkBp.frequency.value = Math.min(6000, Math.max(60, absRow.park.f));
+        parkBp.Q.value = Math.max(0.2, Math.min(9, absRow.park.Q));
+        parkBp.gain.value = Math.max(-30, Math.min(30, absRow.park.db));
+        windAbs0.connect(parkBp); windAbs0 = parkBp;
+      }
+      if (absRow && absRow.warm) {
+        const warmBp = ctx.createBiquadFilter();
+        warmBp.type = "peaking";
+        warmBp.frequency.value = Math.min(8000, Math.max(100, absRow.warm.f));
+        warmBp.Q.value = Math.max(0.2, Math.min(9, absRow.warm.Q));
+        warmBp.gain.value = Math.max(-30, Math.min(30, absRow.warm.db));
+        windAbs0.connect(warmBp); windAbs0 = warmBp;
+      }
+      let bleedTail = null;
+      if (absRow && absRow.rough) {
+        // The roughness lobe is CHAMBER-COLORED like every other noise
+        // path: the raw highpassed white this replaced read as a foreign
+        // white wash (Robin's F5 field catch, 2026-09-27) — the recordings'
+        // upper bed is a falling chamber lobe near ~2.7×f0, not white.
+        const bleedBp = ctx.createBiquadFilter();
+        bleedBp.type = "bandpass";
+        bleedBp.frequency.value = Math.min(9000, freq * WIND_ABS.bleedBpRatio);
+        bleedBp.Q.value = WIND_ABS.bleedBpQ;
+        const bleedTilt = ctx.createBiquadFilter();
+        bleedTilt.type = "highshelf";
+        bleedTilt.frequency.value = WIND_ABS.bleedTiltF;
+        bleedTilt.gain.value = WIND_ABS.bleedTiltDb;
+        const bleedTilt2 = ctx.createBiquadFilter();
+        bleedTilt2.type = "highshelf";
+        bleedTilt2.frequency.value = WIND_ABS.bleedTilt2F;
+        bleedTilt2.gain.value = WIND_ABS.bleedTilt2Db;
+        const bleedGain = ctx.createGain();
+        bleedGain.gain.value = db2lin(Math.max(-40, Math.min(20, absRow.rough.db - 33)));
+        windSrc.connect(bleedBp); bleedBp.connect(bleedTilt);
+        bleedTilt.connect(bleedTilt2); bleedTilt2.connect(bleedGain);
+        bleedTail = bleedGain;
+      }
       // Chamber-resonance bump just above the tone.
       const windBp = ctx.createBiquadFilter();
       windBp.type = "bandpass";
       windBp.frequency.value = Math.min(9000, freq * WIND_SHAPE.bumpRatio);
-      windBp.Q.value = vp.windQ;
+      windBp.Q.value = Math.min(vp.windQ, WIND_SHAPE.bumpQMax);
       // Steep noise lowpass: keeps the hiss hugging the tone instead of a
       // bright wash at the octave+ (the recordings show the upper noise
       // bands dropping ~14+ dB by 4×f0).
       const windLp = ctx.createBiquadFilter();
       windLp.type = "lowpass";
-      windLp.frequency.value = Math.min(ctx.sampleRate * 0.45, freq * WIND_SHAPE.noiseLpRatio);
-      windLp.Q.value = WIND_SHAPE.noiseLpQ;
+      windLp.frequency.value = Math.min(ctx.sampleRate * 0.45, freq * (vp.noiseLpRatio != null ? vp.noiseLpRatio : WIND_SHAPE.noiseLpRatio));
+      windLp.Q.value = vp.noiseLpQ != null ? vp.noiseLpQ : WIND_SHAPE.noiseLpQ;
       const windGain = ctx.createGain();
       windGain.gain.setValueAtTime(0.0001, t0);
       windGain.gain.linearRampToValueAtTime(vp.windBump, t0 + 0.06);
       windGain.gain.setValueAtTime(vp.windBump, t0 + relStart);
       windGain.gain.linearRampToValueAtTime(0.0001, t0 + dur);
       cutFades.push({ g: windGain, level: vp.windBump });
-      windSrc.connect(windBp); windBp.connect(windLp); windLp.connect(windGain);
+      windAbs0.connect(windBp); windBp.connect(windLp); windLp.connect(windGain);
+      if (bleedTail) bleedTail.connect(windGain);
       windGain.connect(master);
       windSrc.start(t0);
       windSrc.stop(t0 + dur + tail);
@@ -1743,13 +2080,18 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       const chAtk = Math.max(0.012, Math.min(0.025,
         eChiff && eChiff.attack != null ? Math.min(eChiff.attack, chiffLen)
         : chiffLen * 0.3)); // softer attack, min 12ms
-      chiffGain.gain.setValueAtTime(0.0001, t0);
-      chiffGain.gain.linearRampToValueAtTime(chiffPeak, t0 + chAtk);
-      chiffGain.gain.linearRampToValueAtTime(chiffPeak * 0.85, t0 + chiffLen * 0.5);
-      chiffGain.gain.linearRampToValueAtTime(0.0, t0 + chiffLen); // reach true zero
+      // Row "delay" — the recorded swells do not begin at tone onset: the A4
+      // held take's silent lead runs ~55 ms before its own swell starts
+      // (Robin: "the tongue puff I don't hear in my recording"). 0 keeps the
+      // legacy t0 start for takes that speak their burst immediately.
+      const chDelay = eChiff && eChiff.delay != null ? Math.max(0, eChiff.delay) : 0;
+      chiffGain.gain.setValueAtTime(0.0001, t0 + chDelay);
+      chiffGain.gain.linearRampToValueAtTime(chiffPeak, t0 + chDelay + chAtk);
+      chiffGain.gain.linearRampToValueAtTime(chiffPeak * 0.85, t0 + chDelay + chiffLen * 0.5);
+      chiffGain.gain.linearRampToValueAtTime(0.0, t0 + chDelay + chiffLen); // reach true zero
       cutFades.push({ g: chiffGain, level: 0.0001 });
       chiffSrc.connect(chiffHp); chiffHp.connect(chiffLp); chiffLp.connect(chiffGain); chiffGain.connect(master);
-      chiffSrc.start(t0); chiffSrc.stop(t0 + chiffLen + 0.02);
+      chiffSrc.start(t0); chiffSrc.stop(t0 + chDelay + chiffLen + 0.02);
     }
 
     // Overblown-mode ONSET overtone ("blowing on a bottle"): when the jet first
@@ -2471,7 +2813,7 @@ function scheduleMelody(when) {
 }
 
 export { AUDIO_DEFAULTS, audioCtx, audioPerfReset, audioPerfSnapshot, cutLive, freqOf,
-         getReverbBus, installToneModel, isMelodyPaused, isMelodyPlaying, liteMode,
+         getReverbBus, installToneModel, installTwinModel, isMelodyPaused, isMelodyPlaying, liteMode,
          pauseMelody, perf, playMelody, playNote, playNoteAt, quarterSecFor, resumeMelody,
          reverbEnabled, setBassEnabled, setPerfAlertListener, setReverbEnabled,
          setVibratoEnabled, soundingGridBeats, stopMelody, syncTransport,
@@ -2493,4 +2835,5 @@ window.tokenGridBeats = tokenGridBeats; window.swungBeats = swungBeats;
 window.soundingGridBeats = soundingGridBeats; window.lastHoldIndex = lastHoldIndex;
 window.quarterSecFor = quarterSecFor; window.freqOf = freqOf; window.cutLive = cutLive;
 window.installToneModel = installToneModel;
+window.installTwinModel = installTwinModel;
 window.stopMelody = stopMelody;

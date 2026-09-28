@@ -155,6 +155,13 @@ async function loadInstrument(inst) {
   // resets on failure so a stale model never leaks across instrument swaps;
   // the CURRENT_INSTRUMENT check keeps a slower old fetch from clobbering a
   // newer instrument's install.
+  if (typeof installTwinModel !== "function") return;
+  try {
+    const twin = inst.twin ? await loadJson(inst.twin) : null;
+    if (window.CURRENT_INSTRUMENT === inst) installTwinModel(twin, inst.id);
+  } catch (e) {
+    if (window.CURRENT_INSTRUMENT === inst) installTwinModel(null, inst.id);
+  }
   if (typeof installToneModel !== "function") return;
   try {
     const tone = inst.tone ? await loadJson(inst.tone) : null;

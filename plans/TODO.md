@@ -56,15 +56,17 @@ first circle → urgency, last letter → effort.
 ## Hot list (importance across all types)
 
 Picks for the next session(s), roughly damage × imminence ÷ effort
-(refreshed 2026-09-26, session 15 cont.: Robin's interactive panel answered
-the whole dependence board — nine items left it, three builds shipped same
-night; what remains is measurement/planting work and his eyeballs):
+(refreshed 2026-09-27, session 18: the Helmholtz twin voices the 12-hole —
+the deciding pass is Robin's ears on the new voice; the row-math revert
+rides his ruling):
 
 | Item | Section |
 |---|---|
+| **FIELD CHECK the twin voice — the deciding pass** — the 12-hole now plays the handoff's Helmholtz voice (Robin: the handoff state "was perfect before"; his verdict came through, the model rows are that state again). His ears name: the held-note texture vs the takes, the attack/chiff, the glide carry, how it sits under practice | §1 |
+| **Top-register held takes (A5–F6) for the 12-hole refit** — the model clamps at A5; the top rides the edge row until recorded | §1 |
 | **Robin's field check on the multi-track trio** — `outset-island-with-bass` now plays melody + audible bass groove (the bassline two octaves down) + contrabass root-holds; his ears name the balance, the contrabass register, the practice-session audibility and the groove's final-bar cut | §7 |
 | **Robin's eyeball pass** on the panel builds: the HiFi retune batch (`?hifi` — amber buttons, dark segment row/select, deeper zen red, LED fills) and the favorites stars in the library — his values, built to spec; he retunes anything that reads off | feel checks |
-| The tone.json measurement/fitting work per chamber (Robin's instrument data; the loader treats missing files as "no data yet") | §1 |
+| The twin-model chamber fits per remaining ocarina — recording held takes for stein double, contrabass, oak leaf when Robin gets hands-on time | §1 |
 | The next audio-tick field catch names itself (spike cards carry the ambient ring); Robin re-introduces the hunt when the ticks matter | DONE (re-openable) |
 | Shipped-songs standardization stays HELD for Robin's later-stage pass; the permalinks corpora ride his planting as always | §9 |
 | Library widening (search, reordering beyond the pin) stays parked until Robin elects it | §9 |
@@ -73,7 +75,9 @@ night; what remains is measurement/planting work and his eyeballs):
 
 ## 1. Bugs (correctness / data loss)
 
-- [ ] **Measure and fit the chambers** — Robin records tone.json per chamber (stein-double-alto-c, oot-alto-c-12, ico-contrabass-11-c declare the field ahead of data; missing files read as "no data yet"); each fitting feeds the tone engine, maybe dropping very-low-dB harmonics later. Robin's hands-on work as he gets time. `🟩 ⚪ ⚙L`
+- [ ] **Twin voice for the 12-hole: the adopted baseline and its open classes** — the Helmholtz twin (`js/helmholtz-voice.js` + `instruments/oot-alto-c-12/twin_model.json`, handoff from Grok via Robin) REPLACES the additive voice outright — Robin field-checked the handoff state and ruled it the baseline ("it was perfect before" as handed over; the pass that rewrote the model's noise rows algebraically was REVERTED by his ears — A4's metronomic one-sine wobble "very bad", the liked E5 wobble is the pitch wander's). Standing structure: module + model are the handoff state byte-identical (only the 4 s crossfaded noise buffer differs — the line-comb lesson), the manifest declares `twin` and tone.json is retired with the swap (removed; the additive voice still serves stein double + contrabass). OPEN classes, ears-first per the skill's first law: (a) ATTACK ring-up — the render's rise measures ~0.08 s where the model rows say 8-26 ms (the cavity Q rings up from silence; a Q-ramp assist is the held idea, audible, his word first); (b) top register A5-F6 clamps to A5's row (interpNote end-clamp) — record the top and refit; (c) NO amplitude-wobble layer persists (the module interpolates wobble_pct unused — do not "complete" it without his ask); (d) release taper: the model rel_s 0.07 reads shallower than the takes' hand releases (stage gate's decay-depth leg ~-12 dB); (e) future refits may NOT reproduce the shipped file (the peak*0.08 span fix stays in fit.py — the shipped model is the blessed reference, not "the fit"). Regression gate: tests/tone_stages fit-row caps + stage windows measured off the blessed delivery. `🟧 🔴 ⚙M`
+
+- [ ] **Fit the twin model per chamber (Robin records held takes; the tone-analysis era closed for the 12-hole)** — skills/ocarina-twin/run_fit.py refits a chamber from held takes (one per fingering; the subtract analysis tracks f0 so the residual is real breath); the handoff model reproduced bit-for-bit from research/note-recordings/12hole's 8 held takes (A4-A5). REMAINING chambers: stein-double-alto-c now carries a TEMP twin from the sep-17 3-take session (multi-wrapper: chamber 1 = C5 2nd-take + D6 rows, chamber 2 = G6's single row clamped at both ends, the cross-chamber gain rides the wrapper) — his real refit waits on a proper held-take sweep per chamber (chambers NEVER bridge); ico-contrabass-11-c, ico-oak-leaf-bass-c-triple (declare `twin` when data lands; the additive voice + tone.json carries them until then); the 12-hole's own refit waits on his top-register recordings. The fitter's span rule is now peak*0.08 (the old median*4 guard collapsed EVERY span onto the 0.15/0.85 fallback — release+silence fitted as sustain — so historical fitted levels/wobble read through that window; the fitter's nominal table now carries G6..Cs7 — a missing key had read G6 at a 500 Hz default and the whole subtract built on a wrong octave). His hands-on work as he gets time. `🟩 ⚪ ⚙L`
 
 ## 2. Robustness / error handling
 
@@ -87,7 +91,7 @@ night; what remains is measurement/planting work and his eyeballs):
 
 ## 6. Tests & CI
 
-Currently covered (don't lose this): practice acceptance (4 cases strict+closed-loop), practice dip gate (hold-through blocked, silence/50%-notch dips pass, 75% duck shut, legato free), practice seat across view rebuilds + zen-entry stopMelody + overlay zen-only seats, console-hygiene boot scan (4 boots; allowlist = manifest-declared tone misses), support-bracket battery incl. bit-identical melody-vs-support equivalence + Zen timing/gating, instrument load/tone-model install per manifest (incl. svgWhen id/title paths + boot diagnostics in per-leg fresh contexts), render pin (chips/grid/scroll-band/highlight/focus-restore + typed-render debounce contract), svg clone coordinates, debug panel build-on-open contract, transport scheduler arithmetic/cut-bus/lite, practice history, template safety, theme toggle, offline SW boot+swap, ac worker parity, swing grid, sr hints, spike watch (the tick hunt), the session-14 batch (wake lock lifecycle, tick-override semantics, asset-version token equality, twin-derivation byte-identity, transposer skill, practice dials), the session-15 additions (SEO shell shape + zero-per-stub JSON-LD, zen note-bar glide five-legger, suite-server teardown hardening, board-tool empty-run linting), and the session-16/16-cont. additions (track acceptance battery incl. mix ratios, hifi retune, library favorites star + readability, tests/midi_track_audit = the pure-python source-measure audit with a displaced-downbeat tripwire over tools/midi_track_audit.py). **Sweep policy (Robin, 2026-09-26): the full run_all sweep runs only for sound-engine touches; data/song changes run the directly-affected suites (see AGENTS.md §12)** — full sweep 46/46 was the last before the policy (including the new audit suite). CI = push/PR/manual, explicitly not a deploy gate. (.github/workflows/practice-tests.yml — console-hygiene + 41 suite steps + eslint + html-validate + board verify; local run-all counted 42 green on the Linux partition 2026-09-25 after the suite-server migration; earlier: 38 on 2026-09-25 session 14, 34 on session 12 — see DONE) NOTE: practice_accepts flaked ONE strict case under full-sweep load 2026-09-23, green twice standalone afterward and in the diag run — watch it, the arbiter hardening already took one such race; support_accepts flaked the same class 2026-09-24 (fixed wall-clock read window vs audio-clock lag under sweep CPU contention) and got the class cure: the read is now a real rendezvous with wall-fire stamps + ctx snapshots `335c4b4`). **Third member 2026-09-25 (CLI run `36110497803`, job 107992645371): practice_dip's leg A stalled the full 15 s timeout at maxIdx 0** — same SHA the local sweep had green; a DIFFERENT injury inside the same family: the suite's rendezvous (OCA_PRACTICE+NOTES) unlocks INSIDE loadInstrument (the stretch between installFingerings and boot's tail), where fillLibrary/loadLibraryItem(home) → practiceInvalidate is still owed — a session started mid-boot died when the tail landed; the stall reproduces at will with CDP network latency, cured by the rule-13 real rendezvous: the #scale options guard (filled only by the tail; a rAF poll never resolves mid-synchronous-block) plus a state card (started/st/ix/frames) on every driver resolve so a future stall names itself. The same tail guard rode into every suite that starts practice or needs typed editor text to survive boot (practice_accepts_melody, practice_zen_return, practice_history, keyboard_widgets, render_pin); library_hardening already waited a stronger post-tail signal (the Scales OPTGROUP), instrument_switch_race covers the race as its subject, playback-only suites are immune (practiceInvalidate stops practice, never play). Full sweep 31/31 green after the cure.
+Currently covered (don't lose this): practice acceptance (4 cases strict+closed-loop), practice dip gate (hold-through blocked, silence/50%-notch dips pass, 75% duck shut, legato free), practice seat across view rebuilds + zen-entry stopMelody + overlay zen-only seats, console-hygiene boot scan (4 boots; allowlist = manifest-declared tone misses), support-bracket battery incl. bit-identical melody-vs-support equivalence + Zen timing/gating, instrument load/tone-model install per manifest (incl. svgWhen id/title paths + boot diagnostics in per-leg fresh contexts), render pin (chips/grid/scroll-band/highlight/focus-restore + typed-render debounce contract), svg clone coordinates, debug panel build-on-open contract, transport scheduler arithmetic/cut-bus/lite, practice history, template safety, theme toggle, offline SW boot+swap, ac worker parity, swing grid, sr hints, spike watch (the tick hunt), the session-14 batch (wake lock lifecycle, tick-override semantics, asset-version token equality, twin-derivation byte-identity, transposer skill, practice dials), the session-15 additions (SEO shell shape + zero-per-stub JSON-LD, zen note-bar glide five-legger, suite-server teardown hardening, board-tool empty-run linting), and the session-16/16-cont. additions (track acceptance battery incl. mix ratios, hifi retune, library favorites star + readability, tests/midi_track_audit = the pure-python source-measure audit with a displaced-downbeat tripwire over tools/midi_track_audit.py), and the session-17-cont. additions (tests/tone_stages = the DEFAULT stage verification after synth-code or note-value changes — rebuilt session 18 for the twin voice: fit-row regression caps + stage windows measured on the ADOPTED handoff baseline after Robin's field ruling; instruments_load pins the twin install/uninstall shapes and waits for both model round-trips; data_validator checks the twin schema; CI installs scipy+soundfile so the fitter analysis runs there;''. **Sweep policy (Robin, 2026-09-26): the full run_all sweep runs only for sound-engine touches; data/song changes run the directly-affected suites (see AGENTS.md §12)** — full sweep 47/47 at the stage-verification commit (including tone_stages) is the last under the policy (including the new audit suite). CI = push/PR/manual, explicitly not a deploy gate. (.github/workflows/practice-tests.yml — console-hygiene + 41 suite steps + eslint + html-validate + board verify; local run-all counted 42 green on the Linux partition 2026-09-25 after the suite-server migration; earlier: 38 on 2026-09-25 session 14, 34 on session 12 — see DONE) NOTE: practice_accepts flaked ONE strict case under full-sweep load 2026-09-23, green twice standalone afterward and in the diag run — watch it, the arbiter hardening already took one such race; support_accepts flaked the same class 2026-09-24 (fixed wall-clock read window vs audio-clock lag under sweep CPU contention) and got the class cure: the read is now a real rendezvous with wall-fire stamps + ctx snapshots `335c4b4`). **Third member 2026-09-25 (CLI run `36110497803`, job 107992645371): practice_dip's leg A stalled the full 15 s timeout at maxIdx 0** — same SHA the local sweep had green; a DIFFERENT injury inside the same family: the suite's rendezvous (OCA_PRACTICE+NOTES) unlocks INSIDE loadInstrument (the stretch between installFingerings and boot's tail), where fillLibrary/loadLibraryItem(home) → practiceInvalidate is still owed — a session started mid-boot died when the tail landed; the stall reproduces at will with CDP network latency, cured by the rule-13 real rendezvous: the #scale options guard (filled only by the tail; a rAF poll never resolves mid-synchronous-block) plus a state card (started/st/ix/frames) on every driver resolve so a future stall names itself. The same tail guard rode into every suite that starts practice or needs typed editor text to survive boot (practice_accepts_melody, practice_zen_return, practice_history, keyboard_widgets, render_pin); library_hardening already waited a stronger post-tail signal (the Scales OPTGROUP), instrument_switch_race covers the race as its subject, playback-only suites are immune (practiceInvalidate stops practice, never play). Full sweep 31/31 green after the cure.
 
 ## 7. Accessibility & UX
 
@@ -402,3 +406,427 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   research tree, and CI keeps the corpus/grid contracts green through
   shipped_songs. Verified both shapes (the file moved out = skip exit 0,
   moved back = the full battery).
+
+- **2026-09-26 (session 17 cont. — the 12-hole recordings become per-note data: the melody-cut pipeline, the module-era offline bench, the first fitted tone.json)** —
+  Robin's IDEAS 12-hole recording analysis picked up on the
+  `12-hole-synth-tuning` branch (his guidance all session: tone ladder = the
+  feed ("multiple single notes when cut", honest volume envelope, silence as
+  the noise baseline), kokiri/storms = transition/glide context (the real
+  glide is a finger-tap), melody WAVs only — the individual note takes were
+  removed by his own hand, and the recordings' gain is a mic artifact while
+  end-volume must keep headroom for support tracks/reverb):
+  (1) **melody_cut.py** lands in the tone-analysis skill: span-adaptive
+      thresholds cut a melody mid-silence to mid-silence (the same gap owned
+      by both neighbors) and run every cut through tone_report.analyze with
+      scalable plateau margins + guard for short cuts (tone_report gained a
+      `margins=(0.22, 0.12)` parameter, defaults unchanged); attribution =
+      autocorr f0 → nearest chart id, cents recorded but not forced ET.
+      Ladder = 11 single-note-grade cuts; kokiri/storms measure but never
+      feed per Robin's call (transients/multi-note spans).
+  (2) **render_ours.py rebuilt for the module-era audio.js**: the old
+      classic-script load path is dead (audio.js is ESM now). The bench
+      writes a PATCHED module copy (imports absolute, module-local freqOf
+      with a `window.__F0` override, reverb/lite buses swapped for dry
+      outGain, air/edge/wander oscillators stubbed at their CALL sites) and
+      resolves it through one import map so the whole library graph has a
+      single audio instance; CORS=* on both bench servers; runs under
+      Playwright in REAL time (dump-dom + virtual time never resolves
+      startRendering on this chrome even for a bare oscillator).
+  (3) **fit_tone.py** closes the reproduce→record loop: per-note ladder
+      targets (best steady take, level anchored at the loudest fitted note,
+      levelDb all ≤ 0), then offline render → same-pipeline measure →
+      algebraic correction rounds. Converged round 3 on 11 rows: harmonics
+      within ±2 dB (systematic small sink below the blow-variance band),
+      levels ±0.3 dB, wind band-1 ±0.7 dB; open residuals: wind shape in
+      bands 2-3 (chain's own LP/bump constants), wobble-depth delivery and
+      attack-length delivery — all noted in the skill for the next layer.
+      D5/Ds5 unfitted (no ladder coverage; loader interpolates); B4's row
+      rides the ladder's re-blow blip (best-available, flagged).
+  (4) **instruments/oot-alto-c-12/tone.json ships** (tone-fit-v1, 11 rows,
+      chamber 1): harmonics/level/wind-band/wander/wobble/attack per note
+      from measurement, osDb from take overshoot, `h` vectors + expanded
+      keys keeping the loader free of new logic. Suite updates: data change,
+      so tests/instruments_load's boot leg repointed (a SHIPPED tone.json
+      must install as the model; declared-but-absent keeps the 404
+      tolerance); data_validator + console_hygiene green untouched; no sw
+      VERSION bump (data-only, precedent 8e7b1d7 / fetch rides SWR runtime
+      with no prior successful copy).
+  Affected suites green (data_validator, instruments_load — leg rewritten
+  for the landed data, console_hygiene); the board note + this log entry
+  land via tools/board.py. HELD for Robin's field check: the first fitted
+  voice is an audible-behavior change — his ears (multi-layer: the notes
+  themselves, the level curve inside one chamber, the wind) own the next
+  step; i will re-record when kids sleep done and the improved engine gets
+  re-analyzed per IDEAS (re-record double-alto-c notes).
+
+- **2026-09-26 (session 17 cont. — the transition/glide dataset lands: the real jump is a finger-tap, the engine's carry is what's missing)** —
+  glide_span.py joins the tone-analysis skill (plateau tracking at 35-cent
+  tolerance, per-jump duration/cents path/dip/half-cross), the committed
+  storms + kokiri WAVs measured: adjacent-step transitions 20-60 ms with a
+  0.2-0.5 dB dip (the tone CARRIES through the transfer) and tongued
+  kokiri joints 10-90 ms at −6..+7 dB (several mid-jump swells); the
+  render_ours bench grew --seq so the ENGINE's own transitions measure in
+  the same terms: 20 ms timing but a −4.2..−6.0 dB dip per note change —
+  timing already finger-tap territory, the carry missing (each note
+  restarts its master envelope). HELD for Robin's field check as an
+  audible-behavior decision (careful: practice's dip gate EXPECTS dips —
+  a carry must live behind melody semantics, not knit under practice).
+
+- **2026-09-26 (session 17 cont. — Robin's field check round: the near-noise methodology lesson, quantified)** —
+
+  Bob did the field check on the first fitted voice and the finds cascade:
+  (1) A4 (unfitted) far too soft — root-caused to B4's row (the ladder's only
+      B4 take = the opening re-blow blip at −44 dBFS H1) whose slope-extrap-
+      olation drags A4 down; the fix rides the clean kokiri tail take for B4
+      (field-check bridge, re-record replaces).
+  (2) The noise sounds like "sand paper, not porcelain" (B5/C6 hovers) and
+      Robin names it a standing MODEL defect — he had tuned the old wind layer
+      down to near-inaudibility to hide it, still a defect. Measured roots:
+      the engine's narrow bandpass (Q up to ~9) rings a rough whistle; and
+      separably the ONSETS: the recorded tongue transient runs −40..−55 dB
+      rel plateau H1 while the shipped generic chiff bursts ~25 dB hotter
+      through the first 180 ms (render vs recording onset portrait).
+  (3) The traditional notch-band noise metrics were measuring pollution, not
+      breath: the inter-harmonic floor of the recording reads −67 dB rel H1
+      at band-1 (Robin's own held-part spectrum export, F6) while the earlier
+      per-frame Hann-notch pipeline read −14..−26 — the loud fundamental's
+      window skirt was the "noise" the fit chased. BH-window re-measure on
+      the same F6 cut reproduces the class (h2 −46/h3 −44 rel H1; floors
+      −92..−122 rel H1 before the ENBW-consistent scaling correction);
+      Robin points at research/analysis/12hole/F6_spectrum.txt as the
+      plotted-target reference and at cuts/ladder/10_F6.wav ("good, loud
+      noise") plus the short-drift-window rule.
+  (4) A real glide "tap" decision: between normal notes the dip stays, but
+      glide-connected notes transfer with fixed short tap length, independent
+      of the note duration ( AUDIO_DEBUG.slideTapMs 0.03, transients 10-60 ms
+      with a 0.2-0.5 dB dip as the target; engine edited, held for field check).
+  In flight when logged: wind-shape model re-search (broad wash, non-resonant
+  Q cap — analytic |H| search vs the corrected recordings, python loop timed
+  out once, switched to frequency-domain analytic responses), floor-method
+  re-measurement for both the recording cuts and the render side (same helper),
+  onset-fit (chiff rows per note from the takes), then re-fit + publish +
+  suites/full sweep. WAV data is the arbiter of truth (Robin): his texture
+  adjectives steer, the numbers decide.
+
+- **2026-09-26 (session 17 cont. — the corrected floors ship: wash profile published, hold_spectrum joins the skill, the onset sand-paper root-caused; context limit wraps the session)** —
+
+  Robin's requests through the turn: find+generate held-tone spectra as part
+  of the skill (holdspectrum built), WAV data as the sound-truth arbiter, the
+  10_F6.wav cut + his own F6_spectrum.txt export as the reference case, short
+  drift-free windows for the truth:
+  (1) fit_tone gains the floor_bands method (Blackman-Harris held window,
+      inter-harmonic floor medians, ±80 Hz harmonic exclusion, consistent on
+      the RECORDING cuts AND the render side) — the fit's wind rows now ride
+      the recording's true breath: floors land at −62..−68 dB rel H1 at
+      band-1 (45-70 dB under the published-tabulated skirt values).
+  (2) The wind-shape search (analytic |H|, no timed-out loop) picked the
+      wash profile: broad non-resonant bp Q 0.4 at 1.26 f0 + gentle lp
+      3.4 f0 Q 0.4 — the ENGINE caps windQ (bumpQMax 0.6, noiseLp 3.4/0.4)
+      and synth_replica mirrors it; per-note wind rows re-fit landed the
+      render correctness checks: floors −68..−87 across B5/C6/F6/A4 vs
+      recording truths (b1 ±4 dB, b2/b3 ±4-7 dB as the shape model's
+      residual; A4's render H1 −28.9 with the B4 bridge — the
+      "A4 too soft" catch addressed).
+  (3) hold_spectrum.py — the tool copy: finds the held tone, writes the
+      txt-format spectrum + hold summary; reproduces the F6 ground truth
+      class (floors −70..−100 rel H1 vs the export's −67..−96);
+      documented as the arbiter when measurements disagree.
+  (4) The onset sand-paper isolated: the render's onset burst survives
+      zeroing air/wind/ot and the fitted chiff (the loop corrected rows to
+      −43..−74 dB peak while the measured burst sat at −11 dB) — the burst
+      is the ENGINE's pre-tone stage: the attacking fundamental's swept
+      skirt rides at the −14.3 dB pre-tone level (measured: the cluster at
+      1.01-1.05 f0 exactly at the pre-tone fraction) while the real
+      recording's lead-in is a quiet 20 ms swell (−45 dB). NEXT UNIT SPEC:
+      engine attack-stage fields from the recorded attacks (rows carry the
+      per-take attack_to_plateau 10-30 ms — the engine floor 0.04-0.05 s
+      still measures 0.07-0.1), the chiff row paths keep their onsets, then
+      re-fit onsets; held for Robin's field check as audible.
+  (5) Suites: full sweep 46/46 (352 s, engine touch → policy sweep) + eslint
+      clean; sw VERSION → oco-pwa-v35 (rule 15 — engine js changed).
+  Held for Robin: the field check on the whole round (A4 loudness, the
+  porcelain wash, the onset character after the next unit's attack fields);
+  the glide-tap engine constant already drafted; B4 re-record + the
+  double-alto-c re-record per IDEAS when he gets hands-on time.
+
+- **2026-09-27 (session 17 cont. — the held-spectrum night: the white-ish noise loses three roots, the wind rows re-fit, the attack-stage unit lands its first fit)** —
+  Robin's directive (fresh session): focus on the spectrums of held-note parts
+  (reference WAVs vs our renders). Juno's night ran unattended per the away-
+  work grant; landed on `12-hole-synth-tuning` in three commits:
+  (1) `79ca6e8` the previous session's attack-stage WIP reviewed fresh (it was
+      from an errored >350K session) and committed as the checkpoint: engine
+      atk {speak, pre} rows, fit_tone atkPre loop, refit tone.json, sw v36;
+      sweep 46/46 (a one-off bad_chip_style flake passed isolated and again
+      in the rerun).
+  (2) `302a20f` the comparison machinery: hold_spectrum --span (cut-relative
+      forced windows for the B4/D6-class wobbly holds), spectra_compare.py
+      (one method both sides, per-band deltas via targets.json's on/off minus
+      cutStart), render_ours --wind (constants verified through REAL renders —
+      the delivered WebAudio chain deviates from the analytic RBJ 2-biquad
+      model by 3-6 dB/band and the deviation drifts per candidate), the
+      cross-tool floor-scale convention lesson (ton_report/hold_spectrum/
+      exporter differ 2-4 dB on absolutes; F6's export stays the arbiter).
+  (3) `450991f` the roots: (a) the 0.5 s wind loop was a 2 Hz-spaced LINE
+      COMB — every noise line in the renders sat at k×2 Hz (isolation probes:
+      tone-only silent, wobble/wander/chiff/ot/edge contribute ~nothing;
+      the comb WAS the texture)— now a 4 s loop, verify renders show no comb
+      lines; (b) the WIND_SHAPE mid-wall (0.6/2.6/0.8) from a rendered
+      candidate matrix (delivered b1→b2 fall 4-7 dB vs the old flat 2.4);
+      (c) vInterpHold — the fitted model HOLDS the nearest anchor beyond its
+      range (Robin's A3/B3 catch was the clamped-slope extrapolation reading
+      B4's contaminated blip row out to −13.2% wobble at 21.5 Hz, a fast
+      inverted tremolo); (d) wind rows re-fit 3 rounds under the new shape:
+      b1 ±0.9 dB on all 11, F6 delivered −67.4 vs Robin's export −67;
+      b2/b3 keep a −8..+3 take-spread residual (skill: do not over-fit single
+      takes; F6-exemplar precision would want per-note lpRatio/lpQ rows).
+  Suites: full sweep 46/46 green at the commit; eslint/html-validate clean;
+  sw oco-pwa-v37 (engine touch). Board: §1 noise item rewritten with the
+  landed roots + open field-check list; hot list refreshed; the session's
+  render/probe material lives in research/analysis/12hole/renders_v37/
+  Suites: full sweep 46/46 green at the commit; eslint/html-validate clean;
+  sw oco-pwa-v37 (engine touch). Board: §1 noise item rewritten with the
+  landed roots + open field-check list; hot list refreshed; the session's
+  render/probe material lives in research/analysis/12hole/renders_v37/
+  (gitignored, regenerable from the tools).
+  MORNING DECK:
+  - FIELD CHECK (the deciding pass): the fitted voice's held texture (comb
+    gone? porcelain?), the attack character (atk rows, pre-tone 0.19·M →
+    0.01·M), the A3/B3 hold-at-anchor delivery (B4's own row now plays
+    there — the 9.4 Hz/10.7% wobble reading rides it; re-record or keep).
+  - The default voice picks up the 4 s buffer fix automatically (same wind
+    chain); its H3 chamber-3 formant is DESIGNED doctrine (V_ANCHORS h3
+    0.021 at the top retuned only by his ears).
+  - If the F6 exemplar wall must be exact, the next structural build is
+    per-note lpRatio/lpQ rows (candidate-matrix method in the skill).
+
+- **2026-09-27 (session 17-cont. #2 — the held-note recordings land, the kokiri/storms rule becomes law, the puff bisects to the engine's own bloom)** —
+  Robin's field catches drove the night: B4's wobble was onset-implied
+  (never in his takes), F6 grit is engine-general, and the E5/F5/G5/A4 "tongue
+  puff" he never recorded. His morning additions
+  (research/note-recordings/12hole/*-held.wav, 8 notes) became the primary
+  rows: A4/A5/C5/D5 direct anchors, the coherent wobble class 6.5-9.3% @
+  2-6 Hz, and the rules landed hard — kokiri/storms NEVER note values (context
+  rows interpolate/extrapolate from the fitted ladder rows), short spans
+  (<0.40 s) can't imply a wobble, the burst extractor must bound the window by
+  the tone's own arrival (the A4 take's rising tone once became a 200% chiff),
+  and unresolvable onsets fall through to the entry take or the nearest fitted
+  neighbor (the engine's generic chiff fallback was making puffs the takes
+  never carried). Engine gains per-note noiseLpRatio/noiseLpQ (the 2-biquad
+  family was saturated: b2 −4..−5.6 regardless; the walls now move per note),
+  a row chiff delay (his swells start ~55 ms in), and sw v38. The puff's last
+  root bisected clean tonight: NOT chiff/wind/air/edge/ot (profiles identical
+  with each zeroed) — the tone's own level+pitch bloom (~80 ms) where the
+  takes speak in ~15-20 ms; the next engine unit makes the fitted attack shape
+  row-expressible. Full sweep 46/46 at both commit points; lint clean;
+  `12-hole-synth-tuning` carries `79ca6e8`, `302a20f`, `450991f`, `d9826f3`.
+
+- **2026-09-27 (session 17-cont. #3 — the field check fails the voice; the complaint spectra are the next unit's ground truth)** —
+  Robin's verdict stands above everything tonight shipped: the fitted voice
+  "sounds very bad currently." His IDEAS note names it precisely — the
+  broadband-with-filters model sounds NOTHING like a real ocarina — and the
+  complaint spectra (research/analysis/12hole/complaint/
+  C5_hold_spectrum_{recording,render}.txt) measure why: the recording's noise
+  is a BODY with a warm fixed pocket at 273-600 Hz (the 273 Hz bump exists in
+  every recording — a physical, f0-independent cavity resonance the synth
+  never had), a deep valley through 900-1800 (Robin: "very big holes in the
+  real noise profile; nothing like the broadband you have"), and rough upper
+  bands — while our render is a monotone shelf with its bump ABOVE the tone
+  (1.26×f0) where the real pocket sits BELOW it. The held-note per-note
+  walls/wobble/hold-at-edge plumbing of tonight survives (verified rows, b1
+  tone accuracy, no invented extrapolation), but the NOISE SHAPE MODEL is
+  the target next fresh session: full held-spectra agreement across the
+  held-note set, not a few band medians. Board §1 carries the item verbatim
+  from his IDEAS entry; nothing mooted, nothing executed at high context.
+
+- **2026-09-27 (session 17-cont. #4 — the noise-body layer becomes the engine, the wall re-fit rides it, Robin's meter rule lands)** —
+  The fresh session opened on the parked noise-BODY unit; four commits:
+  (1) `d62aad2` **AGENTS §18**: the context-meter number is distrusted in a
+      FRESH session (Robin's rule — the session-open reading confused the
+      AI every single time it was trusted; the zone becomes truth again
+      only once the session's own work stands behind it). This session's
+      own 322K "watch" verdict was exactly that class.
+  (2) `0149570` **the engine unit**: the wind chain gained the absolute
+      noise-body layer ahead of the tone-tracking chain — parked pocket
+      peaking 273 Hz Q2.2 (fixed-absolute, gated by tone.json's global
+      `windPark` so unfitted voices stay byte-identical), warm shelf 470
+      Q0.8, and the upper roughness as a PARALLEL bleed past the per-note
+      lp wall (highpass 2900 Q1.1 → shelves 6000/−10 + 9500/−7 → bleed
+      gain: the recording's rough bed survives to 12 kHz where the walls
+      carve 700-1900 holes — one series chain cannot express both; the
+      first bleed anchor rendered +30 dB raw-bed-hot and went 2400/Q0.6 →
+      2900/Q1.1 + a −33 dB gain anchor through five rendered rounds).
+      render_ours grew --parkDb/--warmDb/--roughDb candidate injection;
+      parkDb is per-note row-expressible. C5 body matrix converged (pocket
+      +0.9, warm −2.0, trough +1.8, rough2 −1.1, tail −0.4 rel-H1).
+      Full sweep 46/46, lint clean, sw oco-pwa-v39.
+  (3) `a73f9c9` **the data unit**: fit_tone injects the layer global into
+      every candidate + draft (the wall re-fit must shape against the
+      recomposed chain) and publish() keeps it; fit --rounds 3 landed
+      band-1 ±1.2 dB on all 15 fitted rows; per-note parkDb rows measured
+      from the eight held takes (span −13..+13: F5 nearly silent, A4 the
+      loudest — the fixed bump rides per-note cavity coupling, so rows not
+      set gain) written into tone.json; after the rows, pocket within ±3
+      on every measured note. data_validator/instruments_load/
+      console_hygiene green; sw stays v39 (data + fit tooling only).
+  (4) Skill maintenance carried the method: abs_shape.py promoted (absolute
+      band table, ±80 Hz harmonic exclusion, both sides one method; ±3-5 dB
+      take noise per 0.74 s window doctrine), the layer's docs + the
+      research-tree folderization (12hole batches now truth/v36/v37/v38/
+      held/shape_candidates/isolation/ladder/early/measures with the live
+      state at top level; targets.json paths untouched) noted in place.
+  OPEN (§1 item rewritten): the wall-family residuals — band-2 −2..−8
+  under-carved (the wall's dB-per-unit calibrations measured pre-layer),
+  hole2 +10/H2zone +4 (C5), rough1 +5, per-note warm (A5 +7.4), A5-class
+  bleed tail −11..−14 — plus the fit loop learning parkDb itself.
+  HELD for Robin: field check on the recomposed voice (the layers are
+  audible by design).
+
+- **2026-09-27 (session 17-cont. #5 — the wall pass re-fits on the layered chain, the intermediate writer ships, Robin listens)** —
+  Robin's turnback ("more out of curiosity… dying to hear some result") set
+  the unit's shape: (1) the wall_cal candidate matrix re-measured the
+  band-to-wall responses through real renders on the layered chain — b2
+  +4.1 dB per Δratio (not the pre-layer 6.5 — the bleed refills the bands,
+  which is where round-3's under-carve came from), b3 ~+3.3, Q near-inert;
+  (2) the fit loop's wall leg converged via a damped dual-residual sum (0.4
+  gain, ±0.9 — per-note response is not one constant; A4 swung ~11 dB per
+  0.68 move under the dual ±1.2 form), round-5 landing band-1 ±1.5 and
+  band-2 mostly ±4 (A4-E5 −0.2..−3.8; F5/G5/A5/F6 keep −6.9..−8.7 where the
+  expressible row set bottoms out); (3) write_intermediate now puts each
+  round's converged rows straight into the SHIPPED tone.json so a mid-run
+  listen always hears a fully-fitted voice (per-row keys the loop never
+  recomputes — parkDb/noiseLpQ — carry over from the last published state);
+  (4) body-table spot check on the live state: C5 trough/rough2/tail/
+  airhead within ~±2, pocket/warm/in-take class; the open residuals named
+  in the item (hole depth, rough1-vs-tail per-note split, parkDb loop leg).
+  Commit `6c49ef6`; data_validator/instruments_load/console_hygiene green;
+  sw stays v39. Robin is playing the intermediate state — his field check
+  steers the next row family.
+
+- **2026-09-27 (session 17-cont. #6 — Robin names the white wash, the stage gate becomes default, the bleed is rescued)** —
+  Robin's ear drove the unit: F5's render carries "lots of white noise,
+  sustain but much much more during the onset; could it be some generic
+  (not tone.json) broadband noise?" — and the doctrine: "checking the
+  end-result WAV to the recording, in the sustain/hold, onset and decay
+  should be part of the DEFAULT verification" during sessions like these,
+  plus the held takes are the better reference (commit them, the note
+  value WAV output is compared with them). Landed (`22f5711`):
+  (1) the isolation probes: with windAmt=0 the sustained wash collapses
+      (−113.6 hold) and the onset grossness collapses with it — NO hidden
+      generic path; the white character was the bleed path itself: the raw
+      highpassed white bed (every other noise path is chamber-shaped);
+      (2) the bleed became a second chamber-colored lobe (bp 2.7×f0 Q0.9,
+      absolute tilts retained; rough3's −9 gap closed at once, rough1/
+      trough/tail still want per-note rows);
+      (3) tests/tone_stages.py — the DEFAULT gate: 8 held notes ×
+      onset/hold/decay, render-vs-recording, broadband + abs-band caps,
+      known-open allowlist declared per defect class (the onset-swell
+      leg, the bleed/wall classes, wobble-window pairs); the held wavs
+      ride the COMMITTED reference set so CI runs it for real; searched
+      working-set-first, loud skip absent (midi_track_audit pattern);
+      (4) publish() stops stomping per-row keys (lost parkDb once);
+      (5) sw v40; full sweep 47/47 with the suite inside; lint clean.
+  The unit state: the stage table reads onset swell +16..+19 (C5/D5),
+  pocket +20..+28 at onset, E5-tail/G5-tail classes at hold — all
+  declared — and the next build is the wind-envelope attack leg + per-note
+  bleed/warm rows + hole dips. Robin heard the earlier state; the new
+  lobe voice (v40) rides a reload.
+
+- **2026-09-27 (session 18 — the Helmholtz twin replaces the 12-hole's voice; Robin's field ruling restores the handoff state; the tone-analysis era closes for this ocarina)** —
+  Robin's zip handoff (research/ocarina-twin-synth-handoff.zip, produced with
+  Grok Expert) replaced the synth. Answers batch up front: per-instrument
+  swap with easy later cleanup, the 12-hole replaced OUTRIGHT (no A/B flag —
+  "our current 12-hole is even worse than before this branch started"), the
+  zen pan-chorus rebuilt, work stays on `12-hole-synth-tuning`, and the stage
+  gate "replaced with something better given the new info". Five commits:
+  (1) `d608d18` **the skill**: skills/ocarina-twin/ (fit.py's tracked H1-H8
+      subtract fitter, synth.py offline reference renderer, model.py
+      ocarina-twin-v2 schema) + the first fitted chamber shipped
+      (instruments/oot-alto-c-12/twin_model.json, 8 held takes A4-A5).
+  (2) `3076835` **the swap**: js/helmholtz-voice.js (sine through the cavity
+      bandpass + period-synced turbulence → residual/hiss/chiff routes +
+      minute dry H2-H6; the 4 s crossfaded noise buffer rides the line-comb
+      lesson) driven by installTwinModel; playNoteAt branches into the twin
+      path (same slot arithmetic, cut bus/track mix/pan-chorus rebuilt;
+      lite = the handoff's sine→bandpass shape); manifest `twin` loads like
+      tone.json; README carries the swap + legacy-cleanup path; sw v41.
+  (3) THE FIELD RULING — Robin hardcoded while the row-closure pass was in
+      flight: "the handoff state was perfect before"; my algebraic rewiring
+      (model rows rewritten to close against the renderers + a one-sine
+      amp-wobble + the deepened wander) made it worse — "the wobble at A4
+      is very bad... some onset noise and shit back" — and `10b76d7`
+      reverted all of it: module + model byte-identical to the handoff
+      again, tone_stages becomes the REGRESSION gate on the adopted
+      baseline (his blessing, not my row math, defines right), the
+      calibration tool never landed. A measure-and-fit finding rode the
+      diagnosing: the fitter's old median*4 span guard collapsed EVERY
+      span onto the 0.15/0.85 fallback (release+silence measured as
+      sustain — med4/peak 2.3-3.7 on every take); the peak*0.08 fix STAYS
+      in fit.py, and the shipped model stays the blessed reference even
+      though fresh refits now differ (they go through his ears).
+  (4) `e9dd12b` a reverted-edit leftover dropped (twin kill() disconnected
+      out twice since the head-wrap edit).
+  (5) `d58ef80` **tone.json retired with the swap** (Robin: "the instrument
+      is twin and there is still a non-twin tone.json") — the 12-hole's
+      manifest declaration and file both go (the additive voice keeps
+      tone.json for stein double + contrabass); instruments_load's boot
+      legs wait for BOTH model round-trips to settle; CI installs
+      scipy+soundfile for the twin gate.
+  New INFO: a reproduce run of run_fit.py against the 8 held takes matched
+  the shipped model bit-for-bit under the old span (deterministic pipeline);
+  tone_stages rebuilt = fit-row regression caps around the blessed delivery
+  + stage windows (rel-H1 ratios replaced by plateau-relative release depth
+  in the decay leg — the interpolant's own rel bands blow up once the
+  fundamental departs). Offline-reference parity checks died with the
+  calibration pass: the python reference renderer under-delivers its own
+  res/hiss rows 8-18 dB (the rows are convention-relative; the web voice
+  delivers them its own way and that is what his ears blessed).
+  Sweeps: full 47/47 TWICE (final at `d58ef80` + tone_stages flaky-b4-slope
+  cap set 7.0 from the measured flap); lint clean; board verify green;
+  sw oco-pwa-v41 (engine change). MORNING DECK: FIELD CHECK the voice
+  (texture/attack/glide/practice); the top register A5-F6 takes when he has
+  hands-on time; the twin-skill file map lives in skills/ocarina-twin/SKILL.md
+  with the first law — HIS EARS, not row math.
+
+- **2026-09-28 (session 18 cont. — the stein's temp twin: 3 recorded notes become a two-chamber voice)** —
+  Robin's ask: three recorded notes of the Focalink Stein double alto C
+  (research/note-recordings/double-alto-c: C5 + its 2nd take, D6, G6 — a sep-17
+  session), "a temp twin until I record more". Landed `<<twin-ste` commit(s)
+  (see git log — two commits: the multi-shape engine + the temp data):
+  (1) The fitter's nominal table gained G6..Cs7 — G6 had FALLEN THROUGH to
+      the 500 Hz default (the NOM table topped at F6) and the whole tracked
+      subtract built on a wrong octave (f0 read 557 with H2/H3 "louder than
+      H1"); after the fix G6 reads f0 1566.3 (-1.7 cts of nominal).
+  (2) The multi-chamber wrapper ("ocarina-twin-multi-v1" =
+      chambers: {ch: {model, gain}}): installTwinModel stores per-chamber
+      models + gain; playNoteAt routes EVERY NOTE by its chart chamber and a
+      chamber WITHOUT a model keeps that note on the additive voice
+      (temp-twin instruments may cover only part of their range; the
+      chambers never lerp across V). The single 12-hole shape installs as
+      chambers {"1"} — one code path, the 12-hole unaffected.
+  (3) The temp data: chamber 1 = C5 (2nd take, f0 +11 cts, wander 8.8 vs the
+      first take's clamped-12 tracking) + D6 (chart says chamber 1 runs
+      A4-Ds6!); chamber 2 = G6 alone clamped at both ends. Per-chamber
+      internal levels normalize to their own peak; the CROSS-chamber
+      loudness rides the wrapper gain (ch2 0.57 = G6's raw level vs the
+      chain's D6 peak — the takes' 15 dB C5-under-D6 gap stays relative,
+      flagged in the file's head).
+  (4) Verified: validator (multi shapes), instruments_load (multi install
+      legs + a wrapper probe with a gain-less entry), the render bench
+      routing three notes (clamped C5, interpolated G5, chamber-2 G6 — the
+      gain math checked: predicted G5/G6 ratio 0.2 dB, measured 0.2),
+      console hygiene, full sweep 47/47 twice at the wrap, lint clean,
+      sw oco-pwa-v42 (engine touched for the routing). README carries the
+      twin file shapes; the skill carries the multi/temp doctrine.
+  HELD for Robin's field check: the temp voice's character across the wide
+  unfitted spans (the whole second chamber rides one row; chamber 1
+  interpolates across 2.2 octaves) — his retune/refit wording steers.
+
+- **2026-09-28 (session 18 cont. — the CI red is a one-line artifact-path fix)** —
+  CI run `36394556428` (push at `b818548`, the "Run held-note stage
+  verification" step): all 8 held notes rendered and measured clean on the
+  runner, then the artifact dump crashed — `research/analysis/12hole/` is
+  work material, not committed, so a fresh CI checkout has no such dir
+  (`json.dump` on a missing parent). Fix: `os.makedirs(OUT, exist_ok=True)`
+  at main() start. Verified by simulating the CI shape locally (the dir
+  tucked aside, suite green exit 0, files restored untouched). No sw bump
+  (suite-only change).

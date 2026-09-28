@@ -47,7 +47,7 @@ jobs:
         run: python tests/data_validator.py
       - name: Install Playwright + Chromium
         run: |
-          pip install playwright
+          pip install playwright scipy soundfile
           playwright install --with-deps chromium
       - name: Run console-hygiene boot error scan
         run: python tests/console_hygiene.py
@@ -133,3 +133,5 @@ jobs:
         run: python tests/seo_shell.py
       - name: Run MIDI-track source-audit tests
         run: python tests/midi_track_audit.py
+      - name: Run held-note stage verification (onset/hold/decay)
+        run: python tests/tone_stages.py

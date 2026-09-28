@@ -208,7 +208,12 @@ Windows (partition):
     `.opencode/context-usage.json` after every assistant message (`context_est`
     plus a `zone` verdict: ok/watch/action/hard at 300/350/400K). **Read that
     file at session start and whenever length is in doubt — the zone it
-    names is the truth.** At the watch line: no new large tasks — finish the
+    names is the truth.** **Exception (Robin, 2026-09-27): do NOT trust the
+    context-usage number in a FRESH session — every single time it has
+    confused the AI; a session-open reading (often a stale or inflated
+    watch/action verdict before any work exists) is ignored. Once the
+    session has its own assistant messages and work behind it, the number
+    becomes trustworthy again.** At the watch line: no new large tasks — finish the
     current slice to a green, committed state. At the action line: wrap up
     regardless of what is tempting — TODO fully current (session log, next
     steps, held-for-Robin items), all work committed, then end the session.

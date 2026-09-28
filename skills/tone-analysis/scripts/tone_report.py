@@ -46,7 +46,11 @@ def quad_db(y, i):
     d = 0.5 * (a - c) / (a - 2*b + c + 1e-30)
     return (i + d), (b - 0.25 * (a - c) * d)
 
-def analyze(path, nominal=None, label=None):
+def analyze(path, nominal=None, label=None, margins=(0.22, 0.12)):
+    # margins: (attack-exclusion s, release-exclusion s) around the plateau
+    # frames. Straight reproductions keep the (0.22, 0.12) defaults matched to
+    # long held tones; short melody cuts pass smaller margins so a 0.3 s
+    # blip still yields plateau frames.
     rate, x = load_wav(path)
     assert rate == 44100, f"unexpected rate {rate}"
     mono = x[:, 0] if x.shape[1] == 1 else (x[:, 0] + x[:, 1]) / 2.0
@@ -119,7 +123,8 @@ def analyze(path, nominal=None, label=None):
     if len(act) < 4:
         raise RuntimeError("no active frames found")
     t_on, t_off = t_stft[act[0]], t_stft[act[-1]]
-    pl = np.array([j for j in act if (t_stft[j] > t_on + 0.22) and (t_stft[j] < t_off - 0.12)])
+    m_atk, m_rel = margins
+    pl = np.array([j for j in act if (t_stft[j] > t_on + m_atk) and (t_stft[j] < t_off - m_rel)])
     if len(pl) < 3:
         pl = act
     out = {"label": label or nominal, "file": path, "duration_s": N / SR,
@@ -160,21 +165,34 @@ def analyze(path, nominal=None, label=None):
     over = float(smooth[pk_i] - plateau_level)
     after = smooth[pk_i:] <= plateau_level - 1.0
     settle = (t_env[pk_i] + np.argmax(after) * hop5 / SR - t_env[pk_i]) if after.any() else None
+    # wobble: needs enough plateau frames to mean anything
     li = on_i + int(np.argmax(smooth[on_i:] >= plateau_level - 3))
     aw = smooth[max(0, on_i):min(on_i + 40, len(smooth))]  # first 200 ms of the sound
     att_over = float(np.max(aw) - plateau_level) if len(aw) else 0.0
     lin = 10**(env_db / 20)
-    kernel = np.hanning(89); kernel /= kernel.sum()
+    klen = min(89, max(9, len(lin) - (1 - len(lin) % 2)))
+    kernel = np.hanning(klen if klen % 2 else klen + 1); kernel /= kernel.sum()
     hf = lin - np.convolve(lin, kernel, mode="same")
-    lo_w = int(np.searchsorted(t_env, t_on + 0.30))
+    lo_w = int(np.searchsorted(t_env, t_on + max(0.05, 0.30 - m_atk)))
     wob = hf[lo_w:off_i]
-    mean_lin = float(np.mean(lin[lo_w:off_i]))
-    wob_std = float(wob.std() / mean_lin)
+    mean_lin = float(np.mean(lin[lo_w:off_i])) if off_i > lo_w else float(np.mean(lin))
+    wob_std = float(wob.std() / mean_lin) if len(wob) >= 16 else 0.0
+    wob_pp = float((wob.max() - wob.min()) / mean_lin * 100) if len(wob) >= 16 else 0.0
     sp = np.abs(np.fft.rfft(wob * np.hanning(len(wob)), 2048))
     fr = np.fft.rfftfreq(2048, hop5 / SR)
     band = (fr > 0.3) & (fr < 10)
-    ib = int(np.where(band)[0][np.argmax(sp[band])])
+    if len(wob) >= 16 and band.any():
+        ib = int(np.where(band)[0][np.argmax(sp[band])])
+        wob_hz = float(fr[ib])
+        wob_dep = float(2*sp[ib] / max(len(wob), 1) / mean_lin * 100)
+    else:
+        wob_hz, wob_dep = 0.0, 0.0
     rel = env_db[on_i:off_i]
+    sel = env_db[on_i+30:off_i-10]
+    if len(sel) < 4:
+        sel = env_db[on_i:off_i]
+    spread = (float(np.percentile(sel, 90) - np.percentile(sel, 10))
+              if len(sel) >= 4 else 0.0)
     out["envelope"] = {
         "sounding_s": [float(t_env[on_i]), float(t_env[off_i])],
         "attack_to_plateau_s": float(t_env[min(li, len(t_env)-1)] - t_env[on_i]),
@@ -182,12 +200,12 @@ def analyze(path, nominal=None, label=None):
         "attacks_max_overshoot_db": over,
         "overshoot_peak_s": float(t_env[pk_i]),
         "overshoot_settle_s": float(settle) if settle else None,
-        "plateau_dbfs": 20*np.log10(np.sqrt(np.mean(mono[int((t_on+0.25)*SR):int((t_off-0.1)*SR)]**2)) + DB_EPS),
-        "plateau_spread_db": float(np.percentile(env_db[on_i+30:off_i-10], 90) - np.percentile(env_db[on_i+30:off_i-10], 10)),
+        "plateau_dbfs": 20*np.log10(np.sqrt(np.mean(mono[int((t_on+m_atk)*SR):max(int((t_on+m_atk)*SR)+1, int((t_off-m_rel)*SR))]**2)) + DB_EPS),
+        "plateau_spread_db": spread,
         "breath_wobble_std_pct": wob_std * 100,
-        "breath_wobble_pp_pct": float((wob.max() - wob.min()) / mean_lin * 100),
-        "wobble_dominant_hz": float(fr[ib]),
-        "wobble_dominant_depth_pct": float(2*sp[ib] / max(len(wob), 1) / mean_lin * 100),
+        "breath_wobble_pp_pct": wob_pp,
+        "wobble_dominant_hz": wob_hz,
+        "wobble_dominant_depth_pct": wob_dep,
     }
 
     # ---------- timbre ----------

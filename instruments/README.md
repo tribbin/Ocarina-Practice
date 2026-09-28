@@ -9,14 +9,56 @@ range and the file paths stay there). Folder contents:
       fingerings.json        fingering chart (notes, chambers, covered holes)
       ocarina-template.svg   the SVG body template (theme variants live here too)
       tone.json              OPTIONAL: fitted per-chamber tone anchors
+      twin_model.json        OPTIONAL: fitted Helmholtz twin model
 
-`instruments.json` entries may carry `"tone": "instruments/<id>/tone.json"`.
+`instruments.json` entries may carry `"tone": "instruments/<id>/tone.json"`
+and `"twin": "instruments/<id>/twin_model.json"`.
 A missing file is normal — that ocarina then keeps the baked-in generic model
 (the alto-derived extrapolation in `js/audio.js`), and nobody notices. A
 manifest entry may also declare the field ahead of its measurements (the
 per-chamber tuning work is planned for every ocarina); until the file lands
 the loader treats the 404 as "no data yet". If the file exists but is corrupt,
 the loader also falls back — tone data must never break boot.
+
+## Voice swap (twin vs additive)
+
+`twin_model.json` switches the instrument's VOICE to the Helmholtz twin
+(`js/helmholtz-voice.js`, python fitter + reference renderer in
+`skills/ocarina-twin/`): near-sine fundamental through the cavity bandpass,
+period-synchronous turbulence for the on-the-note breath, highpassed hiss
+bypassing the cavity, minute dry H2–H6 labium partials. The additive
+timbre/wind machinery in `js/audio.js` (PeriodicWave + windPark/warm/rough
+shelves + edge whistle + chiff/ot bursts, `voiceProfileFor`, `V_ANCHORS`)
+is the LEGACY voice: it still serves ocarinas whose chambers aren't
+twins yet, and disappears wholesale once the last one is converted —
+drop `installToneModel`, `voiceProfileFor` and everything it feeds, keep
+the twin branch delete-simple. tone.json stays on disk only while the
+additive voice still reads it: the 12-hole's was removed with its swap
+(the fit history lives in git).
+
+### The twin file shapes
+
+Single-chamber schema ("ocarina-twin-v2" — the 12-hole):
+
+    { "schema": "...", "notes": [...] }        // one chamber, all notes
+
+Multi-chamber wrapper ("ocarina-twin-multi-v1" — a double/triple mid-fit;
+each note's OWN chamber must carry a model — a chamber without one keeps
+its notes on the additive voice, and chambers never lerp across V):
+
+    { "schema": "ocarina-twin-multi-v1",
+      "chambers": {
+        "1": { "gain": 1.0,  "model": { "schema": "...", "chamber": "1", "notes": [...] } },
+        "2": { "gain": 0.57, "model": { "schema": "...", "chamber": "2", "notes": [...] } }
+      } }
+
+`gain` carries the cross-chamber loudness (raw take level vs the whole
+chain's loudest take): each chamber's internal `level` rows normalize to
+that chamber's own peak, so the wrapper's gain is what keeps chamber 2
+from sounding as loud as chamber 1 without any recording to say so.
+A temp twin (3 notes measured, big gaps) interpolates across them and
+CLAMPS outside — the temp whole-chamber rows hold through the unfitted
+ranges until real held takes land.
 
 tone.json — schema v1 ("tone-fit-v1")
 -------------------------------------
@@ -73,6 +115,10 @@ Field notes:
 - Every field stands alone. If the fit couldn't decide a value (or a whole
   sub-object), drop it — the loader keeps that one piece of the generic
   model, per field, per chamber. No all-or-nothing.
+- levelDb rows are RELATIVE to each other (recorded absolute gain is a
+  mic-chain artifact, never shipped). A fit anchors its own loudest recorded
+  note at 0 dB and only the note-to-note curve ships — the app's masterLevel
+  stays untouched so support tracks and reverb keep their headroom.
 - Envelope constants that came out chamber-level (not per note) are simply
   repeated identically across the chamber's 3 rows.
 - "chifff"/"ot"/"edge" replace the generic size/open-hole heuristics and the
@@ -87,8 +133,10 @@ Recording protocol (per ocarina, per chamber)
 3 notes per chamber: near-lowest, middle, near-top. One steady tone each
 (long enough for the fit, ideally 2+ s). Keep the mic/signal chain constant
 across all notes of an ocarina, note the distance; the fit normalizes
-relative levels within the ocarina (levelDb rows are relative to each other
-and to the shared C5 reference).
+relative levels within the ocarina (levelDb rows are relative to each other,
+anchored by the fit itself, never shipped against absolute mic gain) —
+the melody-ladder workflow (skills/tone-analysis/SKILL.md) supersedes the
+3-anchor protocol: one row per recorded note of the ladder, all of them.
 
 The fit script itself lives with the recordings (analysis machine); the repo
 receives only the finished tone.json in the ocarina's folder.
