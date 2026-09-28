@@ -844,3 +844,9 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   corpus: streams clean, zones declared, per-bar sums equal — 4 multi-track
   songs align bar-for-bar) and gen_pages green; no js/html touched. HELD for
   Robin: the Epona contrabass at full audibility is his ears' call.
+  Follow-up same unit: the identical 100-block rides `eponas-song-bass` — its
+  body is literal, not a derive — so both Epona versions play the same D3-G3
+  ranch contrabass; note the `sarias-song-bass` DERIVE instead shifts its
+  whole body one octave down (library.js deriveBody moves track rows with the
+  melody), so Saria's bass-version contrabass sits at E2-G#2 while the alto
+  version's sits at E3-G#3 — his ears decide if that asymmetry stands.
