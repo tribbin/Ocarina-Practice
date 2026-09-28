@@ -344,3 +344,34 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   holds (shipped-songs standardization, library widening). Obsolete
   vanishes per the conventions - no DONE entries for deletions; board
   verify + board_tool 12/12 green (todo/done machinery only, per scope).
+
+- **2026-09-28 (session 21 wrap cont. — the wrapper-embed miss fixed: the stein's mid-air rows were never in the shipped wrapper)** —
+  Robin's catch: "The Stein double alto has not had the most recent
+  fitting, as it is missing noise_mid_db." Confirmed and owned: the
+  8c4f435 assembly script loaded the EXISTING wrapper, updated only the
+  wrapper-level note, and dumped it - the freshly fitted ch1/ch2 models
+  (with noise_mid_db) sat untouched in research/ocarina-twin-lead/
+  while the file kept the OLD pipeline-era models. So the stein played
+  the JS fallback crutch (mid = hiss + 8) through BOTH its field-check
+  sessions ("Stein sounds good", "sounds perfect") PLUS the pre-lead
+  globals overlay (dry_hiss 0.15/0.70 over the JS's 0.20/0.75 defaults).
+  Fixed this unit with assertions this time (round-trip re-read in the
+  embed: gains 0.9783/0.7277 verbatim, 11/5 rows, noise_mid_db present
+  on every note; ch1 mid -31.6..-42.5, ch2 -34.5..-39.1 as fitted).
+  Validations reproduce the temp-model numbers exactly (now actually
+  delivered): ch1 C5 dMid +3.4 / Ds6 +6.6, ch2 G6 +7.1 / C7 +9.0, C5's
+  15-band now +1.2 over the take (the same presence-lift class the
+  12-hole reads). data_validator + instruments_load (boot battery with
+  the wrapper) green; twin_model.json rides DATA_NETWORK_FIRST (no sw
+  bump, no js touched); the full sweep did NOT run per Robin's standing
+  scope (associated tests only).
+  GROK-SIDE OBSERVATION (report-only, NOT touched): the lead fitter's
+  JSON globals write dry_hiss 0.15/0.70 while his air.py canonical says
+  0.20/0.75 - the JSON overlays the JS defaults, so the EFFECTIVE curve
+  is 0.15/0.70 on every refit INCLUDING the field-blessed 12-hole
+  delivery. His spec leads; flagged for the next Grok round, not fixed
+  here.
+  HELD for Robin: re-hear the stein (the blessed verdicts were the
+  crutch delivery; the real mid rows now play - louder mid where hiss
+  was quiet: ch1's A5-class rows move the most, the crutch read -41.7
+  where the fit wants -34.3).
