@@ -1,7 +1,7 @@
 {
   "schema": "ocarina-twin-multi-v1",
   "instrument": "Focalink Stein Double Alto C",
-  "note": "Both chambers fitted by the adopted Grok pipeline from the single-take ladder session (2026-09-28; 17 held takes, chamber 1 As4-Ds6, chamber 2 F6-C7): the air definition is the shared one (hiss measured and played on hiss_hp_ratio*f0, noise_Q falls with open holes). Chamber 1's A4 clamps up to the As4 row, chamber 2's E6 clamps down to the F6 row (its take's tracked subtract slipped - res read -0.0 re tone - so the row is excluded until a cleaner take; reference-recordings/double-alto-c/E6-held.wav stays committed).",
+  "note": "Both chambers refit 2026-09-28 under the Grok mid-air handoff (research/ocarina-twin-lead: the air is a mid pedestal [1.25 f0, 4 kHz] + a quieter high hiss [4 kHz, 12 kHz]; the 1.6*f0 highshelf path it replaced was the bug). 17 held takes, chamber 1 As4-Ds6, chamber 2 F6-C7. Chamber 1 low A clamps up to the As4 row; chamber 2 E6 clamps down to the F6 row - the take re-probed under this fitter and its tracked subtract still slipped (res read -0.0 re tone), so the row stays excluded until a cleaner take; reference-recordings/double-alto-c/E6-held.wav stays committed. Raw takes unchanged between fits, so the wrapper gains carry the standing measured chain verbatim.",
   "chambers": {
     "1": {
       "gain": 0.9783,

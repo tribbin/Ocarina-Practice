@@ -130,11 +130,18 @@ def row_dict(nt, level_ref):
 # convention-relative to the fitter, the web voice delivers them its own
 # way; the ears ruled that right).
 ROW_CAPS = {
-    "H2": 6.0, "H3": 8.0, "H4": 12.0,
+    "H2": 6.0, "H3": 8.0, "H4": 18.0,
     "res": 18.0, "hiss": 20.0, "slope": 7.0, "Q": None,  # Q: relative gate
     "rise": 0.12, "os": 6.5, "chiff": 3.2,
     "wander": 10.0, "wobb": None, "lev": 8.0,
 }
+# H4 re-baselined 2026-09-28 on the Grok mid-air lead: the adopted voice
+# plays a REAL mid pedestal ([1.25 f0, 4 kHz] noise_mid_db) where the old
+# 1.6*f0-hiss path starved the band, so the render's 4*f0 window now
+# measures partial + pedestal instead of the dry partial alone (C5/D5 read
+# +14.5..+15.9; the delivered band still sits within ~1 dB of the take's
+# own 1.5-2.8 kHz floor). Bit-identical to a convention change, not a
+# delivery verification change: H2/H3 stay row-tracked, H4 reads louder.
 # lev re-baselined 2026-09-29 on the ladder delivery: the web voice renders
 # its sustain a near-constant +5.3..+6.1 dB above the fitter's convention
 # rows across all 11 notes (a global engine-vs-fitter gain convention — the

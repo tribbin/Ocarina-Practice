@@ -35,8 +35,9 @@ def main():
         h2 = 20 * math.log10((n.h[1] if len(n.h) > 1 else 1e-12) + 1e-12)
         print(f"{n.note or '?':5} f0={n.f0:7.1f} holes={n.open_holes} "
               f"Q={n.Q:5.1f} nQ={n.noise_Q:4.1f} H2={h2:6.1f}dB "
-              f"res={n.noise_res_db:6.1f} hiss={n.noise_hiss_db:6.1f} "
-              f"slope={n.noise_slope_db_oct:5.1f} lvl={n.level:.2f}")
+              f"res={n.noise_res_db:6.1f} mid={n.noise_mid_db:6.1f} "
+              f"hiss={n.noise_hiss_db:6.1f} slope={n.noise_slope_db_oct:5.1f} "
+              f"lvl={n.level:.2f}")
 
 
 if __name__ == "__main__":

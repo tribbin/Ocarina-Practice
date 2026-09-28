@@ -25,8 +25,10 @@ the loader also falls back — tone data must never break boot.
 `twin_model.json` switches the instrument's VOICE to the Helmholtz twin
 (`js/helmholtz-voice.js`, python fitter + reference renderer in
 `skills/ocarina-twin/`): near-sine fundamental through the cavity bandpass,
-period-synchronous turbulence for the on-the-note breath, highpassed hiss
-bypassing the cavity, minute dry H2–H6 labium partials. The additive
+period-synchronous turbulence for the on-the-note breath, the air as a
+mid pedestal bandpassed [1.25 f0, 4 kHz] with a QUIETER high hiss above
+4 kHz (no highshelf, no 1.6 f0 cutoff — that path was the bug the mid-air
+handoff replaced), minute dry H2–H6 labium partials. The additive
 timbre/wind machinery in `js/audio.js` (PeriodicWave + windPark/warm/rough
 shelves + edge whistle + chiff/ot bursts, `voiceProfileFor`, `V_ANCHORS`)
 is the LEGACY voice: it still serves ocarinas whose chambers aren't

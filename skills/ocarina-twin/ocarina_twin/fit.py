@@ -11,7 +11,7 @@ from scipy.fft import rfft, rfftfreq
 from scipy.signal import butter, get_window, sosfilt
 
 from .model import ChamberGlobals, NoteFit, TwinModel
-from .air import HISS_HP_RATIO, HISS_TOP_HZ, fitted_noise_q, hiss_hp_hz
+from .air import HISS_HI_HZ, HISS_LO_HZ, fitted_noise_q, mid_hi_hz, mid_lo_hz
 
 
 NOTE_RE = re.compile(r"([A-G]s?\d+)", re.I)
@@ -23,9 +23,8 @@ NOM = {
     "C6": 1046.50, "Cs6": 1108.73, "D6": 1174.66, "Ds6": 1244.51,
     "E6": 1318.51, "F6": 1396.91,
     # double-chamber upper ranges (the stein's second chamber reaches C7);
-    # a missing key falls back to 500 Hz and the whole tracked subtract
-    # builds on a wrong octave (the sep-18 G6 class read f0 557 with H2/H3
-    # "louder than H1")
+    # a missing key still falls back to 500 Hz and the whole tracked
+    # subtract builds on a wrong octave (the G6 class read f0 557 once)
     "Fs6": 1479.98, "G6": 1567.98, "Gs6": 1661.22, "A6": 1760.00,
     "As6": 1864.66, "B6": 1975.53, "C7": 2093.00, "Cs7": 2217.46,
 }
@@ -230,10 +229,9 @@ def fit_take(path: Path, fingerings: dict | None = None) -> NoteFit:
 
     sig = float(np.sqrt(np.mean(xs ** 2) + 1e-20))
     res_rms = float(np.sqrt(np.mean(residual ** 2) + 1e-20))
-    near = band_rms(residual, sr, 0.65 * f0, 1.35 * f0)
-    # Same band the live voice plays: HP at 1.6×f0, not a fixed 2800 Hz.
-    hp = hiss_hp_hz(f0)
-    hiss = band_rms(residual, sr, hp, min(sr / 2 - 40, HISS_TOP_HZ))
+    near = band_rms(residual, sr, 0.70 * f0, 1.25 * f0)
+    mid = band_rms(residual, sr, mid_lo_hz(f0), mid_hi_hz(sr))
+    hiss = band_rms(residual, sr, HISS_LO_HZ, min(sr / 2 - 40, HISS_HI_HZ))
     slope = residual_slope(residual, sr, f0)
     holes = open_holes_from_fingerings(fingerings, name)
     nq = fitted_noise_q(holes)
@@ -284,6 +282,7 @@ def fit_take(path: Path, fingerings: dict | None = None) -> NoteFit:
         Q=Q,
         noise_Q=nq,
         noise_res_db=float(20 * np.log10(near / (sig + 1e-12) + 1e-12)),
+        noise_mid_db=float(20 * np.log10(mid / (sig + 1e-12) + 1e-12)),
         noise_hiss_db=float(20 * np.log10(hiss / (sig + 1e-12) + 1e-12)),
         noise_slope_db_oct=float(np.clip(slope, -16, -2)),
         atk_pre_s=0.006,
@@ -315,16 +314,13 @@ def fit_chamber(wav_paths: list[Path], instrument: str, chamber: str = "1",
     return TwinModel(
         instrument=instrument,
         chamber=str(chamber),
-        globals=ChamberGlobals(
-            Q_prior=float(np.median(qs)),
-            hiss_hp_ratio=HISS_HP_RATIO,
-        ),
+        globals=ChamberGlobals(Q_prior=float(np.median(qs)), hiss_hp_ratio=1.25),
         notes=notes,
         recorded={
             "takes": [str(p.name) for p in wav_paths],
             "rule": "per-chamber log-f interpolation only; never cross a chamber boundary",
             "level": "relative to loudest fitted take in this chamber (mic gain discarded)",
-            "air": "noise_hiss_db is RMS of residual above hiss_hp_ratio×f0 (same cutoff the voice uses)",
+            "air": "noise_mid_db = residual [1.25 f0, 4 kHz]; noise_hiss_db = [4 kHz, 12 kHz]; do not highshelf",
         },
     )
 

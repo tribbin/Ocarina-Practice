@@ -4,8 +4,8 @@ from __future__ import annotations
 import numpy as np
 from scipy.signal import butter, sosfilt, lfilter
 
+from .air import dry_mid_frac, effective_noise_q, mid_hi_hz, mid_lo_hz
 from .model import TwinModel, NoteFit, ChamberGlobals
-from .air import dry_hiss_frac, effective_noise_q, hiss_hp_hz
 
 
 def _biquad_bandpass(sr: float, f0: float, Q: float):
@@ -50,6 +50,7 @@ def _interp_note(model: TwinModel, f0: float) -> NoteFit:
                 Q=lerp(a.Q, b.Q),
                 noise_Q=lerp(a.noise_Q, b.noise_Q),
                 noise_res_db=lerp(a.noise_res_db, b.noise_res_db),
+                noise_mid_db=lerp(getattr(a, "noise_mid_db", -40), getattr(b, "noise_mid_db", -40)),
                 noise_hiss_db=lerp(a.noise_hiss_db, b.noise_hiss_db),
                 noise_slope_db_oct=lerp(a.noise_slope_db_oct, b.noise_slope_db_oct),
                 atk_pre_s=lerp(a.atk_pre_s, b.atk_pre_s),
@@ -97,15 +98,27 @@ def _breath_env(n: int, sr: float, nf: NoteFit, hold_s: float) -> np.ndarray:
     return env
 
 
+def _match_rms(x: np.ndarray, target: float) -> np.ndarray:
+    rms = float(np.sqrt(np.mean(x ** 2) + 1e-20))
+    return x * (target / rms) if rms > 0 else x
+
+
+def _band(x, sr, lo, hi):
+    ny = sr / 2
+    lo, hi = max(40.0, lo), min(ny - 40.0, hi)
+    if hi <= lo + 20:
+        return np.zeros_like(x)
+    return sosfilt(butter(2, [lo / ny, hi / ny], btype="band", output="sos"), x)
+
+
 def _colored_noise(n: int, sr: float, slope_db_oct: float, rng: np.random.Generator) -> np.ndarray:
-    """Approximately f^(slope/3) via spectral shaping (slope is dB/octave)."""
+    """Approximately f^(slope/6) amplitude tilt, unit RMS."""
     w = rng.standard_normal(n)
     spec = np.fft.rfft(w)
     freqs = np.fft.rfftfreq(n, 1 / sr)
-    # 0 dB at 1 kHz
     scale = np.ones_like(freqs)
     nz = freqs > 20
-    scale[nz] = (freqs[nz] / 1000.0) ** (slope_db_oct / 6.0)  # amp = 10^(dB/20); dB=slope*log2(f) → exp = slope/6
+    scale[nz] = (freqs[nz] / 1000.0) ** (slope_db_oct / 6.0)
     spec *= scale
     y = np.fft.irfft(spec, n=n)
     y /= np.sqrt(np.mean(y ** 2) + 1e-20)
@@ -152,24 +165,23 @@ def render_note(model: TwinModel, f0: float, dur_s: float, sr: int = 44100,
     sync = 0.35 + g.sync_amt * 0.65 * (0.5 - 0.5 * np.cos(phi))
     turb = raw * sync
 
-    # Helmholtz path: H1 through a modest-Q cavity (ring + lock).
-    # Resonant noise uses a WIDER Q — the measured bump around f0 is a
-    # few hundred Hz across, not a second oscillator.
-    n_res = 10 ** (nf.noise_res_db / 20.0)
     nq = effective_noise_q(nf.noise_Q, nf.open_holes, f0)
     helm_tone = lfilter(*_biquad_bandpass(sr, f0, nf.Q), sine * env * amp_wob)
-    helm_noise = lfilter(*_biquad_bandpass(sr, f0, nq),
-                         turb * n_res * env * amp_wob)
-    body = helm_tone + helm_noise
+    halo = lfilter(*_biquad_bandpass(sr, f0, nq), turb)
+    halo = _match_rms(halo, 10 ** (nf.noise_res_db / 20.0)) * env * amp_wob
+    body = helm_tone + halo
 
-    # Hole-rush: same cutoff as the fitter (1.6×f0). Split dry / synced.
-    n_hiss = 10 ** (nf.noise_hiss_db / 20.0)
-    hp_f = min(hiss_hp_hz(f0), sr * 0.45 - 100)
-    hp = butter(2, hp_f / (sr / 2), btype="high", output="sos")
-    dry = dry_hiss_frac(f0)
-    hiss_sync = sosfilt(hp, turb) * n_hiss * (1.0 - dry) * env * amp_wob
-    hiss_dry = sosfilt(hp, raw) * n_hiss * dry * env * amp_wob
-    hiss = hiss_sync + hiss_dry
+    mid_lo, mid_hi = mid_lo_hz(f0), mid_hi_hz(sr)
+    mid_db = getattr(nf, "noise_mid_db", None)
+    if mid_db is None:
+        mid_db = nf.noise_hiss_db + 6.0
+    dry = dry_mid_frac(f0)
+    mid_src = (1.0 - dry) * turb + dry * raw
+    mid = _band(mid_src, sr, mid_lo, mid_hi)
+    mid = _match_rms(mid, 10 ** (mid_db / 20.0)) * env * amp_wob
+
+    hiss = _band(raw, sr, 4000.0, min(sr / 2 - 40, 12000.0))
+    hiss = _match_rms(hiss, 10 ** (nf.noise_hiss_db / 20.0)) * env * amp_wob
 
     # chiff: extra wide-Q burst of turbulence at onset
     chiff_env = np.zeros(n)
@@ -180,9 +192,10 @@ def render_note(model: TwinModel, f0: float, dur_s: float, sr: int = 44100,
         tt = np.linspace(0, 1, c1 - c0, endpoint=True)
         chiff_env[c0:c1] = np.sin(np.pi * tt) * max(0.0, nf.chiff_peak - 1.0)
     b2, a2 = _biquad_bandpass(sr, f0, g.chiff_q)
-    chiff = lfilter(b2, a2, turb) * n_res * chiff_env
+    chiff = lfilter(b2, a2, turb)
+    chiff = _match_rms(chiff, 10 ** (nf.noise_res_db / 20.0)) * chiff_env
 
-    y = body + hiss + chiff + direct * env * amp_wob
+    y = body + mid + hiss + chiff + direct * env * amp_wob
 
     # normalize sustain H1-ish level
     # take a window after speak
