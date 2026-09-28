@@ -123,7 +123,7 @@ def row_dict(nt, level_ref):
 # way; the ears ruled that right).
 ROW_CAPS = {
     "H2": 6.0, "H3": 8.0, "H4": 12.0,
-    "res": 18.0, "hiss": 20.0, "slope": 6.0, "Q": None,  # Q: relative gate
+    "res": 18.0, "hiss": 20.0, "slope": 7.0, "Q": None,  # Q: relative gate
     "rise": 0.12, "os": 6.5, "chiff": 3.2,
     "wander": 10.0, "wobb": None, "lev": 6.0,
 }
