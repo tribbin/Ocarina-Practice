@@ -364,6 +364,16 @@ async function boot() {
       fillLibrary(home);
       loadLibraryItem(home);
     }
+    // The shared loop state (ui.js zenShareUrl) applies before anything
+    // plays; both values are explicit so the receiver's transport matches
+    // the sender's. The change event doubles as the mirror/focus loop sync.
+    if (queryHas("loop")) {
+      const loopCb = document.getElementById("loopMel");
+      if (loopCb) {
+        loopCb.checked = queryParam("loop") === "1";
+        loopCb.dispatchEvent(new Event("change"));
+      }
+    }
     if (queryHas("zen")) enterZenFromLink();
     // Landed-crawler gate (library.js): everything boot itself loads may
     // keep the landing stub's clean canonical path; only user traffic

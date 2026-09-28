@@ -81,12 +81,15 @@ const BLACK_KEY = i => /^([A-G])s/.test(i);
 // (nothing of them ships in songs.json).
 function refreshGeneratedScales(chartIds) {
   const ids = Array.isArray(chartIds) ? chartIds : [];
+  // `generated: true` marks the runtime-synthesized entries as having no
+  // shipped stub page (the share's deep links fall back to root+query for
+  // them); the shipped record shape (name/group/tempo/body) is untouched.
   BUILTIN.chromatic = {
-    name: "Chromatic", group: "Scales", tempo: 120,
+    name: "Chromatic", group: "Scales", tempo: 120, generated: true,
     body: ids.map(DISPLAY_ID).join(" "),
   };
   BUILTIN.major = {
-    name: "C major", group: "Scales", tempo: 120,
+    name: "C major", group: "Scales", tempo: 120, generated: true,
     body: ids.filter(i => !BLACK_KEY(i)).map(DISPLAY_ID).join(" "),
   };
   window.BUILTIN = BUILTIN;
