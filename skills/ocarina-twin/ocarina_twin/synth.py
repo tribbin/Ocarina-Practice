@@ -166,7 +166,8 @@ def render_note(model: TwinModel, f0: float, dur_s: float, sr: int = 44100,
     turb = raw * sync
 
     nq = effective_noise_q(nf.noise_Q, nf.open_holes, f0)
-    helm_tone = lfilter(*_biquad_bandpass(sr, f0, nf.Q), sine * env * amp_wob)
+    tone_q = min(float(nf.Q), 30.0 + f0 * 0.035)
+    helm_tone = lfilter(*_biquad_bandpass(sr, f0, tone_q), sine * env * amp_wob)
     halo = lfilter(*_biquad_bandpass(sr, f0, nq), turb)
     halo = _match_rms(halo, 10 ** (nf.noise_res_db / 20.0)) * env * amp_wob
     body = helm_tone + halo
@@ -178,7 +179,9 @@ def render_note(model: TwinModel, f0: float, dur_s: float, sr: int = 44100,
     dry = dry_mid_frac(f0)
     mid_src = (1.0 - dry) * turb + dry * raw
     mid = _band(mid_src, sr, mid_lo, mid_hi)
-    mid = _match_rms(mid, 10 ** (mid_db / 20.0)) * env * amp_wob
+    # same low-note presence as helmholtz-voice.js (C5×2.4 → A5×1)
+    lift = 2.4 + (1.0 - 2.4) * min(1.0, max(0.0, (f0 - 500.0) / 400.0))
+    mid = _match_rms(mid, lift * 10 ** (mid_db / 20.0)) * env * amp_wob
 
     hiss = _band(raw, sr, 4000.0, min(sr / 2 - 40, 12000.0))
     hiss = _match_rms(hiss, 10 ** (nf.noise_hiss_db / 20.0)) * env * amp_wob

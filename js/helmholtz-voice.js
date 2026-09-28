@@ -96,10 +96,23 @@ export function effectiveNoiseQ(nf) {
   return Math.max(3.8, q * (1 - 0.60 * clamp(holes / 12, 0, 1)));
 }
 
-/** Compensates 2nd-order bandpass/HP insertion loss on unit-ish pink. */
+/** Compensates 2nd-order HP+LP insertion loss. Wide low-note mid bands
+ *  used to look “fine” in RMS and still miss 1–3 kHz presence. */
 export function pinkBandComp(loHz, hiHz) {
   const width = Math.max(80, hiHz - loHz);
-  return clamp(0.22 * Math.sqrt(2000 / width), 0.08, 0.55);
+  return clamp(0.28 * Math.sqrt(2500 / width), 0.12, 0.50);
+}
+
+/** C5–F5: keep the JSON mid_db but don’t let Q=80 + weak presence muffle. */
+export function lowNotePresence(f0) {
+  const t = clamp((f0 - 500) / 400, 0, 1); // 1 at C5, 0 by ~A5
+  return lerp(2.4, 1.0, t);
+}
+
+export function playbackQ(nf) {
+  const q = Math.max(8, nf.Q || 45);
+  const cap = 30 + (nf.f0 || 500) * 0.035; // ~48 at C5, ~79 at F6
+  return Math.min(q, cap);
 }
 
 let _noiseBuf = null;
@@ -174,7 +187,7 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
   const toneBp = ctx.createBiquadFilter();
   toneBp.type = "bandpass";
   toneBp.frequency.value = f0;
-  toneBp.Q.value = Math.max(8, nf.Q || 45);
+  toneBp.Q.value = playbackQ(nf);
   const bodyGain = ctx.createGain();
   bodyGain.gain.value = 0;
   osc.connect(toneBp); toneBp.connect(bodyGain); bodyGain.connect(out);
@@ -223,7 +236,7 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
   const midG = ctx.createGain();
   midG.gain.value = 0;
   const midDb = nf.noise_mid_db != null ? nf.noise_mid_db : (nf.noise_hiss_db || -50) + 8;
-  const midPeak = dbToLin(midDb) / pinkBandComp(midLo, 4000);
+  const midPeak = dbToLin(midDb) / pinkBandComp(midLo, 4000) * lowNotePresence(f0);
   const dry = dryMidFrac(f0, model);
   const midDryG = ctx.createGain();
   const midSyncG = ctx.createGain();

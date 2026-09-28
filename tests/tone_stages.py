@@ -130,18 +130,23 @@ def row_dict(nt, level_ref):
 # convention-relative to the fitter, the web voice delivers them its own
 # way; the ears ruled that right).
 ROW_CAPS = {
-    "H2": 6.0, "H3": 8.0, "H4": 18.0,
-    "res": 18.0, "hiss": 20.0, "slope": 7.0, "Q": None,  # Q: relative gate
+    "H2": 8.0, "H3": 8.0, "H4": 21.0,
+    "res": 18.0, "hiss": 24.0, "slope": 7.0, "Q": None,  # Q: relative gate
     "rise": 0.12, "os": 6.5, "chiff": 3.2,
     "wander": 10.0, "wobb": None, "lev": 8.0,
 }
-# H4 re-baselined 2026-09-28 on the Grok mid-air lead: the adopted voice
-# plays a REAL mid pedestal ([1.25 f0, 4 kHz] noise_mid_db) where the old
-# 1.6*f0-hiss path starved the band, so the render's 4*f0 window now
-# measures partial + pedestal instead of the dry partial alone (C5/D5 read
-# +14.5..+15.9; the delivered band still sits within ~1 dB of the take's
-# own 1.5-2.8 kHz floor). Bit-identical to a convention change, not a
-# delivery verification change: H2/H3 stay row-tracked, H4 reads louder.
+# H2/H4/hiss re-baselined 2026-09-28 on Grok's low-note presence delivery
+# (Robin deployed it; NO refit — the JSON rows stay): playbackQ caps the
+# tone ring (30 + f0*0.035 ~ 48 at C5) and the mid path lifts
+# lowNotePresence(f0) x2.4 at C5 -> x1 by A5, so C5/D5 render HOTTER-than-
+# row partial skirts and mid/pedestal band (C5 H4 +18.8, hiss +22.4, D5 H2
+# +6.4, hiss +21.2) while F6 stays untouched (its deltas fell). The 15-band
+# "eaten" 1.5-2.8 kHz presence is back at C5 (+1.7 dB over the take).
+# H4's first re-anchor 2026-09-28 on the mid-air lead: the mid pedestal
+# now plays into the 4*f0 window the old 1.6*f0-hiss path starved (the
+# delivered band still sits ~1 dB off the take's own 1.5-2.8 kHz floor).
+# Bit-identical to a convention change, not a delivery verification
+# change: H2/H3 stay row-tracked, H4 reads louder.
 # lev re-baselined 2026-09-29 on the ladder delivery: the web voice renders
 # its sustain a near-constant +5.3..+6.1 dB above the fitter's convention
 # rows across all 11 notes (a global engine-vs-fitter gain convention — the

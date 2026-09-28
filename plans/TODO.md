@@ -1224,3 +1224,33 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
       instruments_load/data_validator in-sweep green; lint clean; sw
       oco-pwa-v48 (audio.js + debug.js changed).
   NEXT: Robin dials his five numbers, then the values become code.
+
+- **2026-09-28 (session 21 cont. — Grok's low-note presence fix lands (Robin deployed the files): the C5-class 1.5-2.8 kHz band is un-eaten, no refit)** —
+  Robin's report: "I deployed a Grok fix for low notes were some higher
+  frequencies were 'eaten' on the spectrum" — the two files were already
+  in the working tree (js/helmholtz-voice.js + ocarina_twin/synth.py,
+  staged uncommitted; his note: replace only these, NO refit, JSON rows
+  stay — noise_mid_db on C5 is already ~-34, the REDUCTION was a delivery
+  shape: Q=80 tone ring + a weak mid band muffled the low notes).
+  (1) The two rendered-domain changes, mirrored in BOTH renderers (the
+      one-air-definition doctrine holds): playbackQ caps the tone BP
+      (30 + f0*0.035 — ~48 at C5, ~79 at F6 so the fitted Q rows still
+      rule the top) and the mid path multiplied by
+      lowNotePresence(f0) = x2.4 at 500 Hz tilting to x1.0 at 900 Hz
+      (by A5); F6's mid/hiss untouched (its stage deltas FELL: hiss
+      +1.5, res -4.8 - the Q hair-cap cleaned the subtract skirt).
+      synth.py carries the identical lift formula so the offline
+      reference agrees with the web voice.
+  (2) Verification on Grok's own tooling: validate.py — F6 syn15 -31.4
+      (target -32 within 3) unchanged; C5's 1.5-2.8 kHz floor reads
+      -49.5 vs the take's -51.2 = the eaten band is back (+1.7 dB over
+      the take; was -55.2, 4 dB UNDER). The stage gate re-anchored on
+      the new delivery (HOUSE precedent, red-first measured): C5 H4
+      +18.8 (cap 18 -> 21), C5 hiss +22.4 (cap 20 -> 24), D5 H2 +6.4
+      (cap 6 -> 8), D5 hiss +21.2 — the same classes, hotter by design;
+      run-to-run flap class stays inside the new caps (C5 H4 17.7 on the
+      rerun). instruments/validator/console boots untouched; full sweep
+      47/47 first pass; lint clean; sw oco-pwa-v49 (engine js changed).
+  HELD for Robin: the low-note field check (does C5/D5/E5/F5 read as
+  full-bodied now rather than muffled; the Q cap's ring character),
+  including on the stein (its ch1 low rows ride the same voice).
