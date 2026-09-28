@@ -1,5 +1,5 @@
-import { isOutOfRange, parse, swingFromText, tempoFromText, titleFromText,
-         withPlayHeaders } from "./parse.js";
+import { isOutOfRange, isTrackHeader, parse, swingFromText, tempoFromText,
+         titleFromText, withPlayHeaders } from "./parse.js";
 import { stopMelody } from "./audio.js";
 import { render, resetLiveTab } from "./ui.js";
 import { practiceInvalidate } from "./practice.js";
@@ -22,8 +22,18 @@ const DERIVE_SHARP = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#"
 const DERIVE_PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 function deriveBody(base, shift) {
   const stash = [];
+  // A valid "#track" header opens the layer's stream, which flows through
+  // unshifted (Robin 2026-09-28: an instrument-pinned layer — the 11-hole
+  // contrabass window — keeps its register; only the melody shifts). A
+  // malformed "#track …" header is comment-shaped and, per parse's rule,
+  // changes no boundary: following lines keep shifting as melody.
+  let inTrack = false;
   const line = (l) => {
-    if (/^\s*#/.test(l)) return l;
+    if (inTrack) return l;
+    if (/^\s*#/.test(l)) {
+      if (isTrackHeader(l)) inTrack = true;
+      return l;
+    }
     return l
       .replace(/\[[^\]]*\]/g, m => {
         stash.push(m);

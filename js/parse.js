@@ -196,6 +196,38 @@ function parseDur(spec) {
 const TRACK_HEADER_RE = /^#[ \t]*track\b[ \t]*(.*?)[ \t]*$/i;
 const TRACK_NAME_RE = /^[A-Za-z][A-Za-z0-9_-]*$/;
 
+// The header fold shared by the stream splitter and the derive mirror: a
+// numeric second field is the volume with the zone at its default (the
+// visible order — zone then percent — stays equally legal).
+function trackHeaderFields(line) {
+  const m = TRACK_HEADER_RE.exec(String(line));
+  if (!m) return null;
+  const fields = (m[1] || "").split(/\s+/).filter(Boolean);
+  const name = fields[0] || "";
+  let zone = "audible", vol = null;
+  if (fields.length >= 2 && /^\d{1,3}$/.test(fields[1])) {
+    vol = fields[1];
+  } else if (fields.length >= 2) {
+    zone = fields[1];
+  }
+  if (fields.length === 3) vol = fields[2];
+  if (vol !== null && (!/^\d{1,3}$/.test(vol) || +vol < 1 || +vol > 100)) vol = null;
+  const valid = TRACK_NAME_RE.test(name) &&
+                (zone === "audible" || zone === "zen") &&
+                fields.length <= 3 &&
+                (fields.length < 2 || vol !== null || fields[1] === zone) &&
+                (fields.length !== 3 || vol !== null);
+  return { fields, name, zone, vol, valid };
+}
+
+// True iff the line opens (or re-enters) a named track block. The derive
+// mirror uses it to hand a valid header's stream through unshifted; a
+// malformed header stays comment-shaped and changes no boundary.
+function isTrackHeader(line) {
+  const info = trackHeaderFields(line);
+  return info != null && info.valid;
+}
+
 // Line-based pre-pass shared by parse() and parseTracks(): melody lines and
 // per-track line buffers. Invalid headers contribute to the owning stream's
 // bads and change NO stream boundary (their following lines stay put).
@@ -205,25 +237,9 @@ function trackStreamLines(src) {
   const byName = new Map();
   let block = null; // current open track block, or null = melody stream open
   for (const line of lines) {
-    const m = TRACK_HEADER_RE.exec(line);
-    if (!m) { (block ? block.lines : melody).push(line); continue; }
-    const fields = (m[1] || "").split(/\s+/).filter(Boolean);
-    const name = fields[0] || "";
-    // A numeric second field is the volume with the zone at its default;
-    // keep the visible order (zone then percent) equally legal.
-    let zone = "audible", vol = null;
-    if (fields.length >= 2 && /^\d{1,3}$/.test(fields[1])) {
-      vol = fields[1];
-    } else if (fields.length >= 2) {
-      zone = fields[1];
-    }
-    if (fields.length === 3) vol = fields[2];
-    if (vol !== null && (!/^\d{1,3}$/.test(vol) || +vol < 1 || +vol > 100)) vol = null;
-    const valid = TRACK_NAME_RE.test(name) &&
-                  (zone === "audible" || zone === "zen") &&
-                  fields.length <= 3 &&
-                  (fields.length < 2 || vol !== null || fields[1] === zone) &&
-                  (fields.length !== 3 || vol !== null);
+    const info = trackHeaderFields(line);
+    if (!info) { (block ? block.lines : melody).push(line); continue; }
+    const { name, zone, vol, valid } = info;
     if (!valid) {
       (block ? block.bads : melodyBads).push(line);
       continue;
@@ -459,9 +475,9 @@ function withTitleAndTempo(body, name, bpm) {
   return withPlayHeaders(body, name, bpm, swing != null ? swing : 0);
 }
 
-export { durLabel, isOutOfRange, octSub, parse, parseTracks, pretty, rangeCheck,
-         spelledLabel, midiOf, swingFromText, tempoFromText, titleFromText,
-         withPlayHeaders, withTempoLine, withTitleAndTempo };
+export { durLabel, isOutOfRange, isTrackHeader, octSub, parse, parseTracks,
+         pretty, rangeCheck, spelledLabel, midiOf, swingFromText, tempoFromText,
+         titleFromText, withPlayHeaders, withTempoLine, withTitleAndTempo };
 
 // Classic-script compat surface (tests + dev console call these by global).
 window.parse = parse; window.titleFromText = titleFromText; window.pretty = pretty;

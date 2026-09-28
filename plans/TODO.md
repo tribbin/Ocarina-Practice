@@ -846,7 +846,14 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   Robin: the Epona contrabass at full audibility is his ears' call.
   Follow-up same unit: the identical 100-block rides `eponas-song-bass` — its
   body is literal, not a derive — so both Epona versions play the same D3-G3
-  ranch contrabass; note the `sarias-song-bass` DERIVE instead shifts its
-  whole body one octave down (library.js deriveBody moves track rows with the
-  melody), so Saria's bass-version contrabass sits at E2-G#2 while the alto
-  version's sits at E3-G#3 — his ears decide if that asymmetry stands.
+  ranch contrabass. Robin then ruled "don't drop the contrabass down an
+  octave" on the `sarias-song-bass` derive: library.js deriveBody now hands a
+  valid `#track` stream through VERBATIM (parse.js isTrackHeader shared fold;
+  melody-only shift; malformed headers change no boundary, per parse's rule),
+  red→green with twin_derive's frozen fixture rewritten to the verbatim block
+  as the spec — both Saria versions now play E3-G#3. The song-transposing
+  SKILL's rekey rule (track rows shift on purpose) is untouched and the
+  ocarina-melodies skill documents the derive doctrine. Suites green on the
+  final state: twin_derive, parse_edges, shipped_songs (5 multi-track songs
+  align bar-for-bar), gen_pages; eslint clean; sw oco-pwa-v44 (app js
+  changed).

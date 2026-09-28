@@ -37,6 +37,50 @@ from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parent.parent
 
+# Robin 2026-09-28: "Don't drop the contrabass down an octave" — a track
+# block is an instrument-pinned layer (the 11-hole contrabass window), so
+# the derive hands it through VERBATIM and shifts only the melody stream.
+# The frozen tail below is the block byte-equal as shipped in sarias-song's
+# base body.
+SARIAS_CONTRABASS = (
+'| F3/8 A3/4.',
+'| F3/8 A3/4.',
+'| F3/8 A3/4.',
+'| F3/8 A3/4.',
+'| E3/8 G3/4.',
+'| E3/8 G3/4 C3/8',
+'| C3/8 G3/4.',
+'| E3/8 G3/4 C3/8',
+'| C3/8 A3/4.',
+'| F3/8 A3/4.',
+'| F3/8 A3/4.',
+'| F3/8 A3/4.',
+'| E3/8 G3/4.',
+'| E3/8 G3/4 C3/8',
+'| E3/8 G3/4.',
+'| E3/8 G3/4 E3/8',
+'| D3/8 F3/8 D3/8 F3/8',
+'| G3/8 D3/8 G3/8 D3/8',
+'| C3/8 E3/8 C3/8 E3/8',
+'| A3/8 E3/8 A3/8 E3/8',
+'| D3/8 F3/8 D3/8 F3/8',
+'| G3/8 D3/8 G3/8 D3/8',
+'| C3/8 E3/8 C3/8 E3/8',
+'| A3/8 E3/8 A3/8 E3/8',
+'| D3/8 F3/8 D3/8 F3/8',
+'| G3/8 D3/8 G3/8 D3/8',
+'| C3/8 E3/8 C3/8 E3/8',
+'| A3/8 E3/8 A3/8 E3/8',
+'| D3/8 F3/4 r/8',
+'| D3/8 F3/4 r/8',
+'| C3/8 G3/4 r/8',
+'| C3/8 G3/4 r/8',
+'| E3/8 A3/8 r/8 A3/8',
+'| E3/8 A3/8 r/8 A3/8',
+'| E3/8 G#3/4 E3/8',
+'| E3/8 r/8 E3/8 r/8',
+)
+
 DERIVES = [
     {
         "key": 'song-of-time-bass',
@@ -54,7 +98,9 @@ DERIVES = [
         "key": 'sarias-song-bass',
         "base": 'sarias-song',
         "shift": -12,
-        "fixture": 'F4/8! A4/8! B4/4 | F4/8! A4/8! B4/4 |\nF4/8! A4/8! B4/8 E5/8 | D5/4 B4/8 C5/8 |\nB4/8 G4/8 E4/4 | -/4. D4/8 |\nE4/8 G4/8 E4/4 | -/2 |\nF4/8! A4/8! B4/4 | F4/8! A4/8! B4/4 |\nF4/8! A4/8! B4/8 E5/8 | D5/4 B4/8 C5/8 |\nE5/8 B4/8 G4/4 | -/4. B4/8 |\nG4/8 D4/8 E4/4 | -/2 |\nD4/8 E4/8 F4/4 | G4/8 A4/8 B4/4 |\nC5/8 B4/8 E4/4 | -/2 |\nD4/8 E4/8 F4/4 | G4/8 A4/8 B4/4 |\nC5/8 D5/8 E5/4 | -/2 |\nD4/8 E4/8 F4/4 | G4/8 A4/8 B4/4 |\nC5/8 B4/8 E4/4 | -/2 |\nD4/8 C4/8 F4/8 E4/8 | G4/8 F4/8 A4/8 G4/8 |\nB4/8 A4/8 C5/8 B4/8 | D5/8 C5/8 E5/16 ~ F5/8 D5/16 |\nE5/2 | -/2 | r/2 | r/2',
+        "fixture": 'F4/8! A4/8! B4/4 | F4/8! A4/8! B4/4 |\nF4/8! A4/8! B4/8 E5/8 | D5/4 B4/8 C5/8 |\nB4/8 G4/8 E4/4 | -/4. D4/8 |\nE4/8 G4/8 E4/4 | -/2 |\nF4/8! A4/8! B4/4 | F4/8! A4/8! B4/4 |\nF4/8! A4/8! B4/8 E5/8 | D5/4 B4/8 C5/8 |\nE5/8 B4/8 G4/4 | -/4. B4/8 |\nG4/8 D4/8 E4/4 | -/2 |\nD4/8 E4/8 F4/4 | G4/8 A4/8 B4/4 |\nC5/8 B4/8 E4/4 | -/2 |\nD4/8 E4/8 F4/4 | G4/8 A4/8 B4/4 |\nC5/8 D5/8 E5/4 | -/2 |\nD4/8 E4/8 F4/4 | G4/8 A4/8 B4/4 |\nC5/8 B4/8 E4/4 | -/2 |\nD4/8 C4/8 F4/8 E4/8 | G4/8 F4/8 A4/8 G4/8 |\nB4/8 A4/8 C5/8 B4/8 | D5/8 C5/8 E5/16 ~ F5/8 D5/16 |\nE5/2 | -/2 | r/2 | r/2'
+                   + "\n\n#track contrabass audible 70\n"
+                   + "\n".join(SARIAS_CONTRABASS),
     },
     {
         "key": 'botw-theme-down3',
