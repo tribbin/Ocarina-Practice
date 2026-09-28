@@ -65,6 +65,7 @@ rides his ruling):
 | **FIELD CHECK the twin voice — the deciding pass** — the 12-hole now plays the handoff's Helmholtz voice (Robin: the handoff state "was perfect before"; his verdict came through, the model rows are that state again). His ears name: the held-note texture vs the takes, the attack/chiff, the glide carry, how it sits under practice | §1 |
 | **Top-register held takes (A5–F6) for the 12-hole refit** — the model clamps at A5; the top rides the edge row until recorded | §1 |
 | **Robin's field check on the multi-track trio** — `outset-island-with-bass` now plays melody + audible bass groove (the bassline two octaves down) + contrabass root-holds; his ears name the balance, the contrabass register, the practice-session audibility and the groove's final-bar cut | §7 |
+| **Robin's ears on the Epona contrabass** — `eponas-song` now carries `#track contrabass audible 100` (ranch bass bar-for-bar); Saria's Song he already heard green 2026-09-28 | §Log |
 | **Robin's eyeball pass** on the panel builds: the HiFi retune batch (`?hifi` — amber buttons, dark segment row/select, deeper zen red, LED fills) and the favorites stars in the library — his values, built to spec; he retunes anything that reads off | feel checks |
 | The twin-model chamber fits per remaining ocarina — recording held takes for stein double, contrabass, oak leaf when Robin gets hands-on time | §1 |
 | The next audio-tick field catch names itself (spike cards carry the ambient ring); Robin re-introduces the hunt when the ticks matter | DONE (re-openable) |
@@ -830,3 +831,29 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   at main() start. Verified by simulating the CI shape locally (the dir
   tucked aside, suite green exit 0, files restored untouched). No sw bump
   (suite-only change).
+
+- **2026-09-28 (session 19 — the Zelda melodies gain their contrabass tracks: Saria's heard green, Epona's riding)** —
+  Robin's pasted improvements went verbatim into the corpus on `update_songs`:
+  `sarias-song` gains `#track contrabass audible 70` (the 11-hole Lost Woods
+  chord windows, 36 bars) and `eponas-song` gains `#track contrabass audible
+  100` (the ranch bass, 32 bars aligned with the melody's section meter) —
+  melody rows, names, tempo/swing untouched. Robin field-heard Saria's Song
+  GREEN live ("must have been cache" — the SWR copy had served the pre-track
+  body on his first visit; sw VERSION → v43 so deployed data lands on the
+  first reload). Suites: shipped_songs (the track-stream contract across the
+  corpus: streams clean, zones declared, per-bar sums equal — 4 multi-track
+  songs align bar-for-bar) and gen_pages green; no js/html touched. HELD for
+  Robin: the Epona contrabass at full audibility is his ears' call.
+  Follow-up same unit: the identical 100-block rides `eponas-song-bass` — its
+  body is literal, not a derive — so both Epona versions play the same D3-G3
+  ranch contrabass. Robin then ruled "don't drop the contrabass down an
+  octave" on the `sarias-song-bass` derive: library.js deriveBody now hands a
+  valid `#track` stream through VERBATIM (parse.js isTrackHeader shared fold;
+  melody-only shift; malformed headers change no boundary, per parse's rule),
+  red→green with twin_derive's frozen fixture rewritten to the verbatim block
+  as the spec — both Saria versions now play E3-G#3. The song-transposing
+  SKILL's rekey rule (track rows shift on purpose) is untouched and the
+  ocarina-melodies skill documents the derive doctrine. Suites green on the
+  final state: twin_derive, parse_edges, shipped_songs (5 multi-track songs
+  align bar-for-bar), gen_pages; eslint clean; sw oco-pwa-v44 (app js
+  changed).

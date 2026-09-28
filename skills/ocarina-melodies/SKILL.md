@@ -132,6 +132,13 @@ stream never consumes a block.
   headers chip and change NO stream boundary (their lines stay with
   whatever stream was open — no silent loss). Track junk chips in the token
   strips after a `#track <name>` pill (clean bodies render none).
+- **Derive twins keep the layer verbatim** (Robin 2026-09-28): the loader's
+  derive pass shifts only the melody stream — a valid `#track` header opens
+  its rows for unshifted materialization, because an instrument-pinned
+  register (the 11-hole contrabass window) must not drop with an octave
+  derive. `tests/twin_derive.py` freezes a tracked block byte-equal. Tools
+  that REKEY a body (the song-transposing skill) still shift track rows on
+  purpose there.
 - **Harmonizing over doubling** (field-check lesson, 2026-09-26): a support
   voice must never attack WHILE the melody sounds the same pitch — the
   doubled attack is what makes the two voices hard to tell apart. The repair
