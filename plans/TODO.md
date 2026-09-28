@@ -820,3 +820,13 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   HELD for Robin's field check: the temp voice's character across the wide
   unfitted spans (the whole second chamber rides one row; chamber 1
   interpolates across 2.2 octaves) — his retune/refit wording steers.
+
+- **2026-09-28 (session 18 cont. — the CI red is a one-line artifact-path fix)** —
+  CI run `36394556428` (push at `b818548`, the "Run held-note stage
+  verification" step): all 8 held notes rendered and measured clean on the
+  runner, then the artifact dump crashed — `research/analysis/12hole/` is
+  work material, not committed, so a fresh CI checkout has no such dir
+  (`json.dump` on a missing parent). Fix: `os.makedirs(OUT, exist_ok=True)`
+  at main() start. Verified by simulating the CI shape locally (the dir
+  tucked aside, suite green exit 0, files restored untouched). No sw bump
+  (suite-only change).

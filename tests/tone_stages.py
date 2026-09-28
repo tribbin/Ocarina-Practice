@@ -171,6 +171,10 @@ def main():
         print(f"SKIP: {INST} has no shipped twin_model.json (nothing fitted to verify)")
         return 0
     import render_ours
+    # CI checkouts carry no research/ tree (work material, not committed) —
+    # the artifact dir must not be assumed to exist (run 36394556428's red:
+    # every row measured clean, then the json.dump died on the missing dir).
+    os.makedirs(OUT, exist_ok=True)
     twin = json.load(open(TWIN_JSON, encoding="utf-8"))
     failures = twin_sanity(twin, INST)
 
