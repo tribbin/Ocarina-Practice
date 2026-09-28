@@ -96,6 +96,100 @@ def main():
             if not opened:
                 failures.append("?debug=1 must open the panel on load")
 
+            # --- instrument-loudness dial: five rows, dB shape, session-only ---
+            dial = page2.evaluate("""
+              () => {
+                const rows = [...document.querySelectorAll('#dbgGroups .dbg-row')];
+                const byKey = {};
+                rows.forEach(r => {
+                  const lab = r.querySelector('.dbg-lab');
+                  const k = (lab && lab.title || '').split(' ')[0];
+                  const rng = r.querySelector('input[type=range]');
+                  byKey[k] = { min: +rng.min, max: +rng.max, step: +rng.step, val: +rng.value };
+                });
+                const groupSum = [...document.querySelectorAll('#dbgGroups summary')]
+                  .map(s => s.textContent).join(' | ');
+                return {
+                  oot: byKey.instOotDb, stein: byKey.instSteinDb,
+                  oak: byKey.instOakDb, contra: byKey.instContraDb,
+                  dummy: byKey.instDummyDb,
+                  groupSum, 
+                  savedLen: (localStorage.getItem('oco-debug-audio') || '').length,
+                };
+              }
+            """)
+            for name in ("oot", "stein", "oak", "contra", "dummy"):
+                row = dial.get(name)
+                if not row:
+                    failures.append(f"the dial row inst{name}Db is missing")
+                    continue
+                if row != {"min": -3.0, "max": 9.0, "step": 0.1, "val": 0.0}:
+                    failures.append(f"the dial row inst{name}Db reads {row} — "
+                                    "expected min -3 max 9 step 0.1 default 0")
+            if "session-only" not in dial["groupSum"]:
+                failures.append("the dial group must announce session-only")
+
+            # — the dial's read side: the loaded instrument's own dB —
+            math = page2.evaluate("""
+              () => {
+                const P = window.OCA_DEBUG.params;
+                const gain = () => window.OCA_DEBUG.instLevelGain();
+                window.CURRENT_INSTRUMENT = { id: 'ico-contrabass-11-c' };
+                const at0 = gain();
+                P.instContraDb = 6;   const at6 = gain();
+                P.instContraDb = -3;  const atM3 = gain();
+                P.instContraDb = 9;   const at9 = gain();
+                P.instContraDb = 0;
+                window.CURRENT_INSTRUMENT = { id: 'not-an-ocarina' };
+                const foreign = gain();
+                window.CURRENT_INSTRUMENT = null;
+                const none = gain();
+                window.CURRENT_INSTRUMENT = { id: 'oot-alto-c-12' };
+                P.instOotDb = -3;     const ootM3 = gain();
+                P.instOotDb = 0;
+                return [at0, at6, atM3, at9, foreign, none, ootM3];
+              }
+            """)
+            exp = [1.0, 10 ** (6 / 20), 10 ** (-3 / 20), 10 ** (9 / 20), 1.0, 1.0, 10 ** (-3 / 20)]
+            for got, want, tag in zip(math, exp,
+                    "at0 at+6 at-3 at+9 foreign-inst none oot-3".split()):
+                if abs(got - want) > 1e-3:
+                    failures.append(f"dial gain {tag}: {got} — expected {want}")
+
+            # — session-only contract: dial edits never persist; plain edits do —
+            page2.evaluate("""
+              () => {
+                const rows = [...document.querySelectorAll('#dbgGroups .dbg-row')];
+                const setNum = (key, v) => {
+                  for (const r of rows) {
+                    const lab = r.querySelector('.dbg-lab');
+                    if (((lab && lab.title) || '').split(' ')[0] !== key) continue;
+                    const num = r.querySelector('.dbg-num');
+                    num.value = String(v);
+                    num.dispatchEvent(new Event('change'));
+                    return true;
+                  }
+                  return false;
+                };
+                window.__dialSet = setNum;
+              }
+            """)
+            if not page2.evaluate("() => window.__dialSet('instOotDb', 4.2)"):
+                failures.append("the dial row's number input is not drivable")
+            if not page2.evaluate("() => window.__dialSet('masterLevel', 0.5)"):
+                failures.append("the masterLevel row's number input is not drivable")
+            ok = False
+            for _ in range(20):   # the 300 ms save debounce; poll, never sleep-blind
+                page2.wait_for_timeout(100)
+                if page2.evaluate(
+                        "() => { const s = localStorage.getItem('oco-debug-audio') || '';"
+                        " return !s.includes('instOotDb') && s.includes('masterLevel'); }"):
+                    ok = True
+                    break
+            if not ok:
+                failures.append("session-only contract: a dial edit must never enter "
+                                "'oco-debug-audio' while a plain row edit persists")
+
             if errs:
                 failures.append(f"page errors {errs}")
             browser.close()

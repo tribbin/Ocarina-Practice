@@ -68,11 +68,17 @@ SCHEMA = "ocarina-twin-v2"
 class ChamberGlobals:
     """Shared by every note in one cavity."""
     volume_hint_ml: float | None = None
-    Q_prior: float = 45.0          # literature + linewidth prior
-    hiss_hp_hz: float = 2800.0     # direct-radiated windway/holes
-    chiff_q: float = 2.2           # unlocked jet, wide
-    sync_amt: float = 0.65         # period-synchronous noise mix
-    drive_gain: float = 0.55       # tanh drive → H2/H3 floor
+    Q_prior: float = 45.0
+    # hiss_hp_hz is a FALLBACK only. Playback cutoff is hiss_hp_ratio × f0.
+    hiss_hp_hz: float = 4000.0     # high-hiss floor only (not the mid-air cutoff)
+    hiss_hp_ratio: float = 1.25    # mid-air starts here × f0
+    chiff_q: float = 2.2
+    sync_amt: float = 0.65
+    drive_gain: float = 0.55
+    dry_hiss_lo: float = 0.15
+    dry_hiss_hi: float = 0.70
+    dry_hiss_f_lo: float = 520.0
+    dry_hiss_f_hi: float = 1400.0
 
 
 @dataclass
@@ -87,8 +93,9 @@ class NoteFit:
     Q: float = 45.0                # tone ring (attack/decay, pitch lock)
     noise_Q: float = 12.0          # wider: residual bump around f0 is not a whistle
     # residual split (dB re H1 RMS)
-    noise_res_db: float = -28.0    # energy that belongs IN the resonator
-    noise_hiss_db: float = -50.0   # energy that bypasses the resonator
+    noise_res_db: float = -28.0    # residual in [0.70 f0, 1.25 f0]
+    noise_mid_db: float = -40.0    # hole-rush [1.25 f0, 4 kHz] — THE 12-hole air
+    noise_hiss_db: float = -55.0   # 4–12 kHz only; must stay below mid
     noise_slope_db_oct: float = -8.0
     # envelopes (seconds)
     atk_pre_s: float = 0.008

@@ -296,8 +296,12 @@ def analyze(path, nominal=None, label=None, margins=(0.22, 0.12)):
     w2 = np.hanning(W2); n2 = P2//2+1
     f2 = np.fft.rfftfreq(P2, 1/SR); b2 = SR/P2
     def amp_at(S, fr_, frac=0.025):
+        if not fr_ or fr_ <= 0 or fr_ > 2*f2[-1]:
+            return 0.0
         lo = max(1, int(np.searchsorted(f2, fr_*(1-frac))))
         hi = min(n2-1, int(np.searchsorted(f2, fr_*(1+frac)))+1)
+        if hi <= lo:
+            return 0.0
         return float(np.max(S[lo:hi])) * 2 / np.sum(w2)
     portrait = []
     for ms in range(8, 260, 25):
@@ -307,7 +311,16 @@ def analyze(path, nominal=None, label=None, margins=(0.22, 0.12)):
         l1 = int(np.searchsorted(f2, lo_f)); h1i = int(np.searchsorted(f2, hi_f))
         kd = l1 + int(np.argmax(S[l1:h1i]))
         if kd <= 0 or kd >= n2-1: continue
-        d = 0.5*(S[kd-1]-S[kd+1])/(S[kd-1]-2*S[kd]+S[kd+1]+1e-30)
+        # a real spectral peak is concave with the interpolated vertex inside
+        # its own bin; near-flat noise trios (the ambient of a leading-silence
+        # gap) flip the parabola into a ±900-bin detune — do not trust those
+        # bins as tone, they are just noise at no frequency worth reporting.
+        denom = S[kd-1] - 2*S[kd] + S[kd+1]
+        if denom >= 0:
+            continue
+        d = 0.5*(S[kd-1]-S[kd+1])/denom
+        if not (-0.5 <= d <= 0.5):
+            continue
         f0e = (kd+d)*b2
         h1 = amp_at(S, f0e)
         if h1 < 1e-6: continue
