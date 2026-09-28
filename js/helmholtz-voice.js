@@ -226,7 +226,7 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
   noiseBp.frequency.value = f0;
   noiseBp.Q.value = effectiveNoiseQ(nf);
   const resGain = ctx.createGain();
-  const resComp = pinkBandComp(f0 * 0.7, f0 * 1.25);
+  const resGain = ctx.createGain();
   resGain.gain.value = airGain(nf.noise_res_db || -28);
   syncGain.connect(noiseBp); noiseBp.connect(resGain); resGain.connect(bodyGain);
 
