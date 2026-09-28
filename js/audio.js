@@ -105,6 +105,10 @@ const AUDIO_DEFAULTS = {
   // pre-tune playback loudness: the recording's absolute level is a mic-gain
   // artifact, so comparisons below use ratios, never absolute level.
   masterLevel: 0.40,
+  // Support/track voices (named #track bags + legacy supports) play at the
+  // fixed TWIN_SUPPORT_LEVEL anchor × this multiplier — a by-ear retune for
+  // how loud accompaniment sits against the melody, on every instrument.
+  supportLevel: 1,
   reverbWet: 0.20,
   // Practice-mode tuner gates (js/practice.js): in-tune zone (cents), onset
   // transient grace (wider cents for the first N ms of an attack), the
@@ -685,6 +689,20 @@ function getMelodyCutBus(ctx, wire) {
   return b;
 }
 function isMelodyBag(bag) { return bag === melodyBag || !!(bag && bag.melodyRoute); }
+// Fixed support loudness (twin voice). A support/track voice rides the
+// melody instrument's fitted level rows today (every below-chart support
+// note clamps to a far anchor row), which put the twin-engine support
+// 12.7-13.1 dB under the additive engine's support on the same notes
+// (measured 2026-09-28: eponas support D3/E3/G3, twin plateau ≈ −29.5 dBFS
+// vs additive-generic ≈ −16.6 dBFS — Robin: "the 12-hole has softer support
+// than the oak leaf triple"). Support is a mixing decision (the audible
+// percent), never a melody-dynamics decision, so non-melody melodyRoute bags
+// (track walker both zones + the legacy support forwarder; NOT the melody
+// bag, NOT the flag-less live-preview voices) divide the interpolated level
+// back out and play at this anchored constant. Timbre stays fitted (Q, h,
+// noise rows untouched); only the loudness flattens. The value anchors the
+// additive support plateau through the shared masterLevel.
+const TWIN_SUPPORT_LEVEL = 0.75;
 // Render-cut the melody buses as ONE continuous event per bus: an exponential
 // setTargetAtTime decay, scheduled a little AHEAD of the render cursor. Three
 // rules come straight from this bug's history:
@@ -1375,6 +1393,12 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
       if (twEntry) {
         const tmDest = isMelodyBag(bag) ? getMelodyCutBus(ctx, getReverbBus(ctx)) : getReverbBus(ctx);
         const nf = interpNote(twEntry.model, freq);
+        // Support compensation: a non-melody melodyRoute bag trades the
+        // fitted level row for the fixed TWIN_SUPPORT_LEVEL anchor (see the
+        // constant's note) — timbre keeps the fit, loudness is the mix.
+        const supportComp = bag && bag.melodyRoute && bag !== melodyBag && nf.level
+          ? TWIN_SUPPORT_LEVEL * (AUDIO_DEBUG.supportLevel || 1) / nf.level
+          : 1;
         // Dev-panel retunes scale the model's own wander/wobble rows (the
         // defaults are 1, so an untouched panel plays the fit verbatim).
         nf.wander_cents_std = (nf.wander_cents_std || 0) * AUDIO_DEBUG.wanderAmt;
@@ -1385,7 +1409,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
         // additive lite's osc→lowpass chain. Same envelope/level shape as the
         // legacy lite voice.
         if (liteMode()) {
-          const lvM = AUDIO_DEBUG.masterLevel * voiceGain * (nf.level || 1);
+          const lvM = AUDIO_DEBUG.masterLevel * voiceGain * (nf.level || 1) * supportComp;
           const g = ctx.createGain();
           g.gain.setValueAtTime(0.0001, t0);
           g.gain.linearRampToValueAtTime(lvM, t0 + Math.min(0.03, dur * (slideFrom ? 0.4 : 0.2)));
@@ -1448,7 +1472,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
           when: t0,
           holdSec: twHold,
           dest: tmDest,
-          master: AUDIO_DEBUG.masterLevel * voiceGain * twEntry.gain,
+          master: AUDIO_DEBUG.masterLevel * voiceGain * twEntry.gain * supportComp,
         };
         if (slideFrom) {
           baseOpts.slideFromHz = slideFrom;

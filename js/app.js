@@ -1,11 +1,11 @@
 import { titleFromText } from "./parse.js";
 import { installOcarinaTemplate, invalidateSvgHtml } from "./ocarina.js";
-import { installToneModel } from "./audio.js";
+import { installToneModel, isMelodyPlaying } from "./audio.js";
 import { BUILTIN, fillLibrary, initBuiltin, loadedLibraryId, loadLibraryItem,
          markUrlLanded, refreshGeneratedScales, rewriteLanderUrl,
          songFitsChart, syncLibraryMenu, userLib, wireLibrary } from "./library.js";
 import { buildKB, enterZenFromLink, render, setAppCss, wireUi } from "./ui.js";
-import { practiceInvalidate } from "./practice.js";
+import { practiceInvalidate, isPracticeActive } from "./practice.js";
 import "./debug.js";
 
 // Global error net: uncaught window errors and unhandled promise rejections
@@ -342,6 +342,7 @@ async function boot() {
     // initBuiltin runs BEFORE the first instrument install: the generated
     // scale entries refresh off the chart mid-install and must mutate the
     // final BUILTIN object, not one initBuiltin is about to replace.
+    songsText = JSON.stringify(songs); // the resume-freshness comparator
     initBuiltin(songs);
     await loadInstrument(chosen);
     fillInstrumentSelect(chosen.id);
@@ -379,6 +380,43 @@ async function boot() {
 }
 
 boot();
+
+// App-resume data freshness (Robin, phone-PWA catch 2026-09-28: a resumed
+// app never re-checked anything — the SW's refresh rides page load, and an
+// app switch is not a page load, so the deployed songs could stay invisible
+// indefinitely). The comparator is the boot's own songs.json TEXT; a
+// successful resume fetch that differs swaps the library (BUILTIN + the
+// generated scales + the picker) — the currently open sheet keeps its
+// loaded copy and refreshes on the next switch, like any song change.
+// Gates: foreground, no melody ringing, no practice engaged, one check per
+// gap; failures stay silent — an offline resume must never complain.
+let songsText = null; // the boot's bytes; compare against the resume fetch
+let songsRefreshBusy = false;
+let songsRefreshAt = 0;
+const SONGS_REFRESH_GAP = 30000; // ms — a rapid app-switch burst checks once
+
+async function refreshSongsOnResume() {
+  if (songsText == null || songsRefreshBusy) return;
+  const now = Date.now();
+  if (now - songsRefreshAt < SONGS_REFRESH_GAP) return;
+  songsRefreshAt = now;
+  if (isMelodyPlaying() || isPracticeActive()) return;
+  songsRefreshBusy = true;
+  try {
+    const next = await loadJson("songs.json");
+    const nextText = JSON.stringify(next);
+    if (!nextText || nextText === songsText) return;
+    songsText = nextText;
+    initBuiltin(next);
+    if (window.NOTES && window.NOTES.length) refreshGeneratedScales(window.NOTES);
+    fillLibrary();
+  } catch (e) {} finally { // offline / transient data hiccup: try again later
+    songsRefreshBusy = false;
+  }
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") refreshSongsOnResume();
+});
 
 // Offline mode: the service worker (sw.js) serves the shell, song data and
 // the ocarinas' fingerings/templates from cache, with background refresh for

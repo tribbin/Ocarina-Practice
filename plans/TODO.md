@@ -78,7 +78,7 @@ rides his ruling):
 
 - [ ] **Twin voice for the 12-hole: the adopted baseline and its open classes** — the Helmholtz twin (`js/helmholtz-voice.js` + `instruments/oot-alto-c-12/twin_model.json`, handoff from Grok via Robin) REPLACES the additive voice outright — Robin field-checked the handoff state and ruled it the baseline ("it was perfect before" as handed over; the pass that rewrote the model's noise rows algebraically was REVERTED by his ears — A4's metronomic one-sine wobble "very bad", the liked E5 wobble is the pitch wander's). Standing structure: module + model are the handoff state byte-identical (only the 4 s crossfaded noise buffer differs — the line-comb lesson), the manifest declares `twin` and tone.json is retired with the swap (removed; the additive voice still serves stein double + contrabass). OPEN classes, ears-first per the skill's first law: (a) ATTACK ring-up — the render's rise measures ~0.08 s where the model rows say 8-26 ms (the cavity Q rings up from silence; a Q-ramp assist is the held idea, audible, his word first); (b) top register A5-F6 clamps to A5's row (interpNote end-clamp) — record the top and refit; (c) NO amplitude-wobble layer persists (the module interpolates wobble_pct unused — do not "complete" it without his ask); (d) release taper: the model rel_s 0.07 reads shallower than the takes' hand releases (stage gate's decay-depth leg ~-12 dB); (e) future refits may NOT reproduce the shipped file (the peak*0.08 span fix stays in fit.py — the shipped model is the blessed reference, not "the fit"). Regression gate: tests/tone_stages fit-row caps + stage windows measured off the blessed delivery. `🟧 🔴 ⚙M`
 
-- [ ] **Fit the twin model per chamber (Robin records held takes; the tone-analysis era closed for the 12-hole)** — skills/ocarina-twin/run_fit.py refits a chamber from held takes (one per fingering; the subtract analysis tracks f0 so the residual is real breath); the handoff model reproduced bit-for-bit from research/note-recordings/12hole's 8 held takes (A4-A5). REMAINING chambers: stein-double-alto-c now carries a TEMP twin from the sep-17 3-take session (multi-wrapper: chamber 1 = C5 2nd-take + D6 rows, chamber 2 = G6's single row clamped at both ends, the cross-chamber gain rides the wrapper) — his real refit waits on a proper held-take sweep per chamber (chambers NEVER bridge); ico-contrabass-11-c, ico-oak-leaf-bass-c-triple (declare `twin` when data lands; the additive voice + tone.json carries them until then); the 12-hole's own refit waits on his top-register recordings. The fitter's span rule is now peak*0.08 (the old median*4 guard collapsed EVERY span onto the 0.15/0.85 fallback — release+silence fitted as sustain — so historical fitted levels/wobble read through that window; the fitter's nominal table now carries G6..Cs7 — a missing key had read G6 at a 500 Hz default and the whole subtract built on a wrong octave). His hands-on work as he gets time. `🟩 ⚪ ⚙L`
+- [ ] **Fit the twin model per chamber (Robin records held takes; the tone-analysis era closed for the 12-hole)** — skills/ocarina-twin/run_fit.py refits a chamber from held takes (one per fingering; the subtract analysis tracks f0 so the residual is real breath); the handoff model reproduced bit-for-bit from research/note-recordings/12hole's 8 held takes (A4-A5). REMAINING chambers: stein-double-alto-c now carries a TEMP twin from the sep-17 3-take session (multi-wrapper: chamber 1 = C5 2nd-take + D6 rows, chamber 2 = G6's single row clamped at both ends, the cross-chamber gain rides the wrapper) — his real refit waits on a proper held-take sweep per chamber (chambers NEVER bridge); ico-contrabass-11-c, ico-oak-leaf-bass-c-triple (declare `twin` when data lands; the additive voice + tone.json carries them until then); the 12-hole's own refit waits on his top-register recordings. The fitter's span rule is now peak*0.08 (the old median*4 guard collapsed EVERY span onto the 0.15/0.85 fallback — release+silence fitted as sustain — so historical fitted levels/wobble read through that window; the fitter's nominal table now carries G6..Cs7 — a missing key had read G6 at a 500 Hz default and the whole subtract built on a wrong octave). Cross-twin A/B measured 2026-09-28 (identical offline chain, same notes both alto C instruments, plateau RMS): the stein reads 2-3 dB QUIETER than the blessed 12-hole across most of the shared range (D5 +2.5, G5 +2.9, A5 +2.1, C5 +3.1) with an E5-class hole at +8.2 dB — the two models' absolute anchors come from separate mic sessions (never cross-calibrated; the engine's masterLevel is shared so the takes' own levels are the whole story) and ch1's two-anchor linear lerp (C5 0.176 → D6 1.0 over 15 semitones) puts the octave's middle ~-8 dB under the 12-hole's loudest-take E5. Levers: the wrapper `gain` fields (quick ~+3 dB stein lift) or proper per-note takes (the fitter refit — the real fix, one mid-range anchor like E5/A5 kills the lerp cliff); F5/B4 read the other way (stein louder) because the 12-hole's own B4/F5 takes are its quietest rows. Support-layer parity probe (Robin's ask, 2026-09-28): the support-class track notes are ALREADY instrument-independent — C3/E3/G3 within ±0.1 dB across the two (both clamp below-chart track notes to their chamber-1 anchor row) — but the melody:track ratio at E5 flips 12-hole +15.8 dB vs stein +7.7 dB, so the fixed-volume support reads ~2× too loud under the stein's E5 hole; a ch1 wrapper lift would raise voice AND tracks together (shared path) and preserve the flip, so the balance restore needs the melody anchors, not the wrapper. THEN THE REAL FORK (Robin's URLs, 2026-09-28): the 12-hole support measured 12.7-13.1 dB QUIETER than the OAK-LEAF-TRIPLE's support — the support on non-twin instruments rides the additive-GENERIC voice (a much hotter scale) while twin-instrument support rides the fitted clamped level rows; eponas support D3/E3/G3 twin ≈ −29.5 dBFS vs additive ≈ −16.6 dBFS through the identical bench. BUILT (held for Robin's field check): js/audio.js TWIN_SUPPORT_LEVEL 0.75 — every support voice (track walker both zones + the legacy support forwarder; NOT the melody bag, NOT the flag-less preview voices — `bag.melodyRoute && bag !== melodyBag`) divides the interpolated level back out and plays at the anchored constant × the new `supportLevel` panel multiplier (debug Output row, default 1); timbre keeps the fit. Red→green tests/twin_support_level.py (CI-registered): E3/G3 twin-support vs additive-support plateaus within 1.5 dB — red carried the defect verbatim (−12.82/−13.14), green after; eslint clean; sw oco-pwa-v45. The stein's support lifts the same +13 dB (its ch2 gain still rides inside). His hands-on time as he gets it. `🟩 ⚪ ⚙L`
 
 ## 2. Robustness / error handling
 
@@ -857,3 +857,56 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   final state: twin_derive, parse_edges, shipped_songs (5 multi-track songs
   align bar-for-bar), gen_pages; eslint clean; sw oco-pwa-v44 (app js
   changed).
+
+- **2026-09-28 (session 19 cont. — the support voices flatten; the phone's data staleness dies)** —
+  Two builds on `volume-fix` (Robin renamed update_songs mid-session; PR #19
+  merged to main and deployed through 9531b1e, sw v44, by SHA/job: deploy
+  site run 36411531795):
+  (1) `240fbe8` **the support-level flat anchor** (Robin's ear: the 12-hole's
+      Epona support was softer than the oak-leaf triple's — THIS was a
+      real engine asymmetry on the bass instruments, additive-generic
+      support vs twin's fitted clamped level rows, measured 12.7-13.1 dB
+      apart): TWIN_SUPPORT_LEVEL 0.75 — every melodyRoute bag that is not
+      the melody's own (track walker both zones + playSupportAt; never the
+      melody bag, never the flag-less preview voices) divides the
+      interpolated level back out and plays the anchored constant × a new
+      `supportLevel` debug-panel multiplier; timbre keeps the fit. The
+      stein's support lifts the same +13 dB with it. Red→green
+      tests/twin_support_level.py (CI-registered; the bench gained a real
+      bag override __BAG__): E3/G3 twin-vs-additive within 1.5 dB, red
+      carried the defect verbatim. Full sweep 48/48 at it; sw v45. HELD
+      for Robin's field check: the new support balance on every
+      instrument.
+  (2) **the PWA data-freshness pair** (Robin: the phone couldn't reach the
+      new songs by refreshing; the answer batch: data → network-first
+      WITH cached fallback, resume silent re-fetch → build both, js/css
+      stay SWR):
+      sw.js: DATA_NETWORK_FIRST = songs.json + instruments.json + every
+      instrument's tone/twin model, served network-first with cached
+      fallback, fetched with `cache:"no-cache"` (the browser HTTP cache's
+      heuristic freshness — 10% of the served file's age — once answered
+      the worker's fetch with a stale-200 that held for over an hour);
+      the install derive now precaches inst.twin beside inst.tone;
+      js/app.js: on visibility→visible with nothing running (no melody,
+      no practice) a silent songs.json re-fetch swaps BUILTIN + the
+      generated scales + the library when the text changed (30 s rate
+      gap; failures silent).
+      The debug's own two traps, both lesson-class: python's
+      If-Modified-Since revalidation compares mtime at WHOLE-SECOND
+      precision — a file rewritten within the same wall-second as the
+      previous serve revalidates as 304 with the cached body (the suite's
+      sentinel rewrite raced its own freshness clock; one real clock
+      second now separates the legs), and correctness demanded ∼7
+      instrumentation rounds before the layer that lied (the worker
+      served the HTTP cache's stale-200, not the network) was found by
+      watching the server itself.
+      tests/offline_pwa.py gained two supervisor legs: an online reload
+      lands the released data on the FIRST reload (red carried the
+      stale-while-revalidate lag), a resume re-fetch swaps the library
+      (red carried the no-re-check defect). Green ×3 at the final state;
+      console_hygiene + asset_versions green; eslint clean.
+      HELD for his phone: one deploy cycle of refreshing/cold-starting
+      with the new worker; the resumed-app library swap is idle-gated by
+      design.
+  QUEUED on his word: the E5/A5 mid-range stein takes (the melody's own
+  balance fix, unblocks the wrapper-only paths), PR copy for the pair.

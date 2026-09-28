@@ -190,7 +190,7 @@ function b64(buf8) {
   for (let i = 0; i < buf8.length; i += CH) s += String.fromCharCode.apply(null, buf8.subarray(i, i + CH));
   return btoa(s);
 }
-if (CFG.note) playNoteAt(CFG.note, CFG.when == null ? null : CFG.when, CFG.dur, []);
+if (CFG.note) playNoteAt(CFG.note, CFG.when == null ? null : CFG.when, CFG.dur, __BAG__);
 if (CFG.seq && CFG.seq.length) {
   // melody-sequence audit: absolute offline-clock starts, notes touch
   // each other (no gap) so the transition behavior is what gets measured.
@@ -245,6 +245,7 @@ def run_page(name, cfg, out_wav, wind=None, with_comp=False):
     page = TEMPLATE.replace("__FING__", json.dumps(cfg.get("_fing"))).replace(
         "__TONE__", json.dumps(cfg.get("_tone"))).replace(
         "__TWIN__", json.dumps(cfg.get("_twin"))).replace(
+        "__BAG__", json.dumps(cfg.get("_bag") or [])).replace(
         "__CFG__", json.dumps({k: v for k, v in cfg.items() if not k.startswith("_")})).replace(
         "__PAGE__", PAGE).replace("__JSURL__", JS)
     html = os.path.join(TMP, name)
