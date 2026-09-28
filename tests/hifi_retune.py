@@ -119,13 +119,6 @@ def main():
             page2.wait_for_function(BOOT_WAIT)
             hifi = page2.evaluate(PROBE)
 
-            def eq(a, b):
-                return a is not None and b is not None and \
-                    abs(sum(abs((a or 0) + sum(x or 0) - (b or 0) - 0) for a, b in zip(
-                        [int(n) for n in (a or "0").replace("rgba", "rgb").replace("rgb(", "").replace(")", "").replace(",", " ").split()],
-                        [int(n) for n in (b or "0").replace("rgba", "rgb").replace("rgb(", "").replace(")", "").replace(",", " ").split()
-                         if n.strip()])) ) < 3
-
             # 1. resting faces
             want = (22, 10, 4)
             got = hifi["ghost"]["bg"] or ""

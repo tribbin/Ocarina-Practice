@@ -111,7 +111,6 @@ async (SRC) => {
 HIGHLIGHT = """
 (I) => {
   highlightToken(I, null, undefined, false);
-  const lit = (scope) => [...document.querySelectorAll(scope)].map(el => el.dataset ? el.dataset.i : el.getAttribute('data-i') || el.className.includes('now') ? (el.dataset.i ?? '') : '').filter(x => x !== '');
   const inStrip = [...document.querySelectorAll('#tokens .tok.now')].map(el => el.dataset.i);
   const inFocus = [...document.querySelectorAll('#focusTokens .tok.now')].map(el => el.dataset.i);
   const inSheet = [...document.querySelectorAll('#sheet .now')].map(el => el.dataset.i);

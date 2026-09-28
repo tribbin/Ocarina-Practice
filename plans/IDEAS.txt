@@ -1,5 +1,7 @@
 This document is for not-forgetting ideas. Don't assume we want them implemented already. However, you may refer to them or keep them in mind.
 
+GET RID OF OLD SYNT <-- important
+
 SMALL SCREENS
 
 When a device has a small screen, they will not want to use certain functions.
@@ -12,41 +14,20 @@ As you'd not see much of the backdrop anyway, we probably want a dedicated fulls
 
 We will brainstorm this some time.
 
-LAYOUT
-
-I've never seen a practice history while I have completed some songs during testing. I might be wrong, but I think it does not show. Check coe before I'm gonna play-test to produce it.
-
 OTHERS
 
 Make the 12-hole 'complete' regarding Zelda Ocarina of Time game songs.
 
-Have multiple ocarina's play as an arrangement. So separate sections 'grouped' and being able to play the other parts whil you practice.
+Fully standardize how songs are written out, with and without support.
 
-Intead of having a 'support track', actually having multi-track arrangement.
+Put indivudual songs in .txt with all attributes I can copy and paste between src and the .txt.
 
-Use outset island to make [melody + bass + contrabass] song example.
+Add alternative song names and other meta-data to song-pages.
 
-Recordings of the 12-hole are ready to be analyzed.
-The analyzation should be a phase to optimize our synth to better reproduce an ocarina.
-e.g. We might want per-note values instead of per-chamber.
-Also, maybe some existing variables are inaudible and can be removed to spare resources.
-Note that I will not have played perfectly, so the recording is an approximation for the tone + air-noise and our values should be a frequency-point on the curve instead of the exact note value.
-Will probably re-record double-alto-c notes to reanalyze the improved engine.
-The first 'layer' should be an accurate approximation; the second layer shall be tweaks to make the sound nicer for the user, e.g. a loudness curve over the note range that can be disabled from DEBUG to verify the reproduction of the tone of the real-live ocarina.
+Add search function to song list.
 
-THEMES
+Have a 'browse' function to find songs by category.
 
-Let's add theming (colors/preview/backdrop/...) to both the main page and song-links, that will show up when people paste a link in social media and for web searches.
+Make any support just another practice track you can choose from.
 
-SONGS
-
-Wind Waker - Outset Island
-
-SOUND engine
-
-Our ocarina renders have a 'broadband noise' with low/high pass filters. This sounds NOTHING like a real ocarina recording.
-Just take a look at the spectrums:
-research/analysis/12hole/complaint/C5_hold_spectrum_recording.txt
-research/analysis/12hole/complaint/C5_hold_spectrum_render.txt
-The recording has a much more complex (and pleasing) noise shape.
-Note the 'bump' at 273 Hz. That exists in every recording. This makes it sound warmer.
+Allow muting (or like 20% volume) the track you're practicing.

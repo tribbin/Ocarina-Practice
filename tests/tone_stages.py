@@ -17,8 +17,12 @@
 #   delivery + slack: a future change must not drift beyond what Robin
 #   already blessed.
 #
-#   SECONDARY — stage windows (onset/hold relative bands; release depth
-#   vs sustain): coarse wash/decay coverage the row gate cannot name.
+#   SECONDARY — stage release (decay depth vs sustain): the gated stage
+#   leg. Onset/hold relative bands are still measured into the artifact
+#   (twin_stage_verify.json) for eyes, never gated — stage-window wobble
+#   luck made any cap there flap green/red between runs, so caps that
+#   historically "worked" by exempting every (note, onset/hold) pair are
+#   gone rather than kept as never-failing code.
 #
 #   search order = research/note-recordings/12hole (working),
 #                  skills/tone-analysis/reference-recordings/12hole (committed)
@@ -134,15 +138,7 @@ ROW_CAPS = {
 # synthetic loudness wobble waits on his word). The measured wobb deltas
 # belong to the bass model, not to a broken layer.
 Q_REL_CAP = 0.45
-STAGE_CAPS = {"onset": 12.0, "hold": 10.0, "decay": 15.0}
-STAGE_BAND_CAP = 16.0
-# stage-window wobble-window luck: the wander/wobble layer shifts band
-# medians run-to-run inside wobbly holds — declared per note, per the gate's
-# long history, rather than allowed to flap green/red between runs.
-KNOWN_STAGES = set()
-for _n in HELD:
-    KNOWN_STAGES.add((_n, "onset"))
-    KNOWN_STAGES.add((_n, "hold"))
+STAGE_CAPS = {"decay": 15.0}
 
 
 def twin_sanity(model, inst):
@@ -239,7 +235,6 @@ def main():
                                     f"({d:+.1f} dB, cap {STAGE_CAPS['decay']:+.0f})")
                 continue
             deltas = {k: (o[k] - t[k]) for k in t if k in o}
-            cap = STAGE_CAPS[stage]
             worst_bb = deltas.get("broadband_rel", 0.0)
             band_worst = max(((abs(v), k) for k, v in deltas.items()
                               if k not in ("broadband_rel", "h1")),
@@ -247,11 +242,6 @@ def main():
             table[n]["stages"][stage] = {
                 "broadband": round(worst_bb, 1),
                 "worst_band": f"{band_worst[1]} {round(band_worst[0], 1)}"}
-            if abs(worst_bb) > cap and (n, stage) not in KNOWN_STAGES:
-                failures.append(f"{n} [{stage}] broadband {worst_bb:+.1f} dB (cap {cap:+.0f})")
-            if band_worst[0] > STAGE_BAND_CAP and (n, stage) not in KNOWN_STAGES:
-                failures.append(f"{n} [{stage}] band {band_worst[1]} "
-                                f"{band_worst[0]:+.1f} dB (cap {STAGE_BAND_CAP})")
         rows_txt = " ".join(f"{k}{table[n]['rows'][k]:+.1f}" for k in ROW_CAPS
                             if k in table[n]["rows"])
         print(f"{n}: rows {rows_txt}")

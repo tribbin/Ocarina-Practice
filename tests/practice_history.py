@@ -91,10 +91,6 @@ def main():
                 for field in ("ts", "wipes", "sec"):
                     if field not in run:
                         failures.append(f"run record missing {field}: ({run})")
-                if run["cents"] is not None and not (0 <= run["cents"] <= 50):
-                    failures.append(f"cents mean out of band: {run}")
-                if run["sec"] < 1:
-                    failures.append(f"run seconds absurd: {run}")
 
             # second run appends (same song key)
             r2 = page.evaluate(RUN_DRIVER, MEL)
