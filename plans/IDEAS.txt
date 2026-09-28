@@ -1,5 +1,7 @@
 This document is for not-forgetting ideas. Don't assume we want them implemented already. However, you may refer to them or keep them in mind.
 
+GET RID OF OLD SYNT <-- important
+
 SMALL SCREENS
 
 When a device has a small screen, they will not want to use certain functions.
@@ -15,3 +17,17 @@ We will brainstorm this some time.
 OTHERS
 
 Make the 12-hole 'complete' regarding Zelda Ocarina of Time game songs.
+
+Fully standardize how songs are written out, with and without support.
+
+Put indivudual songs in .txt with all attributes I can copy and paste between src and the .txt.
+
+Add alternative song names and other meta-data to song-pages.
+
+Add search function to song list.
+
+Have a 'browse' function to find songs by category.
+
+Make any support just another practice track you can choose from.
+
+Allow muting (or like 20% volume) the track you're practicing.
