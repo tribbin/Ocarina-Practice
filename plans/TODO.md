@@ -80,8 +80,6 @@ front is the guessed bass voices):
 
 ## 2. Robustness / error handling
 
-- [ ] **Resume invalidation for instrument data (Robin's answered batch 2026-09-29, DEFERRED at his word — "let's do that some other time"; all four forks took the recommended picks: 1 a manifest+loaded-model-only via a 30s-gapped visibility resume slot that TEXT-compares instruments.json and the loaded twin_model.json and reinstalls TWIN_MODEL audio-only, 2 a fingerings.json + ocarina-template*.svg join network-first in the SW closing the last one-visit-late class with the install-derived precache as the offline fallback and a VERSION bump riding along, 3 a silent swaps exactly the songs precedent, 4 a skip while melody/practice active silent retry later; fingerings/svg changes surface a quiet reload nudge instead of a mid-session chart redraw, failures stay silent offline)** — CI: offline_pwa red-first supervisor leg (resume with changed twin_model.json on disk under a pristine try/finally must fire a fresh model fetch + zero page errors; the svg/fingerings serving rides the same pattern), verified red-first then green before commit; the phone case it closes is the noise-hunt's known remainder (a resumed app keeps the manifest and the loaded twin model from its last boot indefinitely). `🟧 🟡 ⚙M`
-
 ## 3. Security (low today — matters if data files become user-supplied)
 
 ## 4. Performance
@@ -409,3 +407,37 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   twin models is batched for his picks (the resume hook still re-checks
   songs.json only — a resumed phone keeps the manifest and the loaded
   twin model indefinitely).
+
+- **2026-09-29 (session 22 cont. — the deferred resume invalidation lands: instrument data joins the resume contract, the SW data branch widens)** —
+  Robin merged the serving-layer streak to main through PR #29 and opened
+  the door to approved/queued items; the §2 batch (his answered forks,
+  recorded verbatim when boarded) was the pick. Landed on
+  resume-invalidate-instruments:
+  (1) app.js: the shared visibility resume slot re-checks instruments.json
+      TEXT and the LOADED instrument's twin_model.json under the songs
+      gates (foreground, no melody/practice, the 30 s gap, silent-offline
+      catch) — a changed model reinstalls installTwinModel audio-only
+      under the CURRENT_INSTRUMENT guard, the next played note rides the
+      fresh fit; fingerings/template/svgWhen drift defers to the next
+      reload with a console.info flag (never a mid-session chart redraw);
+      cross-instrument manifest drift only feeds the next boot.
+      loadInstrument tracks the twinText comparator beside both install
+      paths (fresh and fallback).
+  (2) sw.js: the network-first data branch widens from tone/twin_model to
+      EVERY per-instrument file (fingerings/tone/twin/templates) — the
+      last stale-while-revalidate data class — sw oco-pwa-v55.
+  (3) tests/offline_pwa.py: the resume-request-count leg red-first (a
+      changed model on disk must fire a fresh model fetch on the first
+      resume dispatch — instrument-agnostic filter, because the offline
+      swap leg leaves the suite carrying the oak; the if-modified-since
+      whole-second trap slept 1.1 s like the songs legs) and the poisoned
+      fingerings serving leg (network-first + cache heal), both verified
+      red then green; the poison helper factored out for the two legs.
+  Suites: offline_pwa x3 through the red/green cycle, instruments_load
+  (boot battery + twin shapes + svgWhen boots), console_hygiene (4 boots),
+  asset_versions, eslint + html-validate — all green.
+  HELD for Robin: the reload nudge's VISUAL surface (console.info-only
+  today; a on-page slot is his design call). The commit needs his PR
+  merge to reach the phones; field check = a resumed phone app must pick
+  up a changed twin model within the next note (his next refit is the
+  natural field test).
