@@ -495,7 +495,10 @@ import { audioCtx, cutLive, freqOf, getReverbBus, playNote, reverbEnabled, setRe
     if (!el || !api.voiceCard) return;
     try {
       var c = api.voiceCard();
-      el.textContent = c.rev + (c.twin ? " · twin " + c.twin : " · ADDITIVE");
+      el.textContent = c.rev
+        + (c.twin ? " · twin " + c.twin : " · ADDITIVE")
+        + (c.chart && c.chart !== c.twin ? " · CHART " + c.chart : "")
+        + (c.mismatch ? " · MISMATCH" : "");
       el.title = JSON.stringify(c);
     } catch (e) {}
   }

@@ -495,3 +495,10 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   which still carries the alto 4 kHz hiss split. Phone/desktop last night
   were the 12-hole mid-air voice. The debug header still names the pair
   (`mid-air-1 · twin …` vs `ADDITIVE`).
+
+- **2026-09-29 (session 23 cont. — F6 chamber 1 under an oak twin is the remaining mix)** —
+  Robin's probe: sr 48000, Lite off, `CHAMBER.F6 === 1`. Oak fingerings.json
+  puts F6 in chamber 3; the 12-hole chart puts it in 1. voiceCard now carries
+  chart id, note range, F6 chamber and a twin/chart mismatch flag so one
+  paste names the pair. Playing F6 through oak chamber 1 (A3–Ds5 rows at
+  1397 Hz) is the high-noise class.

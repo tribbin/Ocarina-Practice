@@ -239,11 +239,18 @@ window.OCA_DEBUG = {
         sw = navigator.serviceWorker.controller.scriptURL;
       }
     } catch (e) {}
+    const inst = (typeof window !== "undefined") ? window.CURRENT_INSTRUMENT : null;
+    const notes = (typeof window !== "undefined" && window.NOTES) ? window.NOTES : [];
+    const chMap = (typeof window !== "undefined") ? window.CHAMBER : null;
     return {
       rev: VOICE_REV,
       protocol: typeof location !== "undefined" ? location.protocol : "",
       twin: tm ? tm.instrumentId : null,
       chambers: tm ? Object.keys(tm.chambers || {}) : [],
+      chart: inst ? inst.id : null,
+      range: notes.length ? [notes[0], notes[notes.length - 1]] : [],
+      f6: chMap && chMap.F6 != null ? chMap.F6 : null,
+      mismatch: !!(tm && inst && tm.instrumentId !== inst.id),
       sw,
     };
   },
