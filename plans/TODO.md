@@ -80,6 +80,8 @@ front is the guessed bass voices):
 
 ## 2. Robustness / error handling
 
+- [ ] **Resume invalidation for instrument data (Robin's answered batch 2026-09-29, DEFERRED at his word — "let's do that some other time"; all four forks took the recommended picks: 1 a manifest+loaded-model-only via a 30s-gapped visibility resume slot that TEXT-compares instruments.json and the loaded twin_model.json and reinstalls TWIN_MODEL audio-only, 2 a fingerings.json + ocarina-template*.svg join network-first in the SW closing the last one-visit-late class with the install-derived precache as the offline fallback and a VERSION bump riding along, 3 a silent swaps exactly the songs precedent, 4 a skip while melody/practice active silent retry later; fingerings/svg changes surface a quiet reload nudge instead of a mid-session chart redraw, failures stay silent offline)** — CI: offline_pwa red-first supervisor leg (resume with changed twin_model.json on disk under a pristine try/finally must fire a fresh model fetch + zero page errors; the svg/fingerings serving rides the same pattern), verified red-first then green before commit; the phone case it closes is the noise-hunt's known remainder (a resumed app keeps the manifest and the loaded twin model from its last boot indefinitely). `🟧 🟡 ⚙M`
+
 ## 3. Security (low today — matters if data files become user-supplied)
 
 ## 4. Performance
