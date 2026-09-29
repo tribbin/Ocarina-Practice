@@ -1,6 +1,6 @@
 import { titleFromText } from "./parse.js";
 import { installOcarinaTemplate, invalidateSvgHtml } from "./ocarina.js";
-import { installToneModel, isMelodyPlaying } from "./audio.js";
+import { installTwinModel, isMelodyPlaying } from "./audio.js";
 import { BUILTIN, fillLibrary, initBuiltin, loadedLibraryId, loadLibraryItem,
          markUrlLanded, refreshGeneratedScales, rewriteLanderUrl,
          songFitsChart, syncLibraryMenu, userLib, wireLibrary } from "./library.js";
@@ -149,12 +149,6 @@ async function loadInstrument(inst) {
   TPL_CACHE[inst.svg] = Promise.resolve(svgText);
   window.CURRENT_INSTRUMENT = inst;
   await ensureOcarinaTemplate();
-  // Per-ocarina tone model (instruments/<id>/tone.json — fitted per-chamber
-  // anchors, see instruments/README.md). A 404 is normal: the ocarina has no
-  // recordings yet and keeps the baked-in generic model. installToneModel
-  // resets on failure so a stale model never leaks across instrument swaps;
-  // the CURRENT_INSTRUMENT check keeps a slower old fetch from clobbering a
-  // newer instrument's install.
   if (typeof installTwinModel !== "function") return;
   try {
     const twin = inst.twin ? await loadJson(inst.twin) : null;
@@ -167,13 +161,6 @@ async function loadInstrument(inst) {
       installTwinModel(null, inst.id);
       twinText = "null";
     }
-  }
-  if (typeof installToneModel !== "function") return;
-  try {
-    const tone = inst.tone ? await loadJson(inst.tone) : null;
-    if (window.CURRENT_INSTRUMENT === inst) installToneModel(tone, inst.id);
-  } catch (e) {
-    if (window.CURRENT_INSTRUMENT === inst) installToneModel(null, inst.id);
   }
 }
 

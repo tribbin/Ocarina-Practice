@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 # twin_support_level.py — the SUPPORT-LOUDNESS contract (Robin, 2026-09-28):
 # "the support tracks should have the same volume" on every instrument.
-# A named #track support note rendered through the TWIN engine (oot-alto-c-12,
-# real track-bag shape) must land within 1.5 dB of the same note through the
-# ADDITIVE engine (ico-oak-leaf-bass-c-triple, generic voice — no twin, the
-# bass instruments' shipped support path). Before the fix the twin support
-# measured 12.7-13.1 dB under the additive support (fitted-but-clamped level
-# rows underneath the support bag); after it both play the fixed
-# TWIN_SUPPORT_LEVEL anchor × the supportLevel panel multiplier.
+# A named #track support note rendered through the Helmholtz twin on two
+# instruments (12-hole and oak, both on the v45 12-hole model) must land
+# within 1.5 dB of each other. Support loudness is the TWIN_SUPPORT_LEVEL
+# mix, not the fitted melody row.
 #
 # Renders are the offline bench (skills/tone-analysis render_ours — patched
 # module, dry wire, stubbed air/edge) driven in real time; ~40 s total.
@@ -48,7 +45,8 @@ def main():
     tracks = {
         TWIN_INST: {"_fing": render_ours.fing_data(TWIN_INST), "_twin": tw,
                     "_bag": {"melodyRoute": True, "trackGain": 1.0}},
-        ADD_INST: {"_fing": render_ours.fing_data(ADD_INST)},
+        ADD_INST: {"_fing": render_ours.fing_data(ADD_INST), "_twin": tw,
+                   "_bag": {"melodyRoute": True, "trackGain": 1.0}},
     }
     for n in LEGS:
         for inst, cfg in tracks.items():
@@ -64,17 +62,17 @@ def main():
             continue
         delta = a - b
         if abs(delta) > TOL:
-            failures.append(f"{n}: twin support {a:+.2f} dBFS vs additive "
+            failures.append(f"{n}: 12-hole support {a:+.2f} dBFS vs oak "
                             f"{b:+.2f} dBFS = {delta:+.2f} dB (cap ±{TOL}) — the "
-                            "support loudness must not depend on the voice engine")
+                            "support loudness must not depend on the instrument")
     if failures:
         print("\nFAIL:")
         for m in failures:
             print("  - " + m)
         return 1
-    print(f"\nPASS: the support/track loudness contract holds — twin-engine "
-          f"track notes land within {TOL} dB of the additive-engine support "
-          f"on the anchor notes ({', '.join(LEGS)}), "
+    print(f"\nPASS: the support/track loudness contract holds — Helmholtz "
+          f"track notes land within {TOL} dB across instruments on the "
+          f"anchor notes ({', '.join(LEGS)}), "
           "instrument-independent by construction (fixed TWIN_SUPPORT_LEVEL "
           "anchor × the supportLevel panel multiplier).")
     return 0

@@ -145,7 +145,7 @@ const TWIN_DATA = __TWIN__;
 const CFG = __CFG__;
 </script>
 <script type="module">
-import { playNoteAt, installToneModel, installTwinModel } from "__PAGE__/audio_patched.mjs";
+import { playNoteAt, installTwinModel } from "__PAGE__/audio_patched.mjs";
 try {
 window.FING = FING_DATA;
 window.NOTES = FING_DATA.notes.map(function (n) { return n.id; });
@@ -161,7 +161,6 @@ window.AudioContext = function () {
   window.__oac = o;
   return o;
 };
-if (TONE_DATA && installToneModel) installToneModel(TONE_DATA, CFG.instId);
 if (TWIN_DATA && installTwinModel) installTwinModel(TWIN_DATA, CFG.instId);
 if (window.OCA_DEBUG) {
   if (CFG.noVib) { OCA_DEBUG.params.vibDepth = 0; OCA_DEBUG.params.tremDepth = 0; }

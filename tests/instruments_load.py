@@ -40,9 +40,7 @@ def boot_instrument(browser, base, inst_id, failures, tag):
     # (the twin fetch runs first now) — both installs land as defined
     # (null is a legal "no data" answer; undefined means not-yet-installed)
     page.wait_for_function(
-        "() => typeof OCA_DEBUG !== 'undefined' && OCA_DEBUG.toneModel"
-        " && OCA_DEBUG.twinModel"
-        " && OCA_DEBUG.toneModel() !== undefined"
+        "() => typeof OCA_DEBUG !== 'undefined' && OCA_DEBUG.twinModel"
         " && OCA_DEBUG.twinModel() !== undefined", timeout=10000)
     state = page.evaluate("""() => ({
       notes: window.NOTES.length,
@@ -50,8 +48,6 @@ def boot_instrument(browser, base, inst_id, failures, tag):
                 && window.FING.notes[0].id === window.NOTES[0],
       templated: !!(window.CURRENT_INSTRUMENT && window.CURRENT_INSTRUMENT.svg),
       chambered: Object.keys(window.CHAMBER).length > 0,
-      tone: window.OCA_DEBUG && window.OCA_DEBUG.toneModel
-              ? window.OCA_DEBUG.toneModel() : "MISSING",
       twin: typeof window.installTwinModel === "function"
               ? (window.OCA_DEBUG && window.OCA_DEBUG.twinModel
                   ? window.OCA_DEBUG.twinModel() : "MISSING")
@@ -64,31 +60,19 @@ def boot_instrument(browser, base, inst_id, failures, tag):
             failures.append(f"{tag}: {key} not installed for {inst_id}")
     if state["notes"] < 5:
         failures.append(f"{tag}: {inst_id} has only {state['notes']} notes")
-    if state["tone"] == "MISSING":
-        failures.append(f"{tag}: OCA_DEBUG.toneModel() missing (audio.js change?)")
     voice = state.get("voice")
     if not isinstance(voice, dict) or voice.get("rev") != "v45-helmholtz":
         failures.append(
             f"{tag}: OCA_DEBUG.voiceCard() must stamp v45-helmholtz "
             f"(got {voice!r})")
-    tone_path = ROOT / "instruments" / inst_id / "tone.json"
-    if tone_path.exists():
-        # a shipped tone.json must install as the model, with its rows intact
-        m = state["tone"] if isinstance(state["tone"], dict) else None
-        ok = (isinstance(m, dict) and m.get("instrumentId") == inst_id
-              and m.get("chambers") and isinstance(m["chambers"], list)
-              and m["chambers"] and m["chambers"][0].get("rows"))
-        if not ok:
-            failures.append(f"{tag}: {inst_id} ships tone.json but the installed "
-                            f"model is wrong/empty: {str(state['tone'])[:160]}")
-    elif state["tone"] not in (None, "MISSING"):
-        failures.append(f"{tag}: {inst_id} shipped no tone.json but installed "
-                        f"{str(state['tone'])[:160]}")
     # twin_model.json: a shipped fit must install as the chamber model —
     # single-chamber schema ({model: {notes}}) or the multi wrapper
     # ({chambers: {ch: {model, gain}}})
-    twin_path = ROOT / "instruments" / inst_id / "twin_model.json"
-    if twin_path.exists():
+    twin_decl = next((i.get("twin") for i in
+                      json.loads((ROOT / "instruments.json").read_text())
+                      ["instruments"] if i["id"] == inst_id), None)
+    twin_path = (ROOT / twin_decl) if twin_decl else None
+    if twin_path and twin_path.exists():
         twin = state["twin"] if isinstance(state["twin"], dict) else None
         if state["twin"] == "MISSING":
             failures.append(f"{tag}: OCA_DEBUG.twinModel() missing (audio.js change?)")
@@ -123,112 +107,12 @@ def boot_instrument(browser, base, inst_id, failures, tag):
     return page
 
 
-TONE_PROBE = """
-() => {
-  const ch1Ids = window.NOTES.filter(id => window.CHAMBER[id] === 1)
-    .sort((a, b) => freqOf(a) - freqOf(b));
-  if (ch1Ids.length < 6) return {setup: "chamber 1 needs 6+ notes for an in-between probe"};
-  const lo = ch1Ids[0], mid = ch1Ids[1], top = ch1Ids[ch1Ids.length - 1];
-  const probe = ch1Ids[Math.floor(ch1Ids.length / 2)];
-  const fLo = freqOf(lo), fMid = freqOf(mid), fTop = freqOf(top);
-  const fProbe = freqOf(probe);
-  if (!(fLo < fMid && fMid < fProbe && fProbe < fTop))
-    return {setup: "probe note does not sit strictly between the anchors"};
-  const rows = [
-    {"note": lo, "f": fLo,  "h": [1, 0.010, 0.020, 0.004, 0.002],
-     "levelDb": 0.0,  "wanderC": 6.0, "wobPct": 5.0, "wobHz": 2.0,
-     "noiseLoDb": -26.0, "noiseBumpQ": 8.0, "attackF": 1.0,
-     "chiff": {"peak": 0.010, "startHz": 1800}},                  // no len here
-    {"note": mid, "f": fMid, "h": [1, 0.020, 0.040, 0.008, 0.004],
-     "levelDb": 6.0,  "wanderC": 3.0, "wobPct": 4.0, "wobHz": 3.0,
-     "noiseLoDb": -28.0, "noiseBumpQ": 6.0, "attackF": 1.5, "osDb": 2.0,
-     "chiff": {"peak": 0.015, "startHz": 2600, "len": 0.09}},     // osDb only here
-    {"note": top, "f": fTop, "h": [1, 0.030, 0.060, 0.012, 0.006],
-     "levelDb": 12.0, "wanderC": 1.0, "wobPct": 3.0, "wobHz": 4.0,
-     "noiseLoDb": -30.0, "noiseBumpQ": 4.0, "attackF": 2.0,
-     "chiff": {"peak": 0.020, "startHz": 3400, "len": 0.10}}
-  ];
-  const MODEL = {instrument: "probe", chambers: {"1": rows},
-                 global: {"lpMult": 5.5, "lpQ": 0.55}};
-  // generic snapshot for the parity check (wobRate is re-jittered per note)
-  const clone = o => JSON.parse(JSON.stringify(o, (k, v) => k === "wobRate" ? 0 : v));
-  const generic = clone(OCA_DEBUG.profile(lo));
-
-  installToneModel(MODEL, "probe");
-  const pMid = OCA_DEBUG.profile(probe);
-  const pTop = OCA_DEBUG.profile(top);
-  // expected interpolations, built from the same math as the fitted path
-  const interp = (defs, fz) => {
-    const pts = defs.filter(d => d && d.v != null).map(d => [d.f, d.v]);
-    if (!pts.length) return null;
-    return pts.length === 1 ? pts[0][1] : vInterp(pts, fz);
-  };
-  const col = (key) => rows.map(r => ({"f": r.f, "v": r[key]}));
-  const hcol = (i) => rows.map(r => ({"f": r.f, "v": r.h ? r.h[i] : null}));
-  const chiff = rows.map(r => ({"f": r.f, "v": r.chiff && r.chiff.peak}));
-  const chLen = rows.map(r => ({"f": r.f, "v": r.chiff && r.chiff.len}));
-
-  // per-field fallback: drop wobPct from EVERY row → the field reads the
-  // generic table (fitted branch, so the hard-blow hh offset stays out)
-  const bareFields = rows.map(r => {
-    const c = JSON.parse(JSON.stringify(r)); delete c.wobPct; return c;
-  });
-  installToneModel({instrument: "probe2", chambers: {"1": bareFields}}, "probe2");
-  const pNoWob = OCA_DEBUG.profile(probe);
-  installToneModel(MODEL, "probe"); // restore
-
-  // shapes: bare row (all fields fall back), junk, reset
-  installToneModel({instrument: "bare", chambers: {"1": [{"note": lo, "f": fLo}]}}, "bare");
-  const bareOk = !!OCA_DEBUG.toneModel()
-                 && OCA_DEBUG.toneModel().chambers.length === 1
-                 && OCA_DEBUG.toneModel().chambers[0].rows.length === 1;
-  const pBare = OCA_DEBUG.profile(lo);
-  installToneModel({instrument: "junk", chambers: {"1": "not an array"}}, "junk");
-  const junkNull = OCA_DEBUG.toneModel() === null;
-  installToneModel({instrument: "junk2", chambers: {}}, "junk2");
-  const junk2Null = OCA_DEBUG.toneModel() === null;
-  installToneModel(null, "reset");
-  const resetNull = OCA_DEBUG.toneModel() === null;
-  const backToGeneric = OCA_DEBUG.profile(lo);
-
-  return {
-    setup: null,
-    hMid: [pMid.h[1], interp(hcol(1), fProbe)],
-    h4Mid: [pMid.h[3], interp(hcol(3), fProbe)],
-    levelMid: [pMid.levelLin, db2lin(vInterp(rows.map(r => [r.f, r.levelDb]), fProbe))],
-    windQMid: [pMid.windQ, interp(col("noiseBumpQ"), fProbe)],
-    wanderMidStraightNoHh: [pMid.wanderC, interp(col("wanderC"), fProbe)],
-    wobMid: [pMid.wobDepth, interp(col("wobPct"), fProbe) / 100],
-    wobFieldFallback: [pNoWob.wobDepth, vInterp(V_ANCHORS.wobPct, fProbe) / 100],
-    attackMid: [pMid.attackF, interp(col("attackF"), fProbe)],
-    osMidConstant: [pMid.osDb, interp(col("osDb"), fProbe)],
-    osTopConstant: [pTop.osDb, interp(col("osDb"), fTop)], // single point: constant even at the top anchor,
-    enLpMult: [pMid.en.lpMult, 5.5],
-    enLpQ: [pMid.en.lpQ, 0.55],
-    chiffPeakMid: [pMid.en.chiff.peak, interp(chiff, fProbe)],
-    chiffLenMid: [pMid.en.chiff.len, interp(chLen, fProbe)],
-    chiffAttackAbsent: pMid.en.chiff.attack === undefined,
-    edgeNoKeys: Object.keys(pMid.en.edge).length === 0,
-    bareInstalled: bareOk,
-    bareWindQGeneric: [pBare.windQ, vInterp(V_ANCHORS.noiseBumpQ, fLo)],
-    junkNull, junk2Null, resetNull,
-    genericParity:
-      generic.h.join() === backToGeneric.h.join() &&
-      generic.windQ === backToGeneric.windQ &&
-      generic.osDb === backToGeneric.osDb &&
-      generic.attackF === backToGeneric.attackF &&
-      generic.levelLin === backToGeneric.levelLin &&
-      generic.en === null && backToGeneric.en === null,
-  };
-}
-"""
-
-
 TPL_PROBE = """
 () => ({
   tpl: currentTemplatePath(), id: currentSongId(), title: currentSongTitle(),
 })
 """
+
 
 TWIN_PROBE = """
 () => {
@@ -338,55 +222,7 @@ def main():
             print(f"   ({len(inst_ids)} instruments, "
                   f"{len(tone_ids)} declare tone.json)", flush=True)
 
-            # 2 — tone model plumbing on the default instrument (a synthetic
-            # 3-anchor chamber installed through installToneModel)
-            print("== tone model install / interpolate / fallback", flush=True)
-            page = browser.new_page()
-            errs = []
-            page.on("pageerror", lambda e: errs.append(str(e)))
-            page.goto(base + "?inst=" + inst_ids[0])
-            page.wait_for_function(BOOT_WAIT)
-            r = page.evaluate(TONE_PROBE)
-            if errs:
-                failures.append(f"tone model: page errors {errs}")
-            if not r or not isinstance(r, dict) or r.get("setup"):
-                failures.append(f"tone model: probe setup failed {r}")
-            else:
-                assert_close(failures, "interp", "h2 mid", r["hMid"])
-                assert_close(failures, "interp", "h4 mid", r["h4Mid"])
-                assert_close(failures, "interp", "level mid", r["levelMid"])
-                assert_close(failures, "interp", "windQ mid", r["windQMid"])
-                assert_close(failures, "fitted-no-hh", "wanderC mid",
-                             r["wanderMidStraightNoHh"])
-                assert_close(failures, "interp", "wob mid", r["wobMid"])
-                assert_close(failures, "field-fallback", "wob fallback",
-                             r["wobFieldFallback"])
-                assert_close(failures, "interp", "attack mid", r["attackMid"])
-                assert_close(failures, "single-point", "os mid", r["osMidConstant"])
-                assert_close(failures, "single-point", "os top", r["osTopConstant"])
-                assert_close(failures, "global", "en.lpMult", r["enLpMult"])
-                assert_close(failures, "global", "en.lpQ", r["enLpQ"])
-                assert_close(failures, "envelope", "chiff.peak mid", r["chiffPeakMid"])
-                assert_close(failures, "envelope", "chiff.len mid (2 rows)",
-                             r["chiffLenMid"])
-                if not r["chiffAttackAbsent"]:
-                    failures.append("envelope: chiff.attack must be absent from the "
-                                    "spec (per-field fallback), got a value")
-                if not r["edgeNoKeys"]:
-                    failures.append("envelope: edge block unexpectedly carried keys")
-                if not r["bareInstalled"]:
-                    failures.append("shapes: bare single-row chamber not installed")
-                assert_close(failures, "fallback", "bare windQ generic",
-                             r["bareWindQGeneric"])
-                if not (r["junkNull"] and r["junk2Null"] and r["resetNull"]):
-                    failures.append(f"shapes: corrupt models must uninstall "
-                                    f"(junk {r['junkNull']} junk2 {r['junk2Null']} "
-                                    f"reset {r['resetNull']})")
-                if not r["genericParity"]:
-                    failures.append("parity: uninstalling must restore the generic "
-                                    "profile bit-for-bit (incl. en === null)")
-            page.close()
-            # 2b — twin model plumbing: install/shapes on the default instrument
+            # 2 — twin model plumbing: install/shapes on the default instrument
             print("== twin model install / shapes", flush=True)
             page = browser.new_page()
             errs = []
