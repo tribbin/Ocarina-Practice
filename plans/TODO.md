@@ -482,3 +482,16 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   over, then a second load so unregister has run — the debug header should
   read `mid-air-1 · twin <id>` (ADDITIVE is the bug). After that, type
   `OCA_DEBUG.voiceCard()` whenever site and preview disagree.
+
+- **2026-09-29 (session 23 cont. — ?v=1 is the release cache-bust; v2 loaded in the preview and the noise stayed)** —
+  Robin's correction: `helmholtz-voice.js?v=1` exists to force a refresh
+  when a release is pushed (last night that token + network-first cleared
+  the desktop site and the phone). A local token bump is not that lever.
+  Restored `?v=1` (importer + CORE + offline_pwa poison URL). The file-scheme
+  fetch/unregister gates and VOICE_REV/voiceCard stay.
+  The remaining preview noise is a different fact: Simple Browser is open
+  at `file:///…/index.html?song=song-of-storms&inst=ico-oak-leaf-bass-c-triple`
+  (editor memento). Storms' D6–F6 land in the oak's guessed ch3 (Cs6–G6)
+  which still carries the alto 4 kHz hiss split. Phone/desktop last night
+  were the 12-hole mid-air voice. The debug header still names the pair
+  (`mid-air-1 · twin …` vs `ADDITIVE`).

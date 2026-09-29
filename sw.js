@@ -24,7 +24,7 @@ const CORE = [
   "js/ocarina.js",
   "js/audio.js",
   "js/wakelock.js",
-  "js/helmholtz-voice.js?v=2",
+  "js/helmholtz-voice.js?v=1",
   "js/library.js",
   "js/ui.js",
   "js/practice.js",
