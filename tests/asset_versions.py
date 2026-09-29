@@ -81,6 +81,46 @@ def main():
         failures.append("app.js boot must read the page's <link rel= "
                         "stylesheet> href for the at-boot sheet replace")
 
+    # --- /js/ CORE completeness + ?v= token lockstep (Robin, 2026-09-29:
+    # every /js/ module rides the SW network-first branch now, so a missing
+    # CORE entry is no longer a lazy self-healing miss — offline boots it
+    # with a 504. And a module imported with a ?v= token must be precached
+    # under that exact URL: the shell caches what the page really loads.)
+    core_m = re.search(r'const CORE = \[(.*?)\];', sw, re.S)
+    if not core_m:
+        failures.append("sw.js must carry the CORE precache array")
+    else:
+        core_entries = re.findall(r'"([^"]+)"', core_m.group(1))
+        # tokenized import specifiers across the module graph
+        # ("./helmholtz-voice.js?v=1" forms; url strings may prefix ./ or ../)
+        spec_re = re.compile(
+            r'["\'][./]*([A-Za-z0-9._-]+\.js)\?v=([A-Za-z0-9._-]+)["\']')
+        tokens = {}
+        for jsf in sorted((ROOT / "js").glob("*.js")):
+            for m in spec_re.finditer(jsf.read_text(encoding="utf-8")):
+                tokens[m.group(1)] = m.group(2)
+        for name in sorted(p.name for p in (ROOT / "js").glob("*.js")):
+            want = f"js/{name}"
+            if name in tokens:
+                want += f"?v={tokens[name]}"
+            hits = [e for e in core_entries
+                    if e == f"js/{name}" or e == want]
+            if len(hits) != 1:
+                failures.append(
+                    f"js/{name} must have EXACTLY ONE CORE precache entry "
+                    f"(expected {want!r}), found " +
+                    (", ".join(hits) if hits else "none") +
+                    " — every /js/ module rides network-first, so a missing "
+                    "entry is a hard 504 offline (js/wakelock.js, the "
+                    "2026-09-29 catch) and a stale twin entry caches the "
+                    "old copy beside the fresh one")
+                continue
+            if hits[0] != want:
+                failures.append(
+                    f"CORE caches {hits[0]!r} but the page loads {want!r} — "
+                    "the shell caches what the page really loads; a token "
+                    "bump moves the importer and sw.js at once")
+
     if failures:
         print("\nFAIL:")
         for f in failures:
@@ -88,8 +128,9 @@ def main():
         return 1
     print(f"\nPASS: stylesheet token {link_tok!r} is identical in index.html "
           "and sw.js (independent of the sw VERSION), the SW precaches the "
-          "versioned URL once, and boot reads the page's own link "
-          "(no bare-path hard-coding left).")
+          "versioned URL once, boot reads the page's own link "
+          "(no bare-path hard-coding left), every /js/ module has exactly "
+          "one CORE entry, and tokenized imports match their CORE keys.")
     return 0
 
 

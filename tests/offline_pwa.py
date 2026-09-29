@@ -166,6 +166,57 @@ def main():
             finally:
                 songs_path.write_bytes(pristine)
 
+            # --- engine freshness leg (Robin, 2026-09-29: /js/ rides
+            # network-first). The deploy that started the noise hunt served
+            # the OLD synth engine one visit late while fresh twin-model
+            # data arrived first — an old engine fed new models is the
+            # garbled mix. A poisoned /js/ cache copy must lose to the
+            # network bytes on the FIRST online fetch, and the network-first
+            # no-cache revalidate must overwrite it in the cache. The
+            # observable is a page-side fetch through the worker (module
+            # imports would only race the renderer's script memory-cache,
+            # which serves a minutes-old clean copy and skips the SW).
+            poison_marker = "window.__CB_POISON = true;"
+            poison_js = f"""async () => {{
+              const key = "js/helmholtz-voice.js?v=1";
+              const c = await caches.open((await caches.keys())[0]);
+              const hit = await c.match(key);
+              if (!hit) return "NO-HIT";
+              const src = await hit.text();
+              await c.put(key, new Response(src + "\\n{poison_marker}\\n",
+                {{ headers: {{"Content-Type": "text/javascript"}}}}));
+              const back = await c.match(key);
+              return (await back.text()).includes("__CB_POISON")
+                ? "POISONED" : "PUT-LOST";
+            }}"""
+            first = page.evaluate(poison_js)
+            if first != "POISONED":
+                failures.append(
+                    f"the poison must land on the cached ?v=1 voice copy "
+                    f"before the freshness assertion (got {first!r}; the "
+                    "reloads above should have it installed)")
+            else:
+                served_stale = page.evaluate("""async () =>
+                    (await (await fetch('js/helmholtz-voice.js?v=1'))
+                        .text()).includes('__CB_POISON')""")
+                if served_stale:
+                    failures.append(
+                        "an online js fetch through the worker must serve "
+                        "the NETWORK bytes on the FIRST request "
+                        "(stale-while-revalidate lag: the poisoned cache "
+                        "copy still answered)")
+                cache_healed = page.evaluate("""async () => {
+                  const c = await caches.open((await caches.keys())[0]);
+                  const hit = await c.match('js/helmholtz-voice.js?v=1');
+                  return hit ? (await hit.text())
+                        .includes("__CB_POISON") : "NO-HIT";
+                }""")
+                if cache_healed is not False:
+                    failures.append(
+                        "the network-first revalidate must overwrite the "
+                        "stale cache copy with the fresh bytes "
+                        f"(cache kept {cache_healed!r})")
+
             if errs:
                 failures.append(f"page errors {errs}")
             browser.close()
