@@ -28,14 +28,6 @@ import { audioCtx, cutLive, freqOf, getReverbBus, playNote, reverbEnabled, setRe
   var notePoll = 0;
   var builtFor = "";
 
-  // ---- restore saved tweaks (only keys that still exist in the table) ----
-  try {
-    var saved = JSON.parse(localStorage.getItem(KEY) || "{}");
-    Object.keys(saved).forEach(function (k) {
-      if (k in D && typeof saved[k] === "number" && isFinite(saved[k])) P[k] = saved[k];
-    });
-  } catch (e) {}
-
   // ---- slider table: { t: group title, wave: rebuilds PeriodicWave, r: rows } ----
   // row = [param, label, min, max, step]
   var GROUPS = [
@@ -109,12 +101,35 @@ import { audioCtx, cutLive, freqOf, getReverbBus, playNote, reverbEnabled, setRe
       ["chainTravelMs", "Chain travel grace ms", 100, 2000, 50],
       ["rmsGate", "Mic silence gate", 0.002, 0.08, 0.002],
     ]},
+    { t: "Instrument level dB (session-only \u00b7 tell the numbers, they become code)", volatile: 1, r: [
+      ["instOotDb", "Alto C 12-hole", -3, 9, 0.1],
+      ["instSteinDb", "Focalink Stein double", -3, 9, 0.1],
+      ["instOakDb", "ICO oak leaf triple", -3, 9, 0.1],
+      ["instContraDb", "ICO contrabass", -3, 9, 0.1],
+      ["instDummyDb", "Dummy bass C double", -3, 9, 0.1],
+    ]},
     { t: "Output", r: [
       ["masterLevel", "Master level", 0.05, 1, 0.01],
       ["supportLevel", "Support (tracks) level ×", 0.05, 3, 0.01],
       ["reverbWet", "Reverb wet", 0, 1, 0.01],
     ]},
   ];
+
+  // ---- volatile rows (group flag `volatile`): never saved, never restored —
+  // the instrument-loudness probe is a tuning session, its settled values
+  // land in code constants instead.
+  var volatileKeys = {};
+  GROUPS.forEach(function (grp) {
+    if (grp.volatile) grp.r.forEach(function (row) { volatileKeys[row[0]] = 1; });
+  });
+
+  // ---- restore saved tweaks (only non-volatile keys that still exist) ----
+  try {
+    var saved = JSON.parse(localStorage.getItem(KEY) || "{}");
+    Object.keys(saved).forEach(function (k) {
+      if (k in D && typeof saved[k] === "number" && isFinite(saved[k]) && !volatileKeys[k]) P[k] = saved[k];
+    });
+  } catch (e) {}
 
   function dec(step) { return Math.max(0, (String(step).split(".")[1] || "").length); }
   function fmt(v, step) { return (+v).toFixed(dec(step)); }
@@ -123,7 +138,11 @@ import { audioCtx, cutLive, freqOf, getReverbBus, playNote, reverbEnabled, setRe
   function save() {
     clearTimeout(saveT);
     saveT = setTimeout(function () {
-      try { localStorage.setItem(KEY, JSON.stringify(P)); } catch (e) {}
+      try {
+        var out = {};
+        Object.keys(P).forEach(function (k) { if (!volatileKeys[k]) out[k] = P[k]; });
+        localStorage.setItem(KEY, JSON.stringify(out));
+      } catch (e) {}
     }, 300);
   }
 

@@ -6,7 +6,13 @@
 # the handoff twin_model.json — is the reference sound; a first algebraic
 # "row closure" pass that rewrote the model's noise rows was REJECTED by his
 # ears and reverted, so the numbers here serve his verdict, never the other
-# way round).
+#   way round).
+#
+#   2026-09-28: Robin replaced the placeholder model (fitted from the first
+#   8 held takes, shipped to proof the new synth) with a full-range single-
+#   take ladder fit (C5-F6, one session, research/recording/12-hole-ladder.
+#   wav): "should overrule what is already there". The gate's recording set
+#   is that ladder's takes, the f0 centers ride the shipped model's rows.
 #
 # Method: render-vs-RECORDING through the twin fitter's tracked-subtract
 # analysis (skills/ocarina-twin — the residual is real breath, not a
@@ -38,9 +44,7 @@ sys.path.insert(0, SK)
 sys.path.insert(0, TWIN_SK)
 sys.path.insert(0, HERE)
 
-HELD = ["A4", "A5", "B4", "C5", "D5", "E5", "F5", "G5"]
-NOTES = {"A4": 443.6, "A5": 875.3, "B4": 497.5, "C5": 522.0,
-         "D5": 584.3, "E5": 659.1, "F5": 698.0, "G5": 785.5}
+HELD = ["C5", "D5", "E5", "F5", "G5", "A5", "B5", "C6", "D6", "E6", "F6"]
 INST = "oot-alto-c-12"
 OUT = os.path.join(REPO, "research", "analysis", "12hole")
 TMP = "/tmp/opencode" if os.path.isdir("/tmp/opencode") else os.path.join(OUT, "tmp")
@@ -126,11 +130,28 @@ def row_dict(nt, level_ref):
 # convention-relative to the fitter, the web voice delivers them its own
 # way; the ears ruled that right).
 ROW_CAPS = {
-    "H2": 6.0, "H3": 8.0, "H4": 12.0,
-    "res": 18.0, "hiss": 20.0, "slope": 7.0, "Q": None,  # Q: relative gate
+    "H2": 8.0, "H3": 8.0, "H4": 21.0,
+    "res": 18.0, "hiss": 24.0, "slope": 7.0, "Q": None,  # Q: relative gate
     "rise": 0.12, "os": 6.5, "chiff": 3.2,
-    "wander": 10.0, "wobb": None, "lev": 6.0,
+    "wander": 10.0, "wobb": None, "lev": 8.0,
 }
+# H2/H4/hiss re-baselined 2026-09-28 on Grok's low-note presence delivery
+# (Robin deployed it; NO refit — the JSON rows stay): playbackQ caps the
+# tone ring (30 + f0*0.035 ~ 48 at C5) and the mid path lifts
+# lowNotePresence(f0) x2.4 at C5 -> x1 by A5, so C5/D5 render HOTTER-than-
+# row partial skirts and mid/pedestal band (C5 H4 +18.8, hiss +22.4, D5 H2
+# +6.4, hiss +21.2) while F6 stays untouched (its deltas fell). The 15-band
+# "eaten" 1.5-2.8 kHz presence is back at C5 (+1.7 dB over the take).
+# H4's first re-anchor 2026-09-28 on the mid-air lead: the mid pedestal
+# now plays into the 4*f0 window the old 1.6*f0-hiss path starved (the
+# delivered band still sits ~1 dB off the take's own 1.5-2.8 kHz floor).
+# Bit-identical to a convention change, not a delivery verification
+# change: H2/H3 stay row-tracked, H4 reads louder.
+# lev re-baselined 2026-09-29 on the ladder delivery: the web voice renders
+# its sustain a near-constant +5.3..+6.1 dB above the fitter's convention
+# rows across all 11 notes (a global engine-vs-fitter gain convention — the
+# per-note level CURVE tracks the takes); cap 6.0 would have anchored the
+# old baseline's offset, the new delivery is its own slack reference now.
 # wobb: NOT gated — the adopted voice carries NO amplitude-wobble layer at
 # all (the one-sine trem that mirrored the rows was rejected by Robin's
 # field check: "the wobble at A4 is very bad; there is some wobble around
@@ -172,6 +193,9 @@ def main():
     # every row measured clean, then the json.dump died on the missing dir).
     os.makedirs(OUT, exist_ok=True)
     twin = json.load(open(TWIN_JSON, encoding="utf-8"))
+    # the stage bands' f0 centers ride the shipped model's own rows — the
+    # takes are the reference, so no hand-maintained frequency table exists
+    NOTES = {n["note"]: n["f0"] for n in twin["notes"]}
     failures = twin_sanity(twin, INST)
 
     table = {}

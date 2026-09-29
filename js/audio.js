@@ -5,7 +5,7 @@ import { bumpHoverQuiet, clearHighlight, cueFirstNote, freezeZenGlow,
          highlightToken, isFocusMode, quarterSec, tokenSeconds, updateTransportUI } from "./ui.js";
 import { isPracticeActive } from "./practice.js";
 import { wakeHold, wakeDrop } from "./wakelock.js";
-import { loadTwinModelFromObject, interpNote, scheduleHelmholtzNote } from "./helmholtz-voice.js";
+import { loadTwinModelFromObject, interpNote, scheduleHelmholtzNote } from "./helmholtz-voice.js?v=1";
 let audioCtx = null;
 let liveVoices = [];
 let melodyBag = [];
@@ -109,6 +109,15 @@ const AUDIO_DEFAULTS = {
   // fixed TWIN_SUPPORT_LEVEL anchor × this multiplier — a by-ear retune for
   // how loud accompaniment sits against the melody, on every instrument.
   supportLevel: 1,
+  // Per-instrument overall loudness, dB offsets (session-only: the values
+  // support no persistence — they are the ear's tuning probe, the settled
+  // numbers become code constants). Applied to every voice the loaded
+  // instrument produces: melody, supports and tracks, twin and additive.
+  instOotDb: 0,
+  instSteinDb: 0,
+  instOakDb: 0,
+  instContraDb: 0,
+  instDummyDb: 0,
   reverbWet: 0.20,
   // Practice-mode tuner gates (js/practice.js): in-tune zone (cents), onset
   // transient grace (wider cents for the first N ms of an attack), the
@@ -179,6 +188,9 @@ function attachCtxStateWatch(ctx) {
 window.OCA_DEBUG = {
   params: AUDIO_DEBUG,
   defaults: AUDIO_DEFAULTS,
+  // The instrument-loudness dial's read side (suites + dev panel): the
+  // linear factor the currently loaded instrument contributes.
+  instLevelGain() { return instLevelGain(); },
   invalidateWave() { ocWaveCache = null; },
   voiceErrors() { return { count: voiceErrorCount, last: lastVoiceError }; },
   clearVoiceErrors() { voiceErrorCount = 0; lastVoiceError = ""; },
@@ -1049,6 +1061,23 @@ function toneRowsForChamber(ch) {
 // keeps the generic additive voice. Same contract as tone.json: data must
 // never break boot.
 let TWIN_MODEL = null; // { instrumentId, chambers: { ch: { model, gain } } } | null
+
+// Per-instrument loudness dial: AUDIO_DEBUG's instDb keys map by instrument
+// id; the loaded instrument (window.CURRENT_INSTRUMENT, set by app.js) reads
+// its own offset — 0 dB = untouched (10^(dB/20), ±0.1 dB resolution).
+const INST_DB_KEYS = {
+  "oot-alto-c-12": "instOotDb",
+  "stein-double-alto-c": "instSteinDb",
+  "ico-oak-leaf-bass-c-triple": "instOakDb",
+  "ico-contrabass-11-c": "instContraDb",
+  "dummy-bass-c-double": "instDummyDb",
+};
+function instLevelGain() {
+  const inst = window.CURRENT_INSTRUMENT;
+  const key = inst && INST_DB_KEYS[inst.id];
+  const db = key ? AUDIO_DEBUG[key] : 0;
+  return db ? Math.pow(10, db / 20) : 1;
+}
 function installTwinModel(data, instId) {
   if (!data || typeof data !== "object") { TWIN_MODEL = null; return; }
   try {
@@ -1409,7 +1438,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
         // additive lite's osc→lowpass chain. Same envelope/level shape as the
         // legacy lite voice.
         if (liteMode()) {
-          const lvM = AUDIO_DEBUG.masterLevel * voiceGain * (nf.level || 1) * supportComp;
+          const lvM = AUDIO_DEBUG.masterLevel * voiceGain * (nf.level || 1) * supportComp * instLevelGain();
           const g = ctx.createGain();
           g.gain.setValueAtTime(0.0001, t0);
           g.gain.linearRampToValueAtTime(lvM, t0 + Math.min(0.03, dur * (slideFrom ? 0.4 : 0.2)));
@@ -1472,7 +1501,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
           when: t0,
           holdSec: twHold,
           dest: tmDest,
-          master: AUDIO_DEBUG.masterLevel * voiceGain * twEntry.gain * supportComp,
+          master: AUDIO_DEBUG.masterLevel * voiceGain * twEntry.gain * supportComp * instLevelGain(),
         };
         if (slideFrom) {
           baseOpts.slideFromHz = slideFrom;
@@ -1559,7 +1588,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // overloaded (the main crackle cause). Same pitch, level and rough
     // envelope so it still reads as the ocarina, just plainer.
     if (liteMode()) {
-      const lvM = AUDIO_DEBUG.masterLevel * vp.levelLin;
+      const lvM = AUDIO_DEBUG.masterLevel * vp.levelLin * instLevelGain();
       const g = ctx.createGain();
       g.gain.setValueAtTime(0.0001, t0);
       g.gain.linearRampToValueAtTime(lvM, t0 + Math.min(0.03, dur * (slideFrom ? 0.4 : 0.2)));
@@ -1627,7 +1656,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // loudness). The breathy pre-tone and "tone speaks" stages keep their
     // original proportions of 0.26 so the envelope shape is unchanged at the
     // default and simply scales with the level.
-    const M = AUDIO_DEBUG.masterLevel * vp.levelLin * voiceGain;
+    const M = AUDIO_DEBUG.masterLevel * vp.levelLin * voiceGain * instLevelGain();
     // Per-note ATTACK STAGES (row "atk"): the recordings' lead-in is a quiet
     // 10-30 ms swell (the takes' measured attack_to_plateau) — not a long
     // gasp; a fitted row replaces the generic speak computation so a fitted
