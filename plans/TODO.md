@@ -64,7 +64,7 @@ work; decisions + state in the session-24 log):
 
 | Item | Section |
 |---|---|
-| **USABILITY BATCH (approved 2026-09-30, session-24 handoff)** — small-screen layout (editor hidden on phones, vertical rows, no portrait backdrop), theme no-flash, melody-duck on/off, song .txt round-trip, ko-fi link, zen-chorus audit, transport sync bugs | §1/§7/§9 |
+| **USABILITY BATCH (approved 2026-09-30, session-24 handoff)** — small-screen layout (editor hidden on phones, vertical rows, no portrait backdrop), theme no-flash, melody-duck on/off, song .txt round-trip, ko-fi link, zen-chorus audit, transport sync bugs, media-session announce + media keys | §1/§7/§9 |
 | HiFi stays UNPUBLISHED — the retune + favorites pass is accepted, but Robin holds publication for now (2026-09-30) | hold |
 | Shipped-songs standardization stays HELD for Robin's later-stage pass; the permalinks corpora ride his planting as always | §9 |
 | Library widening (search, reordering beyond the pin) stays parked until Robin elects it | §9 |
@@ -114,6 +114,8 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
 - [ ] **Song .txt round-trip with all attributes (IDEAS)** — export a loaded song as .txt carrying title/tempo/tick/swing + its #track blocks, pasteable back into #src (parse.js already understands the # tempo / # title / # track / swing lines); the goal is copy-paste between src and .txt; permalink keys stay frozen. `🟨 🟡 ⚙M`
 
 - [ ] **"Buy me a coffee" link (IDEAS; ko-fi.com/tribbin)** — not in the app yet (78b9646 only touched IDEAS.txt); add the link to the help-screen colophon beside the issues link (target=_blank rel=noopener) and pin its presence. `🟢 🟡 ⚙S`
+
+- [ ] **Media Session announce + hardware media keys (IDEAS: stop-media, scoped down)** — stopping other apps' media is infeasible from a web page (the API is declarative-only, MDN 2026-09-30); Robin approved the announce half: declare playbackState + MediaMetadata so the lock screen / media center names "Ocarina Practice — <song>", and wire hardware media keys (headset play/pause; next/prev only if they map to something sensible) to the transport; gate behind ("mediaSession" in navigator), no-op silently where unsupported; pin the announce state with a small suite leg. `🟨 🟠 ⚙M`
 
 > **Idle idea pool: `plans/IDEAS.txt`.** A live document Robin edits over time and ROBIN'S ALONE — the AI never writes it (it may be read, and only lifted into TODO.md when Robin explicitly asks). TODO carries no copy or summary: when an idea from it is picked up, read the FILE fresh at that moment; never rely on a remembered or transcribed version.
 
@@ -196,9 +198,10 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   his field check. Stop-other-media: MDN's Media Session API is
   declarative only (metadata + media-key handlers for the page's own
   media) — stopping other apps is NOT possible from a web page, so that
-  half drops per his rule; the announce-only half (lock-screen metadata
-  + media keys) awaits his call. §6 confirmed: no open items — it is the
-  standing coverage list + the audit-residue watch note only. All seven
-  items boarded with the decisions inlined (§1 ×2, §7 ×3, §9 ×2); hot
+   half drops per his rule; the announce-only half (lock-screen metadata
+   + media keys) is APPROVED and boarded as the 8th item. §6 confirmed:
+   no open items — it is the standing coverage list + the audit-residue
+   watch note only. All eight items boarded with the decisions inlined
+   (§1 ×2, §7 ×3, §9 ×3); hot
   list refreshed. Fresh context: open plans/TODO.md (AGENTS rule 1) and
   work the hot list top-down.
