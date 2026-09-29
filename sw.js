@@ -13,7 +13,7 @@
 // instantly from cache while a background refetch keeps the cache current,
 // so a deployed update is live on the SECOND visit. skipWaiting/claim makes
 // the new worker take over right away.
-const VERSION = "oco-pwa-v54";
+const VERSION = "oco-pwa-v55";
 const CORE = [
   "index.html",
   "manifest.webmanifest",
@@ -53,16 +53,17 @@ async function fillFrom(paths) {
 // Released content rides NETWORK-FIRST with a cached fallback (Robin,
 // 2026-09-28: the new songs never came up by a phone refresh —
 // stale-while-revalidate serves app content one reload late, and a resumed
-// phone app never re-checked at all). Songs, the instrument manifest and
-// every instrument's tone/twin model are the content the player expects
-// current the moment a load lands — and so are the engine modules
-// (Robin, 2026-09-29: a deployed voice-module change served the OLD synth
-// one visit late beneath FRESH twin-model data, and the old-engine-plus-
-// new-models mix garbled the synth): online = always fresh, offline = the
-// cached copy, and a legitimate 404 (declared-but-absent tone.json)
-// passes through uncached exactly as today.
+// phone app never re-checked at all). Songs, the manifest, every
+// per-instrument data file (fingerings, tone/twin models, templates) and
+// the engine modules are the content the player expects current the moment
+// a load lands (Robin, 2026-09-29: a deployed voice-module change served
+// the OLD synth one visit late beneath FRESH twin-model data — the
+// old-engine-plus-new-models mix garbled the synth): online = always
+// fresh, offline = the cached copy, and a legitimate 404
+// (declared-but-absent tone.json) passes through uncached exactly as
+// today.
 const DATA_NETWORK_FIRST =
-  /(?:^|\/)(?:songs|instruments)\.json$|(?:^|\/)instruments\/[^/]+\/(?:tone|twin_model)\.json$|(?:^|\/)js\/[^/]+\.js$/;
+  /(?:^|\/)(?:songs|instruments)\.json$|(?:^|\/)instruments\/[^/]+\/[^/]+\.(?:json|svg)$|(?:^|\/)js\/[^/]+\.js$/;
 
 // Cache writes are scheme-gated: file: origins (VS Code browser preview,
 // opened-from-disk) reject Cache.put at the engine level; nothing here may

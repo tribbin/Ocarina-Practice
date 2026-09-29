@@ -158,9 +158,15 @@ async function loadInstrument(inst) {
   if (typeof installTwinModel !== "function") return;
   try {
     const twin = inst.twin ? await loadJson(inst.twin) : null;
-    if (window.CURRENT_INSTRUMENT === inst) installTwinModel(twin, inst.id);
+    if (window.CURRENT_INSTRUMENT === inst) {
+      installTwinModel(twin, inst.id);
+      twinText = twin ? JSON.stringify(twin) : "null";
+    }
   } catch (e) {
-    if (window.CURRENT_INSTRUMENT === inst) installTwinModel(null, inst.id);
+    if (window.CURRENT_INSTRUMENT === inst) {
+      installTwinModel(null, inst.id);
+      twinText = "null";
+    }
   }
   if (typeof installToneModel !== "function") return;
   try {
@@ -343,6 +349,7 @@ async function boot() {
     // scale entries refresh off the chart mid-install and must mutate the
     // final BUILTIN object, not one initBuiltin is about to replace.
     songsText = JSON.stringify(songs); // the resume-freshness comparator
+    manifestText = JSON.stringify(manifest); // the instrument comparator
     initBuiltin(songs);
     await loadInstrument(chosen);
     fillInstrumentSelect(chosen.id);
@@ -425,8 +432,64 @@ async function refreshSongsOnResume() {
   }
 }
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") refreshSongsOnResume();
+  if (document.visibilityState === "visible") {
+    refreshSongsOnResume();
+    refreshInstrumentOnResume();
+  }
 });
+
+// Instrument-data resume invalidation (Robin's answered batch 2026-09-29 —
+// the phone-resume remainder of the serving-layer work): the songs-freshness
+// slot left the manifest and the loaded ocarina's twin model stale on a
+// RESUMED app (the serving-layer network-first flavors cover page loads;
+// an app switch is not a page load). Gates, the 30 s gap and the
+// silent-offline catch are the songs precedent. What swaps vs defers:
+// the twin model is AUDIO-ONLY — installTwinModel under the
+// CURRENT_INSTRUMENT guard, the next played note rides the fresh fit, no
+// UI state touched; a changed fingerings or template (chart/redraw class)
+// defers to the next reload — never a mid-session chart redraw — and
+// flags via console.info (the nudge's visual surface stays Robin's
+// call). Manifest drift for OTHER instruments only feeds the next boot.
+let manifestText = null; // the boot's manifest bytes; the resume comparator
+let twinText = null; // the loaded instrument's model bytes; resume comparator
+let instRefreshBusy = false;
+let instRefreshAt = 0;
+
+async function refreshInstrumentOnResume() {
+  if (manifestText == null || instRefreshBusy) return;
+  const now = Date.now();
+  if (now - instRefreshAt < SONGS_REFRESH_GAP) return;
+  instRefreshAt = now;
+  if (isMelodyPlaying() || isPracticeActive()) return;
+  instRefreshBusy = true;
+  try {
+    const inst = window.CURRENT_INSTRUMENT;
+    const next = await loadJson("instruments.json");
+    const nextText = next ? JSON.stringify(next) : null;
+    if (!nextText) return;
+    if (nextText !== manifestText) manifestText = nextText;
+    if (!inst) return;
+    const fresh = (next.instruments || []).find(i => i && i.id === inst.id);
+    if (!fresh || fresh.fingerings !== inst.fingerings ||
+        fresh.svg !== inst.svg ||
+        JSON.stringify(fresh.svgWhen || []) !==
+        JSON.stringify(inst.svgWhen || [])) {
+      console.info("[resume] instrument data changed — reload for the new chart");
+      return;
+    }
+    if (inst.twin) {
+      const twin = await loadJson(inst.twin);
+      const nextTwinText = twin ? JSON.stringify(twin) : "null";
+      if (window.CURRENT_INSTRUMENT === inst && nextTwinText !== twinText &&
+          typeof installTwinModel === "function") {
+        installTwinModel(twin, inst.id);
+        twinText = nextTwinText;
+      }
+    }
+  } catch (e) {} finally { // offline / transient hiccup: arise later silently
+    instRefreshBusy = false;
+  }
+}
 
 // Offline mode: the service worker (sw.js) serves the shell, song data and
 // the ocarinas' fingerings/templates from cache, with background refresh for
