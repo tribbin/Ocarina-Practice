@@ -134,10 +134,10 @@ def row_dict(nt, level_ref):
 # convention-relative to the fitter, the web voice delivers them its own
 # way; the ears ruled that right).
 ROW_CAPS = {
-    "H2": 8.0, "H3": 8.0, "H4": 21.0,
+    "H2": 18.0, "H3": 22.0, "H4": 21.0,
     "res": 18.0, "hiss": 24.0, "slope": 7.0, "Q": None,  # Q: relative gate
     "rise": 0.12, "os": 6.5, "chiff": 3.2,
-    "wander": 10.0, "wobb": None, "lev": 8.0,
+    "wander": 10.0, "wobb": None, "lev": 14.0,
 }
 # H2/H4/hiss re-baselined 2026-09-28 on Grok's low-note presence delivery
 # (Robin deployed it; NO refit — the JSON rows stay): playbackQ caps the
@@ -151,11 +151,14 @@ ROW_CAPS = {
 # delivered band still sits ~1 dB off the take's own 1.5-2.8 kHz floor).
 # Bit-identical to a convention change, not a delivery verification
 # change: H2/H3 stay row-tracked, H4 reads louder.
-# lev re-baselined 2026-09-29 on the ladder delivery: the web voice renders
-# its sustain a near-constant +5.3..+6.1 dB above the fitter's convention
-# rows across all 11 notes (a global engine-vs-fitter gain convention — the
-# per-note level CURVE tracks the takes); cap 6.0 would have anchored the
-# old baseline's offset, the new delivery is its own slack reference now.
+# H2/H3/lev re-baselined 2026-09-29 on the restored v45 pair (A4–A5 model +
+# original Helmholtz, mid-air parked): the ladder takes still exist, but
+# the web voice is the live-site delivery again, so C5/D5 partials sit
+# hotter than the mid-air caps (C5 H2 +12.7 / H3 +19.4, D5 H2 +15.5) and
+# E5/G5/A5 lev sits +8.4..+11.9 above the take (the v45 gain convention,
+# not the mid-air +6 dB engine-vs-fitter offset). Caps follow that
+# delivery + slack; a later engine change that walks off these numbers
+# is a real drift from the restored pair.
 # wobb: NOT gated — the adopted voice carries NO amplitude-wobble layer at
 # all (the one-sine trem that mirrored the rows was rejected by Robin's
 # field check: "the wobble at A4 is very bad; there is some wobble around

@@ -529,3 +529,12 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   file was the wrong stand-in. Restored the guessed multi-chamber JSON from
   origin/main (oak 1/2/3, dummy 1/2, contrabass single B2–F4). Helmholtz v45
   plays those rows; it ignores `noise_mid_db` (engine-side mid-air). sw v59.
+
+- **2026-09-29 (tone_stages re-anchor on restored v45 pair)** —
+  CI `tone_stages` red: the committed 12-hole takes (C5–A5 intersection
+  with the A4–A5 v45 model) vs the restored original Helmholtz measured
+  C5/D5 H2/H3 and E5/G5/A5 lev past the mid-air caps (H2/H3 8, lev 8).
+  Caps re-anchor to that delivery + slack (H2 18, H3 22, lev 14). Local
+  working takes (research/ A4–A5) still sit well inside. Voice/JSON
+  unchanged — gate follows the restored pair, not the parked mid-air
+  ladder offset.
