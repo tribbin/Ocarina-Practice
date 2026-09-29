@@ -375,3 +375,35 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   crutch delivery; the real mid rows now play - louder mid where hiss
   was quiet: ch1's A5-class rows move the most, the crutch read -41.7
   where the fit wants -34.3).
+
+- **2026-09-29 (session 22 cont. — /js/ goes network-first; the noise hunt's serving-layer half closes)** —
+  Robin's report ("site synth complete garbage, fine in the VS Code preview,
+  ton of noise on the phone app") chased through the serving layers while he
+  iterated Grok engine rounds on branches (main reset to before the merge by
+  him, branches f2..f5 recovered; his ?v=1 voice-import cache-key fix
+  55b86bb reviewed and adopted):
+  (1) the cache-anatomy findings named four layers — the SW stale-while-
+      revalidate hit branch, the browser HTTP cache (Pages max-age=600),
+      the SW cache keyed per URL (the ?v=1 import creates a NEW key, so the
+      first load after deploy cannot see old bytes), and the renderer's
+      script memory-cache (served the minutes-old module on reload without
+      dispatching the SW at all — why the module marker raced in the
+      harness); the CORE list was ALSO missing helmholtz-voice.js (Robin
+      caught) and then js/wakelock.js (the airplane leg caught).
+  (2) /js/ now rides DATA_NETWORK_FIRST with cache:"no-cache" revalidation:
+      online always fresh, offline the cached copy (the same contract the
+      09-28 data files got). CORE completes with js/wakelock.js — network-
+      first makes an incomplete CORE a hard offline 504 where stale-while-
+      revalidate had self-healed through the browser HTTP cache — and the
+      voice module's CORE entry carries the importer's ?v=1 token.
+  (3) suites: offline_pwa's engine-freshness leg red-first (poisoned cache
+      copy must lose to the network on the FIRST online fetch and the
+      revalidate must overwrite it), asset_versions pins js CORE
+      completeness + token lockstep (one entry per module, importer token
+      == CORE token); offline_pwa, asset_versions, console_hygiene green;
+      eslint + html-validate clean; sw oco-pwa-v54 (serving contract).
+  HELD for Robin: deploy + re-hear on the phone (second-visit behavior no
+  longer load-bearing); the resume invalidation design for instruments/
+  twin models is batched for his picks (the resume hook still re-checks
+  songs.json only — a resumed phone keeps the manifest and the loaded
+  twin model indefinitely).
