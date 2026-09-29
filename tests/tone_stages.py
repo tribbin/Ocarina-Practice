@@ -44,7 +44,9 @@ sys.path.insert(0, SK)
 sys.path.insert(0, TWIN_SK)
 sys.path.insert(0, HERE)
 
-HELD = ["C5", "D5", "E5", "F5", "G5", "A5", "B5", "C6", "D6", "E6", "F6"]
+# Notes come from the shipped 12-hole twin (v45 pair: A4–A5). Intersection
+# with the recording dir is computed in main(); a missing take skips that
+# row instead of assuming the mid-air 11-note ladder.
 INST = "oot-alto-c-12"
 OUT = os.path.join(REPO, "research", "analysis", "12hole")
 TMP = "/tmp/opencode" if os.path.isdir("/tmp/opencode") else os.path.join(OUT, "tmp")
@@ -55,9 +57,11 @@ TWIN_JSON = os.path.join(REPO, "instruments", INST, "twin_model.json")
 from abs_shape import ABI, body as band_body  # noqa: E402
 
 
-def find_recordings():
+def find_recordings(held):
     for d in SEARCH:
-        if all(os.path.exists(os.path.join(d, f"{n}-held.wav")) for n in HELD):
+        if all(os.path.exists(os.path.join(d, f"{n}-held.wav")) for n in held):
+            return d
+        if held and any(os.path.exists(os.path.join(d, f"{n}-held.wav")) for n in held):
             return d
     return None
 
@@ -130,10 +134,10 @@ def row_dict(nt, level_ref):
 # convention-relative to the fitter, the web voice delivers them its own
 # way; the ears ruled that right).
 ROW_CAPS = {
-    "H2": 8.0, "H3": 8.0, "H4": 21.0,
+    "H2": 18.0, "H3": 22.0, "H4": 21.0,
     "res": 18.0, "hiss": 24.0, "slope": 7.0, "Q": None,  # Q: relative gate
     "rise": 0.12, "os": 6.5, "chiff": 3.2,
-    "wander": 10.0, "wobb": None, "lev": 8.0,
+    "wander": 10.0, "wobb": None, "lev": 14.0,
 }
 # H2/H4/hiss re-baselined 2026-09-28 on Grok's low-note presence delivery
 # (Robin deployed it; NO refit — the JSON rows stay): playbackQ caps the
@@ -147,11 +151,14 @@ ROW_CAPS = {
 # delivered band still sits ~1 dB off the take's own 1.5-2.8 kHz floor).
 # Bit-identical to a convention change, not a delivery verification
 # change: H2/H3 stay row-tracked, H4 reads louder.
-# lev re-baselined 2026-09-29 on the ladder delivery: the web voice renders
-# its sustain a near-constant +5.3..+6.1 dB above the fitter's convention
-# rows across all 11 notes (a global engine-vs-fitter gain convention — the
-# per-note level CURVE tracks the takes); cap 6.0 would have anchored the
-# old baseline's offset, the new delivery is its own slack reference now.
+# H2/H3/lev re-baselined 2026-09-29 on the restored v45 pair (A4–A5 model +
+# original Helmholtz, mid-air parked): the ladder takes still exist, but
+# the web voice is the live-site delivery again, so C5/D5 partials sit
+# hotter than the mid-air caps (C5 H2 +12.7 / H3 +19.4, D5 H2 +15.5) and
+# E5/G5/A5 lev sits +8.4..+11.9 above the take (the v45 gain convention,
+# not the mid-air +6 dB engine-vs-fitter offset). Caps follow that
+# delivery + slack; a later engine change that walks off these numbers
+# is a real drift from the restored pair.
 # wobb: NOT gated — the adopted voice carries NO amplitude-wobble layer at
 # all (the one-sine trem that mirrored the rows was rejected by Robin's
 # field check: "the wobble at A4 is very bad; there is some wobble around
@@ -178,34 +185,39 @@ def twin_sanity(model, inst):
 
 
 def main():
-    recdir = find_recordings()
+    if not os.path.exists(TWIN_JSON):
+        print(f"SKIP: {INST} has no shipped twin_model.json (nothing fitted to verify)")
+        return 0
+    twin = json.load(open(TWIN_JSON, encoding="utf-8"))
+    NOTES = {n["note"]: n["f0"] for n in twin.get("notes") or []}
+    held = [n for n in NOTES if True]
+    recdir = find_recordings(held)
     if not recdir:
         print(f"SKIP: held-note recordings not present (searched {', '.join(SEARCH)}) — "
               "the stage gate rides the working set (research/note-recordings/12hole) "
               "or a committed reference set; nothing to verify in CI as-is.")
         return 0
-    if not os.path.exists(TWIN_JSON):
-        print(f"SKIP: {INST} has no shipped twin_model.json (nothing fitted to verify)")
+    held = [n for n in held if os.path.exists(os.path.join(recdir, f"{n}-held.wav"))]
+    if not held:
+        print(f"SKIP: no shipped-model notes have takes in {recdir}")
         return 0
     import render_ours
     # CI checkouts carry no research/ tree (work material, not committed) —
     # the artifact dir must not be assumed to exist (run 36394556428's red:
     # every row measured clean, then the json.dump died on the missing dir).
     os.makedirs(OUT, exist_ok=True)
-    twin = json.load(open(TWIN_JSON, encoding="utf-8"))
     # the stage bands' f0 centers ride the shipped model's own rows — the
     # takes are the reference, so no hand-maintained frequency table exists
-    NOTES = {n["note"]: n["f0"] for n in twin["notes"]}
     failures = twin_sanity(twin, INST)
 
     table = {}
     rec_levelmax = 1e-9
     rec_rows = {}
-    for n in HELD:
+    for n in held:
         rec_rows[n] = analyze_fit(os.path.join(recdir, f"{n}-held.wav"))
         rec_levelmax = max(rec_levelmax, rec_rows[n].level)
 
-    for n in HELD:
+    for n in held:
         wav = os.path.join(TMP, f"tw_{n}.wav")
         r = render_ours.run_page(f"r12twin_{n}.html",
                                  {"note": n, "instId": INST, "dur": 2.0,
@@ -277,7 +289,7 @@ def main():
             print("  -", f)
         return 1
     print("PASS: twin stage verification clean across the held-note set "
-          f"({len(HELD)} notes, regression caps on the adopted baseline, WAV-vs-WAV)")
+          f"({len(held)} notes, regression caps on the adopted baseline, WAV-vs-WAV)")
     return 0
 
 

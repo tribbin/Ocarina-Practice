@@ -62,12 +62,12 @@ front is the guessed bass voices):
 
 | Item | Section |
 |---|---|
-| **FIELD CHECK the guessed bass twins — draft voices by design, his ears decide what ships beneath them** — dummy C double, ICO contrabass 11, ICO oak leaf triple now declare Grok's guessed twin models (scaled from the measured 12-hole mid-air model, `guessed: true`, `research/guessed-twins.zip`; NO WAV from these instruments was used): support tracks included — every support/track voice on twin-declaring instruments rides the twin engine at the anchored TWIN_SUPPORT_LEVEL 0.75 path. His ears name: the contrabass "hoot" class (lowest V: Q 38, most halo, least hiss), the oak triple's small bright top chamber (ch3 Cs6-G6), the dummy's mid chamber ≈ alto, the bass whoosh (Grok: the 4 kHz hiss split is STILL THE ALTO SPLIT on these — a real bass rush is lower), and how they sit under multi-track practice. Refit per chamber from real held takes when he records (triple wants three sessions, one per chamber; then the guesses go away) | §1 |
+| **FIELD CHECK the guessed bass twins — parked 2026-09-29 with the mid-air upgrade** — dummy / contrabass / oak match the live site again (additive). A later twin for those instruments A/Bs against ocarina-practice.com | §1 |
 | **Robin's dedicated one-take cross-instrument calibration recording** — the true relative volume between instruments (both ladder sessions "recorded quite similarly, should be close to the end-result"; the stein's land normalizes its max-volume −0.39 dB to the 12-hole's chain peak) | §1 |
 | **Robin's field check on the multi-track trio** — `outset-island-with-bass` now plays melody + audible bass groove (the bassline two octaves down) + contrabass root-holds; his ears name the balance, the contrabass register, the practice-session audibility and the groove's final-bar cut | §7 |
 | **Robin's ears on the Epona contrabass** — `eponas-song` now carries `#track contrabass audible 100` (ranch bass bar-for-bar); Saria's Song he already heard green 2026-09-28 | §Log |
 | **Robin's eyeball pass** on the panel builds: the HiFi retune batch (`?hifi` — amber buttons, dark segment row/select, deeper zen red, LED fills) and the favorites stars in the library — his values, built to spec; he retunes anything that reads off | feel checks |
-| The twin-model chamber fits per remaining ocarina — recording held takes for the contrabass, oak leaf and dummy when Robin gets hands-on time (all three now play GUESSED twins until then; the stein double + the 12-hole carry their full ladder fits, field-blessed) | §1 |
+| The twin-model chamber fits per remaining ocarina — recording held takes for the contrabass, oak leaf and dummy when Robin gets hands-on time (all three play additive, matching the live site; 12-hole + stein are the restored v45 twins) | §1 |
 | The next audio-tick field catch names itself (spike cards carry the ambient ring); Robin re-introduces the hunt when the ticks matter | DONE (re-openable) |
 | Shipped-songs standardization stays HELD for Robin's later-stage pass; the permalinks corpora ride his planting as always | §9 |
 | Library widening (search, reordering beyond the pin) stays parked until Robin elects it | §9 |
@@ -76,11 +76,9 @@ front is the guessed bass voices):
 
 ## 1. Bugs (correctness / data loss)
 
-- [ ] **Record real held takes -> refit per chamber (the only remaining twin-fitting work; the guessed twins carry every instrument until then)** — dummy-bass-c-double ch1 A3-Ds5 + ch2 E5-C6; ico-oak-leaf-bass-c-triple ch1+ch2+ch3 (Grok: THREE short sessions, one chamber per session, normal blow only); ico-contrabass-11-c one session B2-F4 (its guessed model even retunes the dry-mid split to the instrument's own f0 range — the refit replaces that guess with a measured split). PLUS the stein ch2's E6 re-blow for a fittable take (two fails: res -0.0 both times — tracker slips on that wobble's attack slice); then the wrapper gains re-derive from the raw peaks. The cross-chamber/cross-instrument gain doctrine + refit loop live in skills/ocarina-twin/SKILL.md; refits go through Grok's lead fitter unchanged. `🟨 🟡 ⚙M`
+- [ ] **Record real held takes -> refit per chamber (the only remaining twin-fitting work; the guessed twins carry every instrument until then)** — dummy-bass-c-double ch1 A3-Ds5 + ch2 E5-C6; ico-oak-leaf-bass-c-triple ch1+ch2+ch3 (Grok: THREE short sessions, one chamber per session, normal blow only); ico-contrabass-11-c one session B2-F4 (its guessed model even retunes the dry-mid split to the instrument's own f0 range — the refit replaces that guess with a measured split). PLUS the stein ch2's E6 re-blow for a fittable take (two fails: res -0.0 both times — tracker slips on that wobble's attack slice); then the wrapper gains re-derive from the raw peaks. The cross-chamber/cross-instrument gain doctrine + refit loop live in skills/ocarina-twin/SKILL.md; refits go through Grok's lead fitter unchanged. Parked 2026-09-29: these guessed twins no longer ship. Oak / dummy / contrabass match the live site (additive). 12-hole + stein restored to the v45 models. Mid-air JSON sits in git history. `🟨 🟡 ⚙M`
 
 ## 2. Robustness / error handling
-
-- [ ] **Resume invalidation for instrument data (Robin's answered batch 2026-09-29, DEFERRED at his word — "let's do that some other time"; all four forks took the recommended picks: 1 a manifest+loaded-model-only via a 30s-gapped visibility resume slot that TEXT-compares instruments.json and the loaded twin_model.json and reinstalls TWIN_MODEL audio-only, 2 a fingerings.json + ocarina-template*.svg join network-first in the SW closing the last one-visit-late class with the install-derived precache as the offline fallback and a VERSION bump riding along, 3 a silent swaps exactly the songs precedent, 4 a skip while melody/practice active silent retry later; fingerings/svg changes surface a quiet reload nudge instead of a mid-session chart redraw, failures stay silent offline)** — CI: offline_pwa red-first supervisor leg (resume with changed twin_model.json on disk under a pristine try/finally must fire a fresh model fetch + zero page errors; the svg/fingerings serving rides the same pattern), verified red-first then green before commit; the phone case it closes is the noise-hunt's known remainder (a resumed app keeps the manifest and the loaded twin model from its last boot indefinitely). `🟧 🟡 ⚙M`
 
 ## 3. Security (low today — matters if data files become user-supplied)
 
@@ -90,7 +88,7 @@ Nothing open — the WAV-export backlog dropped by Robin's audit 2026-09-28 (the
 
 ## 5. Architecture / maintenance
 
-- [ ] **Dismantle the additive/tone.json voice path (Robin's call 2026-09-28: "I don't want tone.json back. We're gonna dismantle that code path soon")** — the additive machinery is dormant since all five instruments declare `twin` (fitted or guessed). The teardown: installToneModel/TONE_MODEL + the tone.json fetch in loadInstrument (app.js) + voiceProfileFor + the V_ANCHORS/wind chain (windPark/warm/rough, air*, edge*, chiff*, ot* — the additive-only debug rows in js/debug.js retire too) + the additive lite voice (the twin has its own lite branch). Known entanglements: tests/twin_support_level uses the additive engine as its red-green comparison leg (rework to a twin-only anchored contract); instruments_load's "tone model install / interpolate / fallback" legs retire with the path; instruments/README.md's voice-swap + tone file-shapes sections rewrite. Order of play: after the guessed voices' field check + any last additive-backed comparisons — the tone.json DECLARATIONS are already gone (2026-09-28, the file:// console-noise unit), only the code remains. `🟨 🟡 ⚙M`
+- [ ] **Engine upgrade drawing board (last good = live v45 pair)** — ocarina-practice.com still serves oco-pwa-v45 original Helmholtz + A4–A5 12-hole model (Pages deploy of PR #29 failed). The mid-air voice (4 kHz split, noise_mid_db, RMS-normalized noise) is noisier than that pair; it is parked (git history + ignored research/mid-air-upgrade/). Next attempt: A/B against the live site, ship engine JS and twin JSON as one deploy, bump the helmholtz `?v=` token with the module bytes. `🟧 🔴 ⚙L`
 
 ## 6. Tests & CI
 
@@ -409,3 +407,134 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   twin models is batched for his picks (the resume hook still re-checks
   songs.json only — a resumed phone keeps the manifest and the loaded
   twin model indefinitely).
+
+- **2026-09-29 (session 22 cont. — the deferred resume invalidation lands: instrument data joins the resume contract, the SW data branch widens)** —
+  Robin merged the serving-layer streak to main through PR #29 and opened
+  the door to approved/queued items; the §2 batch (his answered forks,
+  recorded verbatim when boarded) was the pick. Landed on
+  resume-invalidate-instruments:
+  (1) app.js: the shared visibility resume slot re-checks instruments.json
+      TEXT and the LOADED instrument's twin_model.json under the songs
+      gates (foreground, no melody/practice, the 30 s gap, silent-offline
+      catch) — a changed model reinstalls installTwinModel audio-only
+      under the CURRENT_INSTRUMENT guard, the next played note rides the
+      fresh fit; fingerings/template/svgWhen drift defers to the next
+      reload with a console.info flag (never a mid-session chart redraw);
+      cross-instrument manifest drift only feeds the next boot.
+      loadInstrument tracks the twinText comparator beside both install
+      paths (fresh and fallback).
+  (2) sw.js: the network-first data branch widens from tone/twin_model to
+      EVERY per-instrument file (fingerings/tone/twin/templates) — the
+      last stale-while-revalidate data class — sw oco-pwa-v55.
+  (3) tests/offline_pwa.py: the resume-request-count leg red-first (a
+      changed model on disk must fire a fresh model fetch on the first
+      resume dispatch — instrument-agnostic filter, because the offline
+      swap leg leaves the suite carrying the oak; the if-modified-since
+      whole-second trap slept 1.1 s like the songs legs) and the poisoned
+      fingerings serving leg (network-first + cache heal), both verified
+      red then green; the poison helper factored out for the two legs.
+  Suites: offline_pwa x3 through the red/green cycle, instruments_load
+  (boot battery + twin shapes + svgWhen boots), console_hygiene (4 boots),
+  asset_versions, eslint + html-validate — all green.
+  HELD for Robin: the reload nudge's VISUAL surface (console.info-only
+  today; a on-page slot is his design call). The commit needs his PR
+  merge to reach the phones; field check = a resumed phone app must pick
+  up a changed twin model within the next note (his next refit is the
+  natural field test).
+
+- **2026-09-29 (session 23 — the VS Code Simple Browser leftover worker is the high-noise class again: file:// SW still intercepted after the HTTP serving fix)** —
+  Robin's report: last night's engine/model desync was solved on main, then
+  the same high-noise bug returned locally in the VS Code built-in browser.
+  The site/HTTP half closed last night (network-first /js/ + ?v=1); the
+  preview is a different origin. Evidence in this partition:
+  `~/.config/Code/Partitions/vscode-browser/Service Worker` still has a
+  registration for `file:///home/robin/git/Ocarina-Practice/sw.js` (dozens
+  of update cycles) and CacheStorage `oco-pwa-v55` with an EMPTY cache.
+  Electron allows service workers on file:// (Playwright Chromium and
+  desktop Chrome do not — that is why the suites never saw this). Sep 23
+  (`d0f4d16`) sat out NEW registrations and skipped install cache-fill on
+  file://, but (1) never unregistered the leftover worker (it keeps
+  updating on every preview navigation without register()), (2) never
+  gated the fetch handler, (3) put skipWaiting BEHIND the protocol return
+  so a new worker sat WAITING while the old intercept kept running. Last
+  night's network-first + cache:"no-cache" then intercepted js + twin JSON
+  against that empty cache; a miss 504s and loadInstrument's catch
+  silently installTwinModel(null) — the additive wind stack, the same
+  audible class as old-engine-plus-new-models. The pairing was never
+  observable: no voice stamp, silent additive fallback.
+  Landed on resume-invalidate-instruments:
+  (1) sw.js fetch returns on non-HTTP(S) before any intercept; skipWaiting
+      always, before the protocol return; CORE token `helmholtz-voice.js?v=2`
+      so the Simple Browser module URL cannot keep last night's ?v=1;
+      sw oco-pwa-v56.
+  (2) app.js unregisters leftover file-scheme workers on load (skipping
+      register() left them in control).
+  (3) helmholtz-voice.js exports VOICE_REV "mid-air-1"; OCA_DEBUG.voiceCard()
+      reports rev/protocol/twin/chambers/sw; installTwinModel console.info
+      the card and console.warn on additive fallback; the debug panel
+      header shows the stamp (Robin already has that panel open in the
+      preview).
+  Suites: asset_versions pins the three file-scheme gates + token lockstep,
+  instruments_load pins voiceCard.rev and twin id on every shipped twin,
+  debug_panel pins #dbgVoice, offline_pwa poison URL follows ?v=2,
+  console_hygiene 4 boots clean; eslint@9 + html-validate@8 clean.
+  HELD for Robin: one Simple Browser reload to let v56 skipWaiting take
+  over, then a second load so unregister has run — the debug header should
+  read `mid-air-1 · twin <id>` (ADDITIVE is the bug). After that, type
+  `OCA_DEBUG.voiceCard()` whenever site and preview disagree.
+
+- **2026-09-29 (session 23 cont. — ?v=1 is the release cache-bust; v2 loaded in the preview and the noise stayed)** —
+  Robin's correction: `helmholtz-voice.js?v=1` exists to force a refresh
+  when a release is pushed (last night that token + network-first cleared
+  the desktop site and the phone). A local token bump is not that lever.
+  Restored `?v=1` (importer + CORE + offline_pwa poison URL). The file-scheme
+  fetch/unregister gates and VOICE_REV/voiceCard stay.
+  The remaining preview noise is a different fact: Simple Browser is open
+  at `file:///…/index.html?song=song-of-storms&inst=ico-oak-leaf-bass-c-triple`
+  (editor memento). Storms' D6–F6 land in the oak's guessed ch3 (Cs6–G6)
+  which still carries the alto 4 kHz hiss split. Phone/desktop last night
+  were the 12-hole mid-air voice. The debug header still names the pair
+  (`mid-air-1 · twin …` vs `ADDITIVE`).
+
+- **2026-09-29 (session 23 cont. — F6 chamber 1 under an oak twin is the remaining mix)** —
+  Robin's probe: sr 48000, Lite off, `CHAMBER.F6 === 1`. Oak fingerings.json
+  puts F6 in chamber 3; the 12-hole chart puts it in 1. voiceCard now carries
+  chart id, note range, F6 chamber and a twin/chart mismatch flag so one
+  paste names the pair. Playing F6 through oak chamber 1 (A3–Ds5 rows at
+  1397 Hz) is the high-noise class.
+
+- **2026-09-29 (session 23 — drawing board: restore the v45 pair locally, mid-air does not ship)** —
+  Live ocarina-practice.com is still oco-pwa-v45 original Helmholtz (2800 Hz
+  hiss, no mid band, unnormalized noise) + A4–A5 12-hole model; Pages deploy
+  of PR #29 failed, so last night's merge never reached the site. That pair
+  is the last known-good. Local Simple Browser was the mid-air upgrade, which
+  Robin hears as high noise against the site. Restored on restore-v45-voice:
+  js/helmholtz-voice.js and the 12-hole + stein twin_model.json from 240fbe8
+  (VOICE_REV v45-helmholtz); oak/dummy/contrabass drop their twin declarations
+  (additive, as the site); guessed mid-air JSON leaves instruments/ (copies
+  under ignored research/mid-air-upgrade/). Serving-layer (network-first /js/,
+  file-scheme SW gates, voiceCard) stays. helmholtz import token ?v=3 so the
+  Simple Browser cannot keep the mid-air module under ?v=1. sw oco-pwa-v57.
+
+- **2026-09-29 (session 23 — additive engine stripped; Helmholtz is the only voice)** —
+  Robin: those three should use the same twin engine the 12-hole uses. Oak,
+  dummy and contrabass now declare the restored v45 12-hole twin_model.json;
+  playNoteAt never falls through to PeriodicWave/wind/air/edge/chiff — a
+  missing chamber key uses chamber 1. tone.json load, V_ANCHORS, additive
+  lite bus, and the additive debug groups are gone. twin_support_level is
+  a twin-vs-twin contract. sw oco-pwa-v58. `8a7d68d`
+
+- **2026-09-29 (session 23 — oak/dummy/contrabass get their imagined twins back on the v45 engine)** —
+  Robin: they have their own chambers and imagined values; sharing the 12-hole
+  file was the wrong stand-in. Restored the guessed multi-chamber JSON from
+  origin/main (oak 1/2/3, dummy 1/2, contrabass single B2–F4). Helmholtz v45
+  plays those rows; it ignores `noise_mid_db` (engine-side mid-air). sw v59.
+
+- **2026-09-29 (tone_stages re-anchor on restored v45 pair)** —
+  CI `tone_stages` red: the committed 12-hole takes (C5–A5 intersection
+  with the A4–A5 v45 model) vs the restored original Helmholtz measured
+  C5/D5 H2/H3 and E5/G5/A5 lev past the mid-air caps (H2/H3 8, lev 8).
+  Caps re-anchor to that delivery + slack (H2 18, H3 22, lev 14). Local
+  working takes (research/ A4–A5) still sit well inside. Voice/JSON
+  unchanged — gate follows the restored pair, not the parked mid-air
+  ladder offset.

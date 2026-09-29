@@ -13,7 +13,7 @@
 // instantly from cache while a background refetch keeps the cache current,
 // so a deployed update is live on the SECOND visit. skipWaiting/claim makes
 // the new worker take over right away.
-const VERSION = "oco-pwa-v54";
+const VERSION = "oco-pwa-v59";
 const CORE = [
   "index.html",
   "manifest.webmanifest",
@@ -24,7 +24,7 @@ const CORE = [
   "js/ocarina.js",
   "js/audio.js",
   "js/wakelock.js",
-  "js/helmholtz-voice.js?v=1",
+  "js/helmholtz-voice.js?v=3",
   "js/library.js",
   "js/ui.js",
   "js/practice.js",
@@ -53,16 +53,17 @@ async function fillFrom(paths) {
 // Released content rides NETWORK-FIRST with a cached fallback (Robin,
 // 2026-09-28: the new songs never came up by a phone refresh —
 // stale-while-revalidate serves app content one reload late, and a resumed
-// phone app never re-checked at all). Songs, the instrument manifest and
-// every instrument's tone/twin model are the content the player expects
-// current the moment a load lands — and so are the engine modules
-// (Robin, 2026-09-29: a deployed voice-module change served the OLD synth
-// one visit late beneath FRESH twin-model data, and the old-engine-plus-
-// new-models mix garbled the synth): online = always fresh, offline = the
-// cached copy, and a legitimate 404 (declared-but-absent tone.json)
-// passes through uncached exactly as today.
+// phone app never re-checked at all). Songs, the manifest, every
+// per-instrument data file (fingerings, tone/twin models, templates) and
+// the engine modules are the content the player expects current the moment
+// a load lands (Robin, 2026-09-29: a deployed voice-module change served
+// the OLD synth one visit late beneath FRESH twin-model data — the
+// old-engine-plus-new-models mix garbled the synth): online = always
+// fresh, offline = the cached copy, and a legitimate 404
+// (declared-but-absent tone.json) passes through uncached exactly as
+// today.
 const DATA_NETWORK_FIRST =
-  /(?:^|\/)(?:songs|instruments)\.json$|(?:^|\/)instruments\/[^/]+\/(?:tone|twin_model)\.json$|(?:^|\/)js\/[^/]+\.js$/;
+  /(?:^|\/)(?:songs|instruments)\.json$|(?:^|\/)instruments\/[^/]+\/[^/]+\.(?:json|svg)$|(?:^|\/)js\/[^/]+\.js$/;
 
 // Cache writes are scheme-gated: file: origins (VS Code browser preview,
 // opened-from-disk) reject Cache.put at the engine level; nothing here may
@@ -73,12 +74,14 @@ async function putOk(cache, key, res) {
 }
 
 self.addEventListener("install", (e) => {
-  // No cache work on non-HTTP(S) contexts: opened from disk (VS Code browser
-  // preview, double-click) the fetches behind addAll are scheme-unsupported
-  // and would throw out of the install. Offline mode is a served-page
-  // feature; a file-scheme page just skips it quietly.
-  if (!/^https?:$/.test(self.location.protocol)) return;
+  // skipWaiting always — including file-scheme (VS Code Simple Browser):
+  // a leftover worker there used to sit WAITING because this return ran
+  // before skipWaiting, so the previous fetch handler kept intercepting.
   self.skipWaiting();
+  // No cache work on non-HTTP(S) contexts: opened from disk the fetches
+  // behind addAll are scheme-unsupported and would throw out of the
+  // install. Offline mode is a served-page feature.
+  if (!/^https?:$/.test(self.location.protocol)) return;
   e.waitUntil((async () => {
     const c = await cacheOf();
     // Core shell must exist to the letter — a failed addAll fails the install
@@ -111,6 +114,12 @@ self.addEventListener("activate", (e) => {
 });
 
 self.addEventListener("fetch", (e) => {
+  // File-scheme workers (VS Code Simple Browser's Electron partition
+  // allows them; tests and desktop Chrome do not) must not intercept:
+  // install skips the precache, so a network-first miss becomes a 504
+  // and the page silently falls off the twin voice onto the additive
+  // wind stack — the same high-noise class as an engine/model desync.
+  if (!/^https?:$/.test(self.location.protocol)) return;
   const req = e.request;
   if (req.method !== "GET") return;
   let url;

@@ -31,38 +31,13 @@ import { audioCtx, cutLive, freqOf, getReverbBus, playNote, reverbEnabled, setRe
   // ---- slider table: { t: group title, wave: rebuilds PeriodicWave, r: rows } ----
   // row = [param, label, min, max, step]
   var GROUPS = [
-    { t: "Wave — pitch-keyed timbre", wave: 1, r: [
-      // Global scales on the interpolated anchor curves (V_ANCHORS in
-      // audio.js): every note rebuilds its wave from the pitch-keyed
-      // profile, so these brighten/darken the whole range at once. The
-      // partials are calibrated TINY re H1 (~−40..−60 dB, near-sine tone),
-      // so the sweep headroom goes to 30× — a plain 3× max is barely
-      // audible; auditioning real timbre shifts needs the big gun.
-      ["h2Mul", "H2 scale (all notes)", 0, 30, 0.25],
-      ["h3Mul", "H3 scale (all notes)", 0, 30, 0.25],
-      ["h4Mul", "H4 scale (all notes)", 0, 30, 0.25],
-      ["h5Mul", "H5 scale (all notes)", 0, 30, 0.25],
-    ]},
-    { t: "Measured-curve shape", r: [
-      ["hardAmt", "Hard-blow drift", 0, 2, 0.05],
-      ["levelCurveAmt", "Chamber level curve", 0, 2, 0.05],
+    { t: "Twin rows", r: [
       ["wanderAmt", "Slow pitch wander", 0, 2, 0.05],
       ["wobbleAmt", "Slow breath wobble", 0, 2, 0.05],
-      ["windAmt", "Wind noise layer", 0, 2, 0.05],
     ]},
-    { t: "Tone lowpass", r: [
-      ["lpMult", "Cutoff \u00d7freq", 1, 20, 0.1],
-      ["lpMax", "Cutoff cap Hz", 1000, 18000, 100],
-      ["lpQ", "Q (resonance)", 0, 4, 0.05],
-    ]},
-    { t: "High-note fade map", r: [
+    { t: "High-note fade map (Zen chorus)", r: [
       ["hiFrom", "Fade starts Hz", 200, 1600, 10],
       ["hiTo", "Fully faded Hz", 400, 2400, 10],
-    ]},
-    { t: "Air partial (detuned oct)", r: [
-      ["airLevel", "Level", 0, 0.2, 0.002],
-      ["airFade", "High-note fade", 0, 1, 0.05],
-      ["airRatio", "Ratio \u00d7freq", 1.9, 3, 0.01],
     ]},
     { t: "Vibrato / tremolo (Zen only)", r: [
       ["vibRate", "Rate Hz", 1, 12, 0.1],
@@ -71,25 +46,6 @@ import { audioCtx, cutLive, freqOf, getReverbBus, playNote, reverbEnabled, setRe
       ["tremDepth", "Tremolo depth", 0, 0.3, 0.01],
       ["vibDelay", "Entry delay s", 0.05, 1, 0.05],
       ["zenPan", "Chorus spread L/R", 0, 1, 0.05],
-    ]},
-    { t: "Edge / windway whistle", r: [
-      ["edgeBase", "Level base", 0, 0.2, 0.002],
-      ["edgeReg", "Register boost", 0, 0.1, 0.002],
-      ["edgeFade", "High-note fade", 0, 1, 0.05],
-      ["edgeDet", "Detune", 0, 0.05, 0.001],
-      ["edgeDetSpread", "Detune spread", 0, 0.03, 0.001],
-      ["wanderDepth", "Pitch wander", 0, 0.03, 0.001],
-      ["wanderFade", "Wander high fade", 0, 1, 0.05],
-    ]},
-    { t: "Onset — chiff & octave", r: [
-      ["chiffScale", "Chiff level \u00d7", 0, 3, 0.05],
-      ["chiffBase", "Chiff base s", 0.03, 0.2, 0.005],
-      ["chiffSize", "Chiff chamber add s", 0, 0.2, 0.005],
-      ["otBase", "Oct overtone level", 0, 0.5, 0.005],
-      ["otEffort", "Overtone effort add", 0, 0.3, 0.005],
-      ["otNoise", "Overtone noise mix", 0, 1, 0.05],
-      ["otDurMax", "Oct decay max s", 0.04, 0.36, 0.005],
-      ["otDurEffort", "Oct decay effort add s", 0, 0.2, 0.005],
     ]},
     { t: "Practice tuner (js/practice.js)", r: [
       ["tuneCents", "In-tune zone \u00A2", 0, 50, 1],
@@ -193,6 +149,7 @@ import { audioCtx, cutLive, freqOf, getReverbBus, playNote, reverbEnabled, setRe
       '<div class="dbg-head">' +
         '<b>AUDIO DEBUG</b>' +
         '<span class="dbg-hint">console: DEBUG=1 / DEBUG=0</span>' +
+        '<span class="dbg-hint" id="dbgVoice"></span>' +
         '<button class="dbg-x" type="button" title="Hide (or DEBUG=0)">\u2715</button>' +
       '</div>' +
       '<div class="dbg-tests">' +
@@ -399,7 +356,7 @@ import { audioCtx, cutLive, freqOf, getReverbBus, playNote, reverbEnabled, setRe
         var was = P[k];
         P[k] = clamp(+v || 0, min, max);
         sync();
-        if (grp.wave) api.invalidateWave();
+        if (grp.wave && api.invalidateWave) api.invalidateWave();
         if (k === "reverbWet") {
           // Re-ramp the live wet gain (setReverbEnabled re-reads the level).
           try { setReverbEnabled(reverbEnabled); } catch (e) {}
@@ -489,12 +446,26 @@ import { audioCtx, cutLive, freqOf, getReverbBus, playNote, reverbEnabled, setRe
   }
 
   // ---- show / hide ----
+  function syncVoice() {
+    var el = document.getElementById("dbgVoice");
+    if (!el || !api.voiceCard) return;
+    try {
+      var c = api.voiceCard();
+      el.textContent = c.rev
+        + (c.twin ? " · twin " + c.twin : " · ADDITIVE")
+        + (c.chart && c.chart !== c.twin ? " · CHART " + c.chart : "")
+        + (c.mismatch ? " · MISMATCH" : "");
+      el.title = JSON.stringify(c);
+    } catch (e) {}
+  }
+
   function show(v) {
     on = !!v;
     if (on) buildPanel();
     if (panel) panel.classList.toggle("open", on);
     if (on) {
       buildNotes();
+      syncVoice();
       if (!(window.NOTES || []).length) pollNotes();
       else if (notePoll) { clearInterval(notePoll); notePoll = 0; }
     }
@@ -507,6 +478,7 @@ import { audioCtx, cutLive, freqOf, getReverbBus, playNote, reverbEnabled, setRe
   function pollNotes() {
     if (notePoll) return;
     notePoll = setInterval(function () {
+      syncVoice();
       if (buildNotes().length) { clearInterval(notePoll); notePoll = 0; }
     }, 400);
   }
