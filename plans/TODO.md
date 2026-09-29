@@ -56,14 +56,15 @@ first circle → urgency, last letter → effort.
 ## Hot list (importance across all types)
 
 Picks for the next session(s), roughly damage × imminence ÷ effort
-(refreshed 2026-09-30: the v45 Helmholtz pair is the shipping voice —
+(refreshed 2026-09-30 late: the v45 Helmholtz pair is the shipping voice —
 the mid-air upgrade stays parked in git history; dummy/contrabass/oak ride
 Grok's guessed per-chamber twins until real recordings land; Robin's field
-checks are all cleared — guessed twins, one-take calibration recording,
-Epona's contrabass, the Outset trio, and the HiFi/favorites eyeball pass):
+checks are all cleared — the usability batch below is the next session's
+work; decisions + state in the session-24 log):
 
 | Item | Section |
 |---|---|
+| **USABILITY BATCH (approved 2026-09-30, session-24 handoff)** — small-screen layout (editor hidden on phones, vertical rows, no portrait backdrop), theme no-flash, melody-duck on/off, song .txt round-trip, ko-fi link, zen-chorus audit, transport sync bugs | §1/§7/§9 |
 | HiFi stays UNPUBLISHED — the retune + favorites pass is accepted, but Robin holds publication for now (2026-09-30) | hold |
 | Shipped-songs standardization stays HELD for Robin's later-stage pass; the permalinks corpora ride his planting as always | §9 |
 | Library widening (search, reordering beyond the pin) stays parked until Robin elects it | §9 |
@@ -71,6 +72,10 @@ Epona's contrabass, the Outset trio, and the HiFi/favorites eyeball pass):
 ---
 
 ## 1. Bugs (correctness / data loss)
+
+- [ ] **Transport sync: tracks desync across pause/unpause + tempo change; first note sometimes "hurries"** — Robin's planted bugs (IDEAS BUGS): the #track streams (walkTrackStreams, js/audio.js:1432) drift from the melody clock through pauseMelody/resumeMelody (audio.js:1181/1196) and mid-play tempo changes; the first note can also start early when playing from the start; pin red-first in tests/transport_schedule.py; engine change ⇒ full sweep + his field check. `🟧 🔴 ⚙M`
+
+- [ ] **Zen chorus audit: did the twin engine drop the zen chorus? (IDEAS question)** — report-first: the twin path still carries the zen stereo chorus (audio.js twChorus: gated on vibOn && dur > vibDelay+0.1, depth faded by vibHighFade 0.4, zenPan 0.9) — check the zen defaults + the lite-voice path and report; fix only if truly lost (field-check class). `🟨 🟡 ⚙S`
 
 ## 2. Robustness / error handling
 
@@ -90,6 +95,12 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 
 ## 7. Accessibility & UX
 
+- [ ] **Small-screen layout pass (IDEAS: SMALL SCREENS, approved 2026-09-30)** — phones are play/practice, not editing: the editor block is HIDDEN on narrow screens, transport + controls stack into clean vertical rows (today they are "all over the place"), NO backdrop image in portrait, whole viewport functional in normal mode; zen mode stays as-is (Robin: already looks very good). `🟧 🔴 ⚙L`
+
+- [ ] **Melody duck: on/off button during practice with support tracks (IDEAS)** — Robin: a button, not a dial; when ON the melody voice plays at ~20% while support tracks play so his ocarina leads (level tunable on his field check); rides voiceGain; pin the ratio via the note-sink mix battery + a UI leg. `🟨 🔴 ⚙S`
+
+- [ ] **Theme no-flash: apply the saved theme pre-paint (IDEAS: skip default CSS)** — the index.html head script only honors ?oot; the saved oco-theme (localStorage) applies late in js/app.js so the default theme flashes on every load; resolve param > localStorage > default in the pre-paint head script and pin the early data-theme. `🟨 🟠 ⚙S`
+
 ## 8. Housekeeping
 
 Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
@@ -99,6 +110,10 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
 - [ ] **Standardize shipped songs to the `skills/ocarina-melodies` conventions** (barline at wrap start, named sections where players want headers) — HELD for Robin's later-stage pass; verify/shipped_songs are the gates; no playback changes expected. `🟢 ⚪ ⚙M`
 
 - [ ] **Library search / pinning widening** — favorites pinning SHIPPED 2026-09-26 `390c431` (star + first persisted Favorites group); the widening (search box, reordering beyond the pin, grouping options) stays parked until Robin elects it. `🟢 ⚪ ⚙S`
+
+- [ ] **Song .txt round-trip with all attributes (IDEAS)** — export a loaded song as .txt carrying title/tempo/tick/swing + its #track blocks, pasteable back into #src (parse.js already understands the # tempo / # title / # track / swing lines); the goal is copy-paste between src and .txt; permalink keys stay frozen. `🟨 🟡 ⚙M`
+
+- [ ] **"Buy me a coffee" link (IDEAS; ko-fi.com/tribbin)** — not in the app yet (78b9646 only touched IDEAS.txt); add the link to the help-screen colophon beside the issues link (target=_blank rel=noopener) and pin its presence. `🟢 🟡 ⚙S`
 
 > **Idle idea pool: `plans/IDEAS.txt`.** A live document Robin edits over time and ROBIN'S ALONE — the AI never writes it (it may be read, and only lifted into TODO.md when Robin explicitly asks). TODO carries no copy or summary: when an idea from it is picked up, read the FILE fresh at that moment; never rely on a remembered or transcribed version.
 
@@ -163,3 +178,27 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   holds; 13 log entries (all of sessions 21-22 and the early session-23
   entries) retire to DONE via log-retire --keep 4, keeping the v45-
   restore tail for continuity.
+
+- **2026-09-30 (session 24 cont. — the usability batch is approved, boarded and is this session's handoff)** —
+  Board-only so far; no app code in flight. Robin's batch, with his words
+  where they matter: the small-screen pass hides the editor on phones
+  (phones = play/practice, not editing), stacks controls into vertical
+  rows, drops the backdrop image in portrait, keeps the whole viewport
+  functional in normal mode, and leaves zen as-is ("already looks very
+  good"); theme no-flash = the saved oco-theme applied pre-paint; zen
+  chorus = audit + report first (fix only if truly lost — the twin path
+  still has it, gated on note length + high-note fade); ko-fi goes into
+  the app (78b9646 was IDEAS-only); melody duck = ON/OFF button, not a
+  dial (~20% when on, tunable on his field check); song .txt round-trip
+  carries ALL attributes (title/tempo/tick/swing/#track); the transport
+  sync bugs (pause/unpause + tempo-change desync, first-note hurries) go
+  red-first in tests/transport_schedule.py, engine change ⇒ full sweep +
+  his field check. Stop-other-media: MDN's Media Session API is
+  declarative only (metadata + media-key handlers for the page's own
+  media) — stopping other apps is NOT possible from a web page, so that
+  half drops per his rule; the announce-only half (lock-screen metadata
+  + media keys) awaits his call. §6 confirmed: no open items — it is the
+  standing coverage list + the audit-residue watch note only. All seven
+  items boarded with the decisions inlined (§1 ×2, §7 ×3, §9 ×2); hot
+  list refreshed. Fresh context: open plans/TODO.md (AGENTS rule 1) and
+  work the hot list top-down.
