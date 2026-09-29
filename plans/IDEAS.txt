@@ -33,3 +33,5 @@ Make any support just another practice track you can choose from.
 Allow muting (or like 20% volume) the track you're practicing.
 
 "Buy me coffee" link: https://ko-fi.com/tribbin
+
+When clicking play or practice, stop media (YouTube/Spotify/...) that is playing.
