@@ -6,6 +6,7 @@
  *
  * Numbers: python/ocarina_twin/air.py — keep JS in lockstep.
  */
+export const VOICE_REV = "mid-air-1";
 export function loadTwinModelFromObject(obj) {
   if (!obj || !Array.isArray(obj.notes) || !obj.notes.length) {
     throw new Error("twin_model.json: missing notes[]");

@@ -92,7 +92,7 @@ def main():
     else:
         core_entries = re.findall(r'"([^"]+)"', core_m.group(1))
         # tokenized import specifiers across the module graph
-        # ("./helmholtz-voice.js?v=1" forms; url strings may prefix ./ or ../)
+        # ("./helmholtz-voice.js?v=2" forms; url strings may prefix ./ or ../)
         spec_re = re.compile(
             r'["\'][./]*([A-Za-z0-9._-]+\.js)\?v=([A-Za-z0-9._-]+)["\']')
         tokens = {}
@@ -120,6 +120,43 @@ def main():
                     f"CORE caches {hits[0]!r} but the page loads {want!r} — "
                     "the shell caches what the page really loads; a token "
                     "bump moves the importer and sw.js at once")
+
+        # File-scheme leftover worker (VS Code Simple Browser, 2026-09-29):
+        # Electron allows a SW on file://, install skips the precache, and
+        # a fetch intercept on an empty cache 504s the twin/engine pair.
+        # skipWaiting must run BEFORE the protocol return so a waiting
+        # leftover cannot keep the old fetch handler; fetch itself no-ops
+        # on non-HTTP; the page unregisters leftovers instead of only
+        # skipping a new register() (a registered worker updates forever).
+        install_block = re.search(
+            r'self\.addEventListener\("install",.*?^\}\);', sw, re.S | re.M)
+        if not install_block:
+            failures.append("sw.js must have an install listener")
+        else:
+            ib = install_block.group(0)
+            skip_at = ib.find("self.skipWaiting()")
+            proto_at = ib.find("self.location.protocol")
+            if skip_at < 0:
+                failures.append("install must call skipWaiting")
+            elif proto_at < 0 or skip_at > proto_at:
+                failures.append(
+                    "install must skipWaiting BEFORE the file-scheme "
+                    "return — a leftover Simple Browser worker otherwise "
+                    "stays WAITING and keeps intercepting")
+        fetch_block = re.search(
+            r'self\.addEventListener\("fetch",.*?^\}\);', sw, re.S | re.M)
+        if not fetch_block:
+            failures.append("sw.js must have a fetch listener")
+        elif 'if (!/^https?:$/.test(self.location.protocol)) return;' not in fetch_block.group(0):
+            failures.append(
+                "fetch must return on non-HTTP(S) before intercepting — "
+                "file-scheme Simple Browser workers have an empty cache "
+                "and a miss becomes a 504 that drops the twin voice")
+        if "r.unregister()" not in app and "r => r.unregister()" not in app:
+            failures.append(
+                "app.js must unregister leftover file-scheme service "
+                "workers (skipping register() leaves an existing one in "
+                "control of VS Code Simple Browser)")
 
     if failures:
         print("\nFAIL:")

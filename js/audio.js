@@ -5,7 +5,7 @@ import { bumpHoverQuiet, clearHighlight, cueFirstNote, freezeZenGlow,
          highlightToken, isFocusMode, quarterSec, tokenSeconds, updateTransportUI } from "./ui.js";
 import { isPracticeActive } from "./practice.js";
 import { wakeHold, wakeDrop } from "./wakelock.js";
-import { loadTwinModelFromObject, interpNote, scheduleHelmholtzNote } from "./helmholtz-voice.js?v=1";
+import { loadTwinModelFromObject, interpNote, scheduleHelmholtzNote, VOICE_REV } from "./helmholtz-voice.js?v=2";
 let audioCtx = null;
 let liveVoices = [];
 let melodyBag = [];
@@ -227,6 +227,26 @@ window.OCA_DEBUG = {
   // The installed Helmholtz twin model (instruments/<id>/twin_model.json) —
   // null while no twin model is installed for the CURRENT instrument.
   twinModel() { return TWIN_MODEL; },
+  // Running voice identity: the module stamp + whether a twin is installed
+  // + whether a service worker is controlling this page. Typed in the
+  // console as OCA_DEBUG.voiceCard() when the preview and the site disagree.
+  voiceRev() { return VOICE_REV; },
+  voiceCard() {
+    const tm = TWIN_MODEL;
+    let sw = "none";
+    try {
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        sw = navigator.serviceWorker.controller.scriptURL;
+      }
+    } catch (e) {}
+    return {
+      rev: VOICE_REV,
+      protocol: typeof location !== "undefined" ? location.protocol : "",
+      twin: tm ? tm.instrumentId : null,
+      chambers: tm ? Object.keys(tm.chambers || {}) : [],
+      sw,
+    };
+  },
   // DEBUG panel "Induce lag": fakes audio-clock starvation. Seeds what
   // raisePerfAlert needs (a running ctx + one alive voice, the button click
   // itself is the user gesture), then loads the lag budget; the next
@@ -1078,8 +1098,24 @@ function instLevelGain() {
   const db = key ? AUDIO_DEBUG[key] : 0;
   return db ? Math.pow(10, db / 20) : 1;
 }
+function logVoiceCard(path) {
+  try {
+    const c = (typeof window !== "undefined" && window.OCA_DEBUG
+               && window.OCA_DEBUG.voiceCard)
+      ? window.OCA_DEBUG.voiceCard()
+      : { rev: VOICE_REV, twin: null, chambers: [], sw: "none" };
+    console.info("[voice] " + c.rev + " path=" + path
+      + " twin=" + (c.twin || "off")
+      + " ch=" + ((c.chambers || []).join("|") || "-")
+      + " sw=" + (c.sw || "none"));
+  } catch (e) {}
+}
 function installTwinModel(data, instId) {
-  if (!data || typeof data !== "object") { TWIN_MODEL = null; return; }
+  if (!data || typeof data !== "object") {
+    TWIN_MODEL = null;
+    logVoiceCard("additive");
+    return;
+  }
   try {
     let chambers;
     if (data.chambers && typeof data.chambers === "object" &&
@@ -1101,8 +1137,14 @@ function installTwinModel(data, instId) {
       chambers = { "1": { model: loadTwinModelFromObject(data), gain: 1 } };
     }
     TWIN_MODEL = { instrumentId: instId || null, chambers };
+    logVoiceCard("twin");
   } catch (e) {
     TWIN_MODEL = null;
+    try {
+      console.warn("[voice] twin install failed, additive fallback:",
+                   e && e.message ? e.message : e);
+    } catch (e2) {}
+    logVoiceCard("additive");
   }
 }
 

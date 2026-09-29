@@ -76,6 +76,14 @@ def main():
                     "(NOTES arrived before open)")
             if not probe2["sliderRows"]:
                 failures.append("the open panel must have its slider groups")
+            voice_line = page.evaluate("""() => {
+              const el = document.getElementById('dbgVoice');
+              return el ? el.textContent : '';
+            }""")
+            if "mid-air-1" not in (voice_line or ""):
+                failures.append(
+                    "the open panel must show the running voice stamp "
+                    f"(#dbgVoice, got {voice_line!r})")
 
             # --- console hide: DEBUG=0 closes it (panel stays built) ---
             page.evaluate("() => { window.DEBUG = 0; }")

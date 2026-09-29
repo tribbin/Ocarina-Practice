@@ -193,6 +193,7 @@ import { audioCtx, cutLive, freqOf, getReverbBus, playNote, reverbEnabled, setRe
       '<div class="dbg-head">' +
         '<b>AUDIO DEBUG</b>' +
         '<span class="dbg-hint">console: DEBUG=1 / DEBUG=0</span>' +
+        '<span class="dbg-hint" id="dbgVoice"></span>' +
         '<button class="dbg-x" type="button" title="Hide (or DEBUG=0)">\u2715</button>' +
       '</div>' +
       '<div class="dbg-tests">' +
@@ -489,12 +490,23 @@ import { audioCtx, cutLive, freqOf, getReverbBus, playNote, reverbEnabled, setRe
   }
 
   // ---- show / hide ----
+  function syncVoice() {
+    var el = document.getElementById("dbgVoice");
+    if (!el || !api.voiceCard) return;
+    try {
+      var c = api.voiceCard();
+      el.textContent = c.rev + (c.twin ? " · twin " + c.twin : " · ADDITIVE");
+      el.title = JSON.stringify(c);
+    } catch (e) {}
+  }
+
   function show(v) {
     on = !!v;
     if (on) buildPanel();
     if (panel) panel.classList.toggle("open", on);
     if (on) {
       buildNotes();
+      syncVoice();
       if (!(window.NOTES || []).length) pollNotes();
       else if (notePoll) { clearInterval(notePoll); notePoll = 0; }
     }
@@ -507,6 +519,7 @@ import { audioCtx, cutLive, freqOf, getReverbBus, playNote, reverbEnabled, setRe
   function pollNotes() {
     if (notePoll) return;
     notePoll = setInterval(function () {
+      syncVoice();
       if (buildNotes().length) { clearInterval(notePoll); notePoll = 0; }
     }, 400);
   }

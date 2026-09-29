@@ -441,3 +441,44 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   merge to reach the phones; field check = a resumed phone app must pick
   up a changed twin model within the next note (his next refit is the
   natural field test).
+
+- **2026-09-29 (session 23 — the VS Code Simple Browser leftover worker is the high-noise class again: file:// SW still intercepted after the HTTP serving fix)** —
+  Robin's report: last night's engine/model desync was solved on main, then
+  the same high-noise bug returned locally in the VS Code built-in browser.
+  The site/HTTP half closed last night (network-first /js/ + ?v=1); the
+  preview is a different origin. Evidence in this partition:
+  `~/.config/Code/Partitions/vscode-browser/Service Worker` still has a
+  registration for `file:///home/robin/git/Ocarina-Practice/sw.js` (dozens
+  of update cycles) and CacheStorage `oco-pwa-v55` with an EMPTY cache.
+  Electron allows service workers on file:// (Playwright Chromium and
+  desktop Chrome do not — that is why the suites never saw this). Sep 23
+  (`d0f4d16`) sat out NEW registrations and skipped install cache-fill on
+  file://, but (1) never unregistered the leftover worker (it keeps
+  updating on every preview navigation without register()), (2) never
+  gated the fetch handler, (3) put skipWaiting BEHIND the protocol return
+  so a new worker sat WAITING while the old intercept kept running. Last
+  night's network-first + cache:"no-cache" then intercepted js + twin JSON
+  against that empty cache; a miss 504s and loadInstrument's catch
+  silently installTwinModel(null) — the additive wind stack, the same
+  audible class as old-engine-plus-new-models. The pairing was never
+  observable: no voice stamp, silent additive fallback.
+  Landed on resume-invalidate-instruments:
+  (1) sw.js fetch returns on non-HTTP(S) before any intercept; skipWaiting
+      always, before the protocol return; CORE token `helmholtz-voice.js?v=2`
+      so the Simple Browser module URL cannot keep last night's ?v=1;
+      sw oco-pwa-v56.
+  (2) app.js unregisters leftover file-scheme workers on load (skipping
+      register() left them in control).
+  (3) helmholtz-voice.js exports VOICE_REV "mid-air-1"; OCA_DEBUG.voiceCard()
+      reports rev/protocol/twin/chambers/sw; installTwinModel console.info
+      the card and console.warn on additive fallback; the debug panel
+      header shows the stamp (Robin already has that panel open in the
+      preview).
+  Suites: asset_versions pins the three file-scheme gates + token lockstep,
+  instruments_load pins voiceCard.rev and twin id on every shipped twin,
+  debug_panel pins #dbgVoice, offline_pwa poison URL follows ?v=2,
+  console_hygiene 4 boots clean; eslint@9 + html-validate@8 clean.
+  HELD for Robin: one Simple Browser reload to let v56 skipWaiting take
+  over, then a second load so unregister has run — the debug header should
+  read `mid-air-1 · twin <id>` (ADDITIVE is the bug). After that, type
+  `OCA_DEBUG.voiceCard()` whenever site and preview disagree.

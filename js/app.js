@@ -498,8 +498,17 @@ async function refreshInstrumentOnResume() {
 // reach the app.
 window.addEventListener("load", () => {
   // Only serve over HTTP(S): a file-scheme page (VS Code preview) has no
-  // service worker cache to offer.
-  if (!/^https?:$/.test(location.protocol)) return;
+  // service worker cache to offer. A leftover worker from before this gate
+  // (Sep 23) keeps updating in Simple Browser's Electron partition even
+  // without re-registering — unregister so boot fetches the files on disk.
+  if (!/^https?:$/.test(location.protocol)) {
+    try {
+      navigator.serviceWorker.getRegistrations()
+        .then(rs => { rs.forEach(r => r.unregister()); })
+        .catch(() => {});
+    } catch (e) {}
+    return;
+  }
   if (!navigator.serviceWorker) return;
   try { navigator.serviceWorker.register("sw.js").catch(() => {}); } catch (e) {}
 });

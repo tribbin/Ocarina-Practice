@@ -56,6 +56,8 @@ def boot_instrument(browser, base, inst_id, failures, tag):
               ? (window.OCA_DEBUG && window.OCA_DEBUG.twinModel
                   ? window.OCA_DEBUG.twinModel() : "MISSING")
               : "MISSING",
+      voice: window.OCA_DEBUG && window.OCA_DEBUG.voiceCard
+              ? window.OCA_DEBUG.voiceCard() : "MISSING",
     })""")
     for key in ("fingered", "templated", "chambered"):
         if not state[key]:
@@ -64,6 +66,11 @@ def boot_instrument(browser, base, inst_id, failures, tag):
         failures.append(f"{tag}: {inst_id} has only {state['notes']} notes")
     if state["tone"] == "MISSING":
         failures.append(f"{tag}: OCA_DEBUG.toneModel() missing (audio.js change?)")
+    voice = state.get("voice")
+    if not isinstance(voice, dict) or voice.get("rev") != "mid-air-1":
+        failures.append(
+            f"{tag}: OCA_DEBUG.voiceCard() must stamp mid-air-1 "
+            f"(got {voice!r})")
     tone_path = ROOT / "instruments" / inst_id / "tone.json"
     if tone_path.exists():
         # a shipped tone.json must install as the model, with its rows intact
@@ -88,6 +95,11 @@ def boot_instrument(browser, base, inst_id, failures, tag):
         elif not twin:
             failures.append(f"{tag}: {inst_id} ships twin_model.json but none installed")
         else:
+            if isinstance(voice, dict) and voice.get("twin") != inst_id:
+                failures.append(
+                    f"{tag}: voiceCard.twin must be {inst_id!r} when a twin "
+                    f"ships (got {voice.get('twin')!r} — additive fallback "
+                    "is the high-noise class)")
             def model_ok(d):
                 return isinstance(d, dict) and isinstance(d.get("notes"), list) \
                     and d["notes"] and isinstance(d["notes"][0], dict) \

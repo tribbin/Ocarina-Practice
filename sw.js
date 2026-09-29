@@ -13,7 +13,7 @@
 // instantly from cache while a background refetch keeps the cache current,
 // so a deployed update is live on the SECOND visit. skipWaiting/claim makes
 // the new worker take over right away.
-const VERSION = "oco-pwa-v55";
+const VERSION = "oco-pwa-v56";
 const CORE = [
   "index.html",
   "manifest.webmanifest",
@@ -24,7 +24,7 @@ const CORE = [
   "js/ocarina.js",
   "js/audio.js",
   "js/wakelock.js",
-  "js/helmholtz-voice.js?v=1",
+  "js/helmholtz-voice.js?v=2",
   "js/library.js",
   "js/ui.js",
   "js/practice.js",
@@ -74,12 +74,14 @@ async function putOk(cache, key, res) {
 }
 
 self.addEventListener("install", (e) => {
-  // No cache work on non-HTTP(S) contexts: opened from disk (VS Code browser
-  // preview, double-click) the fetches behind addAll are scheme-unsupported
-  // and would throw out of the install. Offline mode is a served-page
-  // feature; a file-scheme page just skips it quietly.
-  if (!/^https?:$/.test(self.location.protocol)) return;
+  // skipWaiting always — including file-scheme (VS Code Simple Browser):
+  // a leftover worker there used to sit WAITING because this return ran
+  // before skipWaiting, so the previous fetch handler kept intercepting.
   self.skipWaiting();
+  // No cache work on non-HTTP(S) contexts: opened from disk the fetches
+  // behind addAll are scheme-unsupported and would throw out of the
+  // install. Offline mode is a served-page feature.
+  if (!/^https?:$/.test(self.location.protocol)) return;
   e.waitUntil((async () => {
     const c = await cacheOf();
     // Core shell must exist to the letter — a failed addAll fails the install
@@ -112,6 +114,12 @@ self.addEventListener("activate", (e) => {
 });
 
 self.addEventListener("fetch", (e) => {
+  // File-scheme workers (VS Code Simple Browser's Electron partition
+  // allows them; tests and desktop Chrome do not) must not intercept:
+  // install skips the precache, so a network-first miss becomes a 504
+  // and the page silently falls off the twin voice onto the additive
+  // wind stack — the same high-noise class as an engine/model desync.
+  if (!/^https?:$/.test(self.location.protocol)) return;
   const req = e.request;
   if (req.method !== "GET") return;
   let url;
