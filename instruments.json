@@ -8,7 +8,7 @@
       "range": "A3–G6",
       "fingerings": "instruments/ico-oak-leaf-bass-c-triple/fingerings.json",
       "svg": "instruments/ico-oak-leaf-bass-c-triple/ocarina-template.svg",
-      "twin": "instruments/oot-alto-c-12/twin_model.json"
+      "twin": "instruments/ico-oak-leaf-bass-c-triple/twin_model.json"
     },
     {
       "id": "stein-double-alto-c",
@@ -43,7 +43,7 @@
       "range": "B2–F4",
       "fingerings": "instruments/ico-contrabass-11-c/fingerings.json",
       "svg": "instruments/ico-contrabass-11-c/ocarina-template.svg",
-      "twin": "instruments/oot-alto-c-12/twin_model.json"
+      "twin": "instruments/ico-contrabass-11-c/twin_model.json"
     },
     {
       "id": "dummy-bass-c-double",
@@ -52,7 +52,7 @@
       "range": "A3–C6",
       "fingerings": "instruments/dummy-bass-c-double/fingerings.json",
       "svg": "instruments/ico-oak-leaf-bass-c-triple/ocarina-template.svg",
-      "twin": "instruments/oot-alto-c-12/twin_model.json"
+      "twin": "instruments/dummy-bass-c-double/twin_model.json"
     }
   ]
 }

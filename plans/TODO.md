@@ -523,3 +523,9 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   missing chamber key uses chamber 1. tone.json load, V_ANCHORS, additive
   lite bus, and the additive debug groups are gone. twin_support_level is
   a twin-vs-twin contract. sw oco-pwa-v58. `8a7d68d`
+
+- **2026-09-29 (session 23 — oak/dummy/contrabass get their imagined twins back on the v45 engine)** —
+  Robin: they have their own chambers and imagined values; sharing the 12-hole
+  file was the wrong stand-in. Restored the guessed multi-chamber JSON from
+  origin/main (oak 1/2/3, dummy 1/2, contrabass single B2–F4). Helmholtz v45
+  plays those rows; it ignores `noise_mid_db` (engine-side mid-air). sw v59.
