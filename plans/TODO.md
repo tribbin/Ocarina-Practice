@@ -88,8 +88,6 @@ Nothing open — the WAV-export backlog dropped by Robin's audit 2026-09-28 (the
 
 ## 5. Architecture / maintenance
 
-- [ ] **Dismantle the additive/tone.json voice path (Robin's call 2026-09-28: "I don't want tone.json back. We're gonna dismantle that code path soon")** — the additive machinery is dormant since all five instruments declare `twin` (fitted or guessed). The teardown: installToneModel/TONE_MODEL + the tone.json fetch in loadInstrument (app.js) + voiceProfileFor + the V_ANCHORS/wind chain (windPark/warm/rough, air*, edge*, chiff*, ot* — the additive-only debug rows in js/debug.js retire too) + the additive lite voice (the twin has its own lite branch). Known entanglements: tests/twin_support_level uses the additive engine as its red-green comparison leg (rework to a twin-only anchored contract); instruments_load's "tone model install / interpolate / fallback" legs retire with the path; instruments/README.md's voice-swap + tone file-shapes sections rewrite. Order of play: after the guessed voices' field check + any last additive-backed comparisons — the tone.json DECLARATIONS are already gone (2026-09-28, the file:// console-noise unit), only the code remains. Additive is live again on oak, dummy and contrabass (site-matching). Teardown waits until a twin that beats the v45 pair exists for those instruments. `🟨 🟡 ⚙M`
-
 - [ ] **Engine upgrade drawing board (last good = live v45 pair)** — ocarina-practice.com still serves oco-pwa-v45 original Helmholtz + A4–A5 12-hole model (Pages deploy of PR #29 failed). The mid-air voice (4 kHz split, noise_mid_db, RMS-normalized noise) is noisier than that pair; it is parked (git history + ignored research/mid-air-upgrade/). Next attempt: A/B against the live site, ship engine JS and twin JSON as one deploy, bump the helmholtz `?v=` token with the module bytes. `🟧 🔴 ⚙L`
 
 ## 6. Tests & CI
@@ -517,3 +515,11 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   under ignored research/mid-air-upgrade/). Serving-layer (network-first /js/,
   file-scheme SW gates, voiceCard) stays. helmholtz import token ?v=3 so the
   Simple Browser cannot keep the mid-air module under ?v=1. sw oco-pwa-v57.
+
+- **2026-09-29 (session 23 — additive engine stripped; Helmholtz is the only voice)** —
+  Robin: those three should use the same twin engine the 12-hole uses. Oak,
+  dummy and contrabass now declare the restored v45 12-hole twin_model.json;
+  playNoteAt never falls through to PeriodicWave/wind/air/edge/chiff — a
+  missing chamber key uses chamber 1. tone.json load, V_ANCHORS, additive
+  lite bus, and the additive debug groups are gone. twin_support_level is
+  a twin-vs-twin contract. sw oco-pwa-v58. `8a7d68d`
