@@ -1,7 +1,5 @@
 This document is for not-forgetting ideas. Don't assume we want them implemented already. However, you may refer to them or keep them in mind.
 
-GET RID OF OLD SYNT <-- important
-
 SMALL SCREENS
 
 When a device has a small screen, they will not want to use certain functions.
@@ -14,9 +12,7 @@ As you'd not see much of the backdrop anyway, we probably want a dedicated fulls
 
 We will brainstorm this some time.
 
-OTHERS
-
-Make the 12-hole 'complete' regarding Zelda Ocarina of Time game songs.
+USABILITY
 
 Fully standardize how songs are written out, with and without support.
 
@@ -30,8 +26,18 @@ Have a 'browse' function to find songs by category.
 
 Make any support just another practice track you can choose from.
 
-Allow muting (or like 20% volume) the track you're practicing.
+Allow muting (or like 20% volume) the track you're practicing, when there are support tracks.
+
+A song should be a 'set' of tracks of which you can choose to play/practice any one of the tracks.
+
+Skip default CSS and go straight to correct theme.
+
+When clicking play or practice, stop media (YouTube/Spotify/...) that is playing.
+
+OTHERS
+
+Make the 12-hole 'complete' regarding Zelda Ocarina of Time game songs.
 
 "Buy me coffee" link: https://ko-fi.com/tribbin
 
-When clicking play or practice, stop media (YouTube/Spotify/...) that is playing.
+Did we lose chorus-effect in Zen with the new (twin) engine?
