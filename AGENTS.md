@@ -220,3 +220,5 @@ Windows (partition):
     Past ~400K, clarity visibly degrades: prefer ending early over pushing
     through. A half-finished TODO entry must never be the only memory of
     unfinished work.
+
+    Update September 30th: context of this LLM is at this moment hard-capped at 256K (at that point the session will stop working). To at 200K work towards finishing/wrapping up what you are doing.
