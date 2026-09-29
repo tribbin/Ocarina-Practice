@@ -7,8 +7,7 @@
       "version": "Imperial City Oak Leaf",
       "range": "A3–G6",
       "fingerings": "instruments/ico-oak-leaf-bass-c-triple/fingerings.json",
-      "svg": "instruments/ico-oak-leaf-bass-c-triple/ocarina-template.svg",
-      "twin": "instruments/ico-oak-leaf-bass-c-triple/twin_model.json"
+      "svg": "instruments/ico-oak-leaf-bass-c-triple/ocarina-template.svg"
     },
     {
       "id": "stein-double-alto-c",
@@ -42,8 +41,7 @@
       "version": "Imperial City",
       "range": "B2–F4",
       "fingerings": "instruments/ico-contrabass-11-c/fingerings.json",
-      "svg": "instruments/ico-contrabass-11-c/ocarina-template.svg",
-      "twin": "instruments/ico-contrabass-11-c/twin_model.json"
+      "svg": "instruments/ico-contrabass-11-c/ocarina-template.svg"
     },
     {
       "id": "dummy-bass-c-double",
@@ -51,8 +49,7 @@
       "version": "(dummy)",
       "range": "A3–C6",
       "fingerings": "instruments/dummy-bass-c-double/fingerings.json",
-      "svg": "instruments/ico-oak-leaf-bass-c-triple/ocarina-template.svg",
-      "twin": "instruments/dummy-bass-c-double/twin_model.json"
+      "svg": "instruments/ico-oak-leaf-bass-c-triple/ocarina-template.svg"
     }
   ]
 }

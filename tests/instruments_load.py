@@ -67,9 +67,9 @@ def boot_instrument(browser, base, inst_id, failures, tag):
     if state["tone"] == "MISSING":
         failures.append(f"{tag}: OCA_DEBUG.toneModel() missing (audio.js change?)")
     voice = state.get("voice")
-    if not isinstance(voice, dict) or voice.get("rev") != "mid-air-1":
+    if not isinstance(voice, dict) or voice.get("rev") != "v45-helmholtz":
         failures.append(
-            f"{tag}: OCA_DEBUG.voiceCard() must stamp mid-air-1 "
+            f"{tag}: OCA_DEBUG.voiceCard() must stamp v45-helmholtz "
             f"(got {voice!r})")
     tone_path = ROOT / "instruments" / inst_id / "tone.json"
     if tone_path.exists():

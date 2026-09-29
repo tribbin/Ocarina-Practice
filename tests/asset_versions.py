@@ -92,7 +92,7 @@ def main():
     else:
         core_entries = re.findall(r'"([^"]+)"', core_m.group(1))
         # tokenized import specifiers across the module graph
-        # ("./helmholtz-voice.js?v=1" forms; url strings may prefix ./ or ../)
+        # ("./helmholtz-voice.js?v=3" forms; url strings may prefix ./ or ../)
         spec_re = re.compile(
             r'["\'][./]*([A-Za-z0-9._-]+\.js)\?v=([A-Za-z0-9._-]+)["\']')
         tokens = {}

@@ -126,6 +126,15 @@ def main():
                 failures.append(
                     "an offline instrument swap must render the sheet")
 
+            # Resume twin-invalidation needs a declared twin on the LOADED
+            # instrument. Oak is additive (site-matching); switch back to
+            # the 12-hole before the model-fetch leg.
+            page.select_option("#instSel", "oot-alto-c-12")
+            page.wait_for_function(
+                "() => window.CURRENT_INSTRUMENT &&"
+                " window.CURRENT_INSTRUMENT.id === 'oot-alto-c-12'",
+                timeout=20000)
+
             context.set_offline(False)
             # The Chromium offline→online transition leaves service-worker
             # fetches rejected for a stretch (observed: the data-freshness
@@ -250,7 +259,7 @@ def main():
             # which serves a minutes-old clean copy and skips the SW).
             poison_marker = "window.__CB_POISON = true;"
             first = page.evaluate(poison_cache_js(
-                "js/helmholtz-voice.js?v=1", "text/javascript",
+                "js/helmholtz-voice.js?v=3", "text/javascript",
                 "\\n" + poison_marker + "\\n"))
             if first != "POISONED":
                 failures.append(
@@ -259,7 +268,7 @@ def main():
                     "reloads above should have it installed)")
             else:
                 served_stale = page.evaluate("""async () =>
-                    (await (await fetch('js/helmholtz-voice.js?v=1'))
+                    (await (await fetch('js/helmholtz-voice.js?v=3'))
                         .text()).includes('__CB_POISON')""")
                 if served_stale:
                     failures.append(
@@ -269,7 +278,7 @@ def main():
                         "copy still answered)")
                 cache_healed = page.evaluate("""async () => {
                   const c = await caches.open((await caches.keys())[0]);
-                  const hit = await c.match('js/helmholtz-voice.js?v=1');
+                  const hit = await c.match('js/helmholtz-voice.js?v=3');
                   return hit ? (await hit.text())
                         .includes("__CB_POISON") : "NO-HIT";
                 }""")

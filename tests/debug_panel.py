@@ -80,7 +80,7 @@ def main():
               const el = document.getElementById('dbgVoice');
               return el ? el.textContent : '';
             }""")
-            if "mid-air-1" not in (voice_line or ""):
+            if "v45-helmholtz" not in (voice_line or ""):
                 failures.append(
                     "the open panel must show the running voice stamp "
                     f"(#dbgVoice, got {voice_line!r})")

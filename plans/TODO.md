@@ -62,12 +62,12 @@ front is the guessed bass voices):
 
 | Item | Section |
 |---|---|
-| **FIELD CHECK the guessed bass twins — draft voices by design, his ears decide what ships beneath them** — dummy C double, ICO contrabass 11, ICO oak leaf triple now declare Grok's guessed twin models (scaled from the measured 12-hole mid-air model, `guessed: true`, `research/guessed-twins.zip`; NO WAV from these instruments was used): support tracks included — every support/track voice on twin-declaring instruments rides the twin engine at the anchored TWIN_SUPPORT_LEVEL 0.75 path. His ears name: the contrabass "hoot" class (lowest V: Q 38, most halo, least hiss), the oak triple's small bright top chamber (ch3 Cs6-G6), the dummy's mid chamber ≈ alto, the bass whoosh (Grok: the 4 kHz hiss split is STILL THE ALTO SPLIT on these — a real bass rush is lower), and how they sit under multi-track practice. Refit per chamber from real held takes when he records (triple wants three sessions, one per chamber; then the guesses go away) | §1 |
+| **FIELD CHECK the guessed bass twins — parked 2026-09-29 with the mid-air upgrade** — dummy / contrabass / oak match the live site again (additive). A later twin for those instruments A/Bs against ocarina-practice.com | §1 |
 | **Robin's dedicated one-take cross-instrument calibration recording** — the true relative volume between instruments (both ladder sessions "recorded quite similarly, should be close to the end-result"; the stein's land normalizes its max-volume −0.39 dB to the 12-hole's chain peak) | §1 |
 | **Robin's field check on the multi-track trio** — `outset-island-with-bass` now plays melody + audible bass groove (the bassline two octaves down) + contrabass root-holds; his ears name the balance, the contrabass register, the practice-session audibility and the groove's final-bar cut | §7 |
 | **Robin's ears on the Epona contrabass** — `eponas-song` now carries `#track contrabass audible 100` (ranch bass bar-for-bar); Saria's Song he already heard green 2026-09-28 | §Log |
 | **Robin's eyeball pass** on the panel builds: the HiFi retune batch (`?hifi` — amber buttons, dark segment row/select, deeper zen red, LED fills) and the favorites stars in the library — his values, built to spec; he retunes anything that reads off | feel checks |
-| The twin-model chamber fits per remaining ocarina — recording held takes for the contrabass, oak leaf and dummy when Robin gets hands-on time (all three now play GUESSED twins until then; the stein double + the 12-hole carry their full ladder fits, field-blessed) | §1 |
+| The twin-model chamber fits per remaining ocarina — recording held takes for the contrabass, oak leaf and dummy when Robin gets hands-on time (all three play additive, matching the live site; 12-hole + stein are the restored v45 twins) | §1 |
 | The next audio-tick field catch names itself (spike cards carry the ambient ring); Robin re-introduces the hunt when the ticks matter | DONE (re-openable) |
 | Shipped-songs standardization stays HELD for Robin's later-stage pass; the permalinks corpora ride his planting as always | §9 |
 | Library widening (search, reordering beyond the pin) stays parked until Robin elects it | §9 |
@@ -76,7 +76,7 @@ front is the guessed bass voices):
 
 ## 1. Bugs (correctness / data loss)
 
-- [ ] **Record real held takes -> refit per chamber (the only remaining twin-fitting work; the guessed twins carry every instrument until then)** — dummy-bass-c-double ch1 A3-Ds5 + ch2 E5-C6; ico-oak-leaf-bass-c-triple ch1+ch2+ch3 (Grok: THREE short sessions, one chamber per session, normal blow only); ico-contrabass-11-c one session B2-F4 (its guessed model even retunes the dry-mid split to the instrument's own f0 range — the refit replaces that guess with a measured split). PLUS the stein ch2's E6 re-blow for a fittable take (two fails: res -0.0 both times — tracker slips on that wobble's attack slice); then the wrapper gains re-derive from the raw peaks. The cross-chamber/cross-instrument gain doctrine + refit loop live in skills/ocarina-twin/SKILL.md; refits go through Grok's lead fitter unchanged. `🟨 🟡 ⚙M`
+- [ ] **Record real held takes -> refit per chamber (the only remaining twin-fitting work; the guessed twins carry every instrument until then)** — dummy-bass-c-double ch1 A3-Ds5 + ch2 E5-C6; ico-oak-leaf-bass-c-triple ch1+ch2+ch3 (Grok: THREE short sessions, one chamber per session, normal blow only); ico-contrabass-11-c one session B2-F4 (its guessed model even retunes the dry-mid split to the instrument's own f0 range — the refit replaces that guess with a measured split). PLUS the stein ch2's E6 re-blow for a fittable take (two fails: res -0.0 both times — tracker slips on that wobble's attack slice); then the wrapper gains re-derive from the raw peaks. The cross-chamber/cross-instrument gain doctrine + refit loop live in skills/ocarina-twin/SKILL.md; refits go through Grok's lead fitter unchanged. Parked 2026-09-29: these guessed twins no longer ship. Oak / dummy / contrabass match the live site (additive). 12-hole + stein restored to the v45 models. Mid-air JSON sits in git history. `🟨 🟡 ⚙M`
 
 ## 2. Robustness / error handling
 
@@ -88,7 +88,9 @@ Nothing open — the WAV-export backlog dropped by Robin's audit 2026-09-28 (the
 
 ## 5. Architecture / maintenance
 
-- [ ] **Dismantle the additive/tone.json voice path (Robin's call 2026-09-28: "I don't want tone.json back. We're gonna dismantle that code path soon")** — the additive machinery is dormant since all five instruments declare `twin` (fitted or guessed). The teardown: installToneModel/TONE_MODEL + the tone.json fetch in loadInstrument (app.js) + voiceProfileFor + the V_ANCHORS/wind chain (windPark/warm/rough, air*, edge*, chiff*, ot* — the additive-only debug rows in js/debug.js retire too) + the additive lite voice (the twin has its own lite branch). Known entanglements: tests/twin_support_level uses the additive engine as its red-green comparison leg (rework to a twin-only anchored contract); instruments_load's "tone model install / interpolate / fallback" legs retire with the path; instruments/README.md's voice-swap + tone file-shapes sections rewrite. Order of play: after the guessed voices' field check + any last additive-backed comparisons — the tone.json DECLARATIONS are already gone (2026-09-28, the file:// console-noise unit), only the code remains. `🟨 🟡 ⚙M`
+- [ ] **Dismantle the additive/tone.json voice path (Robin's call 2026-09-28: "I don't want tone.json back. We're gonna dismantle that code path soon")** — the additive machinery is dormant since all five instruments declare `twin` (fitted or guessed). The teardown: installToneModel/TONE_MODEL + the tone.json fetch in loadInstrument (app.js) + voiceProfileFor + the V_ANCHORS/wind chain (windPark/warm/rough, air*, edge*, chiff*, ot* — the additive-only debug rows in js/debug.js retire too) + the additive lite voice (the twin has its own lite branch). Known entanglements: tests/twin_support_level uses the additive engine as its red-green comparison leg (rework to a twin-only anchored contract); instruments_load's "tone model install / interpolate / fallback" legs retire with the path; instruments/README.md's voice-swap + tone file-shapes sections rewrite. Order of play: after the guessed voices' field check + any last additive-backed comparisons — the tone.json DECLARATIONS are already gone (2026-09-28, the file:// console-noise unit), only the code remains. Additive is live again on oak, dummy and contrabass (site-matching). Teardown waits until a twin that beats the v45 pair exists for those instruments. `🟨 🟡 ⚙M`
+
+- [ ] **Engine upgrade drawing board (last good = live v45 pair)** — ocarina-practice.com still serves oco-pwa-v45 original Helmholtz + A4–A5 12-hole model (Pages deploy of PR #29 failed). The mid-air voice (4 kHz split, noise_mid_db, RMS-normalized noise) is noisier than that pair; it is parked (git history + ignored research/mid-air-upgrade/). Next attempt: A/B against the live site, ship engine JS and twin JSON as one deploy, bump the helmholtz `?v=` token with the module bytes. `🟧 🔴 ⚙L`
 
 ## 6. Tests & CI
 
@@ -502,3 +504,16 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   chart id, note range, F6 chamber and a twin/chart mismatch flag so one
   paste names the pair. Playing F6 through oak chamber 1 (A3–Ds5 rows at
   1397 Hz) is the high-noise class.
+
+- **2026-09-29 (session 23 — drawing board: restore the v45 pair locally, mid-air does not ship)** —
+  Live ocarina-practice.com is still oco-pwa-v45 original Helmholtz (2800 Hz
+  hiss, no mid band, unnormalized noise) + A4–A5 12-hole model; Pages deploy
+  of PR #29 failed, so last night's merge never reached the site. That pair
+  is the last known-good. Local Simple Browser was the mid-air upgrade, which
+  Robin hears as high noise against the site. Restored on restore-v45-voice:
+  js/helmholtz-voice.js and the 12-hole + stein twin_model.json from 240fbe8
+  (VOICE_REV v45-helmholtz); oak/dummy/contrabass drop their twin declarations
+  (additive, as the site); guessed mid-air JSON leaves instruments/ (copies
+  under ignored research/mid-air-upgrade/). Serving-layer (network-first /js/,
+  file-scheme SW gates, voiceCard) stays. helmholtz import token ?v=3 so the
+  Simple Browser cannot keep the mid-air module under ?v=1. sw oco-pwa-v57.
