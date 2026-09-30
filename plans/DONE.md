@@ -373,6 +373,8 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 
 - [x] ~~**Per-instrument loudness dial in the debug panel (Robin's ask; his batch: session-only, table of five, -3..+9 dB)** — five AUDIO_DEBUG keys mapped by instrument id through instLevelGain() = 10^(dB/20) off the loaded instrument, multiplied into all four voice masters so melody/supports/tracks all carry the offset with 0 dB untouched; the panel's volatile-row carve-out keeps the dial out of localStorage while plain rows persist; debug_panel red-first legs pin the rows, the gain math and the two-sided volatility contract (commit `7f44c98`); in live use now — his settled numbers ride back into code when he names them. `🟢 ⚪ ⚙S`~~ ✅ 2026-09-28 `7f44c98`
 
+- [x] ~~**"Buy me a coffee" link (IDEAS; ko-fi.com/tribbin)** — not in the app yet (78b9646 only touched IDEAS.txt); add the link to the help-screen colophon beside the issues link (target=_blank rel=noopener) and pin its presence. `🟢 🟡 ⚙S`~~ ✅ 2026-09-30 `46dec09` — Landed in 46dec09: the link now sits in the help-screen colophon beside the issues link (index.html .help-meta, ko-fi.com/tribbin, target=_blank rel=noopener); both colophon links are pinned in tests/sr_hints.py's help-overlay leg (help1.links), so the presence, new-tab target and noopener survive refactors. Sweep 47/47, sw oco-pwa-v62.
+
 > **Idle idea pool: `plans/IDEAS.txt`.** A live document Robin edits over time and ROBIN'S ALONE — the AI never writes it (it may be read, and only lifted into TODO.md when Robin explicitly asks). TODO carries no copy or summary: when an idea from it is picked up, read the FILE fresh at that moment; never rely on a remembered or transcribed version.
 
 ---
