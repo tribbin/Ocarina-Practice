@@ -23,12 +23,15 @@
 #      surviving cells flex evenly as direct children of #kb — every key
 #      the same width, no horizontal scrolling. On desktop the octave rows
 #      keep their flex layout and every key stays visible (dimmed).
-#   5. Phone chrome trims: with the playback block expanded, the token
-#      strip (#tokens) is still display:none; the three tab-tools rows
+#   5. Phone chrome trims: the playback collapse chevron is display:none
+#      (its only content below the head is #tokens, which the small-screen
+#      rule already hides — it toggles nothing); with the block expanded the
+#      token strip stays display:none; the three tab-tools rows
 #      (Enlarge / Grid|Scroll|Single / share|print|download) stack
 #      top-to-bottom, each centered on the viewport.
-#   6. Desktop regression: the editor face, the backdrop layer and the
-#      1fr-auto-1fr playback grid are all unchanged.
+#   6. Desktop regression: the editor face, the backdrop layer, the
+#      1fr-auto-1fr playback grid and the playback chevron are all
+#      unchanged.
 #   7. Section titles keep a uniform, natural distance from their block's
 #      top: at phone width each .head-label (Song Library, Playback Control,
 #      Piano) sits the same distance below its .block's top edge, in the
@@ -286,7 +289,11 @@ def main():
             # Expand the playback block first: it boots collapsed, and the
             # collapsed state already hides #tokens via its own rule — the
             # leg must prove the SMALL-SCREEN rule hides it even when open.
-            page.click("#playback .collapse-btn")
+            # The chevron itself is the small-screen vestige this pass
+            # retires, so the expand goes through the class directly.
+            page.evaluate(
+                "() => document.getElementById('playback')"
+                ".classList.remove('collapsed')")
             tools = page.evaluate("""
               () => {
                 const cx = el => {
@@ -303,9 +310,18 @@ def main():
                 return {
                   tokens: getComputedStyle(
                     document.getElementById('tokens')).display,
+                  chev: getComputedStyle(
+                    document.querySelector('#playback .collapse-btn'))
+                    .display,
                   rows: rows, vw: innerWidth,
                 };
               }""")
+            if tools["chev"] != "none":
+                failures.append(
+                    "the playback collapse chevron must be display:none on "
+                    "a phone (got display "
+                    f"{tools['chev']!r}) — its only content below the head "
+                    "is #tokens, which the small-screen rule already hides")
             if tools["tokens"] != "none":
                 failures.append(
                     "the token strip (#tokens) must be display:none on a "
@@ -358,6 +374,9 @@ def main():
                               bg: before.backgroundImage },
                   grid: getComputedStyle(head).display,
                   sameRow: Math.abs(cy(hl) - cy(tw)),
+                  chev: getComputedStyle(
+                    document.querySelector('#playback .collapse-btn'))
+                    .display,
                 };
               }""")
             if desk["headLeft"] == "none" or desk["libPairs"] == "none":
@@ -384,6 +403,10 @@ def main():
                     "the desktop playback head groups must sit on one row "
                     f"(head-left vs transport centerline off by "
                     f"{desk['sameRow']}px)")
+            if desk["chev"] == "none":
+                failures.append(
+                    "the desktop playback collapse chevron must stay visible "
+                    "(display:none is a small-screen rule only)")
             ctx.close()
 
             # ---------- 7: section titles keep a uniform top distance ----------

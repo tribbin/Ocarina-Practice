@@ -1976,6 +1976,12 @@ html[data-theme="oot"] header.app button.ghost {
   #playback .head-left { order: 1; }
   #playback .tempo-lab { order: 2; margin-left: 0; align-items: center; }
 
+  /* The playback head's only content below the head is #tokens, which the
+     rule further down already hides — its chevron toggles nothing on a
+     phone, so it goes away (the input block's chevron already drops with
+     its .head-left). */
+  #playback .collapse-btn { display: none; }
+
   /* The keyboard trims to the playable span: out-of-range keys and their
      empty cells drop out; the .oct rows dissolve to display:contents so
      the surviving cells flex evenly as direct children of #kb — every key
