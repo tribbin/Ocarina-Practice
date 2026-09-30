@@ -561,6 +561,7 @@ function highlightToken(i, noteId, durSec, sounding) {
   }
   if (noteId) {
     document.querySelectorAll('.key[data-note="' + noteId + '"]').forEach(el => el.classList.add("now"));
+    scrollKbToActive(noteId);
     if (sounding && !lite) pulseZenGlow(noteId, durSec);
   }
 }
@@ -726,6 +727,41 @@ function scrollFocusStripTo(i) {
     return;
   }
   animatedStripScrollTo(strip, target);
+}
+
+let kbScrollRaf = 0;
+// Small-screen keyboard (the max-width:760px rules give #kb overflow-x:auto
+// with 32px columns): the 42-column board is wider than a phone, so glide it
+// to keep the sounding key in view — at ~7px crushed keys the eye cannot
+// follow the melody. No-op whenever the board fits (desktop) or the keyboard
+// is not laid out. Same bounded glide contract as the sheet/strip:
+// <=160ms eased, big jumps snap.
+function scrollKbToActive(noteId) {
+  const kb = document.getElementById("kb");
+  if (!kb || !kb.offsetParent || kb.scrollWidth <= kb.clientWidth) return;
+  const el = kb.querySelector('.key.now[data-note="' + noteId + '"]');
+  if (!el) return;
+  const k = kb.getBoundingClientRect();
+  const c = el.getBoundingClientRect();
+  const target = Math.max(0, Math.min(kb.scrollWidth - kb.clientWidth,
+    kb.scrollLeft + ((c.left + c.width / 2) - (k.left + k.width / 2))));
+  if (Math.abs(target - kb.scrollLeft) > kb.clientWidth) {
+    if (kbScrollRaf) { cancelAnimationFrame(kbScrollRaf); kbScrollRaf = 0; }
+    kb.scrollLeft = target;
+    return;
+  }
+  if (kbScrollRaf) cancelAnimationFrame(kbScrollRaf);
+  const from = kb.scrollLeft, dist = target - from;
+  if (Math.abs(dist) < 1) { kb.scrollLeft = target; return; }
+  const dur = Math.max(60, Math.min(160, Math.abs(dist) / 2));
+  const t0 = performance.now();
+  const ease = x => 1 - Math.pow(1 - x, 3);
+  const step = now => {
+    const p = Math.min(1, (now - t0) / dur);
+    kb.scrollLeft = from + dist * ease(p);
+    kbScrollRaf = p < 1 ? requestAnimationFrame(step) : 0;
+  };
+  kbScrollRaf = requestAnimationFrame(step);
 }
 
 function clearHighlight() {
