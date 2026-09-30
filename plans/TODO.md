@@ -64,7 +64,7 @@ work; decisions + state in the session-24 log):
 
 | Item | Section |
 |---|---|
-| **USABILITY BATCH (approved 2026-09-30, session-24 handoff; 5 of 10 landed: `3eb740d` + `f84b564` + `46dec09` + `0588d99`, zen-chorus audit report-only; small-screen first pass `d77a153` in, its keyboard scroll-follow REJECTED)** — small-screen remainder (hide the dimmed out-of-range keys + the token strip on small portrait, static keyboard — no scroll during play, center the Enlarge / Grid\|Scroll\|Single / share\|print\|download rows), song .txt round-trip, media-session announce + media keys, coffee icon after "Buy me a coffee", duck icon → loud/soft speaker | §1/§7/§9 |
+| **USABILITY BATCH (approved 2026-09-30, session-24 handoff; 5 of 10 landed: `3eb740d` + `f84b564` + `46dec09` + `0588d99`, zen-chorus audit report-only; small-screen pass complete: first `d77a153`, corrected static board `ed31f89` + `b666034`, Robin's three phone field-check defects pinned at `30e496d` + `2016408` + `740d637`, sw oco-pwa-v69 / css-v10, HELD for his field check of the uniform board)** — small-screen field check (Robin's phone: uniform board + the three pinned fixes), song .txt round-trip, media-session announce + media keys, coffee icon after "Buy me a coffee", duck icon → loud/soft speaker | §1/§7/§9 |
 | HiFi stays UNPUBLISHED — the retune + favorites pass is accepted, but Robin holds publication for now (2026-09-30) | hold |
 | Shipped-songs standardization stays HELD for Robin's later-stage pass; the permalinks corpora ride his planting as always | §9 |
 | Library widening (search, reordering beyond the pin) stays parked until Robin elects it | §9 |
@@ -91,7 +91,7 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 
 ## 7. Accessibility & UX
 
-- [ ] **Small-screen layout pass (IDEAS: SMALL SCREENS, approved 2026-09-30)** — phones are play/practice, not editing: the editor block is HIDDEN on narrow screens, transport + controls stack into clean vertical rows (today they are "all over the place"), NO backdrop image in portrait, whole viewport functional in normal mode; zen mode stays as-is (Robin: already looks very good). FIRST PASS `d77a153` IS IN (editor face hidden with the Song Library kept, playback head stacked into centered rows, Hyrule backdrop off in portrait; sw oco-pwa-v64, css-v5) BUT THE KEYBOARD HALF IS REJECTED — Robin 2026-09-30: the board scrolling during play is annoying; instead the TRANSPARENT keys (out-of-instrument, dimmed via inline opacity .25 white / .2 black in buildKB) are HIDDEN on small portrait screens so the board shows only the playable keys — static, NO auto-scroll (delete scrollKbToActive from ui.js and the 32px-column/overflow-x rules; give the dimmed keys a class so the media query can display:none them). ALSO: the token strip (#tokens in the playback block — "the other dropdown showing tokens") is hidden on small portrait too (not ergonomic there); and the three tab-tools rows each center: Enlarge small holes, Grid|Scroll|Single, share|print|download. tests/phone_layout.py legs 4-5 pin the rejected scroll-follow and must be re-pinned to the static board + hidden dimmed keys + hidden #tokens + centered tab-tools rows. Second pass landed (ed31f89) plus the uniform-key fix (b666034): the .oct rows dissolve to display:contents under 760px so the surviving cells flex to equal widths (Robin: sparse octaves stretched their keys), octave radii flattened, phone_layout re-pinned to the static uniform board + expanded-block #tokens check `🟧 🔴 ⚙L`
+- [ ] **Small-screen layout pass (IDEAS: SMALL SCREENS, approved 2026-09-30)** — phones are play/practice, not editing: the editor block is HIDDEN on narrow screens, transport + controls stack into clean vertical rows (today they are "all over the place"), NO backdrop image in portrait, whole viewport functional in normal mode; zen mode stays as-is (Robin: already looks very good). FIRST PASS `d77a153` IS IN (editor face hidden with the Song Library kept, playback head stacked into centered rows, Hyrule backdrop off in portrait; sw oco-pwa-v64, css-v5) BUT THE KEYBOARD HALF IS REJECTED — Robin 2026-09-30: the board scrolling during play is annoying; instead the TRANSPARENT keys (out-of-instrument, dimmed via inline opacity .25 white / .2 black in buildKB) are HIDDEN on small portrait screens so the board shows only the playable keys — static, NO auto-scroll (delete scrollKbToActive from ui.js and the 32px-column/overflow-x rules; give the dimmed keys a class so the media query can display:none them). ALSO: the token strip (#tokens in the playback block — "the other dropdown showing tokens") is hidden on small portrait too (not ergonomic there); and the three tab-tools rows each center: Enlarge small holes, Grid|Scroll|Single, share|print|download. tests/phone_layout.py legs 4-5 pin the rejected scroll-follow and must be re-pinned to the static board + hidden dimmed keys + hidden #tokens + centered tab-tools rows. Second pass landed (ed31f89) plus the uniform-key fix (b666034): the .oct rows dissolve to display:contents under 760px so the surviving cells flex to equal widths (Robin: sparse octaves stretched their keys), octave radii flattened, phone_layout re-pinned to the static uniform board + expanded-block #tokens check; Robin's 2026-09-30 phone pass on b666034 then caught three more small-screen defects, all fixed + pinned (30e496d / 2016408 / 740d637, sw oco-pwa-v69, css-v10): the "Playback Control" title sat 61px below the block top while Song Library / Piano sat at 9px (measured red by probe; the SONG-LIBRARY-vs-PIANO distance itself did not reproduce at 9px/9px, collapsed and expanded — "big mode" is ambiguous, confirm at the field check) → the t-wrap title row now leads the stacked head (head-left order 1, tempo-lab order 2; leg 7 pins the per-block .head-label offset span ≤2px in both states); the vestigial #playback collapse chevron (its only sub-head content, #tokens, is already hidden on a phone) is display:none under 760px (leg 5 pins phone-none / desktop-visible); the theme/? .head-tools wrapped flush left on the header's third line → margin-left:auto keeps the content-edge right alignment (leg 8 pins wrap order h1 → picker → tools + the right edge; leg 6 guards the desktop edge). Held for Robin's field check of the uniform board + these three before close. `🟧 🔴 ⚙L`
 
 - [ ] **Coffee icon after the help-screen "Buy me a coffee" link (IDEAS: coffee icon, approved 2026-09-30)** — Robin: a small coffee icon right after the 'Buy me a coffee' colophon link in the help screen (planted 7a4da56); static, no behavior; the sr_hints help-overlay leg pins both colophon links, keep it green. `🟢 🟠 ⚙S`
 
@@ -359,3 +359,34 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   svg_cache, reduced_motion; eslint + html-validate clean. sw
   oco-pwa-v66, css-v7. The small-screen item stays open on Robin's field
   check of the uniform board.
+
+- **2026-09-30 (session 26 — the phone field-check trio lands pinned: titles lead their blocks, the dead chevron goes, the wrapped header keeps its edge)** —
+  Picked up plans/HANDOFF.md (untracked, Robin's landing brief). Robin's phone
+  pass on the b666034 board (sw oco-pwa-v66 / css-v7) caught three
+  small-screen defects; all three are fixed on usability1 and pinned in
+  phone_layout (now 8 legs), each commit carrying its own sw/css bump.
+  (1) Section titles: "Playback Control" sat 61px below its block top while
+  Song Library and Piano sat at 9px — the stacked playback head led with its
+  wrapped control rows (head-left before t-wrap); a fresh-context headless
+  probe measured the repro red pre-fix (playback 61px, tools flush left at
+  x=20), then under 760px the t-wrap row takes the top slot (head-left order
+  1, tempo-lab order 2) so every .head-label sits at the same natural
+  distance from its .block top; new leg 7 pins the per-block offsets within
+  2px, collapsed AND expanded. The SONG-LIBRARY-vs-PIANO distance itself
+  measured equal at 9px/9px in the current build in both states — "big
+  mode" is ambiguous (expanded block? Enlarge-small-holes toggle? wider
+  viewport?) and did not reproduce; held for Robin's field-check words.
+  (2) The playback collapse chevron is vestigial on a phone: the block's
+  only content below the head is #tokens, already display:none there, so
+  the toggle did nothing — #playback .collapse-btn is now display:none
+  under 760px; leg 5 expands the block through classList instead of the
+  click and pins chevron phone-none against desktop-visible (leg 6).
+  (3) The theme/? .head-tools wrapped flush left on the phone header's
+  third line; .head-tools gets margin-left:auto under 760px so the wrapped
+  line keeps the header's content-edge right alignment; leg 8 pins the wrap
+  order (h1 line, picker line, tools line below) + the right edge, leg 6
+  guards the desktop edge. Battery: phone_layout (8 legs), asset_versions,
+  console_hygiene, keyboard_widgets green; eslint + html-validate clean.
+  sw oco-pwa-v69, css-v10; commits 30e496d, 2016408, 740d637. The §7
+  small-screen item stays open — held for Robin's field check of the
+  uniform board + these three before it closes.
