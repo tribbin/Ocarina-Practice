@@ -126,8 +126,14 @@ def main():
                       return 'no-unit';
                     const ic = unit.querySelector('svg.help-coffee');
                     const ir = ic ? ic.getBoundingClientRect() : null;
+                    const issues = [...ov.querySelectorAll('a')]
+                      .find(x => ((x.getAttribute('href') || '')
+                                  .indexOf('/issues') !== -1));
+                    const irs = issues ? issues.getBoundingClientRect() : null;
                     return (getComputedStyle(unit).whiteSpace === 'nowrap' &&
-                            ir && ir.width > 0 &&
+                            getComputedStyle(unit).display === 'block' &&
+                            irs && ir && ir.top >= irs.bottom - 1 &&
+                            ir.width > 0 &&
                             getComputedStyle(ic).display !== 'none')
                       ? 'unit' : 'loose';
                   })(),
@@ -147,9 +153,9 @@ def main():
                                 f"rel=noopener (got {kofi!r})")
             if help1["coffee"] != "unit":
                 failures.append(
-                    "the coffee sentence must wrap as one unit: a "
-                    "white-space:nowrap .coffee-unit span holding the "
-                    "ko-fi link and its icon together "
+                    "the coffee sentence must sit on its own line below the "
+                    "issues link: display:block white-space:nowrap "
+                    f".coffee-unit wrapping the ko-fi link and its icon "
                     f"(got {help1['coffee']!r})")
             if not help1["visible"]:
                 failures.append("the opened overlay must be VISIBLE on screen "

@@ -1951,10 +1951,10 @@ html[data-theme="oot"] .help-card { --panel: #fff; }
 /* Small coffee cup after the ko-fi colophon link (Robin, 2026-09-30):
    decorative, sized off the line's own text and painted with its ink. */
 .help-coffee { width: 1em; height: 1em; margin-left: 3px; vertical-align: -0.12em; fill: currentColor; }
-/* The coffee sentence wraps as one unit (Robin, 2026-09-30): in a narrow
-   card the whole "Like the tool? Buy me a coffee" phrase drops below the
-   issues line instead of breaking mid-phrase. */
-.coffee-unit { white-space: nowrap; }
+/* The coffee sentence owns the line below the issues line (Robin,
+   2026-09-30): block flow puts it on its own line in every card width,
+   and nowrap keeps the phrase whole — no mid-phrase breaks. */
+.coffee-unit { display: block; white-space: nowrap; }
 
 /* Practice history line: one muted run summary under the tuner track. */
 .prac-history {
