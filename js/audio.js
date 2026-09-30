@@ -749,6 +749,14 @@ function setVibratoEnabled(on) {
   vibratoEnabled = !!on;
 }
 
+// Melody duck: while ON, the MAIN melody voice is scheduled at the duck
+// level so the player's live ocarina leads over the (full-level) supports
+// and #track layers. Session-only; the transport button toggles it.
+let melodyDuck = false;
+const MELODY_DUCK_LEVEL = 0.2;
+function setMelodyDuck(on) { melodyDuck = !!on; }
+function melodyDuckOn() { return melodyDuck; }
+
 function unlockAudio() {
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
@@ -913,7 +921,12 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     // Per-track mix: the melody voice and every legacy bag carry no
     // trackGain (full volume); a named track's bag scales both its plateau
     // (M below) and — reported to the sink here — the mix ratio observable.
-    const voiceGain = isMelodyBag(bag) && bag.trackGain != null ? bag.trackGain : 1;
+    // Melody duck (the transport toggle): only the MAIN melody drops to the
+    // duck level; tracks and supports keep full volume, so the player's
+    // live ocarina leads.
+    const duckGain = bag === melodyBag && melodyDuck ? MELODY_DUCK_LEVEL : 1;
+    const voiceGain = (isMelodyBag(bag) && bag.trackGain != null
+                       ? bag.trackGain : 1) * duckGain;
     if (noteSink) try { noteSink(id, when, durSec, slideFromId, intoSlide, voiceGain); } catch (e) {}
     // Late scheduling (a main-thread stall past the 0.3 s lookahead — GC/JIT
     // bursts, worse on phones) hands a `when` already in the past. All gain/
@@ -1714,8 +1727,9 @@ function scheduleMelody(when) {
 
 export { AUDIO_DEFAULTS, audioCtx, audioPerfReset, audioPerfSnapshot, cutLive, freqOf,
          getReverbBus, installTwinModel, isMelodyPaused, isMelodyPlaying, liteMode,
-         pauseMelody, perf, playMelody, playNote, playNoteAt, quarterSecFor, resumeMelody,
-         reverbEnabled, setBassEnabled, setPerfAlertListener, setReverbEnabled,
+         melodyDuckOn, pauseMelody, perf, playMelody, playNote, playNoteAt, quarterSecFor,
+         resumeMelody, reverbEnabled, setBassEnabled, setMelodyDuck,
+         setPerfAlertListener, setReverbEnabled,
          setVibratoEnabled, soundingGridBeats, stopMelody, syncTransport,
          sysSoundUntilSec, tokenGridBeats, swungBeats, lastHoldIndex, togglePlayPause,
          unlockAudio, setNoteSink, setAuditionSink, sharedAudioCtx };

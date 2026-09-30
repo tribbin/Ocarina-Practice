@@ -144,6 +144,15 @@ def main():
                 page.wait_for_function(
                     "typeof OCA_PRACTICE !== 'undefined' && !!OCA_PRACTICE"
                     " && window.NOTES && window.NOTES.length")
+                # OCA_PRACTICE/NOTES land at module-eval time, but boot()'s
+                # tail still runs after: loadLibraryItem opens with
+                # stopMelody() and kills any playback a probe starts in the
+                # gap. boot fills #scale only after loadInstrument resolves,
+                # and loadLibraryItem follows synchronously in the same tail,
+                # so a populated #scale is the settled rendezvous.
+                page.wait_for_function(
+                    "() => document.getElementById('scale').options.length > 0",
+                    timeout=15000)
                 page._errs = []
                 page.on("pageerror", lambda e, q=page: q._errs.append(str(e)))
                 runs = page.evaluate(RUN_DRIVER, driver_cases)
@@ -215,6 +224,9 @@ def main():
             page.wait_for_function(
                 "typeof OCA_PRACTICE !== 'undefined' && !!OCA_PRACTICE"
                 " && window.NOTES && window.NOTES.length")
+            page.wait_for_function(
+                "() => document.getElementById('scale').options.length > 0",
+                timeout=15000)
             page._errs = []
             page.on("pageerror", lambda e: page._errs.append(str(e)))
             print("== equivalence: track line == melody line", flush=True)
@@ -277,6 +289,9 @@ def main():
             page.wait_for_function(
                 "typeof OCA_PRACTICE !== 'undefined' && !!OCA_PRACTICE"
                 " && window.NOTES && window.NOTES.length")
+            page.wait_for_function(
+                "() => document.getElementById('scale').options.length > 0",
+                timeout=15000)
             page._errs = []
             page.on("pageerror", lambda e: page._errs.append(str(e)))
             pills = page.evaluate("""() => {
@@ -326,6 +341,9 @@ def main():
                 page.wait_for_function(
                     "typeof OCA_PRACTICE !== 'undefined' && !!OCA_PRACTICE"
                     " && window.NOTES && window.NOTES.length")
+                page.wait_for_function(
+                    "() => document.getElementById('scale').options.length > 0",
+                    timeout=15000)
                 _errs = []
                 page.on("pageerror", lambda e, q=page: q._errs.append(str(e)))
                 drv = """
@@ -387,6 +405,77 @@ def main():
             gain_case("C5/2 r/2\n#track bass audible\nC5/2 C5/2",
                       1.0, "no percent = full volume")
 
+            # 11 — melody duck on/off: the transport button drops the MAIN
+            # melody to the duck level while the track (and the supports)
+            # keep full volume, so the player's ocarina leads. The sink
+            # exposes voiceGain as mlev; different pitches keep the two
+            # streams apart, so the ratio is exact.
+            print("== melody duck on/off", flush=True)
+            page = browser.new_page()
+            page.goto(base + "?nofs=1")
+            page.wait_for_function(
+                "typeof OCA_PRACTICE !== 'undefined' && !!OCA_PRACTICE"
+                " && window.NOTES && window.NOTES.length")
+            page.wait_for_function(
+                "() => document.getElementById('scale').options.length > 0",
+                timeout=15000)
+            _errs = []
+            page.on("pageerror", lambda e, q=page: q._errs.append(str(e)))
+            duck = page.evaluate("""
+() => new Promise(resolve => {
+  const duckBtn = document.getElementById('mirrorDuck');
+  const zenDuckBtn = document.getElementById('focusDuck');
+  if (!duckBtn || !zenDuckBtn) { resolve({ missing: true }); return; }
+  const phases = [[], []];
+  let phase = 0, ui1 = null;
+  setNoteSink((id, when, dur, sf, is, mlev) => {
+    if (when >= 0) phases[phase].push({ id, mlev });
+  });
+  document.getElementById('src').value =
+    "C5/2 r/2\\n#track bass audible\\nE5/2 E5/2";
+  render();
+  const readBtn = (b) => ({ pressed: b.getAttribute('aria-pressed'),
+                            on: b.classList.contains('on') });
+  const uiState = () => ({ m: readBtn(duckBtn), f: readBtn(zenDuckBtn) });
+  const ui0 = uiState();
+  const startPhase = () => {
+    playMelody();
+    const start = performance.now();
+    const poll = () => {
+      const evs = phases[phase];
+      const c5 = evs.filter(e => e.id === 'C5').length;
+      const e5 = evs.filter(e => e.id === 'E5').length;
+      if (c5 >= 1 && e5 >= 2) {
+        stopMelody();
+        setTimeout(() => {
+          duckBtn.click();
+          if (phase === 0) {
+            ui1 = uiState();
+            phase = 1;
+            startPhase();
+          } else {
+            resolve({ ui0, ui1, ui2: uiState(), evs: phases });
+          }
+        }, 350);
+        return;
+      }
+      if (performance.now() - start > 9000) {
+        stopMelody();
+        resolve({ ui0, ui1, ui2: uiState(), evs: phases, timeout: true });
+        return;
+      }
+      setTimeout(poll, 120);
+    };
+    setTimeout(poll, 120);
+  };
+  startPhase();
+})
+""")
+            if _errs:
+                failures.append(f"melody duck: page errors {_errs}")
+            page.close()
+            duck_check(duck, failures)
+
             browser.close()
     finally:
         httpd.shutdown()
@@ -420,6 +509,54 @@ def _want_absent(name, run, pitches, failures):
     hits = [e for e in events if e[0] in pitches]
     if hits:
         failures.append(f"{name}: unexpectedly fired {hits}")
+
+
+def duck_check(r, failures):
+    if r.get("missing"):
+        failures.append("melody duck: #mirrorDuck/#focusDuck missing from "
+                        "the transports")
+        return
+    if r.get("timeout"):
+        failures.append(f"melody duck: timed out (events {r.get('evs')!r})")
+        return
+    for key, where in (("m", "transport"), ("f", "zen mirror")):
+        ui0 = (r.get("ui0") or {}).get(key)
+        ui1 = (r.get("ui1") or {}).get(key)
+        ui2 = (r.get("ui2") or {}).get(key)
+        if not ui0 or ui0.get("pressed") != "false" or ui0.get("on"):
+            failures.append(f"melody duck ({where}): default state not off "
+                            f"{ui0!r}")
+        if not ui1 or ui1.get("pressed") != "true" or not ui1.get("on"):
+            failures.append(f"melody duck ({where}): first click did not "
+                            f"engage {ui1!r}")
+        if not ui2 or ui2.get("pressed") != "false" or ui2.get("on"):
+            failures.append(f"melody duck ({where}): second click did not "
+                            f"disengage {ui2!r}")
+    p0, p1 = r["evs"][0], r["evs"][1]
+
+    def mlevs(phase, pid):
+        return [e["mlev"] for e in phase
+                if e["id"] == pid and e.get("mlev") is not None]
+
+    if not mlevs(p0, "C5") or not mlevs(p0, "E5"):
+        failures.append("melody duck: duck-off baseline missing "
+                        f"(melody {mlevs(p0, 'C5')!r}, track {mlevs(p0, 'E5')!r})")
+        return
+    bad0 = [v for v in mlevs(p0, "C5") + mlevs(p0, "E5")
+            if abs(v - 1.0) > 0.01]
+    if bad0:
+        failures.append(f"melody duck: duck-off baseline not full level {bad0!r}")
+    mel1, trk1 = mlevs(p1, "C5"), mlevs(p1, "E5")
+    if not mel1 or not trk1:
+        failures.append(f"melody duck: duck-on events missing "
+                        f"(melody {mel1!r}, track {trk1!r})")
+        return
+    badm = [v for v in mel1 if abs(v - 0.2) > 0.01]
+    if badm:
+        failures.append(f"melody duck: melody not at the 0.2 duck level {badm!r}")
+    badt = [v for v in trk1 if abs(v - 1.0) > 0.01]
+    if badt:
+        failures.append(f"melody duck: the track ducked with the melody {badt!r}")
 
 
 if __name__ == "__main__":

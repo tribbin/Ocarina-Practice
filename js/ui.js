@@ -3,8 +3,9 @@ import { durLabel, isOutOfRange, parse, pretty, rangeCheck, spelledLabel,
 import { midiOf, quarterSecFor } from "./music-math.js";
 import { ocarinaSVG } from "./ocarina.js";
 import { audioCtx, audioPerfReset, audioPerfSnapshot, isMelodyPaused,
-         isMelodyPlaying, liteMode, pauseMelody, playMelody, playNote,
-         resumeMelody, setBassEnabled, setPerfAlertListener, setReverbEnabled,
+         isMelodyPlaying, liteMode, melodyDuckOn, pauseMelody, playMelody,
+         playNote, resumeMelody, setBassEnabled, setMelodyDuck,
+         setPerfAlertListener, setReverbEnabled,
          setVibratoEnabled, soundingGridBeats, stopMelody, togglePlayPause,
          unlockAudio } from "./audio.js";
 import { applySwing, applyTempoPct, clearLibrarySelection, currentSwing, libToast,
@@ -1309,6 +1310,11 @@ function wireUi() {
     if (cb) cb.checked = !cb.checked;
     syncLoopUI();
   };
+  for (const duckId of ["mirrorDuck", "focusDuck"]) {
+    const duckBtn = document.getElementById(duckId);
+    if (duckBtn) duckBtn.onclick = () => { setMelodyDuck(!melodyDuckOn()); syncDuckUI(); };
+  }
+  syncDuckUI();
   const liteCb = document.getElementById("liteMel");
   if (liteCb) {
     try { if (localStorage.getItem("oco-lite") === "1") liteCb.checked = true; } catch (e) {}
@@ -1600,6 +1606,18 @@ function syncLoopUI() {
     const on = !!(cb && cb.checked);
     lp.classList.toggle("on", on);
     lp.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+}
+
+// Melody-duck toggle: one shared session state, mirrored on both transport
+// corner buttons (normal + zen), so it outlives a zen switch.
+function syncDuckUI() {
+  const on = melodyDuckOn();
+  for (const id of ["mirrorDuck", "focusDuck"]) {
+    const b = document.getElementById(id);
+    if (!b) continue;
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-pressed", on ? "true" : "false");
   }
 }
 

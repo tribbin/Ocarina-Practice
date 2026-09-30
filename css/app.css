@@ -1387,7 +1387,7 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 .t-btn.play.is-playing { background: var(--good); color: var(--paper); border-color: var(--good); }
 .t-btn.practice.on { background: var(--ch2); color: var(--paper); border-color: var(--ch2); }
 .t-btn.loop.on { background: var(--good); color: var(--paper); border-color: var(--good); }
-.t-btn.play, .t-btn.practice, .t-btn.stop { box-shadow: 0 1px 0 rgba(0,0,0,.06); }
+.t-btn.play, .t-btn.practice, .t-btn.stop, .t-btn.duck { box-shadow: 0 1px 0 rgba(0,0,0,.06); }
 /* OoT theme: inactive round glyphs join the other buttons' white-ink look
    (ghost vocabulary); active states keep their own colors underneath. */
 html[data-theme="oot"] .t-btn {
@@ -1399,6 +1399,25 @@ html[data-theme="oot"] .t-btn {
 #mirrorPlay:not(.is-playing) svg.g-play { display: block; transform: translateX(-.03em); }
 #mirrorPlay.is-playing svg.g-pause { display: block; }
 #mirrorStop svg.g-stop { display: block; }
+/* Melody-duck toggle: a small corner circle riding the play button (the duck
+   rides with playback, so it sits where the eyes already are) — the
+   transport row keeps its original order and spacing. Down-arrow onto a
+   line = "quiet the melody down"; engaged = the accent fill. */
+.play-cluster { position: relative; display: inline-flex; }
+.t-btn.duck {
+  position: absolute; top: 4px; right: 4px;
+  width: 24px; height: 24px; font-size: 13px;
+}
+#tabPanel.focus .focus-btn.duck {
+  position: absolute; top: 6px; right: 6px;
+  width: 32px; height: 32px; font-size: 16px;
+  background: rgba(255, 255, 255, 0.14); color: var(--paper);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+.t-btn.duck > svg, .focus-btn.duck > svg { display: block; }
+.t-btn.duck.on, #tabPanel.focus .focus-btn.duck.on {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+}
 
 /* Exit button: fixed top-right, fades in on mouse move */
 .focus-exit { display: none; }

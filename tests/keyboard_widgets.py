@@ -243,12 +243,12 @@ async () => {
 
 TRANSPORT = """
 () => {
-  // The normal-mode mirror of the zen transport: four controls, same order
-  // as zen (Loop, Play, Practice, Stop), inside #playback.
+  // The normal-mode mirror of the zen transport: Loop, Play (with the duck
+  // corner toggle riding it), Practice, Stop — inside #playback.
   const tools = document.getElementById('barTools');
   const out = { present: !!tools, ids: [], labels: 0, squaresGone: null,
                 playToggle: null, stopResets: null, practiceEngages: null,
-                loopToggles: null, isPlayingClass: null };
+                loopToggles: null, isPlayingClass: null, duckToggles: null };
   if (!tools) return out;
   // The old text Play/Practice buttons must be gone — the round mirror
   // replaced them in the header.
@@ -284,6 +284,15 @@ TRANSPORT = """
   out.loopToggles = loopCb.checked === !before
     && loop.classList.contains('on') === !before;
   if (!loopCb.checked) loop.click(); // restore
+  // Duck corner toggle: flip aria-pressed on, verify, flip back off.
+  const duck = document.getElementById('mirrorDuck');
+  if (duck) {
+    const d0 = duck.getAttribute('aria-pressed');
+    duck.click();
+    out.duckToggles = duck.getAttribute('aria-pressed') !== d0
+      && duck.classList.contains('on') === (d0 !== 'true');
+    duck.click();
+  }
   return out;
 }
 """
@@ -475,15 +484,19 @@ def main():
                     failures.append(
                         "transport: the old text Play/Practice buttons must "
                         "be gone (the round mirror replaced them)")
-                if tb["ids"] != ["mirrorLoop", "mirrorPlay", "mirrorPractice",
-                                 "mirrorStop"]:
+                if tb["ids"] != ["mirrorLoop", "mirrorPlay", "mirrorDuck",
+                                 "mirrorPractice", "mirrorStop"]:
                     failures.append(
-                        f"transport: mirror must carry zen's four controls "
-                        f"in order, got {tb['ids']}")
-                if tb["labels"] != 4:
+                        f"transport: mirror must carry zen's controls in "
+                        f"order (duck rides the play corner), got {tb['ids']}")
+                if tb["labels"] != 5:
                     failures.append(
                         f"transport: every mirror button needs an "
-                        f"aria-label, got {tb['labels']}/4")
+                        f"aria-label, got {tb['labels']}/5")
+                if tb.get("duckToggles") is not True:
+                    failures.append(
+                        "transport: the duck corner must flip aria-pressed "
+                        "and its engaged look on click")
                 if tb["playToggle"] is not True or not tb["isPlayingClass"]:
                     failures.append(
                         "transport: the mirror Play must engage playback and "
