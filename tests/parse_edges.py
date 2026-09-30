@@ -3,9 +3,9 @@
 # grammar (notes/accidentals/inheritance, durations/dots/triplets, staccato in
 # both spellings, ties/slides/rests, bars & sections, inline tempo), the
 # header helpers (withPlayHeaders/withTempoLine/withTitleAndTempo,
-# titleFromText/swingFromText), and the pitch helpers (pretty/midiOf/
-# spelledLabel/octSub). Support-bracket grammar has its own suite
-# (testsupport_accepts_brackets.py).
+# titleFromText/swingFromText/tickFromText), and the pitch helpers
+# (pretty/midiOf/spelledLabel/octSub). Support-bracket grammar has its own
+# suite (testsupport_accepts_brackets.py).
 #
 #   python3 tests/parse_edges.py      # headless & silent
 
@@ -86,6 +86,8 @@ NOTES = r"""
     // inline tempo change emits a token; leading header does not
     headerTempo: t("# tempo 96\nC4 D4"),
     inlineTempo: t("# tempo 96\nC4 # tempo 130 D4"),
+    // "# tick off" is an invisible header comment like tempo/swing
+    tickLineIgnored: t("# tick off\nC4 D4").map(x => x.type),
   };
 }
 """
@@ -206,6 +208,17 @@ HEADERS = r"""
     wReplacesOld: withPlayHeaders("# old\n# tempo 90\nC4", "N", 96, 10),
     wKeepsOtherHeader: withPlayHeaders("# My Title\n# tempo 90\nC4", null, 96, 0),
     wNoNameNoHeader: withPlayHeaders("C4 D4", null, 96, 0),
+    // .txt round-trip tick attribute: only the OPT-OUT is a declaration
+    rTick: [tickFromText("# tick off\nC4"), tickFromText("# tick on\nC4"),
+            tickFromText("# tempo 96\nC4"), tickFromText("A4\n# tick off\nB4"),
+            tickFromText("# tick off\n# tick on\nC4")],
+    rTitleTick: [titleFromText("# tick off\n# My Song\nC4"),
+                 titleFromText("# tick on\n# Saria\nC4")],
+    wTickOff: withPlayHeaders("C4 D4", "My Song", 96, 0, false),
+    wTickOnDropsOff: withPlayHeaders("# t\n# tick off\nC4", null, 96, 0, true),
+    wTickPreserve: withPlayHeaders("# t\n# tick off\nC4", null, 96, 0),
+    wTickPreserveOn: withPlayHeaders("# t\n# tick on\nC4", null, 96, 0),
+    wTickFresh: withPlayHeaders("# t\nC4", null, 96, 0, false),
     wt: withTempoLine("# swing 40\nC4", 80),
     wtt: withTitleAndTempo("C4", "Fresh", 120),
   };
@@ -523,6 +536,35 @@ def main():
             wtt = w["wtt"]
             check("wtt", wtt == "# Fresh\n# tempo 120\nC4",
                   f"withTitleAndTempo default swing: {wtt!r}")
+            check("tickLineIgnored", n["tickLineIgnored"] == ["note", "note"],
+                  f"'# tick off' must stay an invisible comment: "
+                  f"{n['tickLineIgnored']!r}")
+            check("tickFromText", w["rTick"] == [False, None, None, False, False],
+                  f"'# tick off' is the only declared state (false); on and "
+                  f"absent are null: {w['rTick']!r}")
+            check("titleFromTextTick",
+                  w["rTitleTick"] == ["My Song", "Saria"],
+                  f"a tick line must never read as the title: "
+                  f"{w['rTitleTick']!r}")
+            check("wTickOff",
+                  w["wTickOff"] == "# My Song\n# tempo 96\n# tick off\nC4 D4",
+                  f"explicit off writes the opt-out line: {w['wTickOff']!r}")
+            check("wTickOnDropsOff",
+                  w["wTickOnDropsOff"] == "# t\n# tempo 96\nC4",
+                  f"explicit on clears a stale opt-out and writes no line: "
+                  f"{w['wTickOnDropsOff']!r}")
+            check("wTickPreserve",
+                  w["wTickPreserve"] == "# t\n# tempo 96\n# tick off\nC4",
+                  f"unspecified tick keeps the leading opt-out: "
+                  f"{w['wTickPreserve']!r}")
+            check("wTickPreserveOn",
+                  w["wTickPreserveOn"] == "# t\n# tempo 96\n# tick on\nC4",
+                  f"unspecified tick keeps a leading on-line verbatim: "
+                  f"{w['wTickPreserveOn']!r}")
+            check("wTickFresh",
+                  w["wTickFresh"] == "# t\n# tempo 96\n# tick off\nC4",
+                  f"explicit off adds the line where none existed: "
+                  f"{w['wTickFresh']!r}")
 
             if errs:
                 failures.append(f"page errors {errs}")

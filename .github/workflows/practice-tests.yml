@@ -65,6 +65,10 @@ jobs:
         run: python tests/twin_support_level.py
       - name: Run parser edge-case tests
         run: python tests/parse_edges.py
+      - name: Run song .txt round-trip tests
+        run: python tests/song_txt_roundtrip.py
+      - name: Run media-session announce tests
+        run: python tests/media_session.py
       - name: Run render-behavior pin
         run: python tests/render_pin.py
       - name: Run pre-paint theme pin
