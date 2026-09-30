@@ -64,7 +64,7 @@ work; decisions + state in the session-24 log):
 
 | Item | Section |
 |---|---|
-| **USABILITY BATCH (approved 2026-09-30, session-24 handoff)** — small-screen layout (editor hidden on phones, vertical rows, no portrait backdrop), theme no-flash, melody-duck on/off, song .txt round-trip, ko-fi link, zen-chorus audit, transport sync bugs, media-session announce + media keys | §1/§7/§9 |
+| **USABILITY BATCH (approved 2026-09-30, session-24 handoff; 1 of 8 landed `3eb740d`)** — small-screen layout (editor hidden on phones, vertical rows, no portrait backdrop), theme no-flash, melody-duck on/off, song .txt round-trip, ko-fi link, zen-chorus audit, media-session announce + media keys | §1/§7/§9 |
 | HiFi stays UNPUBLISHED — the retune + favorites pass is accepted, but Robin holds publication for now (2026-09-30) | hold |
 | Shipped-songs standardization stays HELD for Robin's later-stage pass; the permalinks corpora ride his planting as always | §9 |
 | Library widening (search, reordering beyond the pin) stays parked until Robin elects it | §9 |
@@ -72,8 +72,6 @@ work; decisions + state in the session-24 log):
 ---
 
 ## 1. Bugs (correctness / data loss)
-
-- [ ] **Transport sync: tracks desync across pause/unpause + tempo change; first note sometimes "hurries"** — Robin's planted bugs (IDEAS BUGS): the #track streams (walkTrackStreams, js/audio.js:1432) drift from the melody clock through pauseMelody/resumeMelody (audio.js:1181/1196) and mid-play tempo changes; the first note can also start early when playing from the start; pin red-first in tests/transport_schedule.py; engine change ⇒ full sweep + his field check. `🟧 🔴 ⚙M`
 
 - [ ] **Zen chorus audit: did the twin engine drop the zen chorus? (IDEAS question)** — report-first: the twin path still carries the zen stereo chorus (audio.js twChorus: gated on vibOn && dur > vibDelay+0.1, depth faded by vibHighFade 0.4, zenPan 0.9) — check the zen defaults + the lite-voice path and report; fix only if truly lost (field-check class). `🟨 🟡 ⚙S`
 
@@ -205,3 +203,27 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
    (§1 ×2, §7 ×3, §9 ×3); hot
   list refreshed. Fresh context: open plans/TODO.md (AGENTS rule 1) and
   work the hot list top-down.
+
+- **2026-09-30 (session 24 cont. — transport sync lands: the tempo line is the song's one clock)** —
+  The §1 transport-sync item closes on `3eb740d`. Both planted desyncs shared
+  one root: a single mutable melodyQuarter that every walker mutated.
+  Pause/resume: rebaseTrackTimes collapsed all track streams' next onsets
+  onto the melody's anchor, throwing away each stream's beat offset — the
+  track jumped by the beat gap and stayed there. Mid-song tempo: whichever
+  walker consumed its '# tempo' token first owned the shared value, so a
+  track's own marker could retime the melody. The fix is a position-based
+  tempo line (buildTempoLine from the melody's tokens; quarterAt looks up
+  the in-force quarter at a 96th-grid position); the melody's line is the
+  authoritative clock and a track's own marker rides past it. Pinned
+  red-first with two new transport_schedule legs: the pause leg (pause at
+  +2.8 s, resume; every post-resume track onset must land on the melody's
+  same-beat onset — pre-fix the track sat −0.625 s early) and the tempo
+  leg (the track block carries a deliberately wrong '# tempo 60' — pre-fix
+  the track ran +1.000 s late after the marker). Also hardened
+  tests/bad_chip_style.py: its probe injected before boot()'s async wireUi()
+  had attached the #src input listener, so the oot leg flaked with
+  "no .tok.bad chip"; it now waits for the #scale boot rendezvous first
+  (5/5 clean after the fix). One sweep flake traced to that same race;
+  with it fixed the full sweep is 46/46 and lint green; sw oco-pwa-v60.
+  The first-note "hurries" symptom stayed unreproducible in the harness —
+  first-onset equality is pinned; held for Robin's field check.
