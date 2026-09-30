@@ -80,6 +80,15 @@ def main():
             page.wait_for_function(
                 "() => caches.match('songs.json').then(Boolean)",
                 timeout=15000)
+            # The strip is drawn by boot's FIRST render, which settles after
+            # WAIT's NOTES install (the template fetch rides ahead of it) —
+            # the rendered strip itself is the rendezvous, not the install.
+            try:
+                page.wait_for_function(
+                    "() => document.querySelectorAll('#tokens .tok')"
+                    ".length > 0", timeout=20000)
+            except Exception:
+                pass
             got = page.evaluate(
                 "() => ({ inst: window.CURRENT_INSTRUMENT &&"
                         " window.CURRENT_INSTRUMENT.id,"
@@ -95,6 +104,15 @@ def main():
             context.set_offline(True)
             page.reload()
             page.wait_for_function(WAIT, timeout=20000)
+            # NOTES installs in loadInstrument, ahead of boot's tail (the
+            # library load, then the first sheet render behind the ocarina
+            # template fetch) — the chart's own cards are the rendezvous.
+            try:
+                page.wait_for_function(
+                    "() => document.querySelectorAll('#sheet .card')"
+                    ".length > 0", timeout=20000)
+            except Exception:
+                pass
             off = page.evaluate(
                 "() => ({ inst: window.CURRENT_INSTRUMENT &&"
                         " window.CURRENT_INSTRUMENT.id,"
