@@ -578,12 +578,12 @@ function applySwing(n) {
 function applySongTick(v) {
   if (v == null) return;
   const cb = document.getElementById("tickMel");
-  if (cb) {
-    cb.checked = !!v;
-    cb.dataset.autoTick = "1"; // the visual mirror, never the pref write
-    cb.dispatchEvent(new Event("change"));
-    delete cb.dataset.autoTick;
-  }
+  if (!cb) return;
+  if (cb.checked === !!v) return; // already there — render() re-runs often
+  cb.checked = !!v;
+  cb.dataset.autoTick = "1"; // the visual mirror, never the pref write
+  cb.dispatchEvent(new Event("change"));
+  delete cb.dataset.autoTick;
 }
 
 // Tick preference store (Robin, IDEAS 2026-09-25): a song's tick
@@ -780,7 +780,12 @@ function wireLibrary() {
   document.getElementById("diskSave").onclick = () => {
     const body = document.getElementById("src").value;
     const name = (titleFromText(body) || "melody").replace(/[^\w\- ]+/g, "").trim() || "melody";
-    const blob = new Blob([withPlayHeaders(body, null, songTempo(), currentSwing())], {type: "text/plain"});
+    // The .txt carries every playback attribute: title, tempo, swing AND the
+    // metronome state, so a saved file pasted back into #src (or re-loaded
+    // through Load File) brings the whole session back, not just the notes.
+    const tickEl = document.getElementById("tickMel");
+    const blob = new Blob([withPlayHeaders(body, null, songTempo(), currentSwing(),
+        tickEl ? tickEl.checked : null)], {type: "text/plain"});
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = name + ".txt";
@@ -799,15 +804,20 @@ function wireLibrary() {
     reader.onload = () => {
       let text = String(reader.result || "");
       let sw = null;
+      let tick = null;
       try {
         const j = JSON.parse(text);
         if (j && typeof j.body === "string") text = j.body;
         else if (j && typeof j.melody === "string") text = j.melody;
         if (j && j.swing != null) sw = j.swing;
+        if (j && j.tick != null) tick = j.tick;
       } catch (err) {}
       document.getElementById("src").value = text;
       sw = sw != null ? sw : swingFromText(text);
       if (sw != null) applySwing(sw);
+      // A "# tick off" line in the text applies itself in the render() below;
+      // the legacy JSON tick field has no text counterpart, so it applies here.
+      if (tick != null) applySongTick(tick);
       clearLibrarySelection();
       // The loaded file replaces the melody: a parked/running practice
       // session belongs to the previous song (see practiceInvalidate).
@@ -818,7 +828,8 @@ function wireLibrary() {
   };
 }
 
-export { BUILTIN, applySwing, applyTempoPct, clearLibrarySelection, currentSwing,
+export { BUILTIN, applySongTick, applySwing, applyTempoPct,
+         clearLibrarySelection, currentSwing,
          fillLibrary, initBuiltin, libToast, loadedLibraryId, loadLibraryItem,
          markUrlLanded, rewriteLanderUrl, safeAlert, songFitsChart,
          songTempo,

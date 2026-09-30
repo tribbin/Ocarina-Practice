@@ -424,6 +424,21 @@ function isSwingComment(line) {
   return /^#\s*swing\s+/i.test(line);
 }
 
+// The per-song metronome declaration for the .txt round-trip. TICKING IS THE
+// DEFAULT, so only the opt-out is a real declaration: a "# tick off" line says
+// this song's supports make the metronome tick pointless. "# tick on" is
+// never enforced (it is a plain header comment, never a title either), and an
+// absent line leaves the session's tick state alone.
+function isTickComment(line) {
+  return /^#\s*tick\s+(on|off)\s*$/i.test(String(line));
+}
+
+// false iff the text declares "# tick off"; null otherwise (absent OR
+// "# tick on" — on is the default and is never forced by text).
+function tickFromText(text) {
+  return /(^|\n)#\s*tick\s+off\s*$/im.test(String(text)) ? false : null;
+}
+
 function tempoFromText(text) {
   const m = String(text).match(/^#\s*tempo\s+(\d+)/im) || String(text).match(/\n#\s*tempo\s+(\d+)/i);
   return m ? +m[1] : null;
@@ -437,31 +452,44 @@ function swingFromText(text) {
 function titleFromText(text) {
   const line = String(text || "").split("\n").find(l =>
     l.startsWith("#") && !isTempoComment(l) && !isSwingComment(l)
+    && !isTickComment(l)
   );
   return line ? line.replace(/^#\s*/, "") : "";
 }
 
-function withPlayHeaders(body, name, bpm, swing) {
-  // Split off the LEADING header block (title/tempo/swing comment lines at the
-  // very top) from the musical body. Tempo/swing lines that appear later in the
-  // body are inline changes and must be preserved.
+function withPlayHeaders(body, name, bpm, swing, tick) {
+  // Split off the LEADING header block (title/tempo/swing/tick comment lines
+  // at the very top) from the musical body. Tempo/swing lines that appear
+  // later in the body are inline changes and must be preserved.
   const lines = String(body || "").split("\n");
   let h = 0;
   while (h < lines.length && lines[h].trim().startsWith("#")) h++;
   const headerLines = lines.slice(0, h);
   const rest = lines.slice(h);
-  // Keep any non-tempo/non-swing header comment (e.g. the title) from the top.
+  // Keep any non-meta header comment (e.g. the title) from the top.
   const title = [];
   if (name) {
     title.push("# " + String(name).trim());
   } else {
-    const t0 = headerLines.find(l => !isTempoComment(l) && !isSwingComment(l));
+    const t0 = headerLines.find(
+      l => !isTempoComment(l) && !isSwingComment(l) && !isTickComment(l)
+    );
     if (t0) title.push(t0);
   }
   const t = bpm != null ? bpm : 100;
   const s = Math.max(0, +(swing != null ? swing : 0) || 0);
   const head = [...title, "# tempo " + t];
   if (s > 0) head.push("# swing " + s);
+  // tick: only the OPT-OUT is written (Robin, 2026-09-30) — ticking is the
+  // default and "# tick on" is never enforced, so the line appears only when
+  // tick === false. null/undefined keeps a leading declaration from the
+  // source if present; an explicit tick drops any old leading tick line
+  // (on clears the stale opt-out, off rewrites it).
+  if (tick === false) head.push("# tick off");
+  else if (tick == null) {
+    const k0 = headerLines.find(isTickComment);
+    if (k0) head.push(k0);
+  }
   return [...head, ...rest].join("\n").replace(/\n+$/, "\n");
 }
 
@@ -475,9 +503,9 @@ function withTitleAndTempo(body, name, bpm) {
   return withPlayHeaders(body, name, bpm, swing != null ? swing : 0);
 }
 
-export { durLabel, isOutOfRange, isTrackHeader, octSub, parse, parseTracks,
+export { durLabel, isOutOfRange, isTickComment, isTrackHeader, octSub, parse, parseTracks,
          pretty, rangeCheck, spelledLabel, midiOf, swingFromText, tempoFromText,
-         titleFromText, withPlayHeaders, withTempoLine, withTitleAndTempo };
+         tickFromText, titleFromText, withPlayHeaders, withTempoLine, withTitleAndTempo };
 
 // Classic-script compat surface (tests + dev console call these by global).
 window.parse = parse; window.titleFromText = titleFromText; window.pretty = pretty;
@@ -489,3 +517,4 @@ window.spelledLabel = spelledLabel;
 window.withTempoLine = withTempoLine;
 window.withTitleAndTempo = withTitleAndTempo;
 window.rangeCheck = rangeCheck; window.isOutOfRange = isOutOfRange;
+window.isTickComment = isTickComment; window.tickFromText = tickFromText;

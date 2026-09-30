@@ -1,5 +1,6 @@
 import { durLabel, isOutOfRange, parse, pretty, rangeCheck, spelledLabel,
-         swingFromText, tempoFromText, titleFromText, withPlayHeaders } from "./parse.js";
+         swingFromText, tempoFromText, tickFromText, titleFromText,
+         withPlayHeaders } from "./parse.js";
 import { midiOf, quarterSecFor } from "./music-math.js";
 import { ocarinaSVG } from "./ocarina.js";
 import { audioCtx, audioPerfReset, audioPerfSnapshot, isMelodyPaused,
@@ -8,8 +9,9 @@ import { audioCtx, audioPerfReset, audioPerfSnapshot, isMelodyPaused,
          setPerfAlertListener, setReverbEnabled,
          setVibratoEnabled, soundingGridBeats, stopMelody, togglePlayPause,
          unlockAudio } from "./audio.js";
-import { applySwing, applyTempoPct, clearLibrarySelection, currentSwing, libToast,
-         loadedLibraryId, safeAlert, songTempo, tempoPct } from "./library.js";
+import { applySongTick, applySwing, applyTempoPct, clearLibrarySelection,
+         currentSwing, libToast, loadedLibraryId, safeAlert, songTempo,
+         tempoPct } from "./library.js";
 import { isPracticeActive, isPracticePaused, practiceInvalidate,
          practiceRelocatePanel, practiceSpot, practiceToggle } from "./practice.js";
 import { applyTheme, currentTemplatePath, ensureOcarinaTemplate,
@@ -434,6 +436,9 @@ function render() {
 
     const typedSwing = swingFromText(src);
     applySwing(typedSwing != null ? typedSwing : 0);
+    // A "# tick on|off" header is a per-song session override, like the swing
+    // line: present flips the metronome, absent leaves the dial alone.
+    applySongTick(tickFromText(src));
     const tokens = parse(src);
     lastTokens = tokens;
     window.lastTokens = tokens; // test/console compat mirror
