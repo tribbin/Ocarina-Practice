@@ -284,13 +284,25 @@ TRANSPORT = """
   out.loopToggles = loopCb.checked === !before
     && loop.classList.contains('on') === !before;
   if (!loopCb.checked) loop.click(); // restore
-  // Duck corner toggle: flip aria-pressed on, verify, flip back off.
+  // Duck corner toggle: flip aria-pressed on, verify, flip back off. The
+  // speaker glyph reads the melody's CURRENT volume: three waves (g-loud)
+  // while the duck is off, the single wave (g-soft) when it's engaged.
   const duck = document.getElementById('mirrorDuck');
   if (duck) {
+    const dr = duck.getBoundingClientRect();
+    out.duckCorner = {
+      top: Math.round((dr.top - play.getBoundingClientRect().top) * 100) / 100,
+      right: Math.round((play.getBoundingClientRect().right - dr.right) * 100) / 100 };
+    const glyphState = () => ({
+      soft: getComputedStyle(duck.querySelector('.g-soft')).display,
+      loud: getComputedStyle(duck.querySelector('.g-loud')).display });
+    const g0 = glyphState();
     const d0 = duck.getAttribute('aria-pressed');
     duck.click();
+    const g1 = glyphState();
     out.duckToggles = duck.getAttribute('aria-pressed') !== d0
       && duck.classList.contains('on') === (d0 !== 'true');
+    out.duckGlyphs = { off: g0, on: g1 };
     duck.click();
   }
   return out;
@@ -497,6 +509,25 @@ def main():
                     failures.append(
                         "transport: the duck corner must flip aria-pressed "
                         "and its engaged look on click")
+                dg = tb.get("duckGlyphs") or {}
+                off, on = dg.get("off") or {}, dg.get("on") or {}
+                if off.get("soft") != "none" or off.get("loud") != "block":
+                    failures.append(
+                        "transport: duck OFF must show the three-wave "
+                        f"(loud) speaker glyph — the melody's full volume "
+                        f"(got {dg!r})")
+                if on.get("soft") != "block" or on.get("loud") != "none":
+                    failures.append(
+                        "transport: duck ON must show the single-wave "
+                        f"(soft) speaker glyph — the ducked melody "
+                        f"(got {dg!r})")
+                dc = tb.get("duckCorner") or {}
+                if abs(dc.get("top", 1e9)) > 1 or abs(dc.get("right", 1e9)) > 1:
+                    failures.append(
+                        "transport: the duck corner must sit flush at the "
+                        "play button's top-right (as if both were squares, "
+                        f"got {dc.get('top')}px down / {dc.get('right')}px "
+                        "in)")
                 if tb["playToggle"] is not True or not tb["isPlayingClass"]:
                     failures.append(
                         "transport: the mirror Play must engage playback and "

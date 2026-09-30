@@ -120,12 +120,16 @@ def main():
                   coffee: (() => {
                     const a = [...ov.querySelectorAll('a')]
                       .find(x => (x.getAttribute('href') || '') === 'https://ko-fi.com/tribbin');
-                    const ic = a && a.nextElementSibling;
-                    if (!ic || !ic.classList || !ic.classList.contains('help-coffee'))
-                      return 'missing';
-                    const r = ic.getBoundingClientRect();
-                    return (r.width > 0 && getComputedStyle(ic).display !== 'none')
-                      ? 'visible' : 'hidden';
+                    const unit = a && a.parentElement;
+                    if (!unit || !unit.classList ||
+                        !unit.classList.contains('coffee-unit'))
+                      return 'no-unit';
+                    const ic = unit.querySelector('svg.help-coffee');
+                    const ir = ic ? ic.getBoundingClientRect() : null;
+                    return (getComputedStyle(unit).whiteSpace === 'nowrap' &&
+                            ir && ir.width > 0 &&
+                            getComputedStyle(ic).display !== 'none')
+                      ? 'unit' : 'loose';
                   })(),
                 };
               }
@@ -141,10 +145,11 @@ def main():
             elif kofi[1] != "_blank" or kofi[2] != "noopener":
                 failures.append("the ko-fi link must open in a new tab with "
                                 f"rel=noopener (got {kofi!r})")
-            if help1["coffee"] != "visible":
+            if help1["coffee"] != "unit":
                 failures.append(
-                    "the help colophon must carry the small coffee icon "
-                    "immediately after the ko-fi link, visible "
+                    "the coffee sentence must wrap as one unit: a "
+                    "white-space:nowrap .coffee-unit span holding the "
+                    "ko-fi link and its icon together "
                     f"(got {help1['coffee']!r})")
             if not help1["visible"]:
                 failures.append("the opened overlay must be VISIBLE on screen "

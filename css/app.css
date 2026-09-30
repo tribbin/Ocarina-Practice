@@ -1406,22 +1406,32 @@ html[data-theme="oot"] .t-btn {
 #mirrorStop svg.g-stop { display: block; }
 /* Melody-duck toggle: a small corner circle riding the play button (the duck
    rides with playback, so it sits where the eyes already are) — the
-   transport row keeps its original order and spacing. Down-arrow onto a
-   line = "quiet the melody down"; engaged = the accent fill. */
+   transport row keeps its original order and spacing. The corner sits flush:
+   top-right aligned as if both buttons were squares (Robin, 2026-09-30). The
+   speaker glyph
+   reads the melody's CURRENT volume: three waves (loud) at full level, the
+   single wave (soft) while ducked — the engaged state fills orange rather
+   than the red accent (Robin, 2026-09-30). */
 .play-cluster { position: relative; display: inline-flex; }
 .t-btn.duck {
-  position: absolute; top: 4px; right: 4px;
+  position: absolute; top: 0; right: 0;
   width: 24px; height: 24px; font-size: 13px;
 }
 #tabPanel.focus .focus-btn.duck {
-  position: absolute; top: 6px; right: 6px;
+  position: absolute; top: 0; right: 0;
   width: 32px; height: 32px; font-size: 16px;
   background: rgba(255, 255, 255, 0.14); color: var(--paper);
   border: 1px solid rgba(255, 255, 255, 0.5);
 }
-.t-btn.duck > svg, .focus-btn.duck > svg { display: block; }
+/* State-driven glyph: the speaker shows the melody's CURRENT volume — the
+   loud three waves while the duck is off, the soft single wave when it's
+   engaged (orange fill, not the red accent) — the .on class syncDuckUI
+   owns stays the single state. */
+.t-btn.duck > svg, .focus-btn.duck > svg { display: none; }
+.t-btn.duck:not(.on) .g-loud, .focus-btn.duck:not(.on) .g-loud,
+.t-btn.duck.on .g-soft, .focus-btn.duck.on .g-soft { display: block; }
 .t-btn.duck.on, #tabPanel.focus .focus-btn.duck.on {
-  background: var(--accent); color: #fff; border-color: var(--accent);
+  background: #d97706; color: #fff; border-color: #d97706;
 }
 
 /* Exit button: fixed top-right, fades in on mouse move */
@@ -1929,6 +1939,10 @@ html[data-theme="oot"] .help-card { --panel: #fff; }
 /* Small coffee cup after the ko-fi colophon link (Robin, 2026-09-30):
    decorative, sized off the line's own text and painted with its ink. */
 .help-coffee { width: 1em; height: 1em; margin-left: 3px; vertical-align: -0.12em; fill: currentColor; }
+/* The coffee sentence wraps as one unit (Robin, 2026-09-30): in a narrow
+   card the whole "Like the tool? Buy me a coffee" phrase drops below the
+   issues line instead of breaking mid-phrase. */
+.coffee-unit { white-space: nowrap; }
 
 /* Practice history line: one muted run summary under the tuner track. */
 .prac-history {
