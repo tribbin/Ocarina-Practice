@@ -247,8 +247,10 @@ TRANSPORT = """
   // corner toggle riding it), Practice, Stop — inside #playback.
   const tools = document.getElementById('barTools');
   const out = { present: !!tools, ids: [], labels: 0, squaresGone: null,
-                playToggle: null, stopResets: null, practiceEngages: null,
-                loopToggles: null, isPlayingClass: null, duckToggles: null };
+                 playToggle: null, stopResets: null, practiceEngages: null,
+                 loopToggles: null, isPlayingClass: null, duckToggles: null,
+                 duckFaceIdle: null, duckFaceRunning: null,
+                 focusDuckFace: null };
   if (!tools) return out;
   // The old text Play/Practice buttons must be gone — the round mirror
   // replaced them in the header.
@@ -293,6 +295,18 @@ TRANSPORT = """
     out.duckCorner = {
       top: Math.round((dr.top - play.getBoundingClientRect().top) * 100) / 100,
       right: Math.round((play.getBoundingClientRect().right - dr.right) * 100) / 100 };
+    // Opaque badge face: the host play button's rim and running face must
+    // never shine through the duck — its fill is SOLID (never transparent,
+    // never a semi-transparent veil) and it KEEPS that face while the play
+    // button runs (Robin, 2026-09-30: the running green must not bleed into
+    // the badge through a transparent fill).
+    play.classList.remove('is-playing');
+    out.duckFaceIdle = getComputedStyle(duck).backgroundColor;
+    play.classList.add('is-playing');
+    out.duckFaceRunning = {
+      duck: getComputedStyle(duck).backgroundColor,
+      play: getComputedStyle(play).backgroundColor };
+    play.classList.remove('is-playing');
     const glyphState = () => ({
       soft: getComputedStyle(duck.querySelector('.g-soft')).display,
       loud: getComputedStyle(duck.querySelector('.g-loud')).display });
@@ -304,6 +318,18 @@ TRANSPORT = """
       && duck.classList.contains('on') === (d0 !== 'true');
     out.duckGlyphs = { off: g0, on: g1 };
     duck.click();
+  }
+  // The zen duck mirror rides the zen play button the same way: its face is
+  // the opaque zen button face, not a transparent veil over it.
+  const panel = document.getElementById('tabPanel');
+  const fduck = document.getElementById('focusDuck');
+  if (panel && fduck) {
+    panel.classList.add('focus');
+    const fp = document.getElementById('focusPlay');
+    out.focusDuckFace = {
+      duck: getComputedStyle(fduck).backgroundColor,
+      play: getComputedStyle(fp).backgroundColor };
+    panel.classList.remove('focus');
   }
   return out;
 }
@@ -528,6 +554,37 @@ def main():
                         "play button's top-right (as if both were squares, "
                         f"got {dc.get('top')}px down / {dc.get('right')}px "
                         "in)")
+                # getComputedStyle reports an opaque colour as "rgb(r, g, b)"
+                # and any semi-transparent one as "rgba(r, g, b, a)" — so an
+                # opaque face is exactly a fill that is NOT an rgba string.
+                def opaque(c):
+                    return isinstance(c, str) and not c.startswith("rgba(")
+                dfi = tb.get("duckFaceIdle")
+                if not opaque(dfi):
+                    failures.append(
+                        "transport: the duck badge must wear an OPAQUE face "
+                        f"(no transparent / semi-transparent fill) — "
+                        f"got {dfi!r}")
+                dfr = tb.get("duckFaceRunning") or {}
+                if not opaque(dfr.get("duck")) or \
+                        dfr.get("duck") != dfi:
+                    failures.append(
+                        "transport: the duck badge must KEEP its opaque face "
+                        f"while the play button runs (idle {dfi!r}, "
+                        f"running {dfr.get('duck')!r})")
+                if dfr.get("duck") == dfr.get("play") and \
+                        opaque(dfr.get("duck")):
+                    failures.append(
+                        "transport: the duck badge must not adopt the play "
+                        "button's running face — the running colour shone "
+                        f"through it ({dfr.get('duck')!r})")
+                fdf = tb.get("focusDuckFace") or {}
+                if not opaque(fdf.get("duck")) or \
+                        fdf.get("duck") != fdf.get("play"):
+                    failures.append(
+                        "transport: the zen duck badge must wear the opaque "
+                        "zen button face it rides (duck "
+                        f"{fdf.get('duck')!r}, play {fdf.get('play')!r})")
                 if tb["playToggle"] is not True or not tb["isPlayingClass"]:
                     failures.append(
                         "transport: the mirror Play must engage playback and "

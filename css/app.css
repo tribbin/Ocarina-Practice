@@ -13,6 +13,9 @@
   --ch3: #6b4a8b;
   --panel: #ffffff;
   --head: #faf7f2;
+  /* Duck-badge face: a dedicated opaque tone a shade darker than the
+     surface it rides (Robin, 2026-09-30). */
+  --duck-badge: #efe4d4;
   --muted: #6a5648;
   --oca-bg: #f3e6d6;
   --key: #faf7f2;
@@ -58,6 +61,7 @@ html[data-theme="oot"] {
   --ch-line-empty: #3d7a28;
   --zen: #071807;
   --zen-btn: #142814;
+  --duck-badge: #0a3a0a;
   --key-now: #7edc5a;
   --key-now-ring: #2d8a18;
   --key-now-black: #145c10;
@@ -90,6 +94,7 @@ html[data-theme="hifi"] {
   --ch-line-empty: #3a3a42;
   --zen: #060607;
   --zen-btn: #1d1d22;
+  --duck-badge: #0f0602;
   --key-now: #123a24;
   --key-now-ring: #3ee07f;
   --key-now-black: #123a24;
@@ -1410,17 +1415,24 @@ html[data-theme="oot"] .t-btn {
    top-right aligned as if both buttons were squares (Robin, 2026-09-30). The
    speaker glyph
    reads the melody's CURRENT volume: three waves (loud) at full level, the
-   single wave (soft) while ducked — the engaged state fills orange rather
-   than the red accent (Robin, 2026-09-30). */
+    single wave (soft) while ducked — the engaged state fills orange rather
+    than the red accent (Robin, 2026-09-30). The badge wears a dedicated
+    OPAQUE tone (--duck-badge, a shade darker than the surface it rides) so
+    the play button's rim and running face never shine through it — the old
+    transparent fill let the rim arc and the running green show through
+    (Robin, 2026-09-30); it keeps that face while the play button runs, and
+    the engaged orange stays its own. The zen mirror rides an already-opaque
+    surface, so it wears the zen button face. */
 .play-cluster { position: relative; display: inline-flex; }
-.t-btn.duck {
+button.t-btn.duck {
   position: absolute; top: 0; right: 0;
   width: 24px; height: 24px; font-size: 13px;
+  background: var(--duck-badge);
 }
 #tabPanel.focus .focus-btn.duck {
   position: absolute; top: 0; right: 0;
   width: 32px; height: 32px; font-size: 16px;
-  background: rgba(255, 255, 255, 0.14); color: var(--paper);
+  background: var(--zen-btn); color: var(--paper);
   border: 1px solid rgba(255, 255, 255, 0.5);
 }
 /* State-driven glyph: the speaker shows the melody's CURRENT volume — the
