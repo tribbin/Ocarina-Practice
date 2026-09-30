@@ -321,6 +321,8 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 
 - [x] ~~**Theme no-flash: apply the saved theme pre-paint (IDEAS: skip default CSS)** — the index.html head script only honors ?oot; the saved oco-theme (localStorage) applies late in js/app.js so the default theme flashes on every load; resolve param > localStorage > default in the pre-paint head script and pin the early data-theme. `🟨 🟠 ⚙S`~~ ✅ 2026-09-30 `f84b564`
 
+- [x] ~~**Melody duck: on/off button during practice with support tracks (IDEAS)** — Robin: a button, not a dial; when ON the melody voice plays at ~20% while support tracks play so his ocarina leads (level tunable on his field check); rides voiceGain; pin the ratio via the note-sink mix battery + a UI leg. `🟨 🔴 ⚙S`~~ ✅ 2026-09-30 `0588d99`
+
 ## 8. Housekeeping
 
 - [x] ~~**Favicon + meta description + theme-color missing** in index.html.~~ ✅ 2026-09-22 `9cfccfb` — favicon.svg (ocarina glyph, app palette) + link + meta description + theme-color.

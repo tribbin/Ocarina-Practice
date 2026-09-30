@@ -64,7 +64,7 @@ work; decisions + state in the session-24 log):
 
 | Item | Section |
 |---|---|
-| **USABILITY BATCH (approved 2026-09-30, session-24 handoff; 4 of 8 landed: `3eb740d` + `f84b564` + `46dec09`, zen-chorus audit report-only)** — small-screen layout (editor hidden on phones, vertical rows, no portrait backdrop), melody-duck on/off, song .txt round-trip, media-session announce + media keys | §1/§7/§9 |
+| **USABILITY BATCH (approved 2026-09-30, session-24 handoff; 5 of 8 landed: `3eb740d` + `f84b564` + `46dec09` + `0588d99`, zen-chorus audit report-only)** — small-screen layout (editor hidden on phones, vertical rows, no portrait backdrop), song .txt round-trip, media-session announce + media keys | §1/§7/§9 |
 | HiFi stays UNPUBLISHED — the retune + favorites pass is accepted, but Robin holds publication for now (2026-09-30) | hold |
 | Shipped-songs standardization stays HELD for Robin's later-stage pass; the permalinks corpora ride his planting as always | §9 |
 | Library widening (search, reordering beyond the pin) stays parked until Robin elects it | §9 |
@@ -92,8 +92,6 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 ## 7. Accessibility & UX
 
 - [ ] **Small-screen layout pass (IDEAS: SMALL SCREENS, approved 2026-09-30)** — phones are play/practice, not editing: the editor block is HIDDEN on narrow screens, transport + controls stack into clean vertical rows (today they are "all over the place"), NO backdrop image in portrait, whole viewport functional in normal mode; zen mode stays as-is (Robin: already looks very good). `🟧 🔴 ⚙L`
-
-- [ ] **Melody duck: on/off button during practice with support tracks (IDEAS)** — Robin: a button, not a dial; when ON the melody voice plays at ~20% while support tracks play so his ocarina leads (level tunable on his field check); rides voiceGain; pin the ratio via the note-sink mix battery + a UI leg. `🟨 🔴 ⚙S`
 
 ## 8. Housekeeping
 
@@ -278,3 +276,28 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   one early wrap — the .opencode/context-usage.json zone is only truth
   once the session has its own work behind it, and a post-compaction
   reading is a fresh start, not a continuation.
+
+- **2026-09-30 (session 24 cont. — melody-duck on/off lands; the suite's boot-tail race gets its root cause)** —
+  The §7 duck item closed at `0588d99`. Corner buttons on the mirror and
+  the focus play controls toggle the MAIN melody voice to the 0.2 duck
+  level (MELODY_DUCK_LEVEL in audio.js, riding voiceGain in
+  playNoteAt; #track streams and supports keep full volume so the
+  player's ocarina leads), session-only, both mirrors in sync
+  (aria-pressed + .on, pinned by the keyboard_widgets transport leg,
+  now 5 controls). New track_accepts note-sink mix leg pins duck-off
+  baseline 1.0, duck-on melody 0.2 / track 1.0, and the UI state across
+  both transports. The new leg exposed a real suite-side race: the
+  OCA_PRACTICE/NOTES boot rendezvous fires at module-eval time, but
+  boot()'s async tail (loadInstrument -> loadLibraryItem) lands after,
+  and loadLibraryItem's opening stopMelody() kills a probe's fresh
+  playback — the second scheduled note never reached the sink (proven
+  by a clearTimeout stack capture: stopMelody <- loadLibraryItem <-
+  boot; no statechange, no pageerror, the context was healthy). All
+  five track_accepts page setups now wait on the settled #scale
+  rendezvous (the instruments_load convention) before playing.
+  Verified: track_accepts x2, keyboard_widgets, asset_versions,
+  console_hygiene, offline_pwa green; eslint + html-validate clean.
+  sw oco-pwa-v63, css-v4. For future sessions: the same latent race
+  exists in every suite that starts audio right after the module
+  rendezvous (only track_accepts is hardened so far); the duck
+  button's look and the 0.2 level stay held for Robin's field check.
