@@ -1166,12 +1166,10 @@ function buildKB() {
   // render dimmed, so the extra bottom octave costs nothing unless it's used.
   for (const oct of [2, 3, 4, 5, 6, 7]) {
     const col = document.createElement("div"); col.className = "oct";
-    let octPlayable = false;
     for (const w of whites) {
       const cell = document.createElement("div"); cell.className = "pkey";
       const id = w + oct;
       const wIn = NOTES.includes(id);
-      octPlayable = octPlayable || wIn;
       const k = document.createElement("div"); k.className = "key";
       if (wIn) {
         k.dataset.note = id;
@@ -1201,7 +1199,6 @@ function buildKB() {
         const b = document.createElement("div"); b.className = "key black";
         bIn = NOTES.includes(sid);
         if (bIn) {
-          octPlayable = true;
           b.dataset.note = sid;
           b.tabIndex = -1;
           b.setAttribute("role", "button");
@@ -1216,12 +1213,11 @@ function buildKB() {
         }
         cell.appendChild(b);
       }
-      // Small-screen keyboard trims only playable cells: empty cells/octaves
-      // become display:none so the board fits without auto-scrolling.
+      // Small-screen keyboard trims only playable cells: the 760px media rule
+      // display:none's these so the board shows just the playable span.
       if (!wIn && !bIn) cell.classList.add("kb-oor");
       col.appendChild(cell);
     }
-    if (!octPlayable) col.classList.add("kb-oor");
     kb.appendChild(col);
   }
   const first = kb.querySelector(".key[data-note]");

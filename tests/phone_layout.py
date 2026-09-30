@@ -18,10 +18,11 @@
 #   3. Portrait: the oot-theme backdrop layer (body::before photo) is
 #      display:none on a phone viewport; the theme base colour is intact.
 #   4. Keyboard shows only playable keys, statically: on a phone every
-#      out-of-range key (.key.oor) is display:none, together with its empty
-#      cell (.pkey.kb-oor) and fully-empty octaves (.oct.kb-oor), so the
-#      board fits without horizontal scrolling; on desktop every key stays
-#      visible (dimmed) and the board still fits without scrolling.
+#      out-of-range key (.key.oor) and its empty cell (.pkey.kb-oor) are
+#      display:none, and the .oct rows dissolve to display:contents so the
+#      surviving cells flex evenly as direct children of #kb — every key
+#      the same width, no horizontal scrolling. On desktop the octave rows
+#      keep their flex layout and every key stays visible (dimmed).
 #   5. Phone chrome trims: with the playback block expanded, the token
 #      strip (#tokens) is still display:none; the three tab-tools rows
 #      (Enlarge / Grid|Scroll|Single / share|print|download) stack
@@ -177,8 +178,8 @@ def main():
                 const kb = document.getElementById('kb');
                 const oor = [...kb.querySelectorAll('.key.oor')];
                 const playable = [...kb.querySelectorAll('.key[data-note]')];
-                const empty = [...kb.querySelectorAll(
-                  '.pkey.kb-oor, .oct.kb-oor')];
+                const emptyCells = [...kb.querySelectorAll('.pkey.kb-oor')];
+                const octs = [...kb.querySelectorAll('.oct')];
                 return {
                   sw: kb.scrollWidth, cw: kb.clientWidth,
                   oorCount: oor.length,
@@ -187,8 +188,10 @@ def main():
                   playableCount: playable.length,
                   playableVisible: playable.every(
                     el => getComputedStyle(el).display !== 'none'),
-                  emptyHidden: empty.every(
+                  emptyHidden: emptyCells.every(
                     el => getComputedStyle(el).display === 'none'),
+                  octsDissolved: octs.every(
+                    el => getComputedStyle(el).display === 'contents'),
                 };
               }""")
             if phoneKb["oorCount"] == 0:
@@ -208,9 +211,13 @@ def main():
                     "playable keys must stay visible on a phone")
             if not phoneKb["emptyHidden"]:
                 failures.append(
-                    "cells and octaves holding no playable key must be "
-                    "display:none on a phone, or the board keeps its full "
-                    "42-column width")
+                    "cells holding no playable key must be display:none on "
+                    "a phone, or the board keeps its full 42-column width")
+            if not phoneKb["octsDissolved"]:
+                failures.append(
+                    "the .oct rows must dissolve to display:contents on a "
+                    "phone so the surviving cells flex to equal widths "
+                    "(otherwise the sparse octaves stretch their keys)")
             if phoneKb["sw"] > phoneKb["cw"] + 1:
                 failures.append(
                     "the phone keyboard must fit statically, without a "
@@ -226,9 +233,12 @@ def main():
               () => {
                 const kb = document.getElementById('kb');
                 const oor = kb.querySelectorAll('.key.oor');
+                const octs = [...kb.querySelectorAll('.oct')];
                 return { sw: kb.scrollWidth, cw: kb.clientWidth,
                          oorVisible: oor.length > 0 &&
                            getComputedStyle(oor[0]).display !== 'none',
+                         octsFlex: octs.every(
+                           el => getComputedStyle(el).display === 'flex'),
                          tokens: getComputedStyle(
                            document.getElementById('tokens')).display };
               }""")
@@ -241,6 +251,11 @@ def main():
                 failures.append(
                     "on a desktop the out-of-range keys must stay visible "
                     "(dimmed, not hidden)")
+            if not deskKb["octsFlex"]:
+                failures.append(
+                    "on a desktop the octave rows must keep their grouped "
+                    "flex layout (the display:contents dissolve is a "
+                    "small-screen rule only)")
             if deskKb["tokens"] == "none":
                 failures.append(
                     "on a desktop the token strip must stay visible when "
