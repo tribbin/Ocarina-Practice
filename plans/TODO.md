@@ -64,7 +64,7 @@ work; decisions + state in the session-24 log):
 
 | Item | Section |
 |---|---|
-| **USABILITY BATCH (approved 2026-09-30, session-24 handoff; 3 of 8 landed `3eb740d` + `f84b564` + `46dec09`)** — small-screen layout (editor hidden on phones, vertical rows, no portrait backdrop), melody-duck on/off, song .txt round-trip, zen-chorus audit, media-session announce + media keys | §1/§7/§9 |
+| **USABILITY BATCH (approved 2026-09-30, session-24 handoff; 4 of 8 landed: `3eb740d` + `f84b564` + `46dec09`, zen-chorus audit report-only)** — small-screen layout (editor hidden on phones, vertical rows, no portrait backdrop), melody-duck on/off, song .txt round-trip, media-session announce + media keys | §1/§7/§9 |
 | HiFi stays UNPUBLISHED — the retune + favorites pass is accepted, but Robin holds publication for now (2026-09-30) | hold |
 | Shipped-songs standardization stays HELD for Robin's later-stage pass; the permalinks corpora ride his planting as always | §9 |
 | Library widening (search, reordering beyond the pin) stays parked until Robin elects it | §9 |
@@ -72,8 +72,6 @@ work; decisions + state in the session-24 log):
 ---
 
 ## 1. Bugs (correctness / data loss)
-
-- [ ] **Zen chorus audit: did the twin engine drop the zen chorus? (IDEAS question)** — report-first: the twin path still carries the zen stereo chorus (audio.js twChorus: gated on vibOn && dur > vibDelay+0.1, depth faded by vibHighFade 0.4, zenPan 0.9) — check the zen defaults + the lite-voice path and report; fix only if truly lost (field-check class). `🟨 🟡 ⚙S`
 
 ## 2. Robustness / error handling
 
@@ -259,3 +257,24 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   song .txt round-trip (⚙M). Held: the transport first-note "hurries"
   field check (Robin's ears are the deciding pass) and the
   stop-others media key (infeasible on Web MediaSession).
+
+- **2026-09-30 (session 24 cont. — zen-chorus audit closes report-only: the twin engine kept the chorus)** —
+  The §1 audit item closed with no code change. The zen stereo chorus
+  survived the twin-engine handoff in its gating: twChorus =
+  vibratoEnabled && dur > vibDelay + 0.1 (js/audio.js:1033) — the clean
+  cavity core hard LEFT, the vibrato twin hard RIGHT at ±zenPan
+  (audio.js:1050–1073), bit-for-bit the legacy additive chorus gate that
+  8a7d68d stripped (old lines 872–874). Zen defaults intact (vibDepth
+  0.0035, vibHighFade 0.4, zenPan 0.9, vibDelay 0.35; dev-panel sliders
+  intact), vibratoEnabled owned by the zen transitions (exitZen → false;
+  toggleZen/sync → isFocusMode()). The lite twin voice is chorus-free,
+  but the legacy lite branch skipped the vibrato layers too — a
+  consistent reduction, not a loss. The item's "fix only if truly lost"
+  clause does not trigger; zen+lite stays chorus-free by design.
+
+- **2026-09-30 (session 24 cont. — context-meter note: compaction resets the budget, don't wrap on the stale number)** —
+  A provider-side compaction reset the context (~28K fresh); the stale
+  ~225K figure carried from the compacted handoff had already triggered
+  one early wrap — the .opencode/context-usage.json zone is only truth
+  once the session has its own work behind it, and a post-compaction
+  reading is a fresh start, not a continuation.
