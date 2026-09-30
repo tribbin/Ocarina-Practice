@@ -69,7 +69,7 @@ session-24/26/27/28 logs):
 |---|---|
 | **USABILITY BATCH — CLOSED ✅ 2026-09-30 (approved 2026-09-30, session-24 handoff; ALL EIGHT code items landed: `3eb740d` + `f84b564` + `46dec09` + `0588d99` + `d41563a` (coffee icon + duck glyph) + `6b1a805` (duck opaque face) + `0ba4f55` (coffee line under issues) + `6a59020` (coffee cup 2.5×, middle-aligned) + song .txt round-trip `c1ca8bc` + media-session announce/keys `01adf62` (sw oco-pwa-v77); zen-chorus audit report-only; small-screen pass complete: `d77a153` → `ed31f89` + `b666034`, Robin's three phone defects pinned at `30e496d` + `2016408` + `740d637`; Robin's 2026-09-30 field pass: all good; media-keys next/prev left unwired by his ruling)** | §1/§7/§9 |
 | HiFi stays UNPUBLISHED — the retune + favorites pass is accepted, but Robin holds publication for now (2026-09-30) | hold |
-| Shipped-songs standardization stays HELD for Robin's later-stage pass; the permalinks corpora ride his planting as always | §9 |
+| Shipped-songs standardization landed ✅ 2026-09-30 (`12e3b29`: house wrap convention across the seven non-conformant bodies, no playback change, no new section labels needed); the permalinks corpora ride his planting as always | §9 |
 | Library widening (search, reordering beyond the pin) stays parked until Robin elects it | §9 |
 
 ---
@@ -99,8 +99,6 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
 
 ## 9. Functional ideas (features)
-
-- [ ] **Standardize shipped songs to the `skills/ocarina-melodies` conventions** (barline at wrap start, named sections where players want headers) — HELD for Robin's later-stage pass; verify/shipped_songs are the gates; no playback changes expected. `🟢 ⚪ ⚙M`
 
 - [ ] **Library search / pinning widening** — favorites pinning SHIPPED 2026-09-26 `390c431` (star + first persisted Favorites group); the widening (search box, reordering beyond the pin, grouping options) stays parked until Robin elects it. `🟢 ⚪ ⚙S`
 
@@ -489,3 +487,22 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   Robin's own operation — left to him, branch stays ahead of origin. What
   remains open in §9: shipped-songs standardization (held, his later pass)
   and the library widening (parked until he elects it).
+
+- **2026-09-30 (session 28 cont. — shipped-songs standardization lands; the house wrap convention becomes the shipped format)** —
+  Picked up the standardization item at Robin's election on a fresh
+  song-standardize branch; the branch now stacks on top of the
+  usability-batch work (through ae05295, sw oco-pwa-v77). Finished the
+  pass: the seven non-conformant bodies in songs.json (song-of-storms,
+  sarias-song, eponas-song, eponas-song-bass, concerning-hobbits-short,
+  zelda-lullaby-bass, kokiri-forest) now open wrapped lines with a barline
+  instead of ending the previous line with one; #track blocks, section
+  labels and the token stream stay untouched. The three affected
+  twin-derive fixtures (song-of-storms-bass, sarias-song-bass,
+  concerning-hobbits-short-c) were re-pinned from the live loader,
+  shipped_songs gained a wrap-lint leg, and sw moved to oco-pwa-v78. No
+  new section labels were added: every multi-section song already carries
+  named headers, the rest are short single-form songs. Battery green
+  (twin_derive, shipped_songs, parse_edges, gen_pages,
+  instruments_load, console_hygiene, asset_versions; midi_track_audit
+  skips locally as expected) and lint clean. Landed at 12e3b29; pushing /
+  merging stays Robin's operation.
