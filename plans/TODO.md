@@ -69,7 +69,7 @@ session-24/26/27/28 logs):
 |---|---|
 | **USABILITY BATCH — CLOSED ✅ 2026-09-30 (approved 2026-09-30, session-24 handoff; ALL EIGHT code items landed: `3eb740d` + `f84b564` + `46dec09` + `0588d99` + `d41563a` (coffee icon + duck glyph) + `6b1a805` (duck opaque face) + `0ba4f55` (coffee line under issues) + `6a59020` (coffee cup 2.5×, middle-aligned) + song .txt round-trip `c1ca8bc` + media-session announce/keys `01adf62` (sw oco-pwa-v77); zen-chorus audit report-only; small-screen pass complete: `d77a153` → `ed31f89` + `b666034`, Robin's three phone defects pinned at `30e496d` + `2016408` + `740d637`; Robin's 2026-09-30 field pass: all good; media-keys next/prev left unwired by his ruling)** | §1/§7/§9 |
 | HiFi stays UNPUBLISHED — the retune + favorites pass is accepted, but Robin holds publication for now (2026-09-30) | hold |
-| Shipped-songs standardization landed ✅ 2026-09-30 (`12e3b29`: house wrap convention across the seven non-conformant bodies, no playback change, no new section labels needed); the permalinks corpora ride his planting as always | §9 |
+| Shipped-songs standardization landed ✅ 2026-09-30 (`12e3b29`: house wrap convention across the seven non-conformant bodies, no playback change, no new section labels needed); main merged into the branch at ec2c4da (no content change), PR #33 opened, awaiting Robin's merge | §9 |
 | Library widening (search, reordering beyond the pin) stays parked until Robin elects it | §9 |
 
 ---
@@ -506,3 +506,14 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   instruments_load, console_hygiene, asset_versions; midi_track_audit
   skips locally as expected) and lint clean. Landed at 12e3b29; pushing /
   merging stays Robin's operation.
+
+- **2026-09-30 (session 28 cont. — main merged into song-standardize; PR #33 opened)** —
+  Robin's call: origin/main merged into song-standardize — only the PR #32
+  merge commit (9e3f9cb) was pulled in, its content already on the branch
+  via the usability2 lineage (ae05295), so the merged tree is
+  byte-identical to the pre-merge tip 0754574 (merge commit ec2c4da, sw
+  still oco-pwa-v78). Directly-affected suites re-run green before the PR
+  (shipped_songs, twin_derive, parse_edges, gen_pages, data_validator),
+  eslint + html-validate clean, board verify ok; the branch was pushed and
+  PR #33 opened against main — the merge into main stays Robin's
+  operation.
