@@ -433,6 +433,7 @@ function render() {
     const src = document.getElementById("src").value;
     fitInput();
     document.getElementById("title").textContent = titleFromText(src);
+    syncMediaMetadata();
 
     const typedSwing = swingFromText(src);
     applySwing(typedSwing != null ? typedSwing : 0);
@@ -498,6 +499,36 @@ function tokenSeconds(tokOrDur, dotted) {
     ? (tokOrDur.beats || 1)
     : (4 / (tokOrDur || 4)) * (dotted ? 1.5 : 1);
   return Math.max(0.12, beats * quarterSec());
+}
+
+// Media Session: the lock screen / media center names the session
+// "Ocarina Practice — <song>" and the hardware keys drive the transport.
+// Gated on ("mediaSession" in navigator); unsupported engines no-op silently.
+// next/prev stay unwired until their stepping target is picked.
+function mediaSessionObj() {
+  try {
+    return ("mediaSession" in navigator && navigator.mediaSession) || null;
+  } catch (e) { return null; }
+}
+
+function syncMediaMetadata() {
+  const ms = mediaSessionObj();
+  if (!ms || typeof MediaMetadata === "undefined") return;
+  const el = document.getElementById("title");
+  const name = el ? el.textContent : "";
+  try {
+    ms.metadata = new MediaMetadata({
+      title: name ? "Ocarina Practice \u2014 " + name : "Ocarina Practice"
+    });
+  } catch (e) {}
+}
+
+// The transport's single playbackState writer (audio.js calls it at each
+// state edge: none -> playing -> paused -> none).
+function mediaSessionState(state) {
+  const ms = mediaSessionObj();
+  if (!ms) return;
+  try { ms.playbackState = state; } catch (e) {}
 }
 
 // Per-render element indexes for highlightQuery-free lookups: the note path
@@ -1356,6 +1387,16 @@ function wireUi() {
       swingVal.textContent = swingEl.value;
       persistPlayHeaders();
     });
+  }
+  // The hardware media keys ride the same transport as the on-screen
+  // buttons; next/prev stay unwired until their stepping target is picked.
+  const ms = mediaSessionObj();
+  if (ms) {
+    try {
+      ms.setActionHandler("play", togglePlayPause);
+      ms.setActionHandler("pause", pauseMelody);
+      ms.setActionHandler("stop", stopMelody);
+    } catch (e) {}
   }
   document.getElementById("print").onclick = () => {
     // The popup carries the SAME printable bytes the Download button saves,
@@ -2295,7 +2336,8 @@ function perfDismissToast() {
 
 export { bumpHoverQuiet, buildKB, clearHighlight, cueFirstNote, enterZenFromLink,
          firstSoundIdx, freezeZenGlow, highlightToken, isFocusMode, isFullscreen,
-         isLiveTab, lastTokens, loopOn, noteMidi, quarterSec, render, resetLiveTab,
+         isLiveTab, lastTokens, loopOn, mediaSessionState, noteMidi, quarterSec,
+         render, resetLiveTab,
          setAppCss, setHoverProbe, tokenSeconds, updateTransportUI, wireUi };
 
 // Classic-script compat surface (tests + dev console).

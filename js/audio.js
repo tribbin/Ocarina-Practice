@@ -2,7 +2,8 @@
 import { currentSwing, tempoPct } from "./library.js";
 import { freqOf, quarterSecFor, tokenGridBeats } from "./music-math.js";
 import { bumpHoverQuiet, clearHighlight, cueFirstNote, freezeZenGlow,
-         highlightToken, isFocusMode, quarterSec, tokenSeconds, updateTransportUI } from "./ui.js";
+         highlightToken, isFocusMode, mediaSessionState, quarterSec,
+         tokenSeconds, updateTransportUI } from "./ui.js";
 import { isPracticeActive } from "./practice.js";
 import { wakeHold, wakeDrop } from "./wakelock.js";
 import { loadTwinModelFromObject, interpNote, scheduleHelmholtzNote, VOICE_REV } from "./helmholtz-voice.js?v=3";
@@ -1189,6 +1190,7 @@ function stopMelody() {
   clearHighlight();
   if (typeof cueFirstNote === "function") cueFirstNote();
   syncTransport();
+  mediaSessionState("none");
 }
 
 function playMelody(fromIdx) {
@@ -1218,6 +1220,7 @@ function playMelody(fromIdx) {
   melodyPlaying = true;
   wakeHold("melody"); // screen stays up while the song plays (Robin 2026-09-25)
   syncTransport();
+  mediaSessionState("playing");
   resetMelodyBuses(audioCtx); // fresh bus generation for the upcoming voices
   const startWhen = audioCtx.currentTime + 0.05;
   rebaseTrackTimes(startWhen); // the named tracks start exactly at the melody
@@ -1237,6 +1240,7 @@ function pauseMelody() {
   if (melodyTimer) { clearTimeout(melodyTimer); melodyTimer = 0; }
   if (typeof freezeZenGlow === "function") freezeZenGlow();
   syncTransport();
+  mediaSessionState("paused");
 }
 
 function resumeMelody() {
@@ -1248,6 +1252,7 @@ function resumeMelody() {
   melodyPlaying = true;
   wakeHold("melody"); // resume = screen stays up again
   syncTransport();
+  mediaSessionState("playing");
   resetMelodyBuses(audioCtx); // fresh bus generation for the upcoming voices
   const resumeWhen = audioCtx.currentTime + 0.05;
   rebaseTrackTimes(resumeWhen);
