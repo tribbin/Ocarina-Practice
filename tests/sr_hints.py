@@ -115,9 +115,22 @@ def main():
                   // hidden-attribute-only probe waved that straight through.
                   visible: r.width > 100 && r.height > 100 &&
                            getComputedStyle(ov).display !== 'none',
+                  links: [...ov.querySelectorAll('a')].map(a => [
+                    a.getAttribute('href'), a.target, a.rel]),
                 };
               }
             """)
+            kofi = next((l for l in help1["links"]
+                         if l[0] == "https://ko-fi.com/tribbin"), None)
+            if not any(l[0] == "https://github.com/tribbin/Ocarina-Practice/issues"
+                       for l in help1["links"]):
+                failures.append("the help colophon must keep the issues link")
+            if kofi is None:
+                failures.append("the help colophon must carry the ko-fi link "
+                                "(https://ko-fi.com/tribbin)")
+            elif kofi[1] != "_blank" or kofi[2] != "noopener":
+                failures.append("the ko-fi link must open in a new tab with "
+                                f"rel=noopener (got {kofi!r})")
             if not help1["visible"]:
                 failures.append("the opened overlay must be VISIBLE on screen "
                                 "(a display:none ancestor hid it once)")
