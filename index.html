@@ -24,9 +24,21 @@
 </style>
 <script>
 (function () {
+  // Pre-paint theme: the same param > localStorage > default resolution as
+  // app.js's themeFromQuery, so the saved theme lands before first paint —
+  // boot() applying it late used to flash the default look on every load.
   try {
-    if (new URLSearchParams(location.search).has("oot"))
-      document.documentElement.setAttribute("data-theme", "oot");
+    var q = new URLSearchParams(location.search);
+    var t;
+    if (q.has("plain")) t = "";
+    else if (q.has("oot")) t = "oot";
+    else if (q.has("hifi")) t = "hifi";
+    else {
+      var s = localStorage.getItem("oco-theme");
+      t = (s === "" || s === "oot" || s === "hifi") ? s : "oot";
+    }
+    if (t) document.documentElement.setAttribute("data-theme", t);
+    else document.documentElement.removeAttribute("data-theme");
   } catch (e) {}
 })();
 </script>
