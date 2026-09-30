@@ -91,7 +91,7 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 
 ## 7. Accessibility & UX
 
-- [ ] **Small-screen layout pass (IDEAS: SMALL SCREENS, approved 2026-09-30)** — phones are play/practice, not editing: the editor block is HIDDEN on narrow screens, transport + controls stack into clean vertical rows (today they are "all over the place"), NO backdrop image in portrait, whole viewport functional in normal mode; zen mode stays as-is (Robin: already looks very good). FIRST PASS `d77a153` IS IN (editor face hidden with the Song Library kept, playback head stacked into centered rows, Hyrule backdrop off in portrait; sw oco-pwa-v64, css-v5) BUT THE KEYBOARD HALF IS REJECTED — Robin 2026-09-30: the board scrolling during play is annoying; instead the TRANSPARENT keys (out-of-instrument, dimmed via inline opacity .25 white / .2 black in buildKB) are HIDDEN on small portrait screens so the board shows only the playable keys — static, NO auto-scroll (delete scrollKbToActive from ui.js and the 32px-column/overflow-x rules; give the dimmed keys a class so the media query can display:none them). ALSO: the token strip (#tokens in the playback block — "the other dropdown showing tokens") is hidden on small portrait too (not ergonomic there); and the three tab-tools rows each center: Enlarge small holes, Grid|Scroll|Single, share|print|download. tests/phone_layout.py legs 4-5 pin the rejected scroll-follow and must be re-pinned to the static board + hidden dimmed keys + hidden #tokens + centered tab-tools rows. `🟧 🔴 ⚙L`
+- [ ] **Small-screen layout pass (IDEAS: SMALL SCREENS, approved 2026-09-30)** — phones are play/practice, not editing: the editor block is HIDDEN on narrow screens, transport + controls stack into clean vertical rows (today they are "all over the place"), NO backdrop image in portrait, whole viewport functional in normal mode; zen mode stays as-is (Robin: already looks very good). FIRST PASS `d77a153` IS IN (editor face hidden with the Song Library kept, playback head stacked into centered rows, Hyrule backdrop off in portrait; sw oco-pwa-v64, css-v5) BUT THE KEYBOARD HALF IS REJECTED — Robin 2026-09-30: the board scrolling during play is annoying; instead the TRANSPARENT keys (out-of-instrument, dimmed via inline opacity .25 white / .2 black in buildKB) are HIDDEN on small portrait screens so the board shows only the playable keys — static, NO auto-scroll (delete scrollKbToActive from ui.js and the 32px-column/overflow-x rules; give the dimmed keys a class so the media query can display:none them). ALSO: the token strip (#tokens in the playback block — "the other dropdown showing tokens") is hidden on small portrait too (not ergonomic there); and the three tab-tools rows each center: Enlarge small holes, Grid|Scroll|Single, share|print|download. tests/phone_layout.py legs 4-5 pin the rejected scroll-follow and must be re-pinned to the static board + hidden dimmed keys + hidden #tokens + centered tab-tools rows. Second pass landed (ed31f89) plus the uniform-key fix (b666034): the .oct rows dissolve to display:contents under 760px so the surviving cells flex to equal widths (Robin: sparse octaves stretched their keys), octave radii flattened, phone_layout re-pinned to the static uniform board + expanded-block #tokens check `🟧 🔴 ⚙L`
 
 - [ ] **Coffee icon after the help-screen "Buy me a coffee" link (IDEAS: coffee icon, approved 2026-09-30)** — Robin: a small coffee icon right after the 'Buy me a coffee' colophon link in the help screen (planted 7a4da56); static, no behavior; the sr_hints help-overlay leg pins both colophon links, keep it green. `🟢 🟠 ⚙S`
 
@@ -337,3 +337,25 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   origin (push stays Robin's). Fresh context: open plans/TODO.md (AGENTS
   rule 1) and work the hot list top-down; read IDEAS.txt fresh when
   picking up the two icon items.
+
+- **2026-09-30 (session 25 — the offline_pwa CI red was a boot-race flake; the small-screen board lands static, then uniform)** —
+  CI 36707821958 red on `offline_pwa` ("the offline song must render its
+  chart") with a green re-run on the same code: both boot-time legs read
+  the sheet/strip right after WAIT's window.NOTES install, which
+  loadInstrument completes ahead of boot's async tail (the library load,
+  then the first sheet render behind the ocarina-template fetch) — a slow
+  runner's probe can land in that gap. `a55b270` makes the legs wait on
+  the rendered DOM itself (#tokens .tok, #sheet .card). Robin's phone
+  field check on the second-pass board (ed31f89: static playable-only
+  keys, no auto-scroll, #tokens hidden, tab-tools centered) caught one
+  real defect — sparse octaves stretched their surviving keys, because
+  each .oct kept its flex:1 share past the trim; cured at b666034 by
+  dissolving .oct to display:contents so the surviving cells flex evenly,
+  with the octave-group radii flattened so the board reads as one strip.
+  phone_layout legs 4-5 re-pinned (contents dissolve, desktop grouped-flex
+  regression, #tokens hidden with the playback block expanded). Battery
+  green: phone_layout, keyboard_widgets, render_pin, console_hygiene,
+  asset_versions, offline_pwa, zen_notebar, readability, theme_prepaint,
+  svg_cache, reduced_motion; eslint + html-validate clean. sw
+  oco-pwa-v66, css-v7. The small-screen item stays open on Robin's field
+  check of the uniform board.
