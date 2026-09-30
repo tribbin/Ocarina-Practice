@@ -30,13 +30,17 @@
 #      (Enlarge / Grid|Scroll|Single / share|print|download) stack
 #      top-to-bottom, each centered on the viewport.
 #   6. Desktop regression: the editor face, the backdrop layer, the
-#      1fr-auto-1fr playback grid and the playback chevron are all
-#      unchanged.
+#      1fr-auto-1fr playback grid, the playback chevron and the header
+#      tools' right edge are all unchanged.
 #   7. Section titles keep a uniform, natural distance from their block's
 #      top: at phone width each .head-label (Song Library, Playback Control,
 #      Piano) sits the same distance below its .block's top edge, in the
 #      collapsed AND expanded block states — no section title drifts down
 #      because its control rows wrapped ahead of it.
+#   8. Wrapped header keeps its trailing edge: at phone width the h1, the
+#      reserved-width picker and the theme/? tools stack onto separate
+#      lines, and the wrapped .head-tools line still ends at the header's
+#      content edge — a wrapped line must not start flush left.
 #
 #   python3 tests/phone_layout.py      # headless & silent
 
@@ -377,6 +381,14 @@ def main():
                   chev: getComputedStyle(
                     document.querySelector('#playback .collapse-btn'))
                     .display,
+                  toolsRight: (() => {
+                    const bar = document.querySelector('header.app');
+                    const edge = bar.getBoundingClientRect().right -
+                      parseFloat(getComputedStyle(bar).paddingRight);
+                    return { right:
+                      document.querySelector('.head-tools')
+                        .getBoundingClientRect().right, edge: edge };
+                  })(),
                 };
               }""")
             if desk["headLeft"] == "none" or desk["libPairs"] == "none":
@@ -407,6 +419,13 @@ def main():
                 failures.append(
                     "the desktop playback collapse chevron must stay visible "
                     "(display:none is a small-screen rule only)")
+            if abs(desk["toolsRight"]["right"] -
+                   desk["toolsRight"]["edge"]) > 2:
+                failures.append(
+                    "the desktop header tools must keep their right edge "
+                    f"(tools end at {desk['toolsRight']['right']} vs the "
+                    f"header content edge "
+                    f"{desk['toolsRight']['edge']:.1f})")
             ctx.close()
 
             # ---------- 7: section titles keep a uniform top distance ----------
@@ -451,6 +470,49 @@ def main():
                         "must not sit further from the top than Piano")
             ctx.close()
 
+            # ---------- 8: wrapped header keeps its trailing edge ----------
+            print('== wrapped header keeps trailing alignment', flush=True)
+            ctx, page = browser.new_context(
+                viewport=PHONE, is_mobile=True, has_touch=True), None
+            page = ctx.new_page()
+            boot(page, base)
+            head = page.evaluate("""
+              () => {
+                const bar = document.querySelector('header.app');
+                const cr = getComputedStyle(bar);
+                const tools = document.querySelector('.head-tools');
+                const picker = document.querySelector('.inst-picker');
+                const br = bar.getBoundingClientRect();
+                const tr = tools.getBoundingClientRect();
+                const pr = picker.getBoundingClientRect();
+                return {
+                  barRight: br.right, padRight: parseFloat(cr.paddingRight),
+                  toolsRight: tr.right, toolsTop: tr.top,
+                  pickerTop: pr.top, h1Top:
+                  document.querySelector('header.app h1').getBoundingClientRect().top,
+                };
+              }""")
+            # The reserved picker width forces the wrap at phone width:
+            # h1 line, picker line, then the tools line.
+            if head["toolsTop"] <= head["pickerTop"]:
+                failures.append(
+                    "at phone width the trailing tools must wrap onto their "
+                    f"own line below the picker (tools top {head['toolsTop']} "
+                    f"vs picker top {head['pickerTop']})")
+            if head["h1Top"] >= head["pickerTop"]:
+                failures.append(
+                    "the site title must stay on its own first line at phone "
+                    f"width (h1 top {head['h1Top']} vs picker top "
+                    f"{head['pickerTop']})")
+            edge = head["barRight"] - head["padRight"]
+            if abs(head["toolsRight"] - edge) > 2:
+                failures.append(
+                    "the wrapped theme/? tools row must keep its right edge "
+                    f"(tools end at {head['toolsRight']} vs the header's "
+                    f"content edge {edge:.1f}) — a wrapped line must not "
+                    "start flush left")
+            ctx.close()
+
             browser.close()
     finally:
         httpd.shutdown()
@@ -464,8 +526,9 @@ def main():
           "backdrop off, the keyboard shows only playable keys on a static "
           "board, the token strip stays hidden and the tab-tools rows stack "
           "centered, every section title keeps a uniform natural distance "
-          "from its block's top (collapsed and expanded), and the desktop "
-          "layout is untouched.")
+          "from its block's top (collapsed and expanded), the wrapped "
+          "header keeps its trailing edge, and the desktop layout is "
+          "untouched.")
     return 0
 
 

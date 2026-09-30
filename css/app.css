@@ -424,6 +424,11 @@ header.app span { opacity: .7; font-size: 13px; }
 @media (max-width: 760px) {
   header.app { display: flex; flex-wrap: wrap; }
   .inst-picker { margin-inline: auto; }
+  /* The trailing tools keep their desktop edge when the bar wraps: an auto
+     left margin rides .head-tools to the row's right end instead of letting
+     a wrapped line start flush left (the theme/? pair Robin caught on the
+     phone, 2026-09-30). */
+  .head-tools { margin-left: auto; }
   /* Reserve the selector's grown-up width from the first paint: the option
      list arrives with the instruments fetch, and today the narrow empty
      control balloons into the row — head-tools wrap onto a second line and
