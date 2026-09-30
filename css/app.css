@@ -1963,14 +1963,18 @@ html[data-theme="oot"] header.app button.ghost {
 
   /* Playback head: the desktop 1fr-auto-1fr grid would wrap its three groups
      unevenly on a narrow screen; one row per group, each centered, is the
-     "clean vertical rows" the spec asks for. */
+     "clean vertical rows" the spec asks for. The title leads (Robin,
+     2026-09-30): "Playback Control" takes the top slot — the same natural
+     distance from the block top as every other section title — with the
+     secondary control rows following. */
   #playback > .box-head {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 12px;
   }
-  #playback .tempo-lab { margin-left: 0; align-items: center; }
+  #playback .head-left { order: 1; }
+  #playback .tempo-lab { order: 2; margin-left: 0; align-items: center; }
 
   /* The keyboard trims to the playable span: out-of-range keys and their
      empty cells drop out; the .oct rows dissolve to display:contents so

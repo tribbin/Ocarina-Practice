@@ -29,6 +29,11 @@
 #      top-to-bottom, each centered on the viewport.
 #   6. Desktop regression: the editor face, the backdrop layer and the
 #      1fr-auto-1fr playback grid are all unchanged.
+#   7. Section titles keep a uniform, natural distance from their block's
+#      top: at phone width each .head-label (Song Library, Playback Control,
+#      Piano) sits the same distance below its .block's top edge, in the
+#      collapsed AND expanded block states — no section title drifts down
+#      because its control rows wrapped ahead of it.
 #
 #   python3 tests/phone_layout.py      # headless & silent
 
@@ -113,8 +118,11 @@ def main():
                   .map(el => {
                     const r = el.getBoundingClientRect();
                     return { name: el.id || el.className,
-                             top: r.top, bottom: r.bottom, h: r.height };
-                  });
+                             top: r.top, bottom: r.bottom, h: r.height,
+                             hasLabel: el.querySelector('.head-label')
+                                       !== null };
+                  })
+                  .sort((a, b) => a.top - b.top);
                 return {
                   dir: getComputedStyle(head).flexDirection,
                   kids: kids,
@@ -131,6 +139,13 @@ def main():
                     f"rows, found {len(rows['kids'])}: "
                     f"{[k['name'] for k in rows['kids']]}")
             else:
+                if not rows["kids"][0]["hasLabel"]:
+                    failures.append(
+                        "the 'Playback Control' title row must lead the "
+                        "stacked playback head on a phone (the section "
+                        "title sits on top, at its natural distance from "
+                        f"the block top; the top row is "
+                        f"{rows['kids'][0]['name']!r})")
                 for i in range(2):
                     a, b = rows["kids"][i], rows["kids"][i + 1]
                     if b["top"] < a["bottom"] - 1:
@@ -371,6 +386,48 @@ def main():
                     f"{desk['sameRow']}px)")
             ctx.close()
 
+            # ---------- 7: section titles keep a uniform top distance ----------
+            print('== section titles uniform top distance', flush=True)
+            ctx, page = browser.new_context(
+                viewport=PHONE, is_mobile=True, has_touch=True), None
+            page = ctx.new_page()
+            boot(page, base)
+            measure = """
+              () => {
+                const tops = {};
+                for (const id of ['inputBlock', 'playback', 'pianoBlock']) {
+                  const block = document.getElementById(id);
+                  const label = block.querySelector('.head-label');
+                  if (!block || !label) return null;
+                  tops[id] = Math.round(
+                    (label.getBoundingClientRect().top -
+                     block.getBoundingClientRect().top) * 100) / 100;
+                }
+                return tops;
+              }
+            """
+            collapsed = page.evaluate(measure)
+            page.evaluate(
+                "() => { for (const id of ['inputBlock', 'playback']) "
+                "document.getElementById(id).classList.remove('collapsed'); }")
+            page.wait_for_timeout(100)
+            expanded = page.evaluate(measure)
+            for state, tops in (("collapsed", collapsed), ("expanded", expanded)):
+                if tops is None:
+                    failures.append(
+                        f"all three section titles must be present in the "
+                        f"{state} state (a .head-label or its block is "
+                        "missing)")
+                    continue
+                span = max(tops.values()) - min(tops.values())
+                if span > 2:
+                    failures.append(
+                        f"section titles must sit at the same natural "
+                        f"distance from their block's top in the {state} "
+                        f"state (span {span} px: {tops}) — e.g. Song Library "
+                        "must not sit further from the top than Piano")
+            ctx.close()
+
             browser.close()
     finally:
         httpd.shutdown()
@@ -380,10 +437,12 @@ def main():
             print("  - " + f)
         return 1
     print("\nPASS: phone editor face hidden (library kept), playback head "
-          "stacked into rows, portrait backdrop off, the keyboard shows only "
-          "playable keys on a static board, the token strip stays hidden and "
-          "the tab-tools rows stack centered, and the desktop layout is "
-          "untouched.")
+          "stacked into rows with the section title leading, portrait "
+          "backdrop off, the keyboard shows only playable keys on a static "
+          "board, the token strip stays hidden and the tab-tools rows stack "
+          "centered, every section title keeps a uniform natural distance "
+          "from its block's top (collapsed and expanded), and the desktop "
+          "layout is untouched.")
     return 0
 
 
