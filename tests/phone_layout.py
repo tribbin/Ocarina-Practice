@@ -3,10 +3,12 @@
 # a phone is for play/practice, not editing. The layout pass hides the
 # editor's own face on narrow screens, stacks the playback head into one
 # centered row per control group, drops the Hyrule backdrop in portrait,
-# and gives the 42-column keyboard a fixed column width with auto-scroll
-# to the sounding key instead of crushed ~7px keys. Zen stays as-is by
-# construction (every rule is scoped to the non-zen chrome; the standing
-# zen_notebar suite guards the zen geometry).
+# drops the token strip, centers the three tab-tools rows, and trims the
+# 42-column keyboard to the instrument's playable span — out-of-range keys
+# are hidden so the board fits statically, with NO auto-scroll (Robin
+# rejected the scroll-follow first pass). Zen stays as-is by construction
+# (every rule is scoped to the non-zen chrome; the standing zen_notebar
+# suite guards the zen geometry).
 #
 #   1. Phone editor face: expand/clear cluster, the two save/load pairs and
 #      the editor sheet + legend are display:none; the Song Library picker
@@ -15,13 +17,15 @@
 #      top-to-bottom, no page-level horizontal overflow.
 #   3. Portrait: the oot-theme backdrop layer (body::before photo) is
 #      display:none on a phone viewport; the theme base colour is intact.
-#   4. Keyboard keeps a readable width: at the phone viewport #kb is
-#      horizontally scrollable; at a desktop viewport the board fits and
-#      never scrolls.
-#   5. The keyboard tracks the sounding key: during a real playback run on
-#      the phone viewport the .key.now highlight lands inside #kb's visible
-#      window (the board glides/snaps to the active key); the desktop board
-#      fits, so scrollLeft stays put.
+#   4. Keyboard shows only playable keys, statically: on a phone every
+#      out-of-range key (.key.oor) is display:none, together with its empty
+#      cell (.pkey.kb-oor) and fully-empty octaves (.oct.kb-oor), so the
+#      board fits without horizontal scrolling; on desktop every key stays
+#      visible (dimmed) and the board still fits without scrolling.
+#   5. Phone chrome trims: with the playback block expanded, the token
+#      strip (#tokens) is still display:none; the three tab-tools rows
+#      (Enlarge / Grid|Scroll|Single / share|print|download) stack
+#      top-to-bottom, each centered on the viewport.
 #   6. Desktop regression: the editor face, the backdrop layer and the
 #      1fr-auto-1fr playback grid are all unchanged.
 #
@@ -166,112 +170,134 @@ def main():
                     f"{backdrop['display']!r}, background "
                     f"{backdrop['bg']!r})")
 
-            # ---------- 4: keyboard keeps a readable width ----------
-            print('== keyboard width phone vs desktop', flush=True)
+            # ---------- 4: keyboard shows only playable keys, static ----------
+            print('== keyboard shows only playable keys', flush=True)
             phoneKb = page.evaluate("""
               () => {
                 const kb = document.getElementById('kb');
-                return { sw: kb.scrollWidth, cw: kb.clientWidth,
-                         pkey: getComputedStyle(
-                           kb.querySelector('.pkey')).width };
+                const oor = [...kb.querySelectorAll('.key.oor')];
+                const playable = [...kb.querySelectorAll('.key[data-note]')];
+                const empty = [...kb.querySelectorAll(
+                  '.pkey.kb-oor, .oct.kb-oor')];
+                return {
+                  sw: kb.scrollWidth, cw: kb.clientWidth,
+                  oorCount: oor.length,
+                  oorHidden: oor.every(
+                    el => getComputedStyle(el).display === 'none'),
+                  playableCount: playable.length,
+                  playableVisible: playable.every(
+                    el => getComputedStyle(el).display !== 'none'),
+                  emptyHidden: empty.every(
+                    el => getComputedStyle(el).display === 'none'),
+                };
               }""")
-            if phoneKb["sw"] <= phoneKb["cw"]:
+            if phoneKb["oorCount"] == 0:
                 failures.append(
-                    "on a phone the 42-column keyboard must be horizontally "
-                    f"scrollable (scrollWidth {phoneKb['sw']} <= clientWidth "
-                    f"{phoneKb['cw']}) — crushed ~7px keys were the point")
+                    "the board must mark its out-of-range keys .key.oor "
+                    "(none found) so the phone view can hide them by class")
+            elif not phoneKb["oorHidden"]:
+                failures.append(
+                    "out-of-range keys must be display:none on a phone so "
+                    "the board shows only the playable span")
+            if phoneKb["playableCount"] == 0:
+                failures.append(
+                    "the phone board must keep its playable keys "
+                    "(no .key[data-note] found)")
+            elif not phoneKb["playableVisible"]:
+                failures.append(
+                    "playable keys must stay visible on a phone")
+            if not phoneKb["emptyHidden"]:
+                failures.append(
+                    "cells and octaves holding no playable key must be "
+                    "display:none on a phone, or the board keeps its full "
+                    "42-column width")
+            if phoneKb["sw"] > phoneKb["cw"] + 1:
+                failures.append(
+                    "the phone keyboard must fit statically, without a "
+                    f"horizontal scroll strip (scrollWidth {phoneKb['sw']} "
+                    f"> clientWidth {phoneKb['cw']})")
             ctx.close()
 
             ctx = browser.new_context(viewport=DESK)
             page = ctx.new_page()
             boot(page, base)
+            page.click("#playback .collapse-btn")
             deskKb = page.evaluate("""
               () => {
                 const kb = document.getElementById('kb');
-                return { sw: kb.scrollWidth, cw: kb.clientWidth };
+                const oor = kb.querySelectorAll('.key.oor');
+                return { sw: kb.scrollWidth, cw: kb.clientWidth,
+                         oorVisible: oor.length > 0 &&
+                           getComputedStyle(oor[0]).display !== 'none',
+                         tokens: getComputedStyle(
+                           document.getElementById('tokens')).display };
               }""")
             if deskKb["sw"] > deskKb["cw"] + 1:
                 failures.append(
                     "on a desktop the keyboard must fit its panel and never "
                     f"scroll (scrollWidth {deskKb['sw']} > clientWidth "
                     f"{deskKb['cw']})")
+            if not deskKb["oorVisible"]:
+                failures.append(
+                    "on a desktop the out-of-range keys must stay visible "
+                    "(dimmed, not hidden)")
+            if deskKb["tokens"] == "none":
+                failures.append(
+                    "on a desktop the token strip must stay visible when "
+                    f"the playback block is expanded (display "
+                    f"{deskKb['tokens']!r})")
 
-            # ---------- 5: keyboard tracks the sounding key ----------
-            print('== keyboard follows the active key', flush=True)
+            # ---------- 5: phone chrome trims — token strip + tab tools ----------
+            print('== token strip hidden, tab-tools centered', flush=True)
             ctx, page = browser.new_context(
                 viewport=PHONE, is_mobile=True, has_touch=True), None
             page = ctx.new_page()
             boot(page, base)
-            track = page.evaluate("""
-              () => new Promise((resolve, reject) => {
-                const notes = window.NOTES;
-                const low = notes[0], high = notes[notes.length - 1];
-                const kb = document.getElementById('kb');
-                const pre = { scroll: kb.scrollLeft,
-                              fits: kb.scrollWidth <= kb.clientWidth };
-                const SRC = "# phone kb\\n# tempo 120\\n| " +
-                            low + "/2 " + high + "/1";
-                const t0 = Date.now();
-                const arm = () => {
-                  document.getElementById('src').value = SRC;
-                  render();
-                  if (document.getElementById('title').textContent !==
-                      "phone kb") {
-                    if (Date.now() - t0 > 4000) {
-                      reject(new Error("title never matched")); return;
-                    }
-                    setTimeout(arm, 30);
-                    return;
-                  }
-                  const probe = () => {
-                    const el = kb.querySelector(
-                      '.key.now[data-note="' + high + '"]');
-                    if (!el) {
-                      if (Date.now() - t0 > 6000) {
-                        reject(new Error("high note never highlighted"));
-                        return;
-                      }
-                      setTimeout(probe, 50);
-                      return;
-                    }
-                      setTimeout(() => {
-                        // Measure BEFORE stopMelody: stopping re-cues the
-                        // first note, which scrolls the board back to start.
-                        const k = kb.getBoundingClientRect();
-                        const c = el.getBoundingClientRect();
-                        const out = {
-                          pre: pre,
-                          scroll: kb.scrollLeft,
-                          inView: c.left >= k.left - 2 &&
-                                  c.right <= k.right + 2,
-                          high: high,
-                        };
-                        stopMelody();
-                        resolve(out);
-                      }, 400);
-                  };
-                  playMelody(0);
-                  probe();
+            # Expand the playback block first: it boots collapsed, and the
+            # collapsed state already hides #tokens via its own rule — the
+            # leg must prove the SMALL-SCREEN rule hides it even when open.
+            page.click("#playback .collapse-btn")
+            tools = page.evaluate("""
+              () => {
+                const cx = el => {
+                  const r = el.getBoundingClientRect();
+                  return r.left + r.width / 2;
                 };
-                arm();
-              })
-            """)
-            if track["pre"]["fits"]:
+                const rows = ['.tools-left', '.mode-seg', '.tools-right']
+                  .map(sel => {
+                    const el = document.querySelector('.tab-tools ' + sel);
+                    const r = el.getBoundingClientRect();
+                    return { name: sel, top: r.top, bottom: r.bottom,
+                             cx: cx(el), h: r.height };
+                  });
+                return {
+                  tokens: getComputedStyle(
+                    document.getElementById('tokens')).display,
+                  rows: rows, vw: innerWidth,
+                };
+              }""")
+            if tools["tokens"] != "none":
                 failures.append(
-                    f"the keyboard leg presumes a scrollable board on a "
-                    f"phone (pre-check: scrollWidth fit the panel)")
-            if track["pre"]["scroll"] != 0:
+                    "the token strip (#tokens) must be display:none on a "
+                    f"phone (got display {tools['tokens']!r})")
+            if any(r["h"] <= 0 for r in tools["rows"]):
                 failures.append(
-                    f"the keyboard must start at scrollLeft 0 before play "
-                    f"(got {track['pre']['scroll']})")
-            if track["scroll"] <= 5:
-                failures.append(
-                    f"the keyboard must scroll toward the sounding high key "
-                    f"{track['high']} (scrollLeft {track['scroll']})")
-            if not track["inView"]:
-                failures.append(
-                    f"the sounding key {track['high']} must land inside the "
-                    "keyboard's visible window after the auto-scroll")
+                    "all three tab-tools rows must be laid out on a phone: "
+                    f"{[(r['name'], r['h']) for r in tools['rows']]}")
+            else:
+                for i in range(2):
+                    a, b = tools["rows"][i], tools["rows"][i + 1]
+                    if b["top"] < a["bottom"] - 1:
+                        failures.append(
+                            f"tab-tools rows must stack top-to-bottom: "
+                            f"{a['name']} (bottom {a['bottom']}) overlaps "
+                            f"{b['name']} (top {b['top']})")
+                for r in tools["rows"]:
+                    if abs(r["cx"] - tools["vw"] / 2) > 2:
+                        failures.append(
+                            f"tab-tools row {r['name']} must be centered "
+                            f"(center {r['cx']:.0f}px vs viewport center "
+                            f"{tools['vw'] / 2:.0f}px)")
             ctx.close()
 
             # ---------- 6: desktop regression ----------
@@ -339,9 +365,10 @@ def main():
             print("  - " + f)
         return 1
     print("\nPASS: phone editor face hidden (library kept), playback head "
-          "stacked into rows, portrait backdrop off, keyboard keeps a "
-          "readable scrollable width that follows the sounding key, and the "
-          "desktop layout is untouched.")
+          "stacked into rows, portrait backdrop off, the keyboard shows only "
+          "playable keys on a static board, the token strip stays hidden and "
+          "the tab-tools rows stack centered, and the desktop layout is "
+          "untouched.")
     return 0
 
 

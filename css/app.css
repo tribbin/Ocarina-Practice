@@ -1947,10 +1947,11 @@ html[data-theme="oot"] header.app button.ghost {
    a phone is for play/practice, not editing — the editor's own controls go
    away (the Song Library picker stays, it is how a phone loads a song), the
    playback head stops mid-wrap and stacks into one centered row per control
-   group, the Hyrule backdrop drops in portrait, and the 42-column keyboard
-   stops shrinking to ~7px keys: it keeps its column width and scrolls,
-   tracking the sounding key (js/ui.js scrollKbToActive, a no-op whenever the
-   board fits). All of this is non-zen chrome; the zen view is untouched. */
+   group, the Hyrule backdrop drops in portrait, the token strip drops, and
+   the 42-column keyboard trims itself to the instrument's playable span:
+   out-of-range keys are hidden (marked .oor/.kb-oor by buildKB), the board
+   stays static — no auto-scroll glide. All of this is non-zen chrome; the
+   zen view is untouched. */
 @media (max-width: 760px) {
   /* The editor face of the input block: expand/clear and the two save/load
      pairs are editing furniture — hidden on a phone, along with the editor
@@ -1971,11 +1972,24 @@ html[data-theme="oot"] header.app button.ghost {
   }
   #playback .tempo-lab { margin-left: 0; align-items: center; }
 
-  /* The keyboard: fixed-width columns instead of flex-shrink, and the block
-     scrolls. 42 × 32px is the scrollable extent; a phone sees ~11 columns,
-     comfortably covering a 12-hole range. */
-  #pianoBlock .kb { overflow-x: auto; }
-  #pianoBlock .kb .pkey { flex: 0 0 32px; }
+  /* The keyboard trims to the playable span: out-of-range keys, their empty
+     cells, and fully-empty octaves drop out, so the board fits without a
+     scroll strip and never auto-scrolls during play. */
+  #kb .key.oor,
+  #kb .pkey.kb-oor,
+  #kb .oct.kb-oor { display: none; }
+
+  /* The token strip is editing furniture — not ergonomic on a phone. */
+  #tokens { display: none; }
+
+  /* Tab tools: one centered row per control group. */
+  .tab-tools {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .tab-tools .tools-left,
+  .tab-tools .tools-right { justify-content: center; }
 }
 /* Portrait is the reading/practice posture: the Hyrule field photo is
    distraction behind the cards, not atmosphere. The theme's base colour stays. */

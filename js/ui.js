@@ -561,7 +561,6 @@ function highlightToken(i, noteId, durSec, sounding) {
   }
   if (noteId) {
     document.querySelectorAll('.key[data-note="' + noteId + '"]').forEach(el => el.classList.add("now"));
-    scrollKbToActive(noteId);
     if (sounding && !lite) pulseZenGlow(noteId, durSec);
   }
 }
@@ -727,41 +726,6 @@ function scrollFocusStripTo(i) {
     return;
   }
   animatedStripScrollTo(strip, target);
-}
-
-let kbScrollRaf = 0;
-// Small-screen keyboard (the max-width:760px rules give #kb overflow-x:auto
-// with 32px columns): the 42-column board is wider than a phone, so glide it
-// to keep the sounding key in view — at ~7px crushed keys the eye cannot
-// follow the melody. No-op whenever the board fits (desktop) or the keyboard
-// is not laid out. Same bounded glide contract as the sheet/strip:
-// <=160ms eased, big jumps snap.
-function scrollKbToActive(noteId) {
-  const kb = document.getElementById("kb");
-  if (!kb || !kb.offsetParent || kb.scrollWidth <= kb.clientWidth) return;
-  const el = kb.querySelector('.key.now[data-note="' + noteId + '"]');
-  if (!el) return;
-  const k = kb.getBoundingClientRect();
-  const c = el.getBoundingClientRect();
-  const target = Math.max(0, Math.min(kb.scrollWidth - kb.clientWidth,
-    kb.scrollLeft + ((c.left + c.width / 2) - (k.left + k.width / 2))));
-  if (Math.abs(target - kb.scrollLeft) > kb.clientWidth) {
-    if (kbScrollRaf) { cancelAnimationFrame(kbScrollRaf); kbScrollRaf = 0; }
-    kb.scrollLeft = target;
-    return;
-  }
-  if (kbScrollRaf) cancelAnimationFrame(kbScrollRaf);
-  const from = kb.scrollLeft, dist = target - from;
-  if (Math.abs(dist) < 1) { kb.scrollLeft = target; return; }
-  const dur = Math.max(60, Math.min(160, Math.abs(dist) / 2));
-  const t0 = performance.now();
-  const ease = x => 1 - Math.pow(1 - x, 3);
-  const step = now => {
-    const p = Math.min(1, (now - t0) / dur);
-    kb.scrollLeft = from + dist * ease(p);
-    kbScrollRaf = p < 1 ? requestAnimationFrame(step) : 0;
-  };
-  kbScrollRaf = requestAnimationFrame(step);
 }
 
 function clearHighlight() {
@@ -1202,11 +1166,14 @@ function buildKB() {
   // render dimmed, so the extra bottom octave costs nothing unless it's used.
   for (const oct of [2, 3, 4, 5, 6, 7]) {
     const col = document.createElement("div"); col.className = "oct";
+    let octPlayable = false;
     for (const w of whites) {
       const cell = document.createElement("div"); cell.className = "pkey";
       const id = w + oct;
+      const wIn = NOTES.includes(id);
+      octPlayable = octPlayable || wIn;
       const k = document.createElement("div"); k.className = "key";
-      if (NOTES.includes(id)) {
+      if (wIn) {
         k.dataset.note = id;
         k.tabIndex = -1;                       // roving anchor picked after build
         k.setAttribute("role", "button");
@@ -1220,17 +1187,21 @@ function buildKB() {
         k.oncontextmenu = e => { e.preventDefault(); kbRoving(kb, k); playNote(id); addNote(id); pianoNotePreview(id); };
       } else {
         k.style.opacity = .25;
+        k.classList.add("oor");
       }
       cell.appendChild(k);
       const line = document.createElement("div");
       line.className = "ch-line";
-      if (NOTES.includes(id)) line.classList.add("c" + CHAMBER[id]);
+      if (wIn) line.classList.add("c" + CHAMBER[id]);
       cell.appendChild(line);
       const sh = blackAfter[w];
+      let bIn = false;
       if (sh) {
         const sid = sh + oct;
         const b = document.createElement("div"); b.className = "key black";
-        if (NOTES.includes(sid)) {
+        bIn = NOTES.includes(sid);
+        if (bIn) {
+          octPlayable = true;
           b.dataset.note = sid;
           b.tabIndex = -1;
           b.setAttribute("role", "button");
@@ -1241,11 +1212,16 @@ function buildKB() {
           b.oncontextmenu = e => { e.preventDefault(); kbRoving(kb, b); playNote(sid); addNote(sid); pianoNotePreview(sid); };
         } else {
           b.style.opacity = .2;
+          b.classList.add("oor");
         }
         cell.appendChild(b);
       }
+      // Small-screen keyboard trims only playable cells: empty cells/octaves
+      // become display:none so the board fits without auto-scrolling.
+      if (!wIn && !bIn) cell.classList.add("kb-oor");
       col.appendChild(cell);
     }
+    if (!octPlayable) col.classList.add("kb-oor");
     kb.appendChild(col);
   }
   const first = kb.querySelector(".key[data-note]");
