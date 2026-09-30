@@ -117,6 +117,16 @@ def main():
                            getComputedStyle(ov).display !== 'none',
                   links: [...ov.querySelectorAll('a')].map(a => [
                     a.getAttribute('href'), a.target, a.rel]),
+                  coffee: (() => {
+                    const a = [...ov.querySelectorAll('a')]
+                      .find(x => (x.getAttribute('href') || '') === 'https://ko-fi.com/tribbin');
+                    const ic = a && a.nextElementSibling;
+                    if (!ic || !ic.classList || !ic.classList.contains('help-coffee'))
+                      return 'missing';
+                    const r = ic.getBoundingClientRect();
+                    return (r.width > 0 && getComputedStyle(ic).display !== 'none')
+                      ? 'visible' : 'hidden';
+                  })(),
                 };
               }
             """)
@@ -131,6 +141,11 @@ def main():
             elif kofi[1] != "_blank" or kofi[2] != "noopener":
                 failures.append("the ko-fi link must open in a new tab with "
                                 f"rel=noopener (got {kofi!r})")
+            if help1["coffee"] != "visible":
+                failures.append(
+                    "the help colophon must carry the small coffee icon "
+                    "immediately after the ko-fi link, visible "
+                    f"(got {help1['coffee']!r})")
             if not help1["visible"]:
                 failures.append("the opened overlay must be VISIBLE on screen "
                                 "(a display:none ancestor hid it once)")
