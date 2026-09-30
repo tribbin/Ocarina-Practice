@@ -64,7 +64,7 @@ work; decisions + state in the session-24 log):
 
 | Item | Section |
 |---|---|
-| **USABILITY BATCH (approved 2026-09-30, session-24 handoff; 1 of 8 landed `3eb740d`)** — small-screen layout (editor hidden on phones, vertical rows, no portrait backdrop), theme no-flash, melody-duck on/off, song .txt round-trip, ko-fi link, zen-chorus audit, media-session announce + media keys | §1/§7/§9 |
+| **USABILITY BATCH (approved 2026-09-30, session-24 handoff; 2 of 8 landed `3eb740d` + `f84b564`)** — small-screen layout (editor hidden on phones, vertical rows, no portrait backdrop), melody-duck on/off, song .txt round-trip, ko-fi link, zen-chorus audit, media-session announce + media keys | §1/§7/§9 |
 | HiFi stays UNPUBLISHED — the retune + favorites pass is accepted, but Robin holds publication for now (2026-09-30) | hold |
 | Shipped-songs standardization stays HELD for Robin's later-stage pass; the permalinks corpora ride his planting as always | §9 |
 | Library widening (search, reordering beyond the pin) stays parked until Robin elects it | §9 |
@@ -96,8 +96,6 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 - [ ] **Small-screen layout pass (IDEAS: SMALL SCREENS, approved 2026-09-30)** — phones are play/practice, not editing: the editor block is HIDDEN on narrow screens, transport + controls stack into clean vertical rows (today they are "all over the place"), NO backdrop image in portrait, whole viewport functional in normal mode; zen mode stays as-is (Robin: already looks very good). `🟧 🔴 ⚙L`
 
 - [ ] **Melody duck: on/off button during practice with support tracks (IDEAS)** — Robin: a button, not a dial; when ON the melody voice plays at ~20% while support tracks play so his ocarina leads (level tunable on his field check); rides voiceGain; pin the ratio via the note-sink mix battery + a UI leg. `🟨 🔴 ⚙S`
-
-- [ ] **Theme no-flash: apply the saved theme pre-paint (IDEAS: skip default CSS)** — the index.html head script only honors ?oot; the saved oco-theme (localStorage) applies late in js/app.js so the default theme flashes on every load; resolve param > localStorage > default in the pre-paint head script and pin the early data-theme. `🟨 🟠 ⚙S`
 
 ## 8. Housekeeping
 
@@ -227,3 +225,16 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   with it fixed the full sweep is 46/46 and lint green; sw oco-pwa-v60.
   The first-note "hurries" symptom stayed unreproducible in the harness —
   first-onset equality is pinned; held for Robin's field check.
+
+- **2026-09-30 (session 24 cont. — theme no-flash lands: the head script resolves the theme pre-paint)** —
+  The §7 theme item closes on `f84b564`. The index.html head script now does
+  the same param > localStorage > default resolution as app.js's
+  themeFromQuery (?plain/?oot/?hifi beat the saved oco-theme; a fresh
+  browser defaults to Hyrule), so a saved theme lands on <html data-theme>
+  before first paint instead of flashing the default look until boot()
+  applied it late. Pinned red-first by the new tests/theme_prepaint.py
+  (6 resolution cases; each case aborts js/app.js — the app's only module
+  entry — so boot()'s applyTheme() can never mask the head script's work:
+  the old head script fails 4 of 6 cases, the new one passes all).
+  Registered in practice-tests.yml beside the render-behavior pin;
+  console-hygiene + render-pin + lint re-verified green; sw oco-pwa-v61.

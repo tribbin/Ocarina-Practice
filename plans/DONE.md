@@ -317,6 +317,8 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 
 - [x] ~~**Field-check the game arrangement (Audible-behavior hold — Robin's ears decide)** — the Outset corpus is now ONE version: `outset-island-midi` = "Outset Island (arrangement)" (melody + `#track bass audible 50` + the derived `#track contrabass audible 75`; the with-bass trio, its up12 twin and the bassline solo retired before deploy); his pass names: the plain-view balance (bass/contra levels vs the melody at 50/75), the contra register choice (the game sub-bass +12 reading), the ♭ chord labels in the sheet's caps styling, the loop seam (the closing vamp into the opening one), and whether the layers stay audible INSIDE an active practice session (today they play; the tuner-deafening worry stands). `🟧 🔴 ⚙S`~~ ✅ 2026-09-30 `2dbab7a` — Robin field-checked 2026-09-30 and cleared the trio: bass/contrabass balance, the contrabass register, the flat chord labels, the loop seam and in-practice audibility all accepted
 
+- [x] ~~**Theme no-flash: apply the saved theme pre-paint (IDEAS: skip default CSS)** — the index.html head script only honors ?oot; the saved oco-theme (localStorage) applies late in js/app.js so the default theme flashes on every load; resolve param > localStorage > default in the pre-paint head script and pin the early data-theme. `🟨 🟠 ⚙S`~~ ✅ 2026-09-30 `f84b564`
+
 ## 8. Housekeeping
 
 - [x] ~~**Favicon + meta description + theme-color missing** in index.html.~~ ✅ 2026-09-22 `9cfccfb` — favicon.svg (ocarina glyph, app palette) + link + meta description + theme-color.
