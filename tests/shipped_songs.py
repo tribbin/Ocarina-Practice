@@ -76,6 +76,20 @@ async () => {
     if (any) sums.push(cur);
     return sums;
   };
+  // House formatting (ocarina-melodies skill, 2026-09-30 standardization
+  // pass): a wrapped line never ENDS with a barline — the bar token OPENS
+  // the next line, announcing the downbeat. Exempt: a '||' seam (the next
+  // line already opens with a barline), comment/track-header lines, and
+  // the body's last line.
+  const wrapBadLines = (body) => {
+    const ls = body.split("\n"), bad = [];
+    for (let i = 0; i < ls.length - 1; i++) {
+      const nxt = ls[i + 1].trimStart();
+      if (ls[i].trimEnd().endsWith("|") && nxt &&
+          !nxt.startsWith("#") && !nxt.startsWith("|")) bad.push(i + 1);
+    }
+    return bad;
+  };
   const out = {};
   for (const [id, song] of Object.entries(BUILTIN)) {
     const body = song.body != null ? String(song.body) : "";
@@ -92,6 +106,7 @@ async () => {
       inRangeBy: sets
         .filter(s => ids.length && ids.every(x => s.notes.includes(x)))
         .map(s => s.id),
+      wrapBad: wrapBadLines(body),
       tracks: parseTracks(body).map(tr => ({
         name: tr.name, zone: tr.zone,
         bads: tr.tokens.filter(t => t.type === "bad").map(t => t.raw),
@@ -154,6 +169,11 @@ def main():
                 if s["bodyEmpty"]:
                     failures.append(f"{sid}: empty body (only 'chromatic' may "
                                     "generate, and it must have filled in)")
+                if s["wrapBad"]:
+                    failures.append(
+                        f"{sid}: line(s) {s['wrapBad']} end with a barline; "
+                        "the house format opens wrapped lines WITH the bar "
+                        "token (ocarina-melodies skill)")
                 if s["bads"]:
                     failures.append(
                         f"{sid}: {len(s['bads'])} bad token(s) in body: "
