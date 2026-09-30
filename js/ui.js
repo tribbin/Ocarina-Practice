@@ -3,8 +3,9 @@ import { durLabel, isOutOfRange, parse, pretty, rangeCheck, spelledLabel,
 import { midiOf, quarterSecFor } from "./music-math.js";
 import { ocarinaSVG } from "./ocarina.js";
 import { audioCtx, audioPerfReset, audioPerfSnapshot, isMelodyPaused,
-         isMelodyPlaying, liteMode, pauseMelody, playMelody, playNote,
-         resumeMelody, setBassEnabled, setPerfAlertListener, setReverbEnabled,
+         isMelodyPlaying, liteMode, melodyDuckOn, pauseMelody, playMelody,
+         playNote, resumeMelody, setBassEnabled, setMelodyDuck,
+         setPerfAlertListener, setReverbEnabled,
          setVibratoEnabled, soundingGridBeats, stopMelody, togglePlayPause,
          unlockAudio } from "./audio.js";
 import { applySwing, applyTempoPct, clearLibrarySelection, currentSwing, libToast,
@@ -1168,8 +1169,9 @@ function buildKB() {
     for (const w of whites) {
       const cell = document.createElement("div"); cell.className = "pkey";
       const id = w + oct;
+      const wIn = NOTES.includes(id);
       const k = document.createElement("div"); k.className = "key";
-      if (NOTES.includes(id)) {
+      if (wIn) {
         k.dataset.note = id;
         k.tabIndex = -1;                       // roving anchor picked after build
         k.setAttribute("role", "button");
@@ -1183,17 +1185,20 @@ function buildKB() {
         k.oncontextmenu = e => { e.preventDefault(); kbRoving(kb, k); playNote(id); addNote(id); pianoNotePreview(id); };
       } else {
         k.style.opacity = .25;
+        k.classList.add("oor");
       }
       cell.appendChild(k);
       const line = document.createElement("div");
       line.className = "ch-line";
-      if (NOTES.includes(id)) line.classList.add("c" + CHAMBER[id]);
+      if (wIn) line.classList.add("c" + CHAMBER[id]);
       cell.appendChild(line);
       const sh = blackAfter[w];
+      let bIn = false;
       if (sh) {
         const sid = sh + oct;
         const b = document.createElement("div"); b.className = "key black";
-        if (NOTES.includes(sid)) {
+        bIn = NOTES.includes(sid);
+        if (bIn) {
           b.dataset.note = sid;
           b.tabIndex = -1;
           b.setAttribute("role", "button");
@@ -1204,9 +1209,13 @@ function buildKB() {
           b.oncontextmenu = e => { e.preventDefault(); kbRoving(kb, b); playNote(sid); addNote(sid); pianoNotePreview(sid); };
         } else {
           b.style.opacity = .2;
+          b.classList.add("oor");
         }
         cell.appendChild(b);
       }
+      // Small-screen keyboard trims only playable cells: the 760px media rule
+      // display:none's these so the board shows just the playable span.
+      if (!wIn && !bIn) cell.classList.add("kb-oor");
       col.appendChild(cell);
     }
     kb.appendChild(col);
@@ -1309,6 +1318,11 @@ function wireUi() {
     if (cb) cb.checked = !cb.checked;
     syncLoopUI();
   };
+  for (const duckId of ["mirrorDuck", "focusDuck"]) {
+    const duckBtn = document.getElementById(duckId);
+    if (duckBtn) duckBtn.onclick = () => { setMelodyDuck(!melodyDuckOn()); syncDuckUI(); };
+  }
+  syncDuckUI();
   const liteCb = document.getElementById("liteMel");
   if (liteCb) {
     try { if (localStorage.getItem("oco-lite") === "1") liteCb.checked = true; } catch (e) {}
@@ -1600,6 +1614,18 @@ function syncLoopUI() {
     const on = !!(cb && cb.checked);
     lp.classList.toggle("on", on);
     lp.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+}
+
+// Melody-duck toggle: one shared session state, mirrored on both transport
+// corner buttons (normal + zen), so it outlives a zen switch.
+function syncDuckUI() {
+  const on = melodyDuckOn();
+  for (const id of ["mirrorDuck", "focusDuck"]) {
+    const b = document.getElementById(id);
+    if (!b) continue;
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-pressed", on ? "true" : "false");
   }
 }
 

@@ -115,9 +115,72 @@ def main():
                   // hidden-attribute-only probe waved that straight through.
                   visible: r.width > 100 && r.height > 100 &&
                            getComputedStyle(ov).display !== 'none',
+                  links: [...ov.querySelectorAll('a')].map(a => [
+                    a.getAttribute('href'), a.target, a.rel]),
+                  coffee: (() => {
+                    const a = [...ov.querySelectorAll('a')]
+                      .find(x => (x.getAttribute('href') || '') === 'https://ko-fi.com/tribbin');
+                    const unit = a && a.parentElement;
+                    if (!unit || !unit.classList ||
+                        !unit.classList.contains('coffee-unit'))
+                      return { verdict: 'no-unit' };
+                    const ic = unit.querySelector('svg.help-coffee');
+                    const ir = ic ? ic.getBoundingClientRect() : null;
+                    const issues = [...ov.querySelectorAll('a')]
+                      .find(x => ((x.getAttribute('href') || '')
+                                  .indexOf('/issues') !== -1));
+                    const irs = issues ? issues.getBoundingClientRect() : null;
+                    const verdict = (getComputedStyle(unit).whiteSpace === 'nowrap' &&
+                            getComputedStyle(unit).display === 'block' &&
+                            irs && ir && ir.top >= irs.bottom - 1 &&
+                            ir.width > 0 &&
+                            getComputedStyle(ic).display !== 'none')
+                      ? 'unit' : 'loose';
+                    // The cup rides 2.5x the line's text and sits vertically
+                    // centred on the coffee text (the 1px slack absorbs font
+                    // metric drift in the vertical-align: middle calc).
+                    const lr = ir ? a.getBoundingClientRect() : null;
+                    return {
+                      verdict,
+                      iconW: ir ? Math.round(ir.width * 100) / 100 : null,
+                      fontSize: unit ? parseFloat(getComputedStyle(unit).fontSize) : null,
+                      offCentre: (ir && lr) ? Math.round(Math.abs(
+                        (ir.top + ir.height / 2) -
+                        (lr.top + lr.height / 2)) * 100) / 100 : null,
+                    };
+                  })(),
                 };
               }
             """)
+            kofi = next((l for l in help1["links"]
+                         if l[0] == "https://ko-fi.com/tribbin"), None)
+            if not any(l[0] == "https://github.com/tribbin/Ocarina-Practice/issues"
+                       for l in help1["links"]):
+                failures.append("the help colophon must keep the issues link")
+            if kofi is None:
+                failures.append("the help colophon must carry the ko-fi link "
+                                "(https://ko-fi.com/tribbin)")
+            elif kofi[1] != "_blank" or kofi[2] != "noopener":
+                failures.append("the ko-fi link must open in a new tab with "
+                                f"rel=noopener (got {kofi!r})")
+            coffee = help1["coffee"]
+            if coffee.get("verdict") != "unit":
+                failures.append(
+                    "the coffee sentence must sit on its own line below the "
+                    "issues link: display:block white-space:nowrap "
+                    f".coffee-unit wrapping the ko-fi link and its icon "
+                    f"(got {coffee!r})")
+            if coffee.get("iconW") is not None and coffee.get("fontSize"):
+                want = 2.5 * coffee["fontSize"]
+                if abs(coffee["iconW"] - want) > 1.5:
+                    failures.append(
+                        "the help colophon's coffee icon must be 2.5x the "
+                        f"line's text ({want}px) — got {coffee['iconW']}px")
+            if coffee.get("offCentre") is None or coffee["offCentre"] > 3:
+                failures.append(
+                    "the help colophon's coffee icon must sit middle-aligned "
+                    "with the coffee text, not riding the baseline "
+                    f"(off-centre by {coffee.get('offCentre')}px)")
             if not help1["visible"]:
                 failures.append("the opened overlay must be VISIBLE on screen "
                                 "(a display:none ancestor hid it once)")

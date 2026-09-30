@@ -13,6 +13,9 @@
   --ch3: #6b4a8b;
   --panel: #ffffff;
   --head: #faf7f2;
+  /* Duck-badge face: a dedicated opaque tone a shade darker than the
+     surface it rides (Robin, 2026-09-30). */
+  --duck-badge: #efe4d4;
   --muted: #6a5648;
   --oca-bg: #f3e6d6;
   --key: #faf7f2;
@@ -58,6 +61,7 @@ html[data-theme="oot"] {
   --ch-line-empty: #3d7a28;
   --zen: #071807;
   --zen-btn: #142814;
+  --duck-badge: #0a3a0a;
   --key-now: #7edc5a;
   --key-now-ring: #2d8a18;
   --key-now-black: #145c10;
@@ -90,6 +94,7 @@ html[data-theme="hifi"] {
   --ch-line-empty: #3a3a42;
   --zen: #060607;
   --zen-btn: #1d1d22;
+  --duck-badge: #0f0602;
   --key-now: #123a24;
   --key-now-ring: #3ee07f;
   --key-now-black: #123a24;
@@ -424,6 +429,11 @@ header.app span { opacity: .7; font-size: 13px; }
 @media (max-width: 760px) {
   header.app { display: flex; flex-wrap: wrap; }
   .inst-picker { margin-inline: auto; }
+  /* The trailing tools keep their desktop edge when the bar wraps: an auto
+     left margin rides .head-tools to the row's right end instead of letting
+     a wrapped line start flush left (the theme/? pair Robin caught on the
+     phone, 2026-09-30). */
+  .head-tools { margin-left: auto; }
   /* Reserve the selector's grown-up width from the first paint: the option
      list arrives with the instruments fetch, and today the narrow empty
      control balloons into the row — head-tools wrap onto a second line and
@@ -1387,7 +1397,7 @@ body.zen-fallback #tabPanel .sheet.live .card.live .rest-over { font-size: 88px;
 .t-btn.play.is-playing { background: var(--good); color: var(--paper); border-color: var(--good); }
 .t-btn.practice.on { background: var(--ch2); color: var(--paper); border-color: var(--ch2); }
 .t-btn.loop.on { background: var(--good); color: var(--paper); border-color: var(--good); }
-.t-btn.play, .t-btn.practice, .t-btn.stop { box-shadow: 0 1px 0 rgba(0,0,0,.06); }
+.t-btn.play, .t-btn.practice, .t-btn.stop, .t-btn.duck { box-shadow: 0 1px 0 rgba(0,0,0,.06); }
 /* OoT theme: inactive round glyphs join the other buttons' white-ink look
    (ghost vocabulary); active states keep their own colors underneath. */
 html[data-theme="oot"] .t-btn {
@@ -1399,6 +1409,42 @@ html[data-theme="oot"] .t-btn {
 #mirrorPlay:not(.is-playing) svg.g-play { display: block; transform: translateX(-.03em); }
 #mirrorPlay.is-playing svg.g-pause { display: block; }
 #mirrorStop svg.g-stop { display: block; }
+/* Melody-duck toggle: a small corner circle riding the play button (the duck
+   rides with playback, so it sits where the eyes already are) — the
+   transport row keeps its original order and spacing. The corner sits flush:
+   top-right aligned as if both buttons were squares (Robin, 2026-09-30). The
+   speaker glyph
+   reads the melody's CURRENT volume: three waves (loud) at full level, the
+    single wave (soft) while ducked — the engaged state fills orange rather
+    than the red accent (Robin, 2026-09-30). The badge wears a dedicated
+    OPAQUE tone (--duck-badge, a shade darker than the surface it rides) so
+    the play button's rim and running face never shine through it — the old
+    transparent fill let the rim arc and the running green show through
+    (Robin, 2026-09-30); it keeps that face while the play button runs, and
+    the engaged orange stays its own. The zen mirror rides an already-opaque
+    surface, so it wears the zen button face. */
+.play-cluster { position: relative; display: inline-flex; }
+button.t-btn.duck {
+  position: absolute; top: 0; right: 0;
+  width: 24px; height: 24px; font-size: 13px;
+  background: var(--duck-badge);
+}
+#tabPanel.focus .focus-btn.duck {
+  position: absolute; top: 0; right: 0;
+  width: 32px; height: 32px; font-size: 16px;
+  background: var(--zen-btn); color: var(--paper);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+/* State-driven glyph: the speaker shows the melody's CURRENT volume — the
+   loud three waves while the duck is off, the soft single wave when it's
+   engaged (orange fill, not the red accent) — the .on class syncDuckUI
+   owns stays the single state. */
+.t-btn.duck > svg, .focus-btn.duck > svg { display: none; }
+.t-btn.duck:not(.on) .g-loud, .focus-btn.duck:not(.on) .g-loud,
+.t-btn.duck.on .g-soft, .focus-btn.duck.on .g-soft { display: block; }
+.t-btn.duck.on, #tabPanel.focus .focus-btn.duck.on {
+  background: #d97706; color: #fff; border-color: #d97706;
+}
 
 /* Exit button: fixed top-right, fades in on mouse move */
 .focus-exit { display: none; }
@@ -1902,6 +1948,14 @@ html[data-theme="oot"] .help-card { --panel: #fff; }
 /* Colophon line under the shortcut rows: the issues link users can report
    problems through (Robin, 2026-09-25). */
 .help-meta { margin: 10px 0 0; border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent); padding-top: 8px; font-size: 13px; opacity: .85; }
+/* Coffee cup after the ko-fi colophon link (Robin, 2026-09-30):
+   decorative, 2.5x the line's own text and middle-aligned with it,
+   painted with the line's ink. */
+.help-coffee { width: 2.5em; height: 2.5em; margin-left: 3px; vertical-align: middle; fill: currentColor; }
+/* The coffee sentence owns the line below the issues line (Robin,
+   2026-09-30): block flow puts it on its own line in every card width,
+   and nowrap keeps the phrase whole — no mid-phrase breaks. */
+.coffee-unit { display: block; white-space: nowrap; }
 
 /* Practice history line: one muted run summary under the tuner track. */
 .prac-history {
@@ -1922,4 +1976,76 @@ header.app button.ghost,
 html[data-theme="oot"] header.app button.ghost {
   color: var(--paper);
   border-color: rgba(255, 255, 255, .35);
+}
+
+/* Small-screen layout pass (Robin's SMALL SCREENS spec, approved 2026-09-30):
+   a phone is for play/practice, not editing — the editor's own controls go
+   away (the Song Library picker stays, it is how a phone loads a song), the
+   playback head stops mid-wrap and stacks into one centered row per control
+   group, the Hyrule backdrop drops in portrait, the token strip drops, and
+   the 42-column keyboard trims itself to the instrument's playable span:
+   out-of-range keys are hidden (marked .oor/.kb-oor by buildKB), the board
+   stays static — no auto-scroll glide. All of this is non-zen chrome; the
+   zen view is untouched. */
+@media (max-width: 760px) {
+  /* The editor face of the input block: expand/clear and the two save/load
+     pairs are editing furniture — hidden on a phone, along with the editor
+     sheet itself (it stays unexpandable: the chevron is gone). */
+  #inputBlock .head-left { display: none; }
+  #inputBlock .lib-pairs { display: none; }
+  #inputBlock textarea,
+  #inputBlock .input-legend { display: none; }
+
+  /* Playback head: the desktop 1fr-auto-1fr grid would wrap its three groups
+     unevenly on a narrow screen; one row per group, each centered, is the
+     "clean vertical rows" the spec asks for. The title leads (Robin,
+     2026-09-30): "Playback Control" takes the top slot — the same natural
+     distance from the block top as every other section title — with the
+     secondary control rows following. */
+  #playback > .box-head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  #playback .head-left { order: 1; }
+  #playback .tempo-lab { order: 2; margin-left: 0; align-items: center; }
+
+  /* The playback head's only content below the head is #tokens, which the
+     rule further down already hides — its chevron toggles nothing on a
+     phone, so it goes away (the input block's chevron already drops with
+     its .head-left). */
+  #playback .collapse-btn { display: none; }
+
+  /* The keyboard trims to the playable span: out-of-range keys and their
+     empty cells drop out; the .oct rows dissolve to display:contents so
+     the surviving cells flex evenly as direct children of #kb — every key
+     the same width, no scroll strip, no auto-scroll during play. The
+     octave-group rounding would notch the trimmed board mid-row (B4|C5 on
+     the 12-hole), so the board is one continuous strip. */
+  #kb .key.oor,
+  #kb .pkey.kb-oor { display: none; }
+  #kb .oct { display: contents; }
+  #kb .pkey:first-child .key:not(.black),
+  #kb .pkey:last-child .key:not(.black) {
+    border-radius: 0;
+    border-right-width: 0;
+  }
+
+  /* The token strip is editing furniture — not ergonomic on a phone. */
+  #tokens { display: none; }
+
+  /* Tab tools: one centered row per control group. */
+  .tab-tools {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .tab-tools .tools-left,
+  .tab-tools .tools-right { justify-content: center; }
+}
+/* Portrait is the reading/practice posture: the Hyrule field photo is
+   distraction behind the cards, not atmosphere. The theme's base colour stays. */
+@media (orientation: portrait) {
+  html[data-theme="oot"] body::before { display: none; }
 }

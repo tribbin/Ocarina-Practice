@@ -19,6 +19,12 @@ ROOT = Path(__file__).resolve().parent.parent
 HEADLESS = "--headed" not in sys.argv
 WAIT = ("window.NOTES && window.NOTES.length"
         " && typeof parse === 'function'")
+# Boot-complete rendezvous: the #src input listener is wired in boot()'s
+# wireUi(), which runs AFTER the JSON loads; fillLibrary() runs after
+# wireUi() and lands the home song into #scale. Until #scale has a value a
+# dispatched input event reaches no listener and the probe's junk never
+# renders (the oot leg flaked on exactly this race).
+BOOT = "document.getElementById('scale').value"
 INJECT = """async () => {
   // Typed input renders on a settle (the per-keystroke debounce): poll for
   // the strip change instead of reading the DOM synchronously.
@@ -65,6 +71,11 @@ def main():
                 page.on("pageerror", lambda e, s=suffix: errs.append(s + ": " + str(e)))
                 page.goto(f"{base}{theme}")
                 page.wait_for_function(WAIT)
+                # Boot must be complete before the input probe: the #src input
+                # listener is wired by wireUi() after the JSON loads, and the
+                # home song lands in #scale at the tail of that same boot.
+                # Injecting earlier drops the event on a listener-less input.
+                page.wait_for_function(BOOT)
                 page.evaluate("document.getElementById('playback')"
                               + ".querySelector('.collapse-btn').click()")
                 r = page.evaluate(INJECT)

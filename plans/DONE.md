@@ -195,6 +195,12 @@ wrapper. The fitter's span rule is Grok's (thr = max(peak*0.08, med*4));
 the NOM table carries Fs6..Cs7 (trimmed by the lead zip, restored for
 the stein's chamber 2).
 
+- [x] ~~**Record real held takes -> refit per chamber (the only remaining twin-fitting work; the guessed twins carry every instrument until then)** — dummy-bass-c-double ch1 A3-Ds5 + ch2 E5-C6; ico-oak-leaf-bass-c-triple ch1+ch2+ch3 (Grok: THREE short sessions, one chamber per session, normal blow only); ico-contrabass-11-c one session B2-F4 (its guessed model even retunes the dry-mid split to the instrument's own f0 range — the refit replaces that guess with a measured split). PLUS the stein ch2's E6 re-blow for a fittable take (two fails: res -0.0 both times — tracker slips on that wobble's attack slice); then the wrapper gains re-derive from the raw peaks. The cross-chamber/cross-instrument gain doctrine + refit loop live in skills/ocarina-twin/SKILL.md; refits go through Grok's lead fitter unchanged. Superseded 2026-09-29 (dfc7199): the guessed per-chamber twins DO ship on the v45 engine — oak/dummy/contrabass keep their own scaled rows, 12-hole + stein keep the v45 fitted models; the mid-air JSON stays parked in git history. `🟨 🟡 ⚙M`~~ ✅ 2026-09-30 — Robin 2026-09-30: the guessed per-chamber twins stand (field-checked fine) — held takes, the stein E6 re-blow and the one-take calibration re-derivation all wait until he owns the instruments; the refit loop + gain doctrine stay in skills/ocarina-twin
+
+- [x] ~~**Transport sync: tracks desync across pause/unpause + tempo change; first note sometimes "hurries"** — Robin's planted bugs (IDEAS BUGS): the #track streams (walkTrackStreams, js/audio.js:1432) drift from the melody clock through pauseMelody/resumeMelody (audio.js:1181/1196) and mid-play tempo changes; the first note can also start early when playing from the start; pin red-first in tests/transport_schedule.py; engine change ⇒ full sweep + his field check. `🟧 🔴 ⚙M`~~ ✅ 2026-09-30 `3eb740d` — pause/resume + tempo drift fixed and pinned (two new phase-lock legs); the first-note "hurries" symptom stayed unreproducible in the harness — first-onset equality is pinned, held for Robin's field check (re-open if it persists after oco-pwa-v60)
+
+- [x] ~~**Zen chorus audit: did the twin engine drop the zen chorus? (IDEAS question)** — report-first: the twin path still carries the zen stereo chorus (audio.js twChorus: gated on vibOn && dur > vibDelay+0.1, depth faded by vibHighFade 0.4, zenPan 0.9) — check the zen defaults + the lite-voice path and report; fix only if truly lost (field-check class). `🟨 🟡 ⚙S`~~ ✅ 2026-09-30 — Report-first audit, closed with no code change: the zen stereo chorus was NOT dropped by the twin engine. Full twin voice keeps the legacy gating verbatim — twChorus = vibratoEnabled && dur > vibDelay + 0.1 (js/audio.js:1033) with the clean core hard LEFT and the vibrato twin hard RIGHT at ±zenPan (audio.js:1050–1073), identical to the additive chorus gating stripped at 8a7d68d. Zen defaults intact (vibDepth 0.0035, vibHighFade 0.4, zenPan 0.9, vibDelay 0.35 — AUDIO_DEFAULTS js/audio.js:46–66; dev-panel sliders js/debug.js:38–48); vibratoEnabled is owned by the zen transitions (exitZen → false, toggleZen/sync → isFocusMode(), js/ui.js:1776/1980). The LITE twin voice (audio.js:979–1021) has no chorus/panner, but the legacy additive lite branch skipped the vibrato layers too — a consistent reduction, not a loss; zen+lite stays chorus-free by design (Robin may revisit that combination on his field check). The "fix only if truly lost" clause does not trigger.
+
 ## 2. Robustness / error handling
 
 - [x] ~~**Silent empty catches swallow synth failures** — `playNoteAt` wraps the entire voice builder in `try { … } catch (e) {}` (zero feedback), same in `playTickAt` and `simulateLag`, plus ~a dozen bare try/catch through audio/hover/position code. Log at least once per session into `#err` or a debug counter. (audio.js:975→1633, audio.js:1683, audio.js:131)~~ ✅ 2026-09-22 `4480fab` — `recordVoiceError(site, e)` records count+site+cause with a 1 s throttled console warn; exposed as `OCA_DEBUG.voiceErrors()/clearVoiceErrors()` (the debug panel can read it); wired into both playNoteAt and playTickAt. The small teardown/hover try/catches stay by design (they guard benign node-stop races); `simulateLag` already lives behind the debug panel. Verified by `tests/voice_error_visibility.py` (in CI).
@@ -265,6 +271,8 @@ restarts — the user resumes. `tests/audio_state.py` (in CI, red first).
 
 - [x] ~~**Dismantle the additive/tone.json voice path (Robin's call 2026-09-28: "I don't want tone.json back. We're gonna dismantle that code path soon")** — the additive machinery is dormant since all five instruments declare `twin` (fitted or guessed). The teardown: installToneModel/TONE_MODEL + the tone.json fetch in loadInstrument (app.js) + voiceProfileFor + the V_ANCHORS/wind chain (windPark/warm/rough, air*, edge*, chiff*, ot* — the additive-only debug rows in js/debug.js retire too) + the additive lite voice (the twin has its own lite branch). Known entanglements: tests/twin_support_level uses the additive engine as its red-green comparison leg (rework to a twin-only anchored contract); instruments_load's "tone model install / interpolate / fallback" legs retire with the path; instruments/README.md's voice-swap + tone file-shapes sections rewrite. Order of play: after the guessed voices' field check + any last additive-backed comparisons — the tone.json DECLARATIONS are already gone (2026-09-28, the file:// console-noise unit), only the code remains. Additive is live again on oak, dummy and contrabass (site-matching). Teardown waits until a twin that beats the v45 pair exists for those instruments. `🟨 🟡 ⚙M`~~ ✅ 2026-09-29 `8a7d68d` — Helmholtz-only. Oak/dummy/contrabass share the v45 12-hole twin; missing chamber keys fall back to chamber 1. Additive graph, tone.json load, and additive debug groups are gone.
 
+- [x] ~~**Engine upgrade drawing board (last good = live v45 pair)** — ocarina-practice.com still serves oco-pwa-v45 original Helmholtz + A4–A5 12-hole model (Pages deploy of PR #29 failed). The mid-air voice (4 kHz split, noise_mid_db, RMS-normalized noise) is noisier than that pair; it is parked (git history + ignored research/mid-air-upgrade/). Next attempt: A/B against the live site, ship engine JS and twin JSON as one deploy, bump the helmholtz `?v=` token with the module bytes. `🟧 🔴 ⚙L`~~ ✅ 2026-09-30 `3b6e0e5` — Robin 2026-09-30 closed the drawing board: the v45 pair is the shipping engine and the mid-air upgrade stays parked in git history + research/mid-air-upgrade, re-openable only as one A/B deploy (engine JS + twin JSON together, ?v= bump with the module bytes)
+
 ## 6. Tests & CI
 
 - [x] ~~**parse.js edge-case unit tests (pure JS, cheap)** — accidentals/octave shift (Db→Cs logic parse.js:103-107), octave inheritance, `/0`, 10th octave (`C10` silently drops the `0`), `!` normalization (parse.js:8), `withPlayHeaders`/`withTempoLine`/`withTitleAndTempo`, `titleFromText`/`swingFromText`, inline `# tempo` mid-song, triplet/dotted beat math tolerances.~~ ✅ 2026-09-22 `9cdab5d` — `tests/parse_edges.py` (in CI, ~40 assertions). Found + fixed two silent data-loss bugs: multi-digit octave (`C10` became C1 — now no token, digit-boundary `(?!\d)`) and inline `# tempo N` swallowing the rest of its line (scanner rewinds; other comments keep whole-line swallow). Locked gotcha → new TODO item below.
@@ -308,6 +316,12 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 - [x] ~~**Zen note bar lags on small vertical screens (field-planted in IDEAS, now pruned)** — the note bar moves too slowly toward center as a note highlights and even leaves the screen partially (phone, vertical screen, session night: Robin planted 2026-09-25 `985942e`). Session-15 unit: INVESTIGATED + BUILT 2026-09-25 `b15d2ce` — the seat was the browser-native smooth scroll (UA animation ~200 ms/step, ~500 ms/jump, restarted mid-flight per note → the bar trails; throttled headless measured it and reproduced the 655 px trail); scrollFocusStripTo now glides with the sheet's bounded rAF contract (≤160 ms eased, far jumps snap, wheel grab cancels), pinned by tests/zen_notebar.py (CI-registered, five legs), app-path after-measure 67 ms / ~0 px trail; sw v21. **HELD for Robin's phone field check** — the deciding pass; he retunes the glide feel if the 160 ms bound reads too quick/markety on the OLED. `🟧 🟠 ⚙M`~~ ✅ 2026-09-26 — Robin 2026-09-26 (panel): KEEP the 160 ms bound as built — his pre-call on the glide feel; the phone still decodes, and the seat is measured. Done.
 
 - [x] ~~**HiFi/theme retune batch (Robin 2026-09-26)** — dark-amber ghost buttons: `#160a04` off / `#56300d` on, plus always a thin white outline around them when off (his values, "apply using own insight"); the Grid|Scroll|Single segment and the instrument dropdown must NOT have white backgrounds; zen red darker with white text; the tuner's separated LEDs must keep their discrete illusion — the fill stops gliding between steps. Shipped themes carry the LED/zen/segment parts; HiFi carries the amber buttons. `🟨 🟠 ⚙S`~~ ✅ 2026-09-26 `33fc135` — SHIPPED 2026-09-26 (session 15 `33fc135`): the amber chrome family (#160a04/#56300d + white resting line), the segment row + instrument select de-whitened, the zen CTA reads #b32317 with white text, and the LED rows quantize fills to the 10px grid through one fill-width seam (transition killed under hifi only). tests/hifi_retune.py pins both sides of the theme flip; the .1s glide stays on the plain. css-v2, sw v22.
+
+- [x] ~~**Field-check the game arrangement (Audible-behavior hold — Robin's ears decide)** — the Outset corpus is now ONE version: `outset-island-midi` = "Outset Island (arrangement)" (melody + `#track bass audible 50` + the derived `#track contrabass audible 75`; the with-bass trio, its up12 twin and the bassline solo retired before deploy); his pass names: the plain-view balance (bass/contra levels vs the melody at 50/75), the contra register choice (the game sub-bass +12 reading), the ♭ chord labels in the sheet's caps styling, the loop seam (the closing vamp into the opening one), and whether the layers stay audible INSIDE an active practice session (today they play; the tuner-deafening worry stands). `🟧 🔴 ⚙S`~~ ✅ 2026-09-30 `2dbab7a` — Robin field-checked 2026-09-30 and cleared the trio: bass/contrabass balance, the contrabass register, the flat chord labels, the loop seam and in-practice audibility all accepted
+
+- [x] ~~**Theme no-flash: apply the saved theme pre-paint (IDEAS: skip default CSS)** — the index.html head script only honors ?oot; the saved oco-theme (localStorage) applies late in js/app.js so the default theme flashes on every load; resolve param > localStorage > default in the pre-paint head script and pin the early data-theme. `🟨 🟠 ⚙S`~~ ✅ 2026-09-30 `f84b564`
+
+- [x] ~~**Melody duck: on/off button during practice with support tracks (IDEAS)** — Robin: a button, not a dial; when ON the melody voice plays at ~20% while support tracks play so his ocarina leads (level tunable on his field check); rides voiceGain; pin the ratio via the note-sink mix battery + a UI leg. `🟨 🔴 ⚙S`~~ ✅ 2026-09-30 `0588d99`
 
 ## 8. Housekeeping
 
@@ -362,6 +376,8 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 - [x] ~~**Search-engine perma-links BEFORE the Switch-2 OoT launch (November)** — lifted from IDEAS 2026-09-24 and refined with Robin's rules: per-song landing URLs where "content may change, but the link must serve what the crawl expected". URL shape locked 2026-09-24: **`/song/<category>/<base-slug>`**, default player **12-hole C alto**, category (zelda/scales/other, normalized from group; "on Bass"/"on Alto" collapse) keys per-category theming (zelda → Hyrule, else Plain/new). Progress: (✅ 2026-09-24) **slug freeze enforced** — closed suffix list + chain rule + grammar in `tests/shipped_songs.py` (CI fails on violating keys), the `-alt`/`-alto` split fixed pre-index (`major-alto`, `chromatic-alto`), the contract documented in `skills/ocarina-melodies/SKILL.md`; (✅ 2026-09-24) **serving layer built + live-boot corrected** — `tools/gen_song_pages.py` emits shell-only landing stubs per base slug: canonical + og:url on the site-prefix path, single song-specific description, `?song=<key>&inst=<chosen>` pre-boot seed, hidden/variants excluded, byte-deterministic, staging git-ignored; the LIVE URL check on the first deployed stub caught the generator-class defect string tests missed — the app's runtime fetches (`songs.json`/`instruments.json`/css text/manifest-driven instrument files; even the SW registration) resolve relative to the PAGE and 404'd two directories deep, killing boot — fixed with a `<base href="{site-prefix}/">` injection (root-absolute `/…` rejected in review: bakes the prefix everywhere, breaks relocatability, and cannot reach runtime fetches without app changes); the landing default became Robin's corrected LADDER — best-fit by 12-hole > double alto C > triple bass C > contrabass (Song of Time's bass body lands on the triple; every stub boots playable, no range marks) — and `tests/gen_pages.py` upgraded to a real-boot leg: the staging tree assembled exactly like the deploy workflow's allowlist, served under the /Ocarina-Practice mount, boot asserted for right song/right ocarina/zero out-of-range chips/rendered sheet/one description/clean console (allowlist semantics: every 404 must BE a tone.json; a healthy boot can legitimately have NO 404s — the triple's tone.json exists); `.github/workflows/deploy-site.yml` publishes on served-content path pushes + manual dispatch; (✅ 2026-09-24 `89a39f0`) **og/meta card stage complete** — og:type/og:site_name/og:description (same wording as the meta description, one description per page holds) + og:image riding the already-generated 512 icon (width/height/alt) + summary twitter:card, injected at the END of head so the shell's charset keeps its first-KB seat; URLs stay site-prefix path form (canonical/og:url/og:image consistent; fully-absolute held until a domain is pinned); gen_pages pins every tag per stub over the still-green real-boot matrix. (✅ 2026-09-24 `e7718bc`) **domain landed + serving layer switched to it** — `ocarina-practice.com` is now the site's pinned origin (registered along the forever-perma rule; registrar and registration details stay out of this public repo on Robin's call): the deploy artifact carries a CNAME file, gen_pages gained `--site-origin` (default the domain) and now emits ABSOLUTE canonical/og:url/og:image with `<base href="/">`, the gen_pages suite re-pins every contract against a ROOT-mounted artifact; project-page serving stays reachable via the preserved --site-prefix/--site-origin-empty knobs for rollback. **Robin's manual cutover checklist (order matters):** push refactor4 → merge/deploy fires the artifact (with CNAME) → registrar DNS: CNAME record www → <github-io-user-host> (plus A/AAAA apex records if wanted) → repo Settings → Pages → custom domain = ocarina-practice.com (wait the DNS check) → enforce HTTPS once the cert provisioned → account-level Pages 'verified domains' adds + TXT-verifies the domain (the free takeover guard) → re-probe landing URLs at the domain (the boot is root-relative now — the old /Ocarina-Practice path dies by design). (next: live-domain verification of the landing matrix — his push, then this check) Remaining: richer stub content if SERP demands (thin-mass watch), absolute URLs if a domain gets pinned, sitemap.xml + robots.txt only AFTER links verify (Robin's crawl rule), Lighthouse pass, first real deploy + SERP observation. Deadline anchor: OoT Switch 2 ships in November (~5 weeks from 2026-09-24). **Decisions 2026-09-24 (refinement round):** BRANDING settled — the product STAYS "Ocarina Practice" (og:site_name already correct; no rename; the IDEAS BRANDING line is clear to delete). Domain processing still pending tonight; go-live planned tomorrow as a JOINT session — Robin's rule: the flip "has never been a success" solo, so hands-off sessions do PREP ONLY: keep this item's cutover checklist current, add a refactor4-domain (e7718bc) diff summary of what merging brings, and build live-verify tooling. SEO feature stages (robots/sitemap) are POST-switch work — and Robin's correction: the permalink contract does not become LIVE until go-live WITH robots.txt in place; nothing is crawlable before that moment, so slug/staging prep carries no permalink risk — the robots.txt push itself stays the final invite act, only after the live boot verifies. ﻿Night prep 2026-09-25 (away session, prep only by tonight's rules): - **Merge surface** â€” refactor4-domain is ONE commit (`e7718bc` over `c96965a`) touching `.github/workflows/deploy-site.yml`, new `CNAME`, `README.md`, `tests/gen_pages.py`, `tools/gen_song_pages.py`; zero overlap with what refactor4 merged (js/*, AGENTS.md, plans/) â€” clean merge expected. - **Checklist currency** â€” Robin's cutover checklist (above) stands unchanged; a push of tonight's `session5` stack also fires the artifact (served-content path trigger), so "push â†’ merge/deploy" may run BEFORE his joint session touches DNS â€” the order of DNS/Pages/HTTPS steps is unaffected. - **Live-verify tooling built + used**: `tools/verify_site.py --origin <base> [--boot N]` (not a CI step; read-only GETs). Checks: shell serves the js/app.js module entry; deployed songs.json readable; every landing stub 200 with base href / canonical / og:url agreeing on the ONE serving prefix (base href from the origin's path, so both stages hold), og:title + description present; `--boot N` boots sampled stubs (song-of-time always) in fresh contexts (SW second-navigation lesson), zero console noise beyond the manifest-declared-absent tone.json 404s, right song on the right ocarina by the ladder. - **Pre-flip state recorded**: today started on a STALE artifact (home shell predated the PWA commit: no serviceWorker string, no og on the shell) while /song/ stubs served the permalink contracts; a fresh push-triggered Actions deploy during the night refreshed the artifact, and the full probe ran GREEN before the flip (18 checks, 8/8 stubs booted clean at /Ocarina-Practice). - **Tomorrow**: same command with `--origin https://ocarina-practice.com` is the post-flip acceptance gate â€” absolute canonical/og + root `<base href="/">` + CNAME artifact; the /Ocarina-Practice mount dies by design. Flip landed by Robin's hand on main (`a2a081d`, PR #10 merge; deploy run `36117318574` green 1m54s): the domain serves the OLD artifact — seed tests red, and the verify gate names why: all 8 stubs carry `<base href="/Ocarina-Practice/">` while the domain serves at root (the workflow baked the pre-flip mount), so every runtime fetch 404s and no stub boots; robots.txt and sitemap.xml absent (not yet stage-built). The domain-switch unit closes it: workflow passes `--site-prefix /` + `--origin https://ocarina-practice.com`; the generator emits sitemap.xml (home + every stub URL, byte-deterministic, no lastmod) and an absolute og:image (og:image must be absolute; the flip pinned the origin — canonical/og:url stay origin-relative so the artifact stays mount-agnostic); robots.txt committed, timeless per Robin (no automation commentary facing the web); gen_pages mirrors ROOT serving now (old project-page mount pinned by a string-contract leg, retires with the stage); verify_site gains the robots+sitemap live legs. Sweep 31/31 + gen_pages re-run after the robots rewrite. POST-FLIP GATE GREEN (2026-09-25, merge `4f44099`, deploy run `36125302883`): 20 live checks pass against https://ocarina-practice.com — all 8 stubs boot the right song on the right ocarina at prefix `/`, robots.txt + sitemap.xml serve and enumerate home + exactly the stub set. Per Robin's rule the permalink contract is LIVE from this moment (go-live + robots.txt). The URLs/dates/etc on the served artifact are by-design: canonical/og:url origin-relative (mount-agnostic), og:image absolute, robots.txt timeless Robin-edited. REMAINING on the item: Lighthouse pass; first SERP observation (weeks — November Switch-2 anchor); Robin's Search Console domain verification + sitemap submission (his Google account, manual). The "sitemap.xml + robots.txt only AFTER links verify (Robin's crawl rule)" row is DONE by this gate; the legacy project-page mount string-leg in gen_pages now awaits its stage's retirement. On the IDEAS lifts Robin green-lit while selecting: perma-link landing navigation semantics (switches leave the deep path — root + ?vars; title click → root) and the info-screen issues link — both lifted as new §9/§7 items. **Lighthouse pass 2026-09-25 (`b023394`, session12 — live home re-audit on redeploy; stub set not passed)**: mobile P80 / A11y 100 / BP 96 / SEO 100, desktop P99; landed fixes: passive token-touch listeners (ui.js wireTokenTouch — nothing preventDefaults there, drift intends the scroll), critical paint gate inline in index.html (UA 8px body margin + the 0.67em h1 margin collapsing through the pre-CSS body = the phone flash), .inst-sel width reserved ≤760px so the late-filling instrument list cannot balloon the header — the exact 0.352 CLS shift reproduced headlessly under real throttling then driven out, local re-run has no CLS findings (expect live P to rise on redeploy). REPORT-ONLY residuals: piano block still grows ~92px late in boot (residual CLS 0.089, inside the green band — a reservation is a piano-look call, Robin's), the manifest-declared-absent tone.json 404 console error (§1's intentional state, no action), themeBtn accessible-name vs visible-text mismatch (the HiFi menu unit rewrites that button anyway), Pages 600 s cache TTL (hosting default; SW covers re-visits), unminified JS/CSS (the IDEAS minify-on-deploy line, not lifted). Robin 2026-09-25: the domain is now Search-Console-verified — a crawler is expected soonish — and the existing sitemap URLs count as PERMANENT from today: no rekeys, no path renames; the kokiri leaf-URL retirement predates the pin and was the last move of its kind Live Lighthouse re-check 2026-09-25 post-deploy (session 13, headless, Lighthouse 12): mobile perf 95 (was 80) with CLS 0 (was 0.352 — the inst-sel ballooning fix held through deploy), A11y 100 / BP 96 / SEO 100; desktop perf 99 with the same 100s; BP's 96 is the expected vintage tone.json 404 (oot-alto-c-12, the manifest-declared-absent allowlist class), A11y's quiet nit is #themeBtn's label-content-name-mismatch, and perf's drag is the render-blocking stylesheet (mobile LCP 2.5 s, speed-index 0.79) — the same CSS-addressing seam Robin's fresh-refresh IDEAS entry describes `🟨 🟠 ⚙M`~~ ✅ 2026-09-26 — TRIAGED 2026-09-26 (Robin: "I want TODO to contain what we need TODO"): everything buildable shipped across sessions 13-15 — the slug contract is enforced (tests/shipped_songs), the serving layer boots its stub set (tests/gen_pages, mounted leg incl.), the intended-instrument engine + botw exemplar are live, canonical/JSON-LD/OG routes serve, the sitemap set is frozen-permanent and the domain is Search-Console-verified. The living residue continues as its own compact §9 item.
 
 - [x] ~~**Per-instrument loudness dial in the debug panel (Robin's ask; his batch: session-only, table of five, -3..+9 dB)** — five AUDIO_DEBUG keys mapped by instrument id through instLevelGain() = 10^(dB/20) off the loaded instrument, multiplied into all four voice masters so melody/supports/tracks all carry the offset with 0 dB untouched; the panel's volatile-row carve-out keeps the dial out of localStorage while plain rows persist; debug_panel red-first legs pin the rows, the gain math and the two-sided volatility contract (commit `7f44c98`); in live use now — his settled numbers ride back into code when he names them. `🟢 ⚪ ⚙S`~~ ✅ 2026-09-28 `7f44c98`
+
+- [x] ~~**"Buy me a coffee" link (IDEAS; ko-fi.com/tribbin)** — not in the app yet (78b9646 only touched IDEAS.txt); add the link to the help-screen colophon beside the issues link (target=_blank rel=noopener) and pin its presence. `🟢 🟡 ⚙S`~~ ✅ 2026-09-30 `46dec09` — Landed in 46dec09: the link now sits in the help-screen colophon beside the issues link (index.html .help-meta, ko-fi.com/tribbin, target=_blank rel=noopener); both colophon links are pinned in tests/sr_hints.py's help-overlay leg (help1.links), so the presence, new-tab target and noopener survive refactors. Sweep 47/47, sw oco-pwa-v62.
 
 > **Idle idea pool: `plans/IDEAS.txt`.** A live document Robin edits over time and ROBIN'S ALONE — the AI never writes it (it may be read, and only lifted into TODO.md when Robin explicitly asks). TODO carries no copy or summary: when an idea from it is picked up, read the FILE fresh at that moment; never rely on a remembered or transcribed version.
 
@@ -1899,3 +1915,388 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
   (engine js changed). HELD for Robin: the field check on the new air
   (does the top register's hole-rush read right on his device now),
   plus the standing asks (both voices, end-clamps, stein's soft G5/A5).
+
+- **2026-09-28 (session 21 — the third Grok handoff adopts wholesale: the mid-air leg replaces the shelf air, both twins refit, the stage gate re-anchors H4)** —
+  Robin's package drop `research/ocarina-twin-lead.zip` (Grok's LEAD,
+  2026-09-28 evening) with his standing order: Grok leads on tone
+  analysis — no homegrown "learned fixes" this session. His HANDOFF
+  overrides the earlier zips and names the 1.6f0/highshelf air path THE
+  BUG ("extra fizz is not hole-rush" — why E6/F6 read "not airy
+  enough"): E6/F6 air is a MID PEDESTAL [1.25 f0, 4 kHz], the high hiss
+  [4 kHz, 12 kHz] stays quieter, per-band delivery RMS-matches against
+  the tone rows ("change filters, change that helper — never add
+  another EQ stage"). Landed on tuning-synth-for-instruments:
+  (1) js/helmholtz-voice.js byte-identical to the handoff (audio.js's
+      imports are exactly the three surviving exports; the noise
+      buffer is RMS-normalized; pinkBandComp stands in for synth.py's
+      post-filter RMS match; no highshelf / 2800 or 1.6f0 cutoff /
+      airFade; AUDIO_DEBUG.airLevel untouched at 0; windPark stays
+      only in the additive voice, outside his zip's scope).
+  (2) the ocarina_twin package swaps for Grok's (air.py canonical
+      three-band table; fit.py measures res [0.70,1.25]f0 + mid
+      [1.25f0,4k] + hiss [4k,12k] on the tracked residual; synth.py
+      real post-filter RMS matching with the hiss+6 mid fallback;
+      run_fit prints a mid column), with ONE restoration: the
+      Fs6..Cs7 nominal rows the zip trimmed are back in fit.py for
+      the stein's chamber 2 (data scope; the 12-hole's rows sit
+      inside the base table).
+  (3) the 12-hole refits from the 11 committed ladder takes: mid rows
+      -31..-39, hiss -43.6..-59.5 (F6 mid -34.1 / hiss -43.6, a
+      9.5 dB gap = Grok's own not-one-band sanity check).
+      validate.py translated to the three-band convention with his
+      acceptance sub-bands: F6 syn15 -31.4 (target -32 within 3 dB ✅),
+      C5 never-brighter ✅ (mid d -0.2, no 2 kHz shelf), F6 syn58
+      -42.2 marginal (2.8 dB over his strict -45 line though 13 dB
+      under the mid band — left untouched), D6/E6 read +6..+14 dB
+      hotter than their takes (his delivery convention, named for the
+      field check, not fixed).
+  (4) the stein refits both chambers (ch1 11 takes, anchor Ds6; ch2 5
+      takes, anchor A6; the E6 take re-probed and EXCLUDED again -
+      its tracked subtract still slips, res read -0.0 - so E6 rides
+      F6's row end-clamped). The wrapper gains carry VERBATIM: the
+      raw takes are unchanged between fits, so the standing measured
+      chain stands (ch1 0.9783, ch2 0.7277; the one-take calibration
+      recording remains the arbiter). Stein validates: ch1 C5 mid d
+      0.0 (no shelf), Ds6 +6.6; ch2 G6 +7.1, C7 +9.0 - the same
+      synth-hotter-than-take class as the 12-hole's top.
+  (5) tests/tone_stages green across the 11-note held set with the H4
+      cap re-anchored 12 -> 18 on the adopted delivery (the mid
+      pedestal now plays INTO the 4f0 window the starved path didn't
+      reach: C5/D5 measured +14.3..+14.5 while the delivered band
+      still sits about 1 dB off the take's own 1.5-2.8k floor; rise
+      deltas read 0.0 everywhere). instruments_load, data_validator,
+      twin_support_level, console_hygiene green; eslint@9 +
+      html-validate@8 clean; README + SKILL.md carry the lead's air
+      doctrine; sw oco-pwa-v47 (engine js changed).
+  HELD for Robin (the deciding pass): the field check on the mid-air
+  voice vs before - the top register's air character (mid pedestal vs
+  the old fizz), held texture, attack/chiff, glide carry, practice
+  fit, the three end-clamps; plus whether the top notes' hotter-than-
+  take delivery reads punchy or fake on his device.
+
+- **2026-09-28 (session 21 cont. — the mid-air voice is FIELD-BLESSED; Grok's guessed bass twins install for the whole fleet, supports included)** —
+  Robin's field check the same evening: the 12-hole mid-air voice "it is
+  VERY good. Sounds like real recordings of my ocarina, but played by a
+  pro instead of me", the stein "sounds good" — the adopted baseline
+  (voice module + both fitted models at 8c4f435) is the field-checked
+  truth; the §1 12-hole voice item moved to DONE with his verdicts
+  (board tool). The stein refit question he answered by note ("didn't
+  know you already did that") — already shipped inside 8c4f435.
+  Then Grok's second package `research/guessed-twins.zip` (Robin's ask:
+  try it for the other instruments, supports included, until real
+  recordings):
+  (1) guessed twin models installed at instruments/<id>/twin_model.json
+      for dummy-bass-c-double (wrapper ch1 A3-Ds5 gain 1.0 + ch2 E5-C6
+      gain 0.92), ico-contrabass-11-c (flat single chamber B2-F4,
+      guessed inside globals, Q_prior 38, dry-mid split retuned to
+      123-349 Hz), ico-oak-leaf-bass-c-triple (ch1 A3-Ds5 + ch2 E5-C6
+      0.92 + ch3 Cs6-G6 0.85). Grok scaled them from the MEASURED
+      12-hole mid-air model — no WAV from these instruments; his
+      HANDOFF's do-nots carried into the skill verbatim (the 4 kHz
+      hiss split is still the alto split; not gospel per instrument;
+      not digital twins; triple refit = three sessions one chamber
+      each, then the guesses go away).
+  (2) instruments.json gains the three "twin" declarations — ALL FIVE
+      instruments now declare twin, so melody AND support/track voices
+      play the twin engine everywhere (the anchored TWIN_SUPPORT_LEVEL
+      path covers the supports; the additive machinery is dormant
+      legacy kept for the support red-green comparisons and the future
+      cleanup on Robin's word). Charts carry the matching chamber marks
+      (dummy 1|2, oak 1|2|3, contrabass 1) so every note routes by its
+      own chamber; no cross-break lerps (his wrappers are the v1 shape
+      the loader already handles). Contrabass keeps its tone.json
+      declaration (dormant, file exists per validator).
+  (3) Verified: data_validator (guessed keys pass its notes/f0/h shape
+      checks; declared files named), instruments_load (boot battery
+      boots all five with their twins; multi wrapper install legs),
+      twin_support_level (support anchors on the oak's guessed twin
+      within 1.5 dB of the additive reference), console_hygiene (4
+      boots clean), gen_pages + shipped_songs re-run for the corpus
+      shapes — all green; eslint@9 + html-validate@8 clean. No sw
+      VERSION bump: instruments.json + twin models ride
+      DATA_NETWORK_FIRST so the new voices land on the FIRST online
+      reload (data-only precedent).
+  HELD for Robin: the guessed voices' field check (the contrabass hoot,
+  the oak triple's bright top chamber, the dummy's mid chamber, the
+  bass whoosh — Grok's alto-split caveat) and how they sit under
+  multi-track practice; real held-take refits per chamber when he
+  records (the guesses retire then).
+
+- **2026-09-28 (session 21 cont. — Robin's file:// console catch: the dead tone.json declarations leave; the additive-code dismantle boards)** —
+  Robin's preview (file://, no service worker) surfaced the twin-era data
+  debt on instrument switch: stein-double-alto-c and ico-contrabass-11-c
+  still declared "tone": paths whose FILES never shipped (twin-era
+  residue) — served pages decompose the miss into the documented 404
+  (the hygiene allowlist), file:// fails differently (net::ERR_UNEXPECTED
+  at app.js:57's loadText fetch) and the tolerance chain still caught
+  it, but the console noise stood. His ruling rode the report: "I don't
+  want tone.json back. We're gonna dismantle that code path soon." So:
+  (1) the two dead "tone" declarations are REMOVED from instruments.json
+      (no file existed behind either; the additive voice is dormant
+      behind fitted/guessed twins on every instrument; the twin-failure
+      fallback contract is unchanged — a failed twin fetch still falls
+      to the generic additive voice, now without tone rows);
+  (2) the dynamic allowlist machinery absorbed it with no suite edits —
+      instruments_load prints "(5 instruments, 0 declare tone.json)",
+      console_hygiene's allowed misses fall to 0 and both boot scans
+      stay green (data_validator, gen_pages re-run green);
+      no sw bump (manifest is DATA_NETWORK_FIRST; no js touched).
+  (3) the teardown itself boards as a §5 item (tone.json fetch + the
+      additive voice path + the additive-only knobs + the test
+      entanglements), queued behind the guessed-voices field check.
+  HELD: nothing — the console is clean on file:// and http:// alike.
+
+- **2026-09-28 (session 21 cont. — the instrument-loudness dial unites the debug panel)** —
+  Robin's ask: tweak each instrument's loudness as a whole, fine-tunable in
+  DEBUG. The answered batch: SESSION-ONLY (his words: "It is just so I can
+  feed you the persistent numbers to put in code" — a tuning probe, the
+  settled dB values become code constants), a TABLE OF ALL FIVE, range
+  -3..+9 dB. Landed:
+  (1) js/audio.js: five flat AUDIO_DEBUG keys (instOotDb/instSteinDb/
+      instOakDb/instContraDb/instDummyDb, defaults 0), one INST_DB_KEYS
+      map by instrument id, and instLevelGain() = 10^(dB/20) read off the
+      loaded instrument (window.CURRENT_INSTRUMENT, set by app.js) —
+      multiplied into ALL FOUR voice masters (twin full + twin lite +
+      additive full + additive lite at the playNoteAt seats), so melody,
+      supports and tracks all carry the instrument's own offset; a
+      non-declared/no id reads 1 (0 dB = untouched default, so every
+      existing suite baseline is unchanged).
+  (2) js/debug.js: the new "Instrument level dB (session-only)" group
+      with the five rows (-3..9 step 0.1) flagged volatile — the panel's
+      save()/restore path now EXCLUDES volatile keys (the panel persists
+      everything else to 'oco-debug-audio' as before), so the dial never
+      writes or re-applies storage; doubles as the honest workflow: he
+      dials, then the settling numbers land in code constants.
+  (3) tests/debug_panel.py grew three legs (red-first on the baseline:
+      'instLevelGain is not a function' before the js edits stashed out):
+      the five rows exist with the -3/9/0.1/0 shape and the session-only
+      banner, the dial gain math via window.OCA_DEBUG.instLevelGain (the
+      loaded instrument's own key; +6 -> 1.9953, -3 -> 0.7079, +9 ->
+      2.8184; a foreign id and null read 1), and the two-sided volatility
+      contract driven through the REAL rows: an instOotDb edit must never
+      enter 'oco-debug-audio' while a masterLevel edit must persist.
+  (4) Suites: full sweep 46/47 with the long support_accepts_brackets
+      timing out in the loaded sweep, PASS isolated, full-sweep rerun
+      green (the known heavyweight-browser flake class - the practice
+      arbiter family); debug_panel green; console_hygiene/
+      instruments_load/data_validator in-sweep green; lint clean; sw
+      oco-pwa-v48 (audio.js + debug.js changed).
+  NEXT: Robin dials his five numbers, then the values become code.
+
+- **2026-09-28 (session 21 cont. — Grok's low-note presence fix lands (Robin deployed the files): the C5-class 1.5-2.8 kHz band is un-eaten, no refit)** —
+  Robin's report: "I deployed a Grok fix for low notes were some higher
+  frequencies were 'eaten' on the spectrum" — the two files were already
+  in the working tree (js/helmholtz-voice.js + ocarina_twin/synth.py,
+  staged uncommitted; his note: replace only these, NO refit, JSON rows
+  stay — noise_mid_db on C5 is already ~-34, the REDUCTION was a delivery
+  shape: Q=80 tone ring + a weak mid band muffled the low notes).
+  (1) The two rendered-domain changes, mirrored in BOTH renderers (the
+      one-air-definition doctrine holds): playbackQ caps the tone BP
+      (30 + f0*0.035 — ~48 at C5, ~79 at F6 so the fitted Q rows still
+      rule the top) and the mid path multiplied by
+      lowNotePresence(f0) = x2.4 at 500 Hz tilting to x1.0 at 900 Hz
+      (by A5); F6's mid/hiss untouched (its stage deltas FELL: hiss
+      +1.5, res -4.8 - the Q hair-cap cleaned the subtract skirt).
+      synth.py carries the identical lift formula so the offline
+      reference agrees with the web voice.
+  (2) Verification on Grok's own tooling: validate.py — F6 syn15 -31.4
+      (target -32 within 3) unchanged; C5's 1.5-2.8 kHz floor reads
+      -49.5 vs the take's -51.2 = the eaten band is back (+1.7 dB over
+      the take; was -55.2, 4 dB UNDER). The stage gate re-anchored on
+      the new delivery (HOUSE precedent, red-first measured): C5 H4
+      +18.8 (cap 18 -> 21), C5 hiss +22.4 (cap 20 -> 24), D5 H2 +6.4
+      (cap 6 -> 8), D5 hiss +21.2 — the same classes, hotter by design;
+      run-to-run flap class stays inside the new caps (C5 H4 17.7 on the
+      rerun). instruments/validator/console boots untouched; full sweep
+      47/47 first pass; lint clean; sw oco-pwa-v49 (engine js changed).
+  HELD for Robin: the low-note field check (does C5/D5/E5/F5 read as
+  full-bodied now rather than muffled; the Q cap's ring character),
+  including on the stein (its ch1 low rows ride the same voice).
+
+- **2026-09-28 (session 21 wrap — the shipped streak moves to DONE on Robin's field word)** —
+  Robin field-checked the low-note presence fix ("Sounds perfect") and
+  ordered the completed streak into DONE (board-only unit; tests scoped
+  to the todo/done machinery by his instruction):
+  (1) Grok's low-note presence fix -> DONE (commit `ecc5413`, his field
+      verdict inside the struck line);
+  (2) the per-instrument loudness dial -> DONE (commit `7f44c98`; the
+      dial is in live use — his settled dB numbers ride back into code
+      whenever he names them);
+  (3) the dead tone.json declarations removal -> DONE (commit `b7ac225`).
+  The board's open set stays honest: the guessed-voices field check, the
+  one-take calibration recording, the §5 additive-path teardown, the
+  chamber-fits still waiting on real recordings, and the multi-track/
+  Epona/HiFi holds that are his ears' passes.
+
+- **2026-09-28 (session 21 wrap cont. — the audit's approval forks land: both stale items vanish, the teardown stays queued)** —
+  Robin's answers on the remaining forks: the §9 per-song landing
+  maintenance item DELETED as obsolete (the frozen URL grammar +
+  intended-planting rules live in tests/shipped_songs, gen_pages and the
+  skills - the item restated what the gates enforce), the §4
+  createScriptProcessor WAV-export backlog DELETED (its AudioWorklet
+  trigger doesn't exist anywhere; debug.js stays untouched by election;
+  the section carries the nothing-open line), and the §5 additive-path
+  teardown STAYS QUEUED on his word ("Wait - keep it queued"). The open
+  set drops to 5: the slim real-recording refits item (§1), the teardown
+  (§5), the Outset arrangement field check (§7), and the two standing §9
+  holds (shipped-songs standardization, library widening). Obsolete
+  vanishes per the conventions - no DONE entries for deletions; board
+  verify + board_tool 12/12 green (todo/done machinery only, per scope).
+
+- **2026-09-28 (session 21 wrap cont. — the wrapper-embed miss fixed: the stein's mid-air rows were never in the shipped wrapper)** —
+  Robin's catch: "The Stein double alto has not had the most recent
+  fitting, as it is missing noise_mid_db." Confirmed and owned: the
+  8c4f435 assembly script loaded the EXISTING wrapper, updated only the
+  wrapper-level note, and dumped it - the freshly fitted ch1/ch2 models
+  (with noise_mid_db) sat untouched in research/ocarina-twin-lead/
+  while the file kept the OLD pipeline-era models. So the stein played
+  the JS fallback crutch (mid = hiss + 8) through BOTH its field-check
+  sessions ("Stein sounds good", "sounds perfect") PLUS the pre-lead
+  globals overlay (dry_hiss 0.15/0.70 over the JS's 0.20/0.75 defaults).
+  Fixed this unit with assertions this time (round-trip re-read in the
+  embed: gains 0.9783/0.7277 verbatim, 11/5 rows, noise_mid_db present
+  on every note; ch1 mid -31.6..-42.5, ch2 -34.5..-39.1 as fitted).
+  Validations reproduce the temp-model numbers exactly (now actually
+  delivered): ch1 C5 dMid +3.4 / Ds6 +6.6, ch2 G6 +7.1 / C7 +9.0, C5's
+  15-band now +1.2 over the take (the same presence-lift class the
+  12-hole reads). data_validator + instruments_load (boot battery with
+  the wrapper) green; twin_model.json rides DATA_NETWORK_FIRST (no sw
+  bump, no js touched); the full sweep did NOT run per Robin's standing
+  scope (associated tests only).
+  GROK-SIDE OBSERVATION (report-only, NOT touched): the lead fitter's
+  JSON globals write dry_hiss 0.15/0.70 while his air.py canonical says
+  0.20/0.75 - the JSON overlays the JS defaults, so the EFFECTIVE curve
+  is 0.15/0.70 on every refit INCLUDING the field-blessed 12-hole
+  delivery. His spec leads; flagged for the next Grok round, not fixed
+  here.
+  HELD for Robin: re-hear the stein (the blessed verdicts were the
+  crutch delivery; the real mid rows now play - louder mid where hiss
+  was quiet: ch1's A5-class rows move the most, the crutch read -41.7
+  where the fit wants -34.3).
+
+- **2026-09-29 (session 22 cont. — /js/ goes network-first; the noise hunt's serving-layer half closes)** —
+  Robin's report ("site synth complete garbage, fine in the VS Code preview,
+  ton of noise on the phone app") chased through the serving layers while he
+  iterated Grok engine rounds on branches (main reset to before the merge by
+  him, branches f2..f5 recovered; his ?v=1 voice-import cache-key fix
+  55b86bb reviewed and adopted):
+  (1) the cache-anatomy findings named four layers — the SW stale-while-
+      revalidate hit branch, the browser HTTP cache (Pages max-age=600),
+      the SW cache keyed per URL (the ?v=1 import creates a NEW key, so the
+      first load after deploy cannot see old bytes), and the renderer's
+      script memory-cache (served the minutes-old module on reload without
+      dispatching the SW at all — why the module marker raced in the
+      harness); the CORE list was ALSO missing helmholtz-voice.js (Robin
+      caught) and then js/wakelock.js (the airplane leg caught).
+  (2) /js/ now rides DATA_NETWORK_FIRST with cache:"no-cache" revalidation:
+      online always fresh, offline the cached copy (the same contract the
+      09-28 data files got). CORE completes with js/wakelock.js — network-
+      first makes an incomplete CORE a hard offline 504 where stale-while-
+      revalidate had self-healed through the browser HTTP cache — and the
+      voice module's CORE entry carries the importer's ?v=1 token.
+  (3) suites: offline_pwa's engine-freshness leg red-first (poisoned cache
+      copy must lose to the network on the FIRST online fetch and the
+      revalidate must overwrite it), asset_versions pins js CORE
+      completeness + token lockstep (one entry per module, importer token
+      == CORE token); offline_pwa, asset_versions, console_hygiene green;
+      eslint + html-validate clean; sw oco-pwa-v54 (serving contract).
+  HELD for Robin: deploy + re-hear on the phone (second-visit behavior no
+  longer load-bearing); the resume invalidation design for instruments/
+  twin models is batched for his picks (the resume hook still re-checks
+  songs.json only — a resumed phone keeps the manifest and the loaded
+  twin model indefinitely).
+
+- **2026-09-29 (session 22 cont. — the deferred resume invalidation lands: instrument data joins the resume contract, the SW data branch widens)** —
+  Robin merged the serving-layer streak to main through PR #29 and opened
+  the door to approved/queued items; the §2 batch (his answered forks,
+  recorded verbatim when boarded) was the pick. Landed on
+  resume-invalidate-instruments:
+  (1) app.js: the shared visibility resume slot re-checks instruments.json
+      TEXT and the LOADED instrument's twin_model.json under the songs
+      gates (foreground, no melody/practice, the 30 s gap, silent-offline
+      catch) — a changed model reinstalls installTwinModel audio-only
+      under the CURRENT_INSTRUMENT guard, the next played note rides the
+      fresh fit; fingerings/template/svgWhen drift defers to the next
+      reload with a console.info flag (never a mid-session chart redraw);
+      cross-instrument manifest drift only feeds the next boot.
+      loadInstrument tracks the twinText comparator beside both install
+      paths (fresh and fallback).
+  (2) sw.js: the network-first data branch widens from tone/twin_model to
+      EVERY per-instrument file (fingerings/tone/twin/templates) — the
+      last stale-while-revalidate data class — sw oco-pwa-v55.
+  (3) tests/offline_pwa.py: the resume-request-count leg red-first (a
+      changed model on disk must fire a fresh model fetch on the first
+      resume dispatch — instrument-agnostic filter, because the offline
+      swap leg leaves the suite carrying the oak; the if-modified-since
+      whole-second trap slept 1.1 s like the songs legs) and the poisoned
+      fingerings serving leg (network-first + cache heal), both verified
+      red then green; the poison helper factored out for the two legs.
+  Suites: offline_pwa x3 through the red/green cycle, instruments_load
+  (boot battery + twin shapes + svgWhen boots), console_hygiene (4 boots),
+  asset_versions, eslint + html-validate — all green.
+  HELD for Robin: the reload nudge's VISUAL surface (console.info-only
+  today; a on-page slot is his design call). The commit needs his PR
+  merge to reach the phones; field check = a resumed phone app must pick
+  up a changed twin model within the next note (his next refit is the
+  natural field test).
+
+- **2026-09-29 (session 23 — the VS Code Simple Browser leftover worker is the high-noise class again: file:// SW still intercepted after the HTTP serving fix)** —
+  Robin's report: last night's engine/model desync was solved on main, then
+  the same high-noise bug returned locally in the VS Code built-in browser.
+  The site/HTTP half closed last night (network-first /js/ + ?v=1); the
+  preview is a different origin. Evidence in this partition:
+  `~/.config/Code/Partitions/vscode-browser/Service Worker` still has a
+  registration for `file:///home/robin/git/Ocarina-Practice/sw.js` (dozens
+  of update cycles) and CacheStorage `oco-pwa-v55` with an EMPTY cache.
+  Electron allows service workers on file:// (Playwright Chromium and
+  desktop Chrome do not — that is why the suites never saw this). Sep 23
+  (`d0f4d16`) sat out NEW registrations and skipped install cache-fill on
+  file://, but (1) never unregistered the leftover worker (it keeps
+  updating on every preview navigation without register()), (2) never
+  gated the fetch handler, (3) put skipWaiting BEHIND the protocol return
+  so a new worker sat WAITING while the old intercept kept running. Last
+  night's network-first + cache:"no-cache" then intercepted js + twin JSON
+  against that empty cache; a miss 504s and loadInstrument's catch
+  silently installTwinModel(null) — the additive wind stack, the same
+  audible class as old-engine-plus-new-models. The pairing was never
+  observable: no voice stamp, silent additive fallback.
+  Landed on resume-invalidate-instruments:
+  (1) sw.js fetch returns on non-HTTP(S) before any intercept; skipWaiting
+      always, before the protocol return; CORE token `helmholtz-voice.js?v=2`
+      so the Simple Browser module URL cannot keep last night's ?v=1;
+      sw oco-pwa-v56.
+  (2) app.js unregisters leftover file-scheme workers on load (skipping
+      register() left them in control).
+  (3) helmholtz-voice.js exports VOICE_REV "mid-air-1"; OCA_DEBUG.voiceCard()
+      reports rev/protocol/twin/chambers/sw; installTwinModel console.info
+      the card and console.warn on additive fallback; the debug panel
+      header shows the stamp (Robin already has that panel open in the
+      preview).
+  Suites: asset_versions pins the three file-scheme gates + token lockstep,
+  instruments_load pins voiceCard.rev and twin id on every shipped twin,
+  debug_panel pins #dbgVoice, offline_pwa poison URL follows ?v=2,
+  console_hygiene 4 boots clean; eslint@9 + html-validate@8 clean.
+  HELD for Robin: one Simple Browser reload to let v56 skipWaiting take
+  over, then a second load so unregister has run — the debug header should
+  read `mid-air-1 · twin <id>` (ADDITIVE is the bug). After that, type
+  `OCA_DEBUG.voiceCard()` whenever site and preview disagree.
+
+- **2026-09-29 (session 23 cont. — ?v=1 is the release cache-bust; v2 loaded in the preview and the noise stayed)** —
+  Robin's correction: `helmholtz-voice.js?v=1` exists to force a refresh
+  when a release is pushed (last night that token + network-first cleared
+  the desktop site and the phone). A local token bump is not that lever.
+  Restored `?v=1` (importer + CORE + offline_pwa poison URL). The file-scheme
+  fetch/unregister gates and VOICE_REV/voiceCard stay.
+  The remaining preview noise is a different fact: Simple Browser is open
+  at `file:///…/index.html?song=song-of-storms&inst=ico-oak-leaf-bass-c-triple`
+  (editor memento). Storms' D6–F6 land in the oak's guessed ch3 (Cs6–G6)
+  which still carries the alto 4 kHz hiss split. Phone/desktop last night
+  were the 12-hole mid-air voice. The debug header still names the pair
+  (`mid-air-1 · twin …` vs `ADDITIVE`).
+
+- **2026-09-29 (session 23 cont. — F6 chamber 1 under an oak twin is the remaining mix)** —
+  Robin's probe: sr 48000, Lite off, `CHAMBER.F6 === 1`. Oak fingerings.json
+  puts F6 in chamber 3; the 12-hole chart puts it in 1. voiceCard now carries
+  chart id, note range, F6 chamber and a twin/chart mismatch flag so one
+  paste names the pair. Playing F6 through oak chamber 1 (A3–Ds5 rows at
+  1397 Hz) is the high-noise class.

@@ -1,26 +1,16 @@
 This document is for not-forgetting ideas. Don't assume we want them implemented already. However, you may refer to them or keep them in mind.
 
-GET RID OF OLD SYNT <-- important
+SONGS
 
-SMALL SCREENS
+Add OOT opening scene music.
 
-When a device has a small screen, they will not want to use certain functions.
-I think we can disable certain functions in that case.
-People are likely going to use their phone for playing the music or practicing; not music-editing.
+MUSIC ENGINE
 
-Also, on small screens (especially vertical screens) the layout should be completely different, as currently (in the non-Zen screen) the buttons are all over the place; make them nice vertical rows or something.
+Add grace notes.
 
-As you'd not see much of the backdrop anyway, we probably want a dedicated fullscreen solution.
-
-We will brainstorm this some time.
-
-OTHERS
-
-Make the 12-hole 'complete' regarding Zelda Ocarina of Time game songs.
+USABILITY
 
 Fully standardize how songs are written out, with and without support.
-
-Put indivudual songs in .txt with all attributes I can copy and paste between src and the .txt.
 
 Add alternative song names and other meta-data to song-pages.
 
@@ -28,10 +18,14 @@ Add search function to song list.
 
 Have a 'browse' function to find songs by category.
 
-Make any support just another practice track you can choose from.
+A song should be a 'set' of tracks of which you can choose to play/practice any one of the tracks.
 
-Allow muting (or like 20% volume) the track you're practicing.
+Elements must always fit within their parent element and not extend past it.
 
-"Buy me coffee" link: https://ko-fi.com/tribbin
+OTHERS
 
-When clicking play or practice, stop media (YouTube/Spotify/...) that is playing.
+Make the 12-hole 'complete' regarding Zelda Ocarina of Time game songs.
+
+Replace lead-volume icon with a 'loud' (three sound waves) and 'soft' (one sound wave) speaker button. Also fine-tune positioning and color.
+
+Add soprano C ocarina.

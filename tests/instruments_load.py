@@ -36,12 +36,16 @@ def boot_instrument(browser, base, inst_id, failures, tag):
     page.on("pageerror", lambda e: errs.append(str(e)))
     page.goto(f"{base}?inst={inst_id}")
     page.wait_for_function(BOOT_WAIT)
-    # the tone AND twin model round-trips are the tail of loadInstrument
-    # (the twin fetch runs first now) — both installs land as defined
-    # (null is a legal "no data" answer; undefined means not-yet-installed)
+    # The twin round-trip lands as the last step of loadInstrument, but
+    # twinModel() is null both before it lands AND for instruments that ship
+    # no twin — so `!== undefined` passes on the initial null and the read
+    # below races the async install (the boot-tail red under load). boot()
+    # only fills the #scale library select AFTER loadInstrument (and its
+    # twin round-trip) has fully resolved, and the major/chromatic scales
+    # are always in-range, so a populated #scale is the settled rendezvous.
     page.wait_for_function(
-        "() => typeof OCA_DEBUG !== 'undefined' && OCA_DEBUG.twinModel"
-        " && OCA_DEBUG.twinModel() !== undefined", timeout=10000)
+        "() => document.getElementById('scale').options.length > 0",
+        timeout=15000)
     state = page.evaluate("""() => ({
       notes: window.NOTES.length,
       fingered: !!(window.FING && window.FING.notes && window.FING.notes.length)

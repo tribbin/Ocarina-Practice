@@ -56,27 +56,23 @@ first circle → urgency, last letter → effort.
 ## Hot list (importance across all types)
 
 Picks for the next session(s), roughly damage × imminence ÷ effort
-(refreshed 2026-09-28 late: the mid-air lead is FIELD-BLESSED — 12-hole
-"VERY good ... played by a pro", stein "sounds good"; the open ear-decides
-front is the guessed bass voices):
+(refreshed 2026-09-30 late, session-27 cont.: the v45 Helmholtz pair is the
+shipping voice — the mid-air upgrade stays parked in git history;
+dummy/contrabass/oak ride Grok's guessed per-chamber twins until real
+recordings land; the usability batch's code is fully landed except the two
+§9 items — what remains is those two plus Robin's field checks; decisions +
+state in the session-24/26/27 logs):
 
 | Item | Section |
 |---|---|
-| **FIELD CHECK the guessed bass twins — parked 2026-09-29 with the mid-air upgrade** — dummy / contrabass / oak match the live site again (additive). A later twin for those instruments A/Bs against ocarina-practice.com | §1 |
-| **Robin's dedicated one-take cross-instrument calibration recording** — the true relative volume between instruments (both ladder sessions "recorded quite similarly, should be close to the end-result"; the stein's land normalizes its max-volume −0.39 dB to the 12-hole's chain peak) | §1 |
-| **Robin's field check on the multi-track trio** — `outset-island-with-bass` now plays melody + audible bass groove (the bassline two octaves down) + contrabass root-holds; his ears name the balance, the contrabass register, the practice-session audibility and the groove's final-bar cut | §7 |
-| **Robin's ears on the Epona contrabass** — `eponas-song` now carries `#track contrabass audible 100` (ranch bass bar-for-bar); Saria's Song he already heard green 2026-09-28 | §Log |
-| **Robin's eyeball pass** on the panel builds: the HiFi retune batch (`?hifi` — amber buttons, dark segment row/select, deeper zen red, LED fills) and the favorites stars in the library — his values, built to spec; he retunes anything that reads off | feel checks |
-| The twin-model chamber fits per remaining ocarina — recording held takes for the contrabass, oak leaf and dummy when Robin gets hands-on time (all three play additive, matching the live site; 12-hole + stein are the restored v45 twins) | §1 |
-| The next audio-tick field catch names itself (spike cards carry the ambient ring); Robin re-introduces the hunt when the ticks matter | DONE (re-openable) |
+| **USABILITY BATCH (approved 2026-09-30, session-24 handoff; all but the two §9 items code-landed: `3eb740d` + `f84b564` + `46dec09` + `0588d99` + `d41563a` (coffee icon + duck glyph) + `6b1a805` (duck opaque face) + `0ba4f55` (coffee line under issues) + `6a59020` (coffee cup 2.5×, middle-aligned); zen-chorus audit report-only; small-screen pass complete: `d77a153` → `ed31f89` + `b666034`, Robin's three phone defects pinned at `30e496d` + `2016408` + `740d637`; sw oco-pwa-v75 / css-v16 — HELD for Robin's field checks: uniform board, duck colour/position, coffee look)** — NEXT FOR A FRESH CONTEXT, in order: §9 song .txt round-trip, then §9 media-session announce + media keys (read plans/IDEAS.txt fresh before picking each up); the branch is ahead of origin — pushing stays Robin's operation | §1/§7/§9 |
+| HiFi stays UNPUBLISHED — the retune + favorites pass is accepted, but Robin holds publication for now (2026-09-30) | hold |
 | Shipped-songs standardization stays HELD for Robin's later-stage pass; the permalinks corpora ride his planting as always | §9 |
 | Library widening (search, reordering beyond the pin) stays parked until Robin elects it | §9 |
 
 ---
 
 ## 1. Bugs (correctness / data loss)
-
-- [ ] **Record real held takes -> refit per chamber (the only remaining twin-fitting work; the guessed twins carry every instrument until then)** — dummy-bass-c-double ch1 A3-Ds5 + ch2 E5-C6; ico-oak-leaf-bass-c-triple ch1+ch2+ch3 (Grok: THREE short sessions, one chamber per session, normal blow only); ico-contrabass-11-c one session B2-F4 (its guessed model even retunes the dry-mid split to the instrument's own f0 range — the refit replaces that guess with a measured split). PLUS the stein ch2's E6 re-blow for a fittable take (two fails: res -0.0 both times — tracker slips on that wobble's attack slice); then the wrapper gains re-derive from the raw peaks. The cross-chamber/cross-instrument gain doctrine + refit loop live in skills/ocarina-twin/SKILL.md; refits go through Grok's lead fitter unchanged. Parked 2026-09-29: these guessed twins no longer ship. Oak / dummy / contrabass match the live site (additive). 12-hole + stein restored to the v45 models. Mid-air JSON sits in git history. `🟨 🟡 ⚙M`
 
 ## 2. Robustness / error handling
 
@@ -88,8 +84,6 @@ Nothing open — the WAV-export backlog dropped by Robin's audit 2026-09-28 (the
 
 ## 5. Architecture / maintenance
 
-- [ ] **Engine upgrade drawing board (last good = live v45 pair)** — ocarina-practice.com still serves oco-pwa-v45 original Helmholtz + A4–A5 12-hole model (Pages deploy of PR #29 failed). The mid-air voice (4 kHz split, noise_mid_db, RMS-normalized noise) is noisier than that pair; it is parked (git history + ignored research/mid-air-upgrade/). Next attempt: A/B against the live site, ship engine JS and twin JSON as one deploy, bump the helmholtz `?v=` token with the module bytes. `🟧 🔴 ⚙L`
-
 ## 6. Tests & CI
 
 Currently covered (don't lose this): practice acceptance (4 cases strict+closed-loop), practice dip gate (hold-through blocked, silence/50%-notch dips pass, 75% duck shut, legato free), practice seat across view rebuilds + zen-entry stopMelody + overlay zen-only seats, console-hygiene boot scan (4 boots; allowlist = manifest-declared tone misses), support-bracket battery incl. bit-identical melody-vs-support equivalence + Zen timing/gating, instrument load/tone-model install per manifest (incl. svgWhen id/title paths + boot diagnostics in per-leg fresh contexts), render pin (chips/grid/scroll-band/highlight/focus-restore + typed-render debounce contract), svg clone coordinates, debug panel build-on-open contract, transport scheduler arithmetic/cut-bus/lite, practice history, template safety, theme toggle, offline SW boot+swap, ac worker parity, swing grid, sr hints, spike watch (the tick hunt), the session-14 batch (wake lock lifecycle, tick-override semantics, asset-version token equality, twin-derivation byte-identity, transposer skill, practice dials), the session-15 additions (SEO shell shape + zero-per-stub JSON-LD, zen note-bar glide five-legger, suite-server teardown hardening, board-tool empty-run linting), and the session-16/16-cont. additions (track acceptance battery incl. mix ratios, hifi retune, library favorites star + readability, tests/midi_track_audit = the pure-python source-measure audit with a displaced-downbeat tripwire over tools/midi_track_audit.py), and the session-17-cont. additions (tests/tone_stages = the DEFAULT stage verification after synth-code or note-value changes — rebuilt session 18 for the twin voice: fit-row regression caps + the decay-release gate measured on the ADOPTED handoff baseline after Robin's field ruling (onset/hold stage bands stay measured-for-eyes in the artifact, never gated — their caps could not survive wobble-window luck without flapping); instruments_load pins the twin install/uninstall shapes and waits for both model round-trips; data_validator checks the twin schema; CI installs scipy+soundfile so the fitter analysis runs there;''. **Sweep policy (Robin, 2026-09-26): the full run_all sweep runs only for sound-engine touches; data/song changes run the directly-affected suites (see AGENTS.md §12)** — full sweep 47/47 at the stage-verification commit (including tone_stages) is the last under the policy (including the new audit suite). CI = push/PR/manual, explicitly not a deploy gate. (.github/workflows/practice-tests.yml — console-hygiene + 46 suite steps + eslint + html-validate + board verify (46 after the 2026-09-28 audit removal; instrument_switch_race's step gone); local run-all counts 46 suites (47 before the removal); 42 green 2026-09-25 — see DONE) NOTE: practice_accepts flaked ONE strict case under full-sweep load 2026-09-23, green twice standalone afterward and in the diag run — watch it, the arbiter hardening already took one such race; support_accepts flaked the same class 2026-09-24 (fixed wall-clock read window vs audio-clock lag under sweep CPU contention) and got the class cure: the read is now a real rendezvous with wall-fire stamps + ctx snapshots `335c4b4`). **Third member 2026-09-25 (CLI run `36110497803`, job 107992645371): practice_dip's leg A stalled the full 15 s timeout at maxIdx 0** — same SHA the local sweep had green; a DIFFERENT injury inside the same family: the suite's rendezvous (OCA_PRACTICE+NOTES) unlocks INSIDE loadInstrument (the stretch between installFingerings and boot's tail), where fillLibrary/loadLibraryItem(home) → practiceInvalidate is still owed — a session started mid-boot died when the tail landed; the stall reproduces at will with CDP network latency, cured by the rule-13 real rendezvous: the #scale options guard (filled only by the tail; a rAF poll never resolves mid-synchronous-block) plus a state card (started/st/ix/frames) on every driver resolve so a future stall names itself. The same tail guard rode into every suite that starts practice or needs typed editor text to survive boot (practice_accepts_melody, practice_zen_return, practice_history, keyboard_widgets, render_pin); library_hardening already waited a stronger post-tail signal (the Scales OPTGROUP), playback-only suites are immune (practiceInvalidate stops practice, never play; the instrument-switch race suite was REMOVED 2026-09-28 — its `loadText` throttle went inert at the ESM migration because the app's loadings resolve the module-scoped binding, so it passed without reproducing its race; the app's instLoadGen guard carries the contract and a live re-test would need a route-doctored `loadText` seam). Full sweep 31/31 green after the cure.
@@ -98,7 +92,11 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 
 ## 7. Accessibility & UX
 
-- [ ] **Field-check the game arrangement (Audible-behavior hold — Robin's ears decide)** — the Outset corpus is now ONE version: `outset-island-midi` = "Outset Island (arrangement)" (melody + `#track bass audible 50` + the derived `#track contrabass audible 75`; the with-bass trio, its up12 twin and the bassline solo retired before deploy); his pass names: the plain-view balance (bass/contra levels vs the melody at 50/75), the contra register choice (the game sub-bass +12 reading), the ♭ chord labels in the sheet's caps styling, the loop seam (the closing vamp into the opening one), and whether the layers stay audible INSIDE an active practice session (today they play; the tuner-deafening worry stands). `🟧 🔴 ⚙S`
+- [ ] **Small-screen layout pass (IDEAS: SMALL SCREENS, approved 2026-09-30)** — phones are play/practice, not editing: the editor block is HIDDEN on narrow screens, transport + controls stack into clean vertical rows (today they are "all over the place"), NO backdrop image in portrait, whole viewport functional in normal mode; zen mode stays as-is (Robin: already looks very good). FIRST PASS `d77a153` IS IN (editor face hidden with the Song Library kept, playback head stacked into centered rows, Hyrule backdrop off in portrait; sw oco-pwa-v64, css-v5) BUT THE KEYBOARD HALF IS REJECTED — Robin 2026-09-30: the board scrolling during play is annoying; instead the TRANSPARENT keys (out-of-instrument, dimmed via inline opacity .25 white / .2 black in buildKB) are HIDDEN on small portrait screens so the board shows only the playable keys — static, NO auto-scroll (delete scrollKbToActive from ui.js and the 32px-column/overflow-x rules; give the dimmed keys a class so the media query can display:none them). ALSO: the token strip (#tokens in the playback block — "the other dropdown showing tokens") is hidden on small portrait too (not ergonomic there); and the three tab-tools rows each center: Enlarge small holes, Grid|Scroll|Single, share|print|download. tests/phone_layout.py legs 4-5 pin the rejected scroll-follow and must be re-pinned to the static board + hidden dimmed keys + hidden #tokens + centered tab-tools rows. Second pass landed (ed31f89) plus the uniform-key fix (b666034): the .oct rows dissolve to display:contents under 760px so the surviving cells flex to equal widths (Robin: sparse octaves stretched their keys), octave radii flattened, phone_layout re-pinned to the static uniform board + expanded-block #tokens check; Robin's 2026-09-30 phone pass on b666034 then caught three more small-screen defects, all fixed + pinned (30e496d / 2016408 / 740d637, sw oco-pwa-v69, css-v10): the "Playback Control" title sat 61px below the block top while Song Library / Piano sat at 9px (measured red by probe; the SONG-LIBRARY-vs-PIANO distance itself did not reproduce at 9px/9px, collapsed and expanded — "big mode" is ambiguous, confirm at the field check) → the t-wrap title row now leads the stacked head (head-left order 1, tempo-lab order 2; leg 7 pins the per-block .head-label offset span ≤2px in both states); the vestigial #playback collapse chevron (its only sub-head content, #tokens, is already hidden on a phone) is display:none under 760px (leg 5 pins phone-none / desktop-visible); the theme/? .head-tools wrapped flush left on the header's third line → margin-left:auto keeps the content-edge right alignment (leg 8 pins wrap order h1 → picker → tools + the right edge; leg 6 guards the desktop edge). Held for Robin's field check of the uniform board + these three before close. `🟧 🔴 ⚙L`
+
+- [ ] **Coffee icon after the help-screen "Buy me a coffee" link (IDEAS: coffee icon, approved 2026-09-30)** — Robin: a small coffee icon right after the 'Buy me a coffee' colophon link in the help screen (planted 7a4da56); static, no behavior; the sr_hints help-overlay leg pins both colophon links, keep it green. Plus (Robin, 2026-09-30 mid-session): the whole "Like the tool? Buy me a coffee" sentence now sits in a nowrap .coffee-unit span so a narrow card drops the entire sentence under the issues line as one unit instead of breaking mid-phrase; pinned by the sr_hints help-overlay leg (d41563a, sw oco-pwa-v72, css-v13). Robin 2026-09-30: the coffee sentence should own its line below the issues link — landed 0ba4f55: .coffee-unit is now display:block (nowrap kept, "·" separator dropped, trailing period rides inside the span), so the colophon reads two lines at every card width; sr_hints pins display:block plus the coffee line's top sitting below the issues link's bottom; the look stays held for his field check Robin 2026-09-30 (fresh context): the cup should be 2.5x the line text and vertically middle-aligned, it read as an afterthought at 1em riding the baseline — landed 6a59020 (.help-coffee now 2.5em wide/tall, vertical-align:middle, 3px margin-left kept; sw oco-pwa-v75, css-v16); sr_hints pins 2.5x the colophon font size plus the icon centre within 3px of the coffee text's centre `🟢 🟠 ⚙S`
+
+- [ ] **Lead-volume (duck) icon: loud/soft speaker (IDEAS: lead-volume styling, approved 2026-09-30)** — Robin: replace the duck toggle's down-arrow-into-line glyph with a speaker + sound waves — SOFT (one wave) when duck is off, LOUD (three waves) when on — on both mirrors (mirrorDuck + focusDuck); fine-tune the corner-button positioning and colour; aria-pressed + .on state classes stay, so the keyboard_widgets transport leg and the track_accepts mix leg keep holding. Implemented + pinned at d41563a (sw oco-pwa-v72, css-v13): the speaker + waves pair now reads the melody's CURRENT volume — three waves (g-loud) while the duck is off, one wave (g-soft) when engaged; Robin's mid-session correction overrode the boarded mapping (it had read inverted: the glyph represents the current state, not the action). The engaged state fills orange (#d97706), not the red accent, and the corner button sits flush at the play button's top-right as if both were squares (Robin's positioning steer). Both mirrors (mirrorDuck + focusDuck) share the g-soft/g-loud pair; .on + aria-pressed stay syncDuckUI's; keyboard_widgets pins both glyph states + the flush corner, track_accepts keeps the mix ratio. Held for Robin's field check of the colour and fine position. opaque-face fix landed 6b1a805: dedicated theme-opaque --duck-badge tone (plain #efe4d4, OoT #0a3a0a, hifi #0f0602) so the play button's rim arc and running green never shine through the badge; the zen mirror wears its already-opaque zen button face; keyboard_widgets pins the opaque fill, face stability across the running state, and no running-green bleed on both mirrors; scope is the two corner ducks only — the other round transport buttons stay transparent (Robin's "maybe every such button" read as the narrower choice, held for his call); colour and fine position still held for his field check `🟨 🟠 ⚙S`
 
 ## 8. Housekeeping
 
@@ -110,6 +108,10 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
 
 - [ ] **Library search / pinning widening** — favorites pinning SHIPPED 2026-09-26 `390c431` (star + first persisted Favorites group); the widening (search box, reordering beyond the pin, grouping options) stays parked until Robin elects it. `🟢 ⚪ ⚙S`
 
+- [ ] **Song .txt round-trip with all attributes (IDEAS)** — export a loaded song as .txt carrying title/tempo/tick/swing + its #track blocks, pasteable back into #src (parse.js already understands the # tempo / # title / # track / swing lines); the goal is copy-paste between src and .txt; permalink keys stay frozen. `🟨 🟡 ⚙M`
+
+- [ ] **Media Session announce + hardware media keys (IDEAS: stop-media, scoped down)** — stopping other apps' media is infeasible from a web page (the API is declarative-only, MDN 2026-09-30); Robin approved the announce half: declare playbackState + MediaMetadata so the lock screen / media center names "Ocarina Practice — <song>", and wire hardware media keys (headset play/pause; next/prev only if they map to something sensible) to the transport; gate behind ("mediaSession" in navigator), no-op silently where unsupported; pin the announce state with a small suite leg. `🟨 🟠 ⚙M`
+
 > **Idle idea pool: `plans/IDEAS.txt`.** A live document Robin edits over time and ROBIN'S ALONE — the AI never writes it (it may be read, and only lifted into TODO.md when Robin explicitly asks). TODO carries no copy or summary: when an idea from it is picked up, read the FILE fresh at that moment; never rely on a remembered or transcribed version.
 
 ---
@@ -117,391 +119,6 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
 ## Session log
 
 (Older entries live in `plans/DONE.md` (session log). New entries below — retire via `python tools/board.py log-retire` once another session has opened from them.)
-
-- **2026-09-28 (session 21 — the third Grok handoff adopts wholesale: the mid-air leg replaces the shelf air, both twins refit, the stage gate re-anchors H4)** —
-  Robin's package drop `research/ocarina-twin-lead.zip` (Grok's LEAD,
-  2026-09-28 evening) with his standing order: Grok leads on tone
-  analysis — no homegrown "learned fixes" this session. His HANDOFF
-  overrides the earlier zips and names the 1.6f0/highshelf air path THE
-  BUG ("extra fizz is not hole-rush" — why E6/F6 read "not airy
-  enough"): E6/F6 air is a MID PEDESTAL [1.25 f0, 4 kHz], the high hiss
-  [4 kHz, 12 kHz] stays quieter, per-band delivery RMS-matches against
-  the tone rows ("change filters, change that helper — never add
-  another EQ stage"). Landed on tuning-synth-for-instruments:
-  (1) js/helmholtz-voice.js byte-identical to the handoff (audio.js's
-      imports are exactly the three surviving exports; the noise
-      buffer is RMS-normalized; pinkBandComp stands in for synth.py's
-      post-filter RMS match; no highshelf / 2800 or 1.6f0 cutoff /
-      airFade; AUDIO_DEBUG.airLevel untouched at 0; windPark stays
-      only in the additive voice, outside his zip's scope).
-  (2) the ocarina_twin package swaps for Grok's (air.py canonical
-      three-band table; fit.py measures res [0.70,1.25]f0 + mid
-      [1.25f0,4k] + hiss [4k,12k] on the tracked residual; synth.py
-      real post-filter RMS matching with the hiss+6 mid fallback;
-      run_fit prints a mid column), with ONE restoration: the
-      Fs6..Cs7 nominal rows the zip trimmed are back in fit.py for
-      the stein's chamber 2 (data scope; the 12-hole's rows sit
-      inside the base table).
-  (3) the 12-hole refits from the 11 committed ladder takes: mid rows
-      -31..-39, hiss -43.6..-59.5 (F6 mid -34.1 / hiss -43.6, a
-      9.5 dB gap = Grok's own not-one-band sanity check).
-      validate.py translated to the three-band convention with his
-      acceptance sub-bands: F6 syn15 -31.4 (target -32 within 3 dB ✅),
-      C5 never-brighter ✅ (mid d -0.2, no 2 kHz shelf), F6 syn58
-      -42.2 marginal (2.8 dB over his strict -45 line though 13 dB
-      under the mid band — left untouched), D6/E6 read +6..+14 dB
-      hotter than their takes (his delivery convention, named for the
-      field check, not fixed).
-  (4) the stein refits both chambers (ch1 11 takes, anchor Ds6; ch2 5
-      takes, anchor A6; the E6 take re-probed and EXCLUDED again -
-      its tracked subtract still slips, res read -0.0 - so E6 rides
-      F6's row end-clamped). The wrapper gains carry VERBATIM: the
-      raw takes are unchanged between fits, so the standing measured
-      chain stands (ch1 0.9783, ch2 0.7277; the one-take calibration
-      recording remains the arbiter). Stein validates: ch1 C5 mid d
-      0.0 (no shelf), Ds6 +6.6; ch2 G6 +7.1, C7 +9.0 - the same
-      synth-hotter-than-take class as the 12-hole's top.
-  (5) tests/tone_stages green across the 11-note held set with the H4
-      cap re-anchored 12 -> 18 on the adopted delivery (the mid
-      pedestal now plays INTO the 4f0 window the starved path didn't
-      reach: C5/D5 measured +14.3..+14.5 while the delivered band
-      still sits about 1 dB off the take's own 1.5-2.8k floor; rise
-      deltas read 0.0 everywhere). instruments_load, data_validator,
-      twin_support_level, console_hygiene green; eslint@9 +
-      html-validate@8 clean; README + SKILL.md carry the lead's air
-      doctrine; sw oco-pwa-v47 (engine js changed).
-  HELD for Robin (the deciding pass): the field check on the mid-air
-  voice vs before - the top register's air character (mid pedestal vs
-  the old fizz), held texture, attack/chiff, glide carry, practice
-  fit, the three end-clamps; plus whether the top notes' hotter-than-
-  take delivery reads punchy or fake on his device.
-
-- **2026-09-28 (session 21 cont. — the mid-air voice is FIELD-BLESSED; Grok's guessed bass twins install for the whole fleet, supports included)** —
-  Robin's field check the same evening: the 12-hole mid-air voice "it is
-  VERY good. Sounds like real recordings of my ocarina, but played by a
-  pro instead of me", the stein "sounds good" — the adopted baseline
-  (voice module + both fitted models at 8c4f435) is the field-checked
-  truth; the §1 12-hole voice item moved to DONE with his verdicts
-  (board tool). The stein refit question he answered by note ("didn't
-  know you already did that") — already shipped inside 8c4f435.
-  Then Grok's second package `research/guessed-twins.zip` (Robin's ask:
-  try it for the other instruments, supports included, until real
-  recordings):
-  (1) guessed twin models installed at instruments/<id>/twin_model.json
-      for dummy-bass-c-double (wrapper ch1 A3-Ds5 gain 1.0 + ch2 E5-C6
-      gain 0.92), ico-contrabass-11-c (flat single chamber B2-F4,
-      guessed inside globals, Q_prior 38, dry-mid split retuned to
-      123-349 Hz), ico-oak-leaf-bass-c-triple (ch1 A3-Ds5 + ch2 E5-C6
-      0.92 + ch3 Cs6-G6 0.85). Grok scaled them from the MEASURED
-      12-hole mid-air model — no WAV from these instruments; his
-      HANDOFF's do-nots carried into the skill verbatim (the 4 kHz
-      hiss split is still the alto split; not gospel per instrument;
-      not digital twins; triple refit = three sessions one chamber
-      each, then the guesses go away).
-  (2) instruments.json gains the three "twin" declarations — ALL FIVE
-      instruments now declare twin, so melody AND support/track voices
-      play the twin engine everywhere (the anchored TWIN_SUPPORT_LEVEL
-      path covers the supports; the additive machinery is dormant
-      legacy kept for the support red-green comparisons and the future
-      cleanup on Robin's word). Charts carry the matching chamber marks
-      (dummy 1|2, oak 1|2|3, contrabass 1) so every note routes by its
-      own chamber; no cross-break lerps (his wrappers are the v1 shape
-      the loader already handles). Contrabass keeps its tone.json
-      declaration (dormant, file exists per validator).
-  (3) Verified: data_validator (guessed keys pass its notes/f0/h shape
-      checks; declared files named), instruments_load (boot battery
-      boots all five with their twins; multi wrapper install legs),
-      twin_support_level (support anchors on the oak's guessed twin
-      within 1.5 dB of the additive reference), console_hygiene (4
-      boots clean), gen_pages + shipped_songs re-run for the corpus
-      shapes — all green; eslint@9 + html-validate@8 clean. No sw
-      VERSION bump: instruments.json + twin models ride
-      DATA_NETWORK_FIRST so the new voices land on the FIRST online
-      reload (data-only precedent).
-  HELD for Robin: the guessed voices' field check (the contrabass hoot,
-  the oak triple's bright top chamber, the dummy's mid chamber, the
-  bass whoosh — Grok's alto-split caveat) and how they sit under
-  multi-track practice; real held-take refits per chamber when he
-  records (the guesses retire then).
-
-- **2026-09-28 (session 21 cont. — Robin's file:// console catch: the dead tone.json declarations leave; the additive-code dismantle boards)** —
-  Robin's preview (file://, no service worker) surfaced the twin-era data
-  debt on instrument switch: stein-double-alto-c and ico-contrabass-11-c
-  still declared "tone": paths whose FILES never shipped (twin-era
-  residue) — served pages decompose the miss into the documented 404
-  (the hygiene allowlist), file:// fails differently (net::ERR_UNEXPECTED
-  at app.js:57's loadText fetch) and the tolerance chain still caught
-  it, but the console noise stood. His ruling rode the report: "I don't
-  want tone.json back. We're gonna dismantle that code path soon." So:
-  (1) the two dead "tone" declarations are REMOVED from instruments.json
-      (no file existed behind either; the additive voice is dormant
-      behind fitted/guessed twins on every instrument; the twin-failure
-      fallback contract is unchanged — a failed twin fetch still falls
-      to the generic additive voice, now without tone rows);
-  (2) the dynamic allowlist machinery absorbed it with no suite edits —
-      instruments_load prints "(5 instruments, 0 declare tone.json)",
-      console_hygiene's allowed misses fall to 0 and both boot scans
-      stay green (data_validator, gen_pages re-run green);
-      no sw bump (manifest is DATA_NETWORK_FIRST; no js touched).
-  (3) the teardown itself boards as a §5 item (tone.json fetch + the
-      additive voice path + the additive-only knobs + the test
-      entanglements), queued behind the guessed-voices field check.
-  HELD: nothing — the console is clean on file:// and http:// alike.
-
-- **2026-09-28 (session 21 cont. — the instrument-loudness dial unites the debug panel)** —
-  Robin's ask: tweak each instrument's loudness as a whole, fine-tunable in
-  DEBUG. The answered batch: SESSION-ONLY (his words: "It is just so I can
-  feed you the persistent numbers to put in code" — a tuning probe, the
-  settled dB values become code constants), a TABLE OF ALL FIVE, range
-  -3..+9 dB. Landed:
-  (1) js/audio.js: five flat AUDIO_DEBUG keys (instOotDb/instSteinDb/
-      instOakDb/instContraDb/instDummyDb, defaults 0), one INST_DB_KEYS
-      map by instrument id, and instLevelGain() = 10^(dB/20) read off the
-      loaded instrument (window.CURRENT_INSTRUMENT, set by app.js) —
-      multiplied into ALL FOUR voice masters (twin full + twin lite +
-      additive full + additive lite at the playNoteAt seats), so melody,
-      supports and tracks all carry the instrument's own offset; a
-      non-declared/no id reads 1 (0 dB = untouched default, so every
-      existing suite baseline is unchanged).
-  (2) js/debug.js: the new "Instrument level dB (session-only)" group
-      with the five rows (-3..9 step 0.1) flagged volatile — the panel's
-      save()/restore path now EXCLUDES volatile keys (the panel persists
-      everything else to 'oco-debug-audio' as before), so the dial never
-      writes or re-applies storage; doubles as the honest workflow: he
-      dials, then the settling numbers land in code constants.
-  (3) tests/debug_panel.py grew three legs (red-first on the baseline:
-      'instLevelGain is not a function' before the js edits stashed out):
-      the five rows exist with the -3/9/0.1/0 shape and the session-only
-      banner, the dial gain math via window.OCA_DEBUG.instLevelGain (the
-      loaded instrument's own key; +6 -> 1.9953, -3 -> 0.7079, +9 ->
-      2.8184; a foreign id and null read 1), and the two-sided volatility
-      contract driven through the REAL rows: an instOotDb edit must never
-      enter 'oco-debug-audio' while a masterLevel edit must persist.
-  (4) Suites: full sweep 46/47 with the long support_accepts_brackets
-      timing out in the loaded sweep, PASS isolated, full-sweep rerun
-      green (the known heavyweight-browser flake class - the practice
-      arbiter family); debug_panel green; console_hygiene/
-      instruments_load/data_validator in-sweep green; lint clean; sw
-      oco-pwa-v48 (audio.js + debug.js changed).
-  NEXT: Robin dials his five numbers, then the values become code.
-
-- **2026-09-28 (session 21 cont. — Grok's low-note presence fix lands (Robin deployed the files): the C5-class 1.5-2.8 kHz band is un-eaten, no refit)** —
-  Robin's report: "I deployed a Grok fix for low notes were some higher
-  frequencies were 'eaten' on the spectrum" — the two files were already
-  in the working tree (js/helmholtz-voice.js + ocarina_twin/synth.py,
-  staged uncommitted; his note: replace only these, NO refit, JSON rows
-  stay — noise_mid_db on C5 is already ~-34, the REDUCTION was a delivery
-  shape: Q=80 tone ring + a weak mid band muffled the low notes).
-  (1) The two rendered-domain changes, mirrored in BOTH renderers (the
-      one-air-definition doctrine holds): playbackQ caps the tone BP
-      (30 + f0*0.035 — ~48 at C5, ~79 at F6 so the fitted Q rows still
-      rule the top) and the mid path multiplied by
-      lowNotePresence(f0) = x2.4 at 500 Hz tilting to x1.0 at 900 Hz
-      (by A5); F6's mid/hiss untouched (its stage deltas FELL: hiss
-      +1.5, res -4.8 - the Q hair-cap cleaned the subtract skirt).
-      synth.py carries the identical lift formula so the offline
-      reference agrees with the web voice.
-  (2) Verification on Grok's own tooling: validate.py — F6 syn15 -31.4
-      (target -32 within 3) unchanged; C5's 1.5-2.8 kHz floor reads
-      -49.5 vs the take's -51.2 = the eaten band is back (+1.7 dB over
-      the take; was -55.2, 4 dB UNDER). The stage gate re-anchored on
-      the new delivery (HOUSE precedent, red-first measured): C5 H4
-      +18.8 (cap 18 -> 21), C5 hiss +22.4 (cap 20 -> 24), D5 H2 +6.4
-      (cap 6 -> 8), D5 hiss +21.2 — the same classes, hotter by design;
-      run-to-run flap class stays inside the new caps (C5 H4 17.7 on the
-      rerun). instruments/validator/console boots untouched; full sweep
-      47/47 first pass; lint clean; sw oco-pwa-v49 (engine js changed).
-  HELD for Robin: the low-note field check (does C5/D5/E5/F5 read as
-  full-bodied now rather than muffled; the Q cap's ring character),
-  including on the stein (its ch1 low rows ride the same voice).
-
-- **2026-09-28 (session 21 wrap — the shipped streak moves to DONE on Robin's field word)** —
-  Robin field-checked the low-note presence fix ("Sounds perfect") and
-  ordered the completed streak into DONE (board-only unit; tests scoped
-  to the todo/done machinery by his instruction):
-  (1) Grok's low-note presence fix -> DONE (commit `ecc5413`, his field
-      verdict inside the struck line);
-  (2) the per-instrument loudness dial -> DONE (commit `7f44c98`; the
-      dial is in live use — his settled dB numbers ride back into code
-      whenever he names them);
-  (3) the dead tone.json declarations removal -> DONE (commit `b7ac225`).
-  The board's open set stays honest: the guessed-voices field check, the
-  one-take calibration recording, the §5 additive-path teardown, the
-  chamber-fits still waiting on real recordings, and the multi-track/
-  Epona/HiFi holds that are his ears' passes.
-
-- **2026-09-28 (session 21 wrap cont. — the audit's approval forks land: both stale items vanish, the teardown stays queued)** —
-  Robin's answers on the remaining forks: the §9 per-song landing
-  maintenance item DELETED as obsolete (the frozen URL grammar +
-  intended-planting rules live in tests/shipped_songs, gen_pages and the
-  skills - the item restated what the gates enforce), the §4
-  createScriptProcessor WAV-export backlog DELETED (its AudioWorklet
-  trigger doesn't exist anywhere; debug.js stays untouched by election;
-  the section carries the nothing-open line), and the §5 additive-path
-  teardown STAYS QUEUED on his word ("Wait - keep it queued"). The open
-  set drops to 5: the slim real-recording refits item (§1), the teardown
-  (§5), the Outset arrangement field check (§7), and the two standing §9
-  holds (shipped-songs standardization, library widening). Obsolete
-  vanishes per the conventions - no DONE entries for deletions; board
-  verify + board_tool 12/12 green (todo/done machinery only, per scope).
-
-- **2026-09-28 (session 21 wrap cont. — the wrapper-embed miss fixed: the stein's mid-air rows were never in the shipped wrapper)** —
-  Robin's catch: "The Stein double alto has not had the most recent
-  fitting, as it is missing noise_mid_db." Confirmed and owned: the
-  8c4f435 assembly script loaded the EXISTING wrapper, updated only the
-  wrapper-level note, and dumped it - the freshly fitted ch1/ch2 models
-  (with noise_mid_db) sat untouched in research/ocarina-twin-lead/
-  while the file kept the OLD pipeline-era models. So the stein played
-  the JS fallback crutch (mid = hiss + 8) through BOTH its field-check
-  sessions ("Stein sounds good", "sounds perfect") PLUS the pre-lead
-  globals overlay (dry_hiss 0.15/0.70 over the JS's 0.20/0.75 defaults).
-  Fixed this unit with assertions this time (round-trip re-read in the
-  embed: gains 0.9783/0.7277 verbatim, 11/5 rows, noise_mid_db present
-  on every note; ch1 mid -31.6..-42.5, ch2 -34.5..-39.1 as fitted).
-  Validations reproduce the temp-model numbers exactly (now actually
-  delivered): ch1 C5 dMid +3.4 / Ds6 +6.6, ch2 G6 +7.1 / C7 +9.0, C5's
-  15-band now +1.2 over the take (the same presence-lift class the
-  12-hole reads). data_validator + instruments_load (boot battery with
-  the wrapper) green; twin_model.json rides DATA_NETWORK_FIRST (no sw
-  bump, no js touched); the full sweep did NOT run per Robin's standing
-  scope (associated tests only).
-  GROK-SIDE OBSERVATION (report-only, NOT touched): the lead fitter's
-  JSON globals write dry_hiss 0.15/0.70 while his air.py canonical says
-  0.20/0.75 - the JSON overlays the JS defaults, so the EFFECTIVE curve
-  is 0.15/0.70 on every refit INCLUDING the field-blessed 12-hole
-  delivery. His spec leads; flagged for the next Grok round, not fixed
-  here.
-  HELD for Robin: re-hear the stein (the blessed verdicts were the
-  crutch delivery; the real mid rows now play - louder mid where hiss
-  was quiet: ch1's A5-class rows move the most, the crutch read -41.7
-  where the fit wants -34.3).
-
-- **2026-09-29 (session 22 cont. — /js/ goes network-first; the noise hunt's serving-layer half closes)** —
-  Robin's report ("site synth complete garbage, fine in the VS Code preview,
-  ton of noise on the phone app") chased through the serving layers while he
-  iterated Grok engine rounds on branches (main reset to before the merge by
-  him, branches f2..f5 recovered; his ?v=1 voice-import cache-key fix
-  55b86bb reviewed and adopted):
-  (1) the cache-anatomy findings named four layers — the SW stale-while-
-      revalidate hit branch, the browser HTTP cache (Pages max-age=600),
-      the SW cache keyed per URL (the ?v=1 import creates a NEW key, so the
-      first load after deploy cannot see old bytes), and the renderer's
-      script memory-cache (served the minutes-old module on reload without
-      dispatching the SW at all — why the module marker raced in the
-      harness); the CORE list was ALSO missing helmholtz-voice.js (Robin
-      caught) and then js/wakelock.js (the airplane leg caught).
-  (2) /js/ now rides DATA_NETWORK_FIRST with cache:"no-cache" revalidation:
-      online always fresh, offline the cached copy (the same contract the
-      09-28 data files got). CORE completes with js/wakelock.js — network-
-      first makes an incomplete CORE a hard offline 504 where stale-while-
-      revalidate had self-healed through the browser HTTP cache — and the
-      voice module's CORE entry carries the importer's ?v=1 token.
-  (3) suites: offline_pwa's engine-freshness leg red-first (poisoned cache
-      copy must lose to the network on the FIRST online fetch and the
-      revalidate must overwrite it), asset_versions pins js CORE
-      completeness + token lockstep (one entry per module, importer token
-      == CORE token); offline_pwa, asset_versions, console_hygiene green;
-      eslint + html-validate clean; sw oco-pwa-v54 (serving contract).
-  HELD for Robin: deploy + re-hear on the phone (second-visit behavior no
-  longer load-bearing); the resume invalidation design for instruments/
-  twin models is batched for his picks (the resume hook still re-checks
-  songs.json only — a resumed phone keeps the manifest and the loaded
-  twin model indefinitely).
-
-- **2026-09-29 (session 22 cont. — the deferred resume invalidation lands: instrument data joins the resume contract, the SW data branch widens)** —
-  Robin merged the serving-layer streak to main through PR #29 and opened
-  the door to approved/queued items; the §2 batch (his answered forks,
-  recorded verbatim when boarded) was the pick. Landed on
-  resume-invalidate-instruments:
-  (1) app.js: the shared visibility resume slot re-checks instruments.json
-      TEXT and the LOADED instrument's twin_model.json under the songs
-      gates (foreground, no melody/practice, the 30 s gap, silent-offline
-      catch) — a changed model reinstalls installTwinModel audio-only
-      under the CURRENT_INSTRUMENT guard, the next played note rides the
-      fresh fit; fingerings/template/svgWhen drift defers to the next
-      reload with a console.info flag (never a mid-session chart redraw);
-      cross-instrument manifest drift only feeds the next boot.
-      loadInstrument tracks the twinText comparator beside both install
-      paths (fresh and fallback).
-  (2) sw.js: the network-first data branch widens from tone/twin_model to
-      EVERY per-instrument file (fingerings/tone/twin/templates) — the
-      last stale-while-revalidate data class — sw oco-pwa-v55.
-  (3) tests/offline_pwa.py: the resume-request-count leg red-first (a
-      changed model on disk must fire a fresh model fetch on the first
-      resume dispatch — instrument-agnostic filter, because the offline
-      swap leg leaves the suite carrying the oak; the if-modified-since
-      whole-second trap slept 1.1 s like the songs legs) and the poisoned
-      fingerings serving leg (network-first + cache heal), both verified
-      red then green; the poison helper factored out for the two legs.
-  Suites: offline_pwa x3 through the red/green cycle, instruments_load
-  (boot battery + twin shapes + svgWhen boots), console_hygiene (4 boots),
-  asset_versions, eslint + html-validate — all green.
-  HELD for Robin: the reload nudge's VISUAL surface (console.info-only
-  today; a on-page slot is his design call). The commit needs his PR
-  merge to reach the phones; field check = a resumed phone app must pick
-  up a changed twin model within the next note (his next refit is the
-  natural field test).
-
-- **2026-09-29 (session 23 — the VS Code Simple Browser leftover worker is the high-noise class again: file:// SW still intercepted after the HTTP serving fix)** —
-  Robin's report: last night's engine/model desync was solved on main, then
-  the same high-noise bug returned locally in the VS Code built-in browser.
-  The site/HTTP half closed last night (network-first /js/ + ?v=1); the
-  preview is a different origin. Evidence in this partition:
-  `~/.config/Code/Partitions/vscode-browser/Service Worker` still has a
-  registration for `file:///home/robin/git/Ocarina-Practice/sw.js` (dozens
-  of update cycles) and CacheStorage `oco-pwa-v55` with an EMPTY cache.
-  Electron allows service workers on file:// (Playwright Chromium and
-  desktop Chrome do not — that is why the suites never saw this). Sep 23
-  (`d0f4d16`) sat out NEW registrations and skipped install cache-fill on
-  file://, but (1) never unregistered the leftover worker (it keeps
-  updating on every preview navigation without register()), (2) never
-  gated the fetch handler, (3) put skipWaiting BEHIND the protocol return
-  so a new worker sat WAITING while the old intercept kept running. Last
-  night's network-first + cache:"no-cache" then intercepted js + twin JSON
-  against that empty cache; a miss 504s and loadInstrument's catch
-  silently installTwinModel(null) — the additive wind stack, the same
-  audible class as old-engine-plus-new-models. The pairing was never
-  observable: no voice stamp, silent additive fallback.
-  Landed on resume-invalidate-instruments:
-  (1) sw.js fetch returns on non-HTTP(S) before any intercept; skipWaiting
-      always, before the protocol return; CORE token `helmholtz-voice.js?v=2`
-      so the Simple Browser module URL cannot keep last night's ?v=1;
-      sw oco-pwa-v56.
-  (2) app.js unregisters leftover file-scheme workers on load (skipping
-      register() left them in control).
-  (3) helmholtz-voice.js exports VOICE_REV "mid-air-1"; OCA_DEBUG.voiceCard()
-      reports rev/protocol/twin/chambers/sw; installTwinModel console.info
-      the card and console.warn on additive fallback; the debug panel
-      header shows the stamp (Robin already has that panel open in the
-      preview).
-  Suites: asset_versions pins the three file-scheme gates + token lockstep,
-  instruments_load pins voiceCard.rev and twin id on every shipped twin,
-  debug_panel pins #dbgVoice, offline_pwa poison URL follows ?v=2,
-  console_hygiene 4 boots clean; eslint@9 + html-validate@8 clean.
-  HELD for Robin: one Simple Browser reload to let v56 skipWaiting take
-  over, then a second load so unregister has run — the debug header should
-  read `mid-air-1 · twin <id>` (ADDITIVE is the bug). After that, type
-  `OCA_DEBUG.voiceCard()` whenever site and preview disagree.
-
-- **2026-09-29 (session 23 cont. — ?v=1 is the release cache-bust; v2 loaded in the preview and the noise stayed)** —
-  Robin's correction: `helmholtz-voice.js?v=1` exists to force a refresh
-  when a release is pushed (last night that token + network-first cleared
-  the desktop site and the phone). A local token bump is not that lever.
-  Restored `?v=1` (importer + CORE + offline_pwa poison URL). The file-scheme
-  fetch/unregister gates and VOICE_REV/voiceCard stay.
-  The remaining preview noise is a different fact: Simple Browser is open
-  at `file:///…/index.html?song=song-of-storms&inst=ico-oak-leaf-bass-c-triple`
-  (editor memento). Storms' D6–F6 land in the oak's guessed ch3 (Cs6–G6)
-  which still carries the alto 4 kHz hiss split. Phone/desktop last night
-  were the 12-hole mid-air voice. The debug header still names the pair
-  (`mid-air-1 · twin …` vs `ADDITIVE`).
-
-- **2026-09-29 (session 23 cont. — F6 chamber 1 under an oak twin is the remaining mix)** —
-  Robin's probe: sr 48000, Lite off, `CHAMBER.F6 === 1`. Oak fingerings.json
-  puts F6 in chamber 3; the 12-hole chart puts it in 1. voiceCard now carries
-  chart id, note range, F6 chamber and a twin/chart mismatch flag so one
-  paste names the pair. Playing F6 through oak chamber 1 (A3–Ds5 rows at
-  1397 Hz) is the high-noise class.
 
 - **2026-09-29 (session 23 — drawing board: restore the v45 pair locally, mid-air does not ship)** —
   Live ocarina-practice.com is still oco-pwa-v45 original Helmholtz (2800 Hz
@@ -538,3 +155,283 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   working takes (research/ A4–A5) still sit well inside. Voice/JSON
   unchanged — gate follows the restored pair, not the parked mid-air
   ladder offset.
+
+- **2026-09-30 (session 24 — board tidy: three items close on Robin's sweep, the log slims down)** —
+  Board-only session; no app code touched. Robin's sweep closed three
+  open items into DONE: (1) §1 held-take refits — the guessed
+  per-chamber twins (dummy/contrabass/oak, dfc7199) are field-checked
+  and stand; real held takes, the stein E6 re-blow and the cross-
+  instrument gain re-derivation only matter once he owns the
+  instruments; (2) §5 engine upgrade drawing board at 3b6e0e5 (PR #30)
+  — the v45 Helmholtz pair is the shipping engine, the mid-air upgrade
+  stays parked, re-openable only as one A/B deploy; (3) §7 Outset
+  arrangement field check at 2dbab7a — Robin cleared the multi-track
+  trio (balance, contrabass register, flat labels, loop seam, in-
+  practice audibility). Also cleared by his ears: the one-take
+  cross-instrument calibration recording is made, Epona's contrabass
+  audible-100 is heard, and the HiFi retune + favorites stars passed
+  the eyeball — but HiFi stays UNPUBLISHED until he lifts the hold.
+  Hot list refreshed to the HiFi publish hold + the two standing §9
+  holds; 13 log entries (all of sessions 21-22 and the early session-23
+  entries) retire to DONE via log-retire --keep 4, keeping the v45-
+  restore tail for continuity.
+
+- **2026-09-30 (session 24 cont. — the usability batch is approved, boarded and is this session's handoff)** —
+  Board-only so far; no app code in flight. Robin's batch, with his words
+  where they matter: the small-screen pass hides the editor on phones
+  (phones = play/practice, not editing), stacks controls into vertical
+  rows, drops the backdrop image in portrait, keeps the whole viewport
+  functional in normal mode, and leaves zen as-is ("already looks very
+  good"); theme no-flash = the saved oco-theme applied pre-paint; zen
+  chorus = audit + report first (fix only if truly lost — the twin path
+  still has it, gated on note length + high-note fade); ko-fi goes into
+  the app (78b9646 was IDEAS-only); melody duck = ON/OFF button, not a
+  dial (~20% when on, tunable on his field check); song .txt round-trip
+  carries ALL attributes (title/tempo/tick/swing/#track); the transport
+  sync bugs (pause/unpause + tempo-change desync, first-note hurries) go
+  red-first in tests/transport_schedule.py, engine change ⇒ full sweep +
+  his field check. Stop-other-media: MDN's Media Session API is
+  declarative only (metadata + media-key handlers for the page's own
+  media) — stopping other apps is NOT possible from a web page, so that
+   half drops per his rule; the announce-only half (lock-screen metadata
+   + media keys) is APPROVED and boarded as the 8th item. §6 confirmed:
+   no open items — it is the standing coverage list + the audit-residue
+   watch note only. All eight items boarded with the decisions inlined
+   (§1 ×2, §7 ×3, §9 ×3); hot
+  list refreshed. Fresh context: open plans/TODO.md (AGENTS rule 1) and
+  work the hot list top-down.
+
+- **2026-09-30 (session 24 cont. — transport sync lands: the tempo line is the song's one clock)** —
+  The §1 transport-sync item closes on `3eb740d`. Both planted desyncs shared
+  one root: a single mutable melodyQuarter that every walker mutated.
+  Pause/resume: rebaseTrackTimes collapsed all track streams' next onsets
+  onto the melody's anchor, throwing away each stream's beat offset — the
+  track jumped by the beat gap and stayed there. Mid-song tempo: whichever
+  walker consumed its '# tempo' token first owned the shared value, so a
+  track's own marker could retime the melody. The fix is a position-based
+  tempo line (buildTempoLine from the melody's tokens; quarterAt looks up
+  the in-force quarter at a 96th-grid position); the melody's line is the
+  authoritative clock and a track's own marker rides past it. Pinned
+  red-first with two new transport_schedule legs: the pause leg (pause at
+  +2.8 s, resume; every post-resume track onset must land on the melody's
+  same-beat onset — pre-fix the track sat −0.625 s early) and the tempo
+  leg (the track block carries a deliberately wrong '# tempo 60' — pre-fix
+  the track ran +1.000 s late after the marker). Also hardened
+  tests/bad_chip_style.py: its probe injected before boot()'s async wireUi()
+  had attached the #src input listener, so the oot leg flaked with
+  "no .tok.bad chip"; it now waits for the #scale boot rendezvous first
+  (5/5 clean after the fix). One sweep flake traced to that same race;
+  with it fixed the full sweep is 46/46 and lint green; sw oco-pwa-v60.
+  The first-note "hurries" symptom stayed unreproducible in the harness —
+  first-onset equality is pinned; held for Robin's field check.
+
+- **2026-09-30 (session 24 cont. — theme no-flash lands: the head script resolves the theme pre-paint)** —
+  The §7 theme item closes on `f84b564`. The index.html head script now does
+  the same param > localStorage > default resolution as app.js's
+  themeFromQuery (?plain/?oot/?hifi beat the saved oco-theme; a fresh
+  browser defaults to Hyrule), so a saved theme lands on <html data-theme>
+  before first paint instead of flashing the default look until boot()
+  applied it late. Pinned red-first by the new tests/theme_prepaint.py
+  (6 resolution cases; each case aborts js/app.js — the app's only module
+  entry — so boot()'s applyTheme() can never mask the head script's work:
+  the old head script fails 4 of 6 cases, the new one passes all).
+  Registered in practice-tests.yml beside the render-behavior pin;
+  console-hygiene + render-pin + lint re-verified green; sw oco-pwa-v61.
+
+- **2026-09-30 (session 24 cont. — instruments_load race fixed, ko-fi link lands; batch 3 of 8 down)** —
+  Two board items closed this stretch. First, the ko-fi item (§9) landed
+  at `46dec09`: "Buy me a coffee" (ko-fi.com/tribbin, target=_blank
+  rel=noopener) sits beside the issues link in the help-screen colophon,
+  and the sr_hints help-overlay leg now pins both colophon links
+  (help1.links) so presence, new-tab target and noopener survive
+  refactors; sw oco-pwa-v62. Second, a sweep load-flake cost a real
+  diagnosis: instruments_load's boot-tail wait keyed on
+  OCA_DEBUG.twinModel() !== undefined, which passes on the initial null
+  (TWIN_MODEL is null both pre-install and for no-twin instruments), so
+  the state read raced loadInstrument's async twin fetch under sweep
+  load — fixed at `0762455` by waiting on the populated #scale library
+  select, which boot only fills after loadInstrument fully resolves
+  (3/3 clean standalone; sr_hints and tick_override sweep reds were
+  load-dependent flakiness that passed isolated). Full sweep 47/47,
+  lint green.
+  Remaining usability-batch work: small-screen layout (⚙L, largest),
+  melody-duck on/off (⚙S), zen-chorus audit (⚙S, report-first),
+  media-session announce + media keys (⚙M, announce-only per Robin),
+  song .txt round-trip (⚙M). Held: the transport first-note "hurries"
+  field check (Robin's ears are the deciding pass) and the
+  stop-others media key (infeasible on Web MediaSession).
+
+- **2026-09-30 (session 24 cont. — zen-chorus audit closes report-only: the twin engine kept the chorus)** —
+  The §1 audit item closed with no code change. The zen stereo chorus
+  survived the twin-engine handoff in its gating: twChorus =
+  vibratoEnabled && dur > vibDelay + 0.1 (js/audio.js:1033) — the clean
+  cavity core hard LEFT, the vibrato twin hard RIGHT at ±zenPan
+  (audio.js:1050–1073), bit-for-bit the legacy additive chorus gate that
+  8a7d68d stripped (old lines 872–874). Zen defaults intact (vibDepth
+  0.0035, vibHighFade 0.4, zenPan 0.9, vibDelay 0.35; dev-panel sliders
+  intact), vibratoEnabled owned by the zen transitions (exitZen → false;
+  toggleZen/sync → isFocusMode()). The lite twin voice is chorus-free,
+  but the legacy lite branch skipped the vibrato layers too — a
+  consistent reduction, not a loss. The item's "fix only if truly lost"
+  clause does not trigger; zen+lite stays chorus-free by design.
+
+- **2026-09-30 (session 24 cont. — context-meter note: compaction resets the budget, don't wrap on the stale number)** —
+  A provider-side compaction reset the context (~28K fresh); the stale
+  ~225K figure carried from the compacted handoff had already triggered
+  one early wrap — the .opencode/context-usage.json zone is only truth
+  once the session has its own work behind it, and a post-compaction
+  reading is a fresh start, not a continuation.
+
+- **2026-09-30 (session 24 cont. — melody-duck on/off lands; the suite's boot-tail race gets its root cause)** —
+  The §7 duck item closed at `0588d99`. Corner buttons on the mirror and
+  the focus play controls toggle the MAIN melody voice to the 0.2 duck
+  level (MELODY_DUCK_LEVEL in audio.js, riding voiceGain in
+  playNoteAt; #track streams and supports keep full volume so the
+  player's ocarina leads), session-only, both mirrors in sync
+  (aria-pressed + .on, pinned by the keyboard_widgets transport leg,
+  now 5 controls). New track_accepts note-sink mix leg pins duck-off
+  baseline 1.0, duck-on melody 0.2 / track 1.0, and the UI state across
+  both transports. The new leg exposed a real suite-side race: the
+  OCA_PRACTICE/NOTES boot rendezvous fires at module-eval time, but
+  boot()'s async tail (loadInstrument -> loadLibraryItem) lands after,
+  and loadLibraryItem's opening stopMelody() kills a probe's fresh
+  playback — the second scheduled note never reached the sink (proven
+  by a clearTimeout stack capture: stopMelody <- loadLibraryItem <-
+  boot; no statechange, no pageerror, the context was healthy). All
+  five track_accepts page setups now wait on the settled #scale
+  rendezvous (the instruments_load convention) before playing.
+  Verified: track_accepts x2, keyboard_widgets, asset_versions,
+  console_hygiene, offline_pwa green; eslint + html-validate clean.
+  sw oco-pwa-v63, css-v4. For future sessions: the same latent race
+  exists in every suite that starts audio right after the module
+  rendezvous (only track_accepts is hardened so far); the duck
+  button's look and the 0.2 level stay held for Robin's field check.
+
+- **2026-09-30 (session 24 cont. — small-screen first pass in, keyboard approach rejected; two IDEAS items approved; handoff prepped)** —
+  `d77a153` landed the small-screen first pass on usability1: narrow
+  viewports hide the editor face (expand/clear, both save/load pairs,
+  textarea + legend — the Song Library picker stays, Robin: "keep the song
+  library"), the playback head stacks into one centered row per control
+  group, portrait drops the Hyrule backdrop, and the 42-column keyboard
+  became a 32px-column scroll strip that glides to the sounding key
+  (ui.js scrollKbToActive); six-leg tests/phone_layout.py in CI (phone
+  face, row stack + no h-overflow, portrait backdrop, kb width both
+  viewports, active-key follow, desktop regression); phone_layout/
+  asset_versions/console_hygiene/render_pin/keyboard_widgets/
+  reduced_motion/offline_pwa green, eslint + html-validate clean; sw
+  oco-pwa-v64, css-v5. Robin then corrected the keyboard spec: the board
+  scrolling during play is ANNOYING — no auto-scroll; instead the
+  transparent (out-of-instrument, dimmed) keys are hidden on small
+  portrait screens so the board shows only the playable keys, static.
+  Also: the token strip (#tokens, "the other dropdown showing tokens") is
+  hidden on small portrait too (not ergonomic there), and the three
+  tab-tools rows (Enlarge small holes, Grid|Scroll|Single,
+  share|print|download) each center. The §7 item stays OPEN with the
+  corrected spec (board note on the item); phone_layout legs 4-5 pin the
+  rejected approach and must be re-pinned. Two IDEAS entries are now
+  approved and boarded in §7: the small coffee icon after "Buy me a
+  coffee" (planted 7a4da56) and the duck-toggle glyph swap to a loud
+  (three waves) / soft (one wave) speaker with position/colour
+  fine-tuning (planted b4acd7d). Batch is now 5 of 10 — remaining:
+  small-screen remainder, song .txt round-trip, media-session announce +
+  media keys, coffee icon, duck speaker icon. usability1 is ahead of
+  origin (push stays Robin's). Fresh context: open plans/TODO.md (AGENTS
+  rule 1) and work the hot list top-down; read IDEAS.txt fresh when
+  picking up the two icon items.
+
+- **2026-09-30 (session 25 — the offline_pwa CI red was a boot-race flake; the small-screen board lands static, then uniform)** —
+  CI 36707821958 red on `offline_pwa` ("the offline song must render its
+  chart") with a green re-run on the same code: both boot-time legs read
+  the sheet/strip right after WAIT's window.NOTES install, which
+  loadInstrument completes ahead of boot's async tail (the library load,
+  then the first sheet render behind the ocarina-template fetch) — a slow
+  runner's probe can land in that gap. `a55b270` makes the legs wait on
+  the rendered DOM itself (#tokens .tok, #sheet .card). Robin's phone
+  field check on the second-pass board (ed31f89: static playable-only
+  keys, no auto-scroll, #tokens hidden, tab-tools centered) caught one
+  real defect — sparse octaves stretched their surviving keys, because
+  each .oct kept its flex:1 share past the trim; cured at b666034 by
+  dissolving .oct to display:contents so the surviving cells flex evenly,
+  with the octave-group radii flattened so the board reads as one strip.
+  phone_layout legs 4-5 re-pinned (contents dissolve, desktop grouped-flex
+  regression, #tokens hidden with the playback block expanded). Battery
+  green: phone_layout, keyboard_widgets, render_pin, console_hygiene,
+  asset_versions, offline_pwa, zen_notebar, readability, theme_prepaint,
+  svg_cache, reduced_motion; eslint + html-validate clean. sw
+  oco-pwa-v66, css-v7. The small-screen item stays open on Robin's field
+  check of the uniform board.
+
+- **2026-09-30 (session 26 — the phone field-check trio lands pinned: titles lead their blocks, the dead chevron goes, the wrapped header keeps its edge)** —
+  Picked up plans/HANDOFF.md (untracked, Robin's landing brief). Robin's phone
+  pass on the b666034 board (sw oco-pwa-v66 / css-v7) caught three
+  small-screen defects; all three are fixed on usability1 and pinned in
+  phone_layout (now 8 legs), each commit carrying its own sw/css bump.
+  (1) Section titles: "Playback Control" sat 61px below its block top while
+  Song Library and Piano sat at 9px — the stacked playback head led with its
+  wrapped control rows (head-left before t-wrap); a fresh-context headless
+  probe measured the repro red pre-fix (playback 61px, tools flush left at
+  x=20), then under 760px the t-wrap row takes the top slot (head-left order
+  1, tempo-lab order 2) so every .head-label sits at the same natural
+  distance from its .block top; new leg 7 pins the per-block offsets within
+  2px, collapsed AND expanded. The SONG-LIBRARY-vs-PIANO distance itself
+  measured equal at 9px/9px in the current build in both states — "big
+  mode" is ambiguous (expanded block? Enlarge-small-holes toggle? wider
+  viewport?) and did not reproduce; held for Robin's field-check words.
+  (2) The playback collapse chevron is vestigial on a phone: the block's
+  only content below the head is #tokens, already display:none there, so
+  the toggle did nothing — #playback .collapse-btn is now display:none
+  under 760px; leg 5 expands the block through classList instead of the
+  click and pins chevron phone-none against desktop-visible (leg 6).
+  (3) The theme/? .head-tools wrapped flush left on the phone header's
+  third line; .head-tools gets margin-left:auto under 760px so the wrapped
+  line keeps the header's content-edge right alignment; leg 8 pins the wrap
+  order (h1 line, picker line, tools line below) + the right edge, leg 6
+  guards the desktop edge. Battery: phone_layout (8 legs), asset_versions,
+  console_hygiene, keyboard_widgets green; eslint + html-validate clean.
+  sw oco-pwa-v69, css-v10; commits 30e496d, 2016408, 740d637. The §7
+  small-screen item stays open — held for Robin's field check of the
+  uniform board + these three before it closes.
+
+- **2026-09-30 (session 27 — fresh-context continuation: opaque duck badge face, coffee line owns its own line)** —
+  Picked up plans/TODO.md (rule 1); hot list had the usability batch at 7 of
+  10 code-landed with Robin's field checks open. Two small visual fixes from
+  Robin's fresh remarks, each its own commit with its own sw/css bump.
+  (1) `6b1a805` — the duck corner badge now wears a dedicated OPAQUE face
+  (Robin: the play button's rim arc and running green were shining through
+  its transparent fill — "if 'play' becomes light-green (oot), duck also
+  becomes light-green"). button.t-btn.duck gets a theme-opaque --duck-badge
+  tone: plain #efe4d4, OoT #0a3a0a, hifi #0f0602 (its `button.t-btn.duck`
+  selector ties the hifi .t-btn family rule on specificity and wins by
+  source order); the zen mirror wears its already-opaque zen button face.
+  Both keep that face while the host play button runs; the engaged orange
+  state is untouched. Scope: the two corner ducks only — Robin's "maybe
+  every such button" read as the narrower one; the other round transport
+  buttons stay transparent, held for his call. keyboard_widgets pins the
+  opaque fill, face stability across the running state, and no
+  running-green bleed on both mirrors. (2) `0ba4f55` — the help-card coffee
+  line owns its own line below the issues link (Robin: "the 'coffee' should
+  wrap below issues"): .coffee-unit promoted to display:block (nowrap
+  kept), the · separator dropped, trailing period moved inside the span;
+  sr_hints pins display:block plus the coffee line's top below the issues
+  link's bottom. Battery green after each commit: keyboard_widgets,
+  sr_hints, track_accepts, console_hygiene, asset_versions, phone_layout,
+  readability; eslint + html-validate clean. sw oco-pwa-v73/css-v14 then
+  oco-pwa-v74/css-v15. Batch state: song .txt round-trip and
+  media-session announce + media keys remain as the last two §9 code
+  items; Robin's field checks (uniform board, duck colour/position, coffee
+  look) stay held.
+
+- **2026-09-30 (session 27 cont. — coffee cup enlarged 2.5x + middle-aligned, handoff refreshed for a fresh context)** —
+  Fresh context picked up the board per rule 1; branch tip was 0ba4f55 with
+  Robin's two remarks in flight. His new steer: the help card's coffee cup
+  should be 2.5x the line text and vertically middle-aligned (at 1em riding
+  the baseline it read as an afterthought). `6a59020`: .help-coffee is now
+  2.5em wide/tall with vertical-align:middle (3px margin-left kept, fill
+  stays currentColor); sr_hints' coffee leg now measures the icon at 2.5x
+  the colophon font size and asserts its centre within 3px of the coffee
+  text's centre. Verified: sr_hints, console_hygiene, asset_versions green;
+  eslint + html-validate clean. sw oco-pwa-v75, css-v16. Robin also asked
+  the next fresh context to pick up the remaining branch work — the hot
+  list row now names the two open §9 items in order (song .txt round-trip,
+  then media-session announce + media keys) and the standing field checks.
+  usability1 is ahead of origin; pushing stays Robin's operation.
