@@ -1948,9 +1948,10 @@ html[data-theme="oot"] .help-card { --panel: #fff; }
 /* Colophon line under the shortcut rows: the issues link users can report
    problems through (Robin, 2026-09-25). */
 .help-meta { margin: 10px 0 0; border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent); padding-top: 8px; font-size: 13px; opacity: .85; }
-/* Small coffee cup after the ko-fi colophon link (Robin, 2026-09-30):
-   decorative, sized off the line's own text and painted with its ink. */
-.help-coffee { width: 1em; height: 1em; margin-left: 3px; vertical-align: -0.12em; fill: currentColor; }
+/* Coffee cup after the ko-fi colophon link (Robin, 2026-09-30):
+   decorative, 2.5x the line's own text and middle-aligned with it,
+   painted with the line's ink. */
+.help-coffee { width: 2.5em; height: 2.5em; margin-left: 3px; vertical-align: middle; fill: currentColor; }
 /* The coffee sentence owns the line below the issues line (Robin,
    2026-09-30): block flow puts it on its own line in every card width,
    and nowrap keeps the phrase whole — no mid-phrase breaks. */
