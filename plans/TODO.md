@@ -64,7 +64,7 @@ work; decisions + state in the session-24 log):
 
 | Item | Section |
 |---|---|
-| **USABILITY BATCH (approved 2026-09-30, session-24 handoff; 5 of 8 landed: `3eb740d` + `f84b564` + `46dec09` + `0588d99`, zen-chorus audit report-only)** — small-screen layout (editor hidden on phones, vertical rows, no portrait backdrop), song .txt round-trip, media-session announce + media keys | §1/§7/§9 |
+| **USABILITY BATCH (approved 2026-09-30, session-24 handoff; 5 of 10 landed: `3eb740d` + `f84b564` + `46dec09` + `0588d99`, zen-chorus audit report-only; small-screen first pass `d77a153` in, its keyboard scroll-follow REJECTED)** — small-screen remainder (hide the dimmed out-of-range keys + the token strip on small portrait, static keyboard — no scroll during play, center the Enlarge / Grid\|Scroll\|Single / share\|print\|download rows), song .txt round-trip, media-session announce + media keys, coffee icon after "Buy me a coffee", duck icon → loud/soft speaker | §1/§7/§9 |
 | HiFi stays UNPUBLISHED — the retune + favorites pass is accepted, but Robin holds publication for now (2026-09-30) | hold |
 | Shipped-songs standardization stays HELD for Robin's later-stage pass; the permalinks corpora ride his planting as always | §9 |
 | Library widening (search, reordering beyond the pin) stays parked until Robin elects it | §9 |
@@ -91,7 +91,11 @@ Currently covered (don't lose this): practice acceptance (4 cases strict+closed-
 
 ## 7. Accessibility & UX
 
-- [ ] **Small-screen layout pass (IDEAS: SMALL SCREENS, approved 2026-09-30)** — phones are play/practice, not editing: the editor block is HIDDEN on narrow screens, transport + controls stack into clean vertical rows (today they are "all over the place"), NO backdrop image in portrait, whole viewport functional in normal mode; zen mode stays as-is (Robin: already looks very good). `🟧 🔴 ⚙L`
+- [ ] **Small-screen layout pass (IDEAS: SMALL SCREENS, approved 2026-09-30)** — phones are play/practice, not editing: the editor block is HIDDEN on narrow screens, transport + controls stack into clean vertical rows (today they are "all over the place"), NO backdrop image in portrait, whole viewport functional in normal mode; zen mode stays as-is (Robin: already looks very good). FIRST PASS `d77a153` IS IN (editor face hidden with the Song Library kept, playback head stacked into centered rows, Hyrule backdrop off in portrait; sw oco-pwa-v64, css-v5) BUT THE KEYBOARD HALF IS REJECTED — Robin 2026-09-30: the board scrolling during play is annoying; instead the TRANSPARENT keys (out-of-instrument, dimmed via inline opacity .25 white / .2 black in buildKB) are HIDDEN on small portrait screens so the board shows only the playable keys — static, NO auto-scroll (delete scrollKbToActive from ui.js and the 32px-column/overflow-x rules; give the dimmed keys a class so the media query can display:none them). ALSO: the token strip (#tokens in the playback block — "the other dropdown showing tokens") is hidden on small portrait too (not ergonomic there); and the three tab-tools rows each center: Enlarge small holes, Grid|Scroll|Single, share|print|download. tests/phone_layout.py legs 4-5 pin the rejected scroll-follow and must be re-pinned to the static board + hidden dimmed keys + hidden #tokens + centered tab-tools rows. `🟧 🔴 ⚙L`
+
+- [ ] **Coffee icon after the help-screen "Buy me a coffee" link (IDEAS: coffee icon, approved 2026-09-30)** — Robin: a small coffee icon right after the 'Buy me a coffee' colophon link in the help screen (planted 7a4da56); static, no behavior; the sr_hints help-overlay leg pins both colophon links, keep it green. `🟢 🟠 ⚙S`
+
+- [ ] **Lead-volume (duck) icon: loud/soft speaker (IDEAS: lead-volume styling, approved 2026-09-30)** — Robin: replace the duck toggle's down-arrow-into-line glyph with a speaker + sound waves — SOFT (one wave) when duck is off, LOUD (three waves) when on — on both mirrors (mirrorDuck + focusDuck); fine-tune the corner-button positioning and colour; aria-pressed + .on state classes stay, so the keyboard_widgets transport leg and the track_accepts mix leg keep holding. `🟨 🟠 ⚙S`
 
 ## 8. Housekeeping
 
@@ -301,3 +305,35 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   exists in every suite that starts audio right after the module
   rendezvous (only track_accepts is hardened so far); the duck
   button's look and the 0.2 level stay held for Robin's field check.
+
+- **2026-09-30 (session 24 cont. — small-screen first pass in, keyboard approach rejected; two IDEAS items approved; handoff prepped)** —
+  `d77a153` landed the small-screen first pass on usability1: narrow
+  viewports hide the editor face (expand/clear, both save/load pairs,
+  textarea + legend — the Song Library picker stays, Robin: "keep the song
+  library"), the playback head stacks into one centered row per control
+  group, portrait drops the Hyrule backdrop, and the 42-column keyboard
+  became a 32px-column scroll strip that glides to the sounding key
+  (ui.js scrollKbToActive); six-leg tests/phone_layout.py in CI (phone
+  face, row stack + no h-overflow, portrait backdrop, kb width both
+  viewports, active-key follow, desktop regression); phone_layout/
+  asset_versions/console_hygiene/render_pin/keyboard_widgets/
+  reduced_motion/offline_pwa green, eslint + html-validate clean; sw
+  oco-pwa-v64, css-v5. Robin then corrected the keyboard spec: the board
+  scrolling during play is ANNOYING — no auto-scroll; instead the
+  transparent (out-of-instrument, dimmed) keys are hidden on small
+  portrait screens so the board shows only the playable keys, static.
+  Also: the token strip (#tokens, "the other dropdown showing tokens") is
+  hidden on small portrait too (not ergonomic there), and the three
+  tab-tools rows (Enlarge small holes, Grid|Scroll|Single,
+  share|print|download) each center. The §7 item stays OPEN with the
+  corrected spec (board note on the item); phone_layout legs 4-5 pin the
+  rejected approach and must be re-pinned. Two IDEAS entries are now
+  approved and boarded in §7: the small coffee icon after "Buy me a
+  coffee" (planted 7a4da56) and the duck-toggle glyph swap to a loud
+  (three waves) / soft (one wave) speaker with position/colour
+  fine-tuning (planted b4acd7d). Batch is now 5 of 10 — remaining:
+  small-screen remainder, song .txt round-trip, media-session announce +
+  media keys, coffee icon, duck speaker icon. usability1 is ahead of
+  origin (push stays Robin's). Fresh context: open plans/TODO.md (AGENTS
+  rule 1) and work the hot list top-down; read IDEAS.txt fresh when
+  picking up the two icon items.
