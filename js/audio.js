@@ -28,7 +28,13 @@ let melodyPos96 = 0;
 let melodyHoldUntil = -1;
 let melodyPaused = false;
 let melodyNextTime = 0; // absolute ctx time of the next note to schedule
-let melodyQuarter = null; // seconds per quarter at the SONG's 100% speed (inline # tempo changes update this; the tempo dial applies relative to it)
+// The song's tempo line: [pos96, quarter] pairs in beat order. The melody
+// owns the clock — every stream looks up the quarter at its OWN position
+// instead of mutating one shared value. A shared mutable quarter let each
+// walker's "# tempo" token own the switch for its tick (the track walker
+// runs first, so its marker could re-time the melody and vice versa), and a
+// pause/restart re-anchored nobody's clock, so the streams drifted apart.
+let tempoLine = null;
 let lastHoldSec = 0.5; // sounding duration of the last scheduled note (for zen glow)
 
 // ---- Dev-tunable synthesis parameters -------------------------------------
@@ -197,12 +203,41 @@ function syncTransport() {
 // Seconds per quarter note at the song's own 100% tempo for a given bpm
 // (the song's leading header or any inline "# tempo N" change). The tempo
 // slider is a RELATIVE playback speed (10–100%) applied at scheduling time
-// (see melodyQuarter uses in scheduleMelody), so it must not bake in here.
+// (see quarterAt uses in scheduleMelody), so it must not bake in here.
 // Relative playback speed from the tempo slider (0.1–1 of the song tempo).
 // Guarded: audio.js also runs in tooling without the library/UI scripts.
 function tempoSpeed() {
   if (typeof tempoPct !== "function") return 1;
   return Math.max(0.1, Math.min(1, (tempoPct() || 100) / 100));
+}
+
+// One [pos96, quarter] entry at every inline "# tempo" position of the
+// melody's tokens: pos96 is the 96th-grid position where the new quarter
+// takes effect (the step of the first musical token AFTER the marker uses
+// it), matching the scheduler's consumption order. A track block's own
+// "# tempo" line, if ever written, is transparent to the shared clock —
+// the melody's tempo line is the song's one clock.
+function buildTempoLine(tokens) {
+  const line = [];
+  let pos = 0; // 96ths, the same grid the walkers advance
+  for (const t of tokens) {
+    if (t.type === "tempo") { line.push([pos, quarterSecFor(t.bpm)]); continue; }
+    if (t.type === "bar" || t.type === "bass") continue;
+    pos += Math.round(tokenGridBeats(t) * 96);
+  }
+  return line;
+}
+
+// Seconds per quarter at 100% speed for a beat position on the melody's
+// tempo line — the single clock source for the melody, the named #track
+// streams and the support plan. Header quarter until the first marker; at a
+// loop wrap the position returns to 0 and the header quarter applies again.
+function quarterAt(pos96) {
+  let q = quarterSec();
+  for (const [p, qq] of tempoLine) {
+    if (p <= pos96) q = qq; else break;
+  }
+  return q;
 }
 
 // tokenGridBeats and quarterSecFor ride the music-math import — the
@@ -1159,12 +1194,10 @@ function playMelody(fromIdx) {
   supportPlan = buildSupportPlan(melodyTokens);
   // The named "#track" streams become real second walks on the same clock.
   setupTrackStreams(document.getElementById("src").value, from, melodyPos96);
-  // Seed the current tempo: header tempo, then any inline "# tempo" tokens that
-  // occur before the start index (so playing from mid-song uses the right one).
-  melodyQuarter = quarterSec();
-  for (let i = 0; i < melodyIdx && i < melodyTokens.length; i++) {
-    if (melodyTokens[i].type === "tempo") melodyQuarter = quarterSecFor(melodyTokens[i].bpm);
-  }
+  // The song's tempo line (header quarter + its inline "# tempo" switches) is
+  // the shared clock: every stream looks up the quarter at its own position,
+  // so a mid-song start inherits the tempo that holds at the start beat.
+  tempoLine = buildTempoLine(melodyTokens);
   if (!melodyTokens.length) return;
   audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
   attachCtxStateWatch(audioCtx);
@@ -1302,14 +1335,17 @@ function buildSupportPlan(tokens) {
 // quarter; an end-of-song measure drones to the last token) — the synthesized
 // fill the parallel track gets for a bracket with no notated length.
 function openSupportSpanSec(startIdx) {
-  let beats = 0, q = melodyQuarter;
+  let time = 0;
+  let pos = Math.round(gridBeatsBefore(melodyTokens, startIdx) * 96);
   for (let i = startIdx; i < melodyTokens.length; i++) {
     const t = melodyTokens[i];
     if (t.type === "bar") break;
-    if (t.type === "tempo") { q = quarterSecFor(t.bpm); continue; }
-    beats += tokenGridBeats(t);
+    if (t.type === "tempo" || t.type === "bass") continue;
+    const g = tokenGridBeats(t);
+    time += g * quarterAt(pos);
+    pos += Math.round(g * 96);
   }
-  return Math.max(0.5, beats * q / tempoSpeed());
+  return Math.max(0.5, time / tempoSpeed());
 }
 
 // The support voice IS the modelled instrument voice (playNoteAt), so it
@@ -1349,13 +1385,16 @@ function fireDueSupport(anchorIdx, when) {
 
 function fireSupportEvent(e, when) {
   let dur, slideFrom = null, intoSlide = false;
+  // The pivot's own position on the melody's tempo line (a loop pass replays
+  // the same line, so the list position is the right coordinate).
+  const anchor96 = Math.round(gridBeatsBefore(melodyTokens, e.anchorIdx) * 96);
   if (e.beats == null) {
     // Durationless: ring until the next bar (or the last token) — the
     // synthesized fill, timed live like the pre-track drones were.
     dur = openSupportSpanSec(e.anchorIdx);
-    if (e.ext) dur += e.ext * melodyQuarter / tempoSpeed();
+    if (e.ext) dur += e.ext * quarterAt(anchor96) / tempoSpeed();
   } else {
-    const hold = (e.beats + e.ext) * melodyQuarter; // melody holds read the live quarter
+    const hold = (e.beats + e.ext) * quarterAt(anchor96); // holds ride the tempo line at the pivot
     dur = Math.max(0.09, e.intoSlide ? hold : hold * 0.92);
     slideFrom = e.slide ? e.slideFrom : null;
     intoSlide = !!e.intoSlide;
@@ -1439,12 +1478,12 @@ function fireSupportEvent(e, when) {
     const loopEl = document.getElementById("loopMel");
     const loop = !!(loopEl && loopEl.checked);
     while (w.nextTime < horizon) {
-      // Zero-time tokens ride through (bars/tempo/support-markers, transparent);
-      // a "tempo" inside the stream shares the melody walker's live quarter.
+      // Zero-time tokens ride through (bars/tempo/support-markers, transparent).
+      // A "tempo" inside the stream NEVER retimes the shared clock — the
+      // melody's tempo line is authoritative; a marker here just rides past.
       while (w.idx < w.tokens.length) {
         const zt = w.tokens[w.idx];
         if (zt.type === "bar" || zt.type === "tempo" || zt.type === "bass") {
-          if (zt.type === "tempo") melodyQuarter = quarterSecFor(zt.bpm);
           w.idx++;
           continue;
         }
@@ -1459,14 +1498,15 @@ function fireSupportEvent(e, when) {
         continue;
       }
       const tok = w.tokens[w.idx];
+      const start96 = w.pos96;
       const noteWhen = Math.max(w.nextTime, audioCtx.currentTime + 0.02);
-      const step = Math.max(0.001, swungBeats(tok, w.pos96) * melodyQuarter /
+      const step = Math.max(0.001, swungBeats(tok, start96) * quarterAt(start96) /
                     tempoSpeed());
       w.pos96 += Math.round(tokenGridBeats(tok) * 96);
       const zen = w.zone === "zen";
       const gated = zen && (!(typeof isFocusMode === "function") || !isFocusMode() ||
                     (typeof isPracticeActive === "function" && isPracticeActive()));
-      if (!gated) soundTrackToken(w, tok, noteWhen);
+      if (!gated) soundTrackToken(w, tok, noteWhen, start96);
       w.idx++;
       w.nextTime += step;
       if (!melodyPlaying) return;
@@ -1476,9 +1516,9 @@ function fireSupportEvent(e, when) {
   // The melody note body mirrored exactly: same hold math, same slides and
   // staccato. NO chart range check — a track may sit below the melody
   // ocarina's carve, exactly as bracket supports always could.
-  function soundTrackToken(w, tok, noteWhen) {
+  function soundTrackToken(w, tok, noteWhen, start96) {
     if (tok.type !== "note" && tok.type !== "tie") return; // rests are silent
-    const hold = soundingGridBeats(w.tokens, w.idx) * melodyQuarter;
+    const hold = soundingGridBeats(w.tokens, w.idx) * quarterAt(start96);
     const slideFrom = (tok.slide && NOTES.includes(tok.slideFrom)) ? tok.slideFrom : null;
     let intoSlide = false;
     for (let i = lastHoldIndex(w.tokens, w.idx) + 1; i < w.tokens.length; i++) {
@@ -1497,9 +1537,16 @@ function fireSupportEvent(e, when) {
   }
 
   // Pause keeps walker positions (like the melody's); resume rebases every
-  // stream onto the same anchor time the melody uses.
+  // stream onto the same anchor time the melody uses, PRESERVING each stream's
+  // beat offset from the melody's next note: a track whose next onset is a
+  // beat ahead must stay a beat ahead. Collapsing both streams' next onsets
+  // onto one anchor (the old behavior) shifts the whole track by that beat
+  // gap for the rest of the song.
   function rebaseTrackTimes(when) {
-    for (const w of trackStreams) w.nextTime = when;
+    for (const w of trackStreams) {
+      const offBeats = (w.pos96 - melodyPos96) / 96;
+      w.nextTime = when + offBeats * quarterAt(w.pos96) / tempoSpeed();
+    }
   }
 
 
@@ -1563,23 +1610,23 @@ function scheduleMelody(when) {
   pruneBag(melodyBag);
   while (melodyNextTime < audioCtx.currentTime + SCHED_AHEAD) {
     let atBar = (melodyIdx === melodyFrom);
-    // Consume bar lines (zero time) and inline tempo changes (a "tempo"
-    // token switches the sec-per-quarter used from this point forward).
-    // Support markers are zero-time too but need no walk: the support plan
-    // (buildSupportPlan) is statically anchored to these token indices and
-    // fires at the pivot below.
+    // Consume bar lines and inline tempo markers (both zero time). Tempo
+    // switches ride the precomputed tempo line — the position-based lookup
+    // in quarterAt picks the right quarter for each step, so there is no
+    // live quarter to update here. Support markers are zero-time too but
+    // need no walk: the support plan (buildSupportPlan) is statically
+    // anchored to these token indices and fires at the pivot below.
     while (melodyIdx < melodyTokens.length &&
            (melodyTokens[melodyIdx].type === "bar" || melodyTokens[melodyIdx].type === "tempo" ||
             melodyTokens[melodyIdx].type === "bass")) {
-      const zt = melodyTokens[melodyIdx];
-      if (zt.type === "tempo") melodyQuarter = quarterSecFor(zt.bpm);
-      else if (zt.type === "bar") atBar = true;
+      if (melodyTokens[melodyIdx].type === "bar") atBar = true;
       melodyIdx++;
     }
     if (melodyIdx >= melodyTokens.length) {
       if (document.getElementById("loopMel") && document.getElementById("loopMel").checked) {
         melodyIdx = 0;
-        melodyQuarter = quarterSec(); // reset to the header tempo at loop start
+        // Loop restart: the tempo line re-derives the header quarter at
+        // position 0 — the song's own tempo line resumes from its top.
         if (supportPlan) {
           // A new loop: the previous drone must not leak in, and markers
           // parked past the last note (anchored at the token-list end) ring
@@ -1590,9 +1637,7 @@ function scheduleMelody(when) {
         while (melodyIdx < melodyTokens.length &&
                (melodyTokens[melodyIdx].type === "bar" || melodyTokens[melodyIdx].type === "tempo" ||
                 melodyTokens[melodyIdx].type === "bass")) {
-          const zt = melodyTokens[melodyIdx];
-          if (zt.type === "tempo") melodyQuarter = quarterSecFor(zt.bpm);
-          else if (zt.type === "bar") atBar = true;
+          if (melodyTokens[melodyIdx].type === "bar") atBar = true;
           melodyIdx++;
         }
         if (melodyIdx >= melodyTokens.length) { stopMelody(); return; }
@@ -1627,13 +1672,13 @@ function scheduleMelody(when) {
     // at this token's exact melody-clock onset.
     if (supportPlan && (tok.type === "note" || tok.type === "rest"))
       fireDueSupport(melodyIdx, noteWhen);
-    const step = Math.max(0.001, swungBeats(tok, melodyPos96) * melodyQuarter /
+    const step = Math.max(0.001, swungBeats(tok, melodyPos96) * quarterAt(melodyPos96) /
                   tempoSpeed()); // tempo dial: % of the song's own speed (live — mid-song slider moves apply to upcoming notes)
     melodyPos96 += Math.round(tokenGridBeats(tok) * 96);
     const pitched = (tok.type === "note" || tok.type === "tie") && NOTES.includes(tok.id);
     let didSound = false;
     if (pitched && melodyIdx > melodyHoldUntil) {
-      const hold = soundingGridBeats(melodyTokens, melodyIdx) * melodyQuarter;
+      const hold = soundingGridBeats(melodyTokens, melodyIdx) * quarterAt(melodyPos96 - Math.round(tokenGridBeats(tok) * 96));
       const slideFrom = (tok.slide && NOTES.includes(tok.slideFrom)) ? tok.slideFrom : null;
       // Does this note flow directly into a following ~ slide? Then sound the
       // FULL slot (no slurred gap) so the tone reaches the slide's onset
@@ -1681,6 +1726,7 @@ export { AUDIO_DEFAULTS, audioCtx, audioPerfReset, audioPerfSnapshot, cutLive, f
 Object.defineProperty(window, "audioCtx", { get () { return audioCtx; } });
 window.sharedAudioCtx = sharedAudioCtx;
 window.playNote = playNote; window.playMelody = playMelody; window.stopMelody = stopMelody;
+window.pauseMelody = pauseMelody; window.resumeMelody = resumeMelody;
 window.playNoteAt = playNoteAt; window.isMelodyPlaying = isMelodyPlaying;
 window.setNoteSink = setNoteSink; window.setAuditionSink = setAuditionSink;
 window.isMelodyPaused = isMelodyPaused; window.playTickAt = playTickAt;

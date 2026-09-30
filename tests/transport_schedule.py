@@ -18,6 +18,13 @@
 #      voices (bracket melody) die inside the same horizon.
 #   4. Lite mode builds strictly less oscillator machinery than the full
 #      voice for the same note (the skipped air/edge/wind/chiff/oct layers).
+#   5. A named #track stream stays phase-locked to the melody clock across a
+#      pause/resume: each track onset must still land on the melody's same-beat
+#      onset after the resume (a rebase that collapses both streams' next notes
+#      onto one anchor shifts the track by the beat gap and keeps it there).
+#   6. The same lock survives an inline "# tempo" switch mid-song, including a
+#      track block carrying its own (deliberately different) "# tempo" marker —
+#      the melody's tempo line is authoritative for every stream.
 #
 #   python3 tests/transport_schedule.py      # headless & silent
 
@@ -324,6 +331,146 @@ def main():
                     f"layers — full {liteCounts['full']}, lite "
                     f"{liteCounts['lite']} must be strictly less")
 
+            # ---------- 5: named-track phase lock across pause/resume ----------
+            print('== track phase lock across pause/resume', flush=True)
+            # Melody rides the default ocarina's carve (A4–F6); the track
+            # block may sit below it (tracks skip the range check by design).
+            LOCK_SONG = ("# T3 lock\n"
+                         "# tempo 96\n"
+                         "| A4/4 C5/4 D5/4 E5/4\n"
+                         "| F5/4 A5/4 C6/4 E6/4\n"
+                         "| F5/4 G5/4 A5/4 B5/4\n"
+                         "| C6/4 D6/4 E6/4 F6/4\n"
+                         "#track support audible 50\n"
+                         "| D4/2 D4/2\n"
+                         "| E4/2 E4/2\n"
+                         "| F4/2 F4/2\n"
+                         "| G4/2 G4/2")
+            lock = page.evaluate("""
+              (SRC) => new Promise((resolve, reject) => {
+                const notes = [];
+                setNoteSink((id, when, dur, s, i, g) =>
+                  notes.push({ id: id, when: when, g: g }));
+                const title = String(SRC).split("\\n")[0].replace(/^#\\s*/, "");
+                document.getElementById('src').value = SRC;
+                render();
+                const t0 = Date.now();
+                const arm = () => {
+                  if (document.getElementById('title').textContent !== title) {
+                    if (Date.now() - t0 > 4000) { reject(new Error("lock: title never matched")); return; }
+                    setTimeout(arm, 30); return;
+                  }
+                  playMelody(0);
+                  const anchor = notes.find(n => n.g === 1).when;
+                  const ctx = audioCtx;
+                  const fire = () => {
+                    if (ctx.currentTime >= anchor + 2.8) {
+                      pauseMelody();
+                      setTimeout(() => resumeMelody(), 400);
+                    } else { setTimeout(fire, 15); }
+                  };
+                  fire();
+                  const poll = setInterval(() => {
+                    if (!isMelodyPlaying() && !isMelodyPaused()) {
+                      clearInterval(poll);
+                      setNoteSink(null);
+                      setTimeout(() => resolve(notes), 150);
+                    }
+                  }, 50);
+                };
+                arm();
+              })
+            """, LOCK_SONG)
+            mel = [n for n in lock if n["g"] == 1]
+            trk = [n for n in lock if n["g"] == 0.5]
+            if len(mel) != 16 or len(trk) != 8:
+                failures.append(
+                    f"lock leg: expected 16 melody + 8 track onsets, got "
+                    f"{len(mel)} + {len(trk)}")
+            else:
+                if abs(trk[0]["when"] - mel[0]["when"]) > 0.01:
+                    failures.append(
+                        f"first track onset leads/lags the melody's first "
+                        f"onset by {trk[0]['when'] - mel[0]['when']:+.3f}s — "
+                        "both streams must leave the start anchor together")
+                for m, t in enumerate(trk):
+                    want = mel[2 * m]["when"]
+                    if abs(t["when"] - want) > 0.06:
+                        failures.append(
+                            f"track note {m} (beat {2 * m}): onset "
+                            f"{t['when'] - mel[0]['when']:.3f}s vs the "
+                            f"melody's same-beat onset "
+                            f"{want - mel[0]['when']:.3f}s — the named track "
+                            f"must stay locked to the melody clock across the "
+                            f"pause/resume (Δ {t['when'] - want:+.3f}s)")
+
+            # ---------- 6: named-track phase lock across a tempo change ----------
+            print('== track phase lock across a tempo change', flush=True)
+            # Same in-range rule: the melody's # tempo line is the song's
+            # clock; the track's own marker is deliberately different (60) —
+            # the lock must follow the melody's line, not the track's.
+            TEMPO_SONG = ("# T3 tempo lock\n"
+                          "# tempo 96\n"
+                          "| A4/4 C5/4 D5/4 E5/4\n"
+                          "# tempo 120\n"
+                          "| F5/4 G5/4 A5/4 B5/4\n"
+                          "| C6/4 D6/4 E6/4 F6/4\n"
+                          "| A5/4 B5/4 C6/4 D6/4\n"
+                          "#track support audible 50\n"
+                          "| D4/2 D4/2\n"
+                          "# tempo 60\n"
+                          "| E4/2 E4/2\n"
+                          "| F4/2 F4/2\n"
+                          "| G4/2 G4/2")
+            tnotes = page.evaluate("""
+              (SRC) => new Promise((resolve, reject) => {
+                const notes = [];
+                setNoteSink((id, when, dur, s, i, g) =>
+                  notes.push({ id: id, when: when, g: g }));
+                const title = String(SRC).split("\\n")[0].replace(/^#\\s*/, "");
+                document.getElementById('src').value = SRC;
+                render();
+                const t0 = Date.now();
+                const arm = () => {
+                  if (document.getElementById('title').textContent !== title) {
+                    if (Date.now() - t0 > 4000) { reject(new Error("tempo lock: title never matched")); return; }
+                    setTimeout(arm, 30); return;
+                  }
+                  playMelody(0);
+                  const poll = setInterval(() => {
+                    if (!isMelodyPlaying() && !isMelodyPaused()) {
+                      clearInterval(poll);
+                      setNoteSink(null);
+                      setTimeout(() => resolve(notes), 150);
+                    }
+                  }, 50);
+                };
+                arm();
+              })
+            """, TEMPO_SONG)
+            mel2 = [n for n in tnotes if n["g"] == 1]
+            trk2 = [n for n in tnotes if n["g"] == 0.5]
+            if len(mel2) != 16 or len(trk2) != 8:
+                failures.append(
+                    f"tempo-lock leg: expected 16 melody + 8 track onsets, got "
+                    f"{len(mel2)} + {len(trk2)}")
+            else:
+                if abs(trk2[0]["when"] - mel2[0]["when"]) > 0.01:
+                    failures.append(
+                        f"tempo lock: first track onset leads/lags the "
+                        f"melody's first onset by "
+                        f"{trk2[0]['when'] - mel2[0]['when']:+.3f}s")
+                for m, t in enumerate(trk2):
+                    want = mel2[2 * m]["when"]
+                    if abs(t["when"] - want) > 0.06:
+                        failures.append(
+                            f"tempo lock: track note {m} (beat {2 * m}) at "
+                            f"{t['when'] - mel2[0]['when']:.3f}s vs the "
+                            f"melody's same-beat onset "
+                            f"{want - mel2[0]['when']:.3f}s — the track must "
+                            "follow the melody's tempo line, not its own "
+                            f"marker (Δ {t['when'] - want:+.3f}s)")
+
             print('== closing browser', flush=True)
             if errs:
                 failures.append(f"page errors {errs}")
@@ -338,7 +485,9 @@ def main():
         return 1
     print("\nPASS: scheduler arithmetic (events, durations, onset gaps, grid, "
           "auto-stop), loop-parity replay, cut-bus generation lifecycle with "
-          "no zombies, and the Lite voice leaves layers out of the build.")
+          "no zombies, the Lite voice leaves layers out of the build, and the "
+          "named #track stream stays phase-locked to the melody clock across "
+          "a pause/resume and a mid-song tempo change.")
     return 0
 
 
