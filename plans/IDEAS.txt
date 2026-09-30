@@ -22,10 +22,25 @@ A song should be a 'set' of tracks of which you can choose to play/practice any 
 
 Elements must always fit within their parent element and not extend past it.
 
+Touch-dragging hovering tuner does not work reliably; it only moves a bit and when draggin down it assumes I want to refresh the page.
+
+In Zen mode on a small screen, the play control button ground should scale to fit if screen is too small.
+
+On small screen, when scrolling the page, the title bar should scroll away; it should only stick to the top on larger screens.
+
+The perf screen in Zen on mobile displays partly outside the visible screen and it is on the right side while the button is left.
+
+On small screens, the tempo/swing bars do not align. Just like in normal mode the sliders should align with the text on both sides aligning towards the sliders.
+
 OTHERS
 
 Make the 12-hole 'complete' regarding Zelda Ocarina of Time game songs.
 
-Replace lead-volume icon with a 'loud' (three sound waves) and 'soft' (one sound wave) speaker button. Also fine-tune positioning and color.
-
 Add soprano C ocarina.
+
+Apart from 20% (orange) the duck button should also have a 0% (red) and it should loop: 100% -> 20% -> 10%
+
+PERFORMANCE
+
+Deep dive (one-task session): On mobile there still are sound stutters (sounds like buzz or rapid ticks), especially when visual elements change, e.g. when tilting screen between horizontal and vertical.
+Deep dive (one-task session): When changing tempo/swing during play, the tracks desync.
