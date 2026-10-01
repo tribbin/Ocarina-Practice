@@ -1,4 +1,16 @@
 {
+  "ocarina-of-time-opening": {
+    "name": "Ocarina of Time opening song",
+    "group": "Zelda on Alto",
+    "tempo": 72,
+    "body": "|[\"Opening\"] r/1\n| r/2 D5 E5\n| D6/4. C#6/16 C6/16 B5/2\n| B5/4 -/8 A5/8 G5/4 D5/8 E5/8\n| D6/4. C#6/16 C6/16 B5/4. C6/8\n| B5/2. D5/8 E5/8\n| D6/4. C#6/16 C6/16 B5/2\n| B5/4 -/8 A5/8 G5/4 D5/8 E5/8\n| D6/4. C#6/16 C6/16 B5/4. E6/8\n| B5/1\n\n|[\"Bridge\"] A5 E5/2.\n| D5 G5/2.\n| A5 E5/2.\n| B5 G5/2.\n| A5 E5/2.\n| D5 G5/2.\n| C6 G5/2.\n| F5 G5/2.\n\n#track contrabass audible 50\n\n|[\"Opening\"] F3/8 C4/8 F4/8t A4/8t D5/8t E5/2\n| C3/8 G3/8 E4/8t B4/8t D5/8t E5/2\n| F3/8 C4/8 F4/8t A4/8t D5/8t E5/2\n| C3/8 G3/8 E4/8t B4/8t D5/8t E5/2\n| F3/8 C4/8 F4/8t A4/8t D5/8t E5/2\n| C3/8 G3/8 E4/8t B4/8t D5/8t E5/2\n| F3/8 C4/8 F4/8t A4/8t D5/8t E5/2\n| C3/8 G3/8 E4/8t B4/8t D5/8t E5/2\n| F3/8 C4/8 F4/8t A4/8t D5/8t E5/2\n| C3/8 G3/8 E4/8t B4/8t D5/8t E5/2\n\n|[\"Bridge\"] F2/8 C3/8 F3/2.\n| G2/8 D3/8 G3/2.\n| F2/8 C3/8 F3/2.\n| G2/8 D3/8 G3/2.\n| F2/8 C3/8 F3/2.\n| G2/8 D3/8 G3/2.\n| G#2/8 Eb3/8 G#3/2.\n| Bb2/8 D3/8 G3/2."
+  },
+  "ocarina-of-time-opening-bass": {
+    "name": "Ocarina of Time opening song (bass)",
+    "group": "Zelda on Bass",
+    "tempo": 72,
+    "body": "|[\"Opening\"] r/1\n| r/2 D5 E5\n| D6/4. C#6/16 C6/16 B5/2\n| B5/4 -/8 A5/8 G5/4 D5/8 E5/8\n| D6/4. C#6/16 C6/16 B5/4. C6/8\n| B5/2. D5/8 E5/8\n| D6/4. C#6/16 C6/16 B5/2\n| B5/4 -/8 A5/8 G5/4 D5/8 E5/8\n| D6/4. C#6/16 C6/16 B5/4. E6/8\n| B5/1\n\n|[\"Bridge\"] A4 E4/2.\n| D4 G4/2.\n| A4 E4/2.\n| B4 G4/2.\n| A4 E4/2.\n| D4 G4/2.\n| C5 G4/2.\n| F4 G4/2.\n\n#track contrabass audible 50\n\n|[\"Opening\"] F3/8 C4/8 F4/8t A4/8t D5/8t E5/2\n| C3/8 G3/8 E4/8t B4/8t D5/8t E5/2\n| F3/8 C4/8 F4/8t A4/8t D5/8t E5/2\n| C3/8 G3/8 E4/8t B4/8t D5/8t E5/2\n| F3/8 C4/8 F4/8t A4/8t D5/8t E5/2\n| C3/8 G3/8 E4/8t B4/8t D5/8t E5/2\n| F3/8 C4/8 F4/8t A4/8t D5/8t E5/2\n| C3/8 G3/8 E4/8t B4/8t D5/8t E5/2\n| F3/8 C4/8 F4/8t A4/8t D5/8t E5/2\n| C3/8 G3/8 E4/8t B4/8t D5/8t E5/2\n\n|[\"Bridge\"] F2/8 C3/8 F3/2.\n| G2/8 D3/8 G3/2.\n| F2/8 C3/8 F3/2.\n| G2/8 D3/8 G3/2.\n| F2/8 C3/8 F3/2.\n| G2/8 D3/8 G3/2.\n| G#2/8 Eb3/8 G#3/2.\n| Bb2/8 D3/8 G3/2."
+  },
   "song-of-time": {
     "name": "Song of Time",
     "group": "Zelda on Alto",

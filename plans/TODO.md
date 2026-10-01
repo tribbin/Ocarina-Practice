@@ -489,3 +489,31 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   Robin's own operation — left to him, branch stays ahead of origin. What
   remains open in §9: shipped-songs standardization (held, his later pass)
   and the library widening (parked until he elects it).
+
+- **2026-10-01 (session 29 — in-card practice-history line re-seated below the tuner bars)** —
+  Robin's report: in zen mode the practice-history text appeared BESIDE the tuner,
+  cutting the tuner area in half. Root cause: `.prac-panel.in-card` is a two-column
+  grid (bars in column 1, empty auto column 2) and `.prac-history` carried no grid
+  placement, so it auto-flowed into column 2 and rendered in-line with the
+  scale/track bars. Fix: an explicit `.prac-panel.in-card .prac-history` seat on
+  its own row below both bars (like the main-screen overlay's line), css/app.css;
+  sw oco-pwa-v78, css-v17. Pinned red-first with new leg 6 in
+  tests/practice_zen_return.py: the history rect must sit below the track's
+  bottom edge and stay within the bars' horizontal span. Battery green:
+  practice_zen_return (6 legs), practice_history, readability, console_hygiene,
+  asset_versions; eslint + html-validate clean.
+
+- **2026-10-02 (Ocarina of Time opening song added on alto)** —
+  Added `ocarina-of-time-opening` to songs.json under Zelda on Alto at tempo
+  72, with Robin's melody and contrabass audible-50 track verbatim; the title
+  and initial tempo use library metadata. sw oco-pwa-v79. Verification:
+  shipped_songs (including bar-for-bar track alignment), gen_pages,
+  data_validator, and eslint + html-validate passed. Changes left uncommitted.
+
+- **2026-10-02 (Ocarina of Time opening bass version added)** —
+  Added `ocarina-of-time-opening-bass` under Zelda on Bass at tempo 72,
+  preserving the supplied opening, lower bridge, and contrabass audible-50
+  track. Prefixed the bass title with `#` at Robin's request. sw oco-pwa-v80.
+  Verification: bass-triple chart fit, shipped_songs track alignment,
+  gen_pages, data_validator, asset_versions, eslint and html-validate passed.
+  Changes left uncommitted.
