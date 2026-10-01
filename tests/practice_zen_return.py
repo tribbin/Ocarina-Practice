@@ -17,6 +17,11 @@
 #      first-note cue is playback's semantics; practice owns the position.
 #      (Only the real fullscreen path runs this call — headless zen falls
 #      back to the CSS mode, so the leg drives stopMelody directly.)
+# Plus one layout pin:
+#   3. In-card geometry: in zen the run-summary line must seat on its own
+#      row BELOW both bars — unplaced, it auto-flows into the grid's second
+#      column beside them and cuts the tuner strip in half (Robin,
+#      2026-10-01). Leg 6 measures it against the bars.
 #
 #   python3 tests/practice_zen_return.py          # headless & silent
 
@@ -118,6 +123,60 @@ STOPMELODY_DRIVER = """
 })
 """
 
+
+# In-card geometry: the zen strip is a 2-column grid (bars | glyph) and the
+# run-summary line must seat on its own row BELOW both bars — not auto-flow
+# into the second column beside them (Robin, 2026-10-01: it was cutting the
+# tuner area in half). Pinned against the overlay convention, where the line
+# already sits under the track.
+INCARD_HISTORY_LEG = """
+(SRC) => new Promise((resolve, reject) => {
+  document.getElementById('src').value = SRC;
+  render();
+  setDisplayMode('single');
+  OCA_PRACTICE.start();
+  const feed = setInterval(() => {
+    const P = OCA_PRACTICE._p;
+    if (P.state === "await" || P.state === "dip" || P.state === "rest" || !P.bar) {
+      window.__pracFrame = { hz: 0, rms: 0 };
+    } else {
+      const k = P.zonesNear >= 0 ? P.zonesNear : 0;
+      window.__pracFrame = { hz: P.bar.zones[k], rms: 0.4 };
+    }
+  }, 30);
+  const t0 = Date.now();
+  const poll = setInterval(() => {
+    const P = OCA_PRACTICE._p;
+    if (!P.active) {
+      if (Date.now() - t0 < 8000) return;
+      clearInterval(poll); clearInterval(feed);
+      reject(new Error('in-card history: practice never engaged'));
+      return;
+    }
+    document.body.classList.add('zen-fallback');
+    window.practiceRelocatePanel();
+    const panel = document.querySelector('.prac-panel');
+    const hist = panel.querySelector('.prac-history');
+    hist.hidden = false;
+    hist.textContent = 'runs 3';
+    const r = el => { const b = el.getBoundingClientRect();
+                      return { top: b.top, bottom: b.bottom,
+                               left: b.left, right: b.right }; };
+    const m = { panel: r(panel),
+                scale: r(panel.querySelector('.prac-scale')),
+                track: r(panel.querySelector('.prac-track')),
+                hist: r(hist) };
+    const inCard = panel.classList.contains('in-card');
+    document.body.classList.remove('zen-fallback');
+    window.practiceRelocatePanel();
+    clearInterval(feed); clearInterval(poll); OCA_PRACTICE.stop();
+    resolve({ inCard, m });
+  }, 80);
+  setTimeout(() => { clearInterval(feed); clearInterval(poll);
+    OCA_PRACTICE.stop();
+    reject(new Error('in-card history: timeout')); }, 20000);
+})
+"""
 
 # Zen-only integration: the in-card tuner strip is ZEN's mechanic — the
 # plain single view (outside fullscreen/fallback zen) keeps the floating
@@ -395,6 +454,36 @@ def main():
                 failures.append("overlay leg: the CSS fallback zen lost the in-card integration")
             if not r["back"] or r["back"]["inCard"] or r["back"]["hidden"]:
                 failures.append(f"overlay leg: leaving zen did not restore the floating overlay ({r.get('back')!r})")
+
+            # ---- leg 6: the in-card history line sits BELOW the bars, not beside ----
+            page = browser.new_page()
+            errs = []
+            page.on("pageerror", lambda e: errs.append(str(e)))
+            page.goto(base + "?practiceTest=1")
+            page.wait_for_function(
+                "typeof OCA_PRACTICE !== 'undefined' && !!OCA_PRACTICE"
+                " && window.NOTES && window.NOTES.length"
+                " && (function () { const s ="
+                " document.getElementById('scale');"
+                " return s && s.options.length > 0; })()")
+            r = page.evaluate(INCARD_HISTORY_LEG, SONG)
+            page.close()
+            print(f"== in-card history seat: {r!r}", flush=True)
+            if errs:
+                failures.append(f"in-card history leg: page errors {errs}")
+            if not r.get("inCard"):
+                failures.append("in-card history leg: the tuner never seated in the card band")
+            else:
+                m = r["m"]
+                if m["hist"]["top"] < m["track"]["bottom"] - 0.5:
+                    failures.append(
+                        "in-card history leg: the history line sits at the bars' level "
+                        f"(top {m['hist']['top']:.0f} < track bottom {m['track']['bottom']:.0f}) "
+                        "— it must seat below both bars, like the overlay's line")
+                if m["hist"]["left"] < m["track"]["left"] - 1 or m["hist"]["right"] > m["track"]["right"] + 1:
+                    failures.append(
+                        "in-card history leg: the history line extends beyond the bars' "
+                        f"span (hist {m['hist']!r} vs track {m['track']!r})")
             browser.close()
     finally:
         httpd.shutdown()

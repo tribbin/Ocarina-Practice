@@ -1655,6 +1655,10 @@ button.t-btn.duck {
 .prac-panel.in-card .prac-status { display: none; } /* no glyph in the meta band */
 .prac-panel.in-card .prac-scale { grid-column: 1; grid-row: 1; }
 .prac-panel.in-card .prac-track { grid-column: 1; grid-row: 2; }
+/* Without an explicit seat the history line auto-flows into the (otherwise
+   empty) second grid column and sits beside the bars, splitting the strip
+   in half — put it on its own row under both, like the overlay's. */
+.prac-panel.in-card .prac-history { grid-column: 1; grid-row: 3; }
 /* the in-card display rules would beat [hidden] (the zen seat rule carries
    an ID, which outranks any class selector) — hiding must actually hide */
 .prac-panel.in-card[hidden],
