@@ -502,3 +502,18 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   bottom edge and stay within the bars' horizontal span. Battery green:
   practice_zen_return (6 legs), practice_history, readability, console_hygiene,
   asset_versions; eslint + html-validate clean.
+
+- **2026-10-02 (Ocarina of Time opening song added on alto)** —
+  Added `ocarina-of-time-opening` to songs.json under Zelda on Alto at tempo
+  72, with Robin's melody and contrabass audible-50 track verbatim; the title
+  and initial tempo use library metadata. sw oco-pwa-v79. Verification:
+  shipped_songs (including bar-for-bar track alignment), gen_pages,
+  data_validator, and eslint + html-validate passed. Changes left uncommitted.
+
+- **2026-10-02 (Ocarina of Time opening bass version added)** —
+  Added `ocarina-of-time-opening-bass` under Zelda on Bass at tempo 72,
+  preserving the supplied opening, lower bridge, and contrabass audible-50
+  track. Prefixed the bass title with `#` at Robin's request. sw oco-pwa-v80.
+  Verification: bass-triple chart fit, shipped_songs track alignment,
+  gen_pages, data_validator, asset_versions, eslint and html-validate passed.
+  Changes left uncommitted.
