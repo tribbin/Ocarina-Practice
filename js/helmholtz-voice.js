@@ -89,7 +89,7 @@ const _colored = new Map();
 function coloredBuffer(ctx, slope) {
   const key = slope.toFixed(2) + ":" + ctx.sampleRate;
   if (_colored.has(key)) return _colored.get(key);
-  const n = 16384;
+  const n = 131072;
   const re = new Float64Array(n);
   const im = new Float64Array(n);
   for (let i = 0; i < n; i++) re[i] = Math.random() * 2 - 1;
@@ -107,13 +107,7 @@ function coloredBuffer(ctx, slope) {
   const rms = Math.sqrt(acc / n) || 1;
   const buf = ctx.createBuffer(1, n, ctx.sampleRate);
   const d = buf.getChannelData(0);
-  const fade = Math.floor(ctx.sampleRate * 0.02);
   for (let i = 0; i < n; i++) d[i] = re[i] / rms;
-  for (let i = 0; i < fade; i++) {
-    const w = i / fade;
-    const tail = d[n - fade + i];
-    d[n - fade + i] = tail * (1 - w) + d[i] * w;
-  }
   _colored.set(key, buf);
   return buf;
 }
@@ -145,8 +139,13 @@ function runBiquad(src, c) {
 }
 function airBuffer(ctx, src, lo, hi) {
   const d = src.getChannelData(0);
-  let y = runBiquad(d, biquad("hp", lo, ctx.sampleRate));
+  // Filter two loops and keep the second, so the loop point is the settled filter, not a click.
+  const doubled = new Float32Array(d.length * 2);
+  doubled.set(d, 0);
+  doubled.set(d, d.length);
+  let y = runBiquad(doubled, biquad("hp", lo, ctx.sampleRate));
   y = runBiquad(y, biquad("lp", hi, ctx.sampleRate));
+  y = y.subarray(d.length);
   let acc = 0;
   for (let i = 0; i < y.length; i++) acc += y[i] * y[i];
   const rms = Math.sqrt(acc / y.length) || 1;
