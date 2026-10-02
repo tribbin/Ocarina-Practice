@@ -72,6 +72,14 @@ def main():
             page.on("pageerror", lambda e: errs.append(str(e)))
             page.goto(base)
             page.wait_for_function(BOOT_WAIT)
+            # The module-eval rendezvous above fires ahead of boot()'s async
+            # tail (loadInstrument -> loadLibraryItem(home)), whose opening
+            # stopMelody() would kill a probe's fresh playback mid-setup —
+            # wait on the settled #scale library tail first (the
+            # instruments_load convention).
+            page.wait_for_function(
+                "() => document.getElementById('scale').value === "
+                "'song-of-storms'", timeout=15000)
             s = page.evaluate(SETUP_PLAY)
             if not s["playing"]:
                 failures.append(f"setup: melody should be playing, got {s!r}")
