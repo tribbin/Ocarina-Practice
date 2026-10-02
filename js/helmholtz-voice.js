@@ -1,9 +1,11 @@
 /**
- * Helmholtz voice, v3k graph. Same signal as the Python ladder renderer:
- * phase-locked partials, slope-colored floor, air band, chiff only at the attack.
- * No halo, no cavity band-pass. Envelope timing is unchanged.
+ * Helmholtz voice, v3l graph. Phase-locked partials stay as fitted.
+ * Noise is three pieces plus a narrow air band above f0: halo on the
+ * note, whoosh under 2 kHz where the chamber has it, hiss at 5–11 kHz.
+ * No cavity band-pass. Release and the ~ hold are unchanged; only
+ * atk_speak_s follows the measured rise.
  */
-export const VOICE_REV = "v3k-chamber";
+export const VOICE_REV = "v3l-chamber";
 
 export function loadTwinModelFromObject(obj) {
   if (!obj || !Array.isArray(obj.notes) || !obj.notes.length) {
@@ -44,6 +46,8 @@ export function interpNote(model, f0) {
     }
     const keys = [
       "level", "Q", "floor_db", "slope_db_oct", "air_db", "air_lo_hz", "air_hi_hz",
+      "whoosh_db", "whoosh_lo_hz", "whoosh_hi_hz", "hiss_db", "hiss_lo_hz", "hiss_hi_hz",
+      "halo_db", "halo_lo_hz", "halo_hi_hz", "chiff_db",
       "atk_pre_s", "atk_speak_s", "overshoot_db", "chiff_peak", "chiff_len_s",
       "rel_s", "wander_cents_std", "wobble_hz",
     ];
@@ -211,13 +215,33 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
   noise.connect(floorGain);
   floorGain.connect(out);
 
+  // Air must sit above the note. A band that opens under f0 is the shell.
+  const airLo = Math.max(nf.air_lo_hz || (f0 * 1.05), f0 * 1.02);
+  const airHi = Math.max(airLo + 180, nf.air_hi_hz || (airLo + 700));
   const air = ctx.createBufferSource();
-  air.buffer = airBuffer(ctx, noise.buffer, nf.air_lo_hz || 1800, nf.air_hi_hz || 4500);
+  air.buffer = airBuffer(ctx, noise.buffer, airLo, airHi);
   air.loop = true;
   const airGain = ctx.createGain();
   airGain.gain.value = 0;
   air.connect(airGain);
   airGain.connect(out);
+
+  const shaped = [];
+  function addBand(lo, hi, db) {
+    if (db == null || db < -96 || !(hi > lo + 40)) return null;
+    const src = ctx.createBufferSource();
+    src.buffer = airBuffer(ctx, noise.buffer, lo, hi);
+    src.loop = true;
+    const g = ctx.createGain();
+    g.gain.value = 0;
+    src.connect(g);
+    g.connect(out);
+    shaped.push({ src, g, db });
+    return g;
+  }
+  addBand(nf.halo_lo_hz, nf.halo_hi_hz, nf.halo_db);
+  addBand(nf.whoosh_lo_hz, nf.whoosh_hi_hz, nf.whoosh_db);
+  addBand(nf.hiss_lo_hz, nf.hiss_hi_hz, nf.hiss_db);
 
   const chiffBp = ctx.createBiquadFilter();
   chiffBp.type = "bandpass";
@@ -264,9 +288,12 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
   envGain(bodyGain, 1);
   envGain(floorGain, dbToLin(nf.floor_db == null ? -54 : nf.floor_db));
   envGain(airGain, dbToLin(nf.air_db == null ? -50 : nf.air_db));
+  for (const band of shaped) envGain(band.g, dbToLin(band.db));
   // A chiff on every 16th triplet is the tick. Only notes long enough to be a blow get one.
+  // Bass rows carry a longer, quieter chiff_db. Alto does not get a louder one to compensate.
   if (hold >= 0.16) {
-    const chiffPeak = dbToLin((nf.air_db == null ? -50 : nf.air_db) + 4);
+    const chiffDb = nf.chiff_db == null ? ((nf.air_db == null ? -50 : nf.air_db) + 4) : nf.chiff_db;
+    const chiffPeak = dbToLin(chiffDb);
     const tCh1 = tOn + Math.max(0.02, nf.chiff_len_s || 0.028);
     chiffGain.gain.setValueAtTime(0.0001, when);
     chiffGain.gain.exponentialRampToValueAtTime(Math.max(0.0001, chiffPeak), tOn + (tCh1 - tOn) * 0.35);
@@ -275,6 +302,7 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
 
   osc.start(when); wander.start(when); const offset = Math.random() * Math.max(0, noise.buffer.duration - 0.05);
   noise.start(when, offset); air.start(when, offset);
+  for (const band of shaped) band.src.start(when, offset);
   if (vib) vib.start(when);
   const stopAt = tOff + 0.06;
   function stopNodes(t) {
@@ -283,6 +311,7 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
     try { wander.stop(tt); } catch (e) {}
     try { noise.stop(tt); } catch (e) {}
     try { air.stop(tt); } catch (e) {}
+    for (const band of shaped) { try { band.src.stop(tt); } catch (e) {} }
     if (vib) try { vib.stop(tt); } catch (e) {}
   }
   if (!opts.intoSlide) stopNodes(stopAt);
@@ -290,7 +319,7 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
     until: stopAt,
     fade(t) {
       const tt = t != null ? t : ctx.currentTime;
-      for (const node of [bodyGain, floorGain, airGain, chiffGain]) {
+      for (const node of [bodyGain, floorGain, airGain, chiffGain].concat(shaped.map((b) => b.g))) {
         try {
           node.gain.cancelScheduledValues(tt);
           node.gain.setValueAtTime(node.gain.value, tt);

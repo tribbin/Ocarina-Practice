@@ -85,3 +85,7 @@ Three pieces, not one band:
 - Hiss: 5–11 kHz. About −105 dB on the bass low chamber, −80 dB on 12-hole F6, −70 dB on the double's second chamber. Never the alto 2.8/4 kHz split on a bass.
 
 The air band must start above f0. On D6–F6 of the 12-hole, center it on the measured air peak and keep it narrower than the shipped 1.5 kHz. Drop the −46 dB floor clamp on those notes.
+
+## Done on voice-noise-rise
+
+Shipped as v3l-chamber. Air bands start above f0; 12-hole D6–F6 are centered on the measured peak (about 700 Hz wide) and no longer clamped up to −46. Whoosh, hiss and a narrow halo are separate rows. `atk_speak_s` follows the measured rises (bass C4 is 69 ms). `rel_s` and the `~` hold are unchanged. Bass chiff is longer and quieter; alto chiff is not boosted.

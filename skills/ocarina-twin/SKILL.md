@@ -1,6 +1,6 @@
 ---
 name: ocarina-twin
-description: "Fit a chamber from a tone-ladder recording and its fingerings, write twin_model.json, and leave the v3k voice alone. Use when a new ladder arrives, a chamber needs refitting, or an instrument without a recording must be copied or extrapolated."
+description: "Fit a chamber from a tone-ladder recording and its fingerings, write twin_model.json, and leave the partial body alone. Use when a new ladder arrives, a chamber needs refitting, or an instrument without a recording must be copied or extrapolated."
 ---
 
 # Ocarina twin pipeline
@@ -9,7 +9,7 @@ One chamber, one ladder, one fit. The voice in `js/helmholtz-voice.js` reads the
 
 ## What the voice plays
 
-Phase-locked partials (`h`, `h_phase`), a slope-colored floor (`floor_db`, `slope_db_oct`), and an air band levelled after the filter (`air_db`, `air_lo_hz`, `air_hi_hz`). No cavity band-pass and no halo. The old `noise_mid_db` / `noise_hiss_db` graph in `ocarina_twin/` is the pre-v3k fitter. Do not use it for a new ladder.
+Phase-locked partials (`h`, `h_phase`), a slope-colored floor (`floor_db`, `slope_db_oct`), a narrow halo on f0, a whoosh under 2 kHz, a 5–11 kHz hiss, and an air band above f0 (`air_db`, `air_lo_hz`, `air_hi_hz`). No cavity band-pass. Do not bring back the pre-v3k `ocarina_twin/` fitter.
 
 ## Inputs
 
@@ -32,13 +32,15 @@ Run it once per chamber. An existing multi-chamber file is updated in place; oth
 Measured per hold:
 
 - H2/H3/H4 level and phase against the fundamental
-- floor from the residual spectrum, shifted +28 dB into the voice's RMS range, clamped −62..−46
+- floor from the residual spectrum, shifted +28 dB. The −46 dB clamp is dropped on high 12-hole notes so a quiet residual is not lifted
 - slope of the residual from 900 Hz to 5 kHz, clamped −12..−4
-- air center at the loudest residual peak, band from center−600 to center+900, and never below 1.4×f0
+- air center at the loudest residual peak above f0, band about 700 Hz wide, always starting above f0
+- whoosh under 2 kHz and hiss at 5–11 kHz from the residual, not one band under the note
+- `atk_speak_s` from the 10–90% onset rise, log-f interpolated inside the chamber
 
 Honk rule: if H3 is louder than half of H2, pull H3 down to that and H4 to a quarter of H2. A locked H3 as loud as H2 is the clean pipe (oak E5/F5).
 
-Envelope rows are the standing values (`atk_pre_s` 0.008, `atk_speak_s` 0.028, `rel_s` 0.08). Do not fit them from the ladder.
+Leave `rel_s` (0.08) and the `~` hold alone. Fit `atk_speak_s` from the rise. A bass blow gets a longer, quieter chiff; an alto blow does not get a louder one. Chiff stays off notes shorter than a blow.
 
 ## After the write
 

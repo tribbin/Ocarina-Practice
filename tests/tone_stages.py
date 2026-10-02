@@ -11,8 +11,8 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 failures = []
 voice = (REPO / "js/helmholtz-voice.js").read_text()
-if 'VOICE_REV = "v3k-chamber"' not in voice:
-    failures.append("helmholtz-voice.js must stamp v3k-chamber")
+if 'VOICE_REV = "v3l-chamber"' not in voice:
+    failures.append("helmholtz-voice.js must stamp v3l-chamber")
 if "noise_mid_db" in voice or "effectiveNoiseQ" in voice:
     failures.append("the old mid-air graph is back in the voice")
 if (REPO / "skills/ocarina-twin/ocarina_twin").exists():

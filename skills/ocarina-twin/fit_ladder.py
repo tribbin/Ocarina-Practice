@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Fit one chamber from a tone-ladder recording onto its fingering notes.
 
-The output is the twin_model.json the v3k voice reads: phase-locked
-partials, a slope-colored floor, and an air band. Interpolation stays
-inside the chamber. Envelope rows are copied, not retuned.
+The output is the twin_model.json the v3l voice reads: phase-locked
+partials, a slope-colored floor, and three noise pieces (halo on f0,
+whoosh, hiss) plus an air band that starts above f0. Interpolation
+stays inside the chamber. Only atk_speak_s is fitted; rel_s stays.
 
   python3 skills/ocarina-twin/fit_ladder.py \
     --ladder path/to/chamber-ladder.wav \
@@ -28,6 +29,7 @@ ENVELOPE = {
     "overshoot_db": 0.4,
     "chiff_peak": 1.4,
     "chiff_len_s": 0.04,
+    "chiff_db": -50,
     "rel_s": 0.08,
     "wander_cents_std": 2.5,
     "wobble_hz": 0.45,
@@ -64,12 +66,29 @@ def holds(path, min_sec=0.55):
         if j - i >= int(min_sec * sr):
             a, b = i + int(0.2 * sr), j - int(0.12 * sr)
             if b - a > int(0.25 * sr):
-                out.append(y[a:b])
+                out.append((y[a:b], y[i:j], sr))
         i = j
     return out, sr
 
 
-def fit_hold(seg, sr):
+def rise_10_90(seg, sr):
+    win = max(1, int(0.01 * sr))
+    env = np.sqrt(np.convolve(seg ** 2, np.ones(win) / win, mode="same"))
+    peak = float(np.percentile(env, 95)) or 1e-9
+    above = np.where(env > 0.1 * peak)[0]
+    if len(above) < 2:
+        return 0.028
+    span = env[above[0]:above[-1]]
+    lo = 0.1 * peak
+    hi = 0.9 * peak
+    a = np.where(span >= lo)[0]
+    b = np.where(span >= hi)[0]
+    if len(a) == 0 or len(b) == 0:
+        return 0.028
+    return max(0.008, min(0.12, (b[0] - a[0]) / sr))
+
+
+def fit_hold(seg, sr, onset=None):
     n = 1 << int(math.log2(len(seg)))
     w = seg[:n] * np.hanning(n)
     spec = np.fft.rfft(w)
@@ -105,8 +124,17 @@ def fit_hold(seg, sr):
         mask &= np.abs(freqs - f0 * harm) > 0.06 * f0
     floor_bins = mask & (freqs > 400) & (freqs < 2500)
     floor_db = float(np.median(rdb[floor_bins])) + 28 if floor_bins.any() else -54
-    air_idx = np.where(mask)[0]
-    air_f = float(freqs[air_idx[int(np.argmax(rspec[air_idx]))]]) if len(air_idx) else 2000
+    # Air peak above the note. A peak under f0 is the skirt, and opening a band there is the shell.
+    above = np.where(mask & (freqs > f0 * 1.05) & (freqs < 6000))[0]
+    air_f = float(freqs[above[int(np.argmax(rspec[above]))]]) if len(above) else f0 * 1.8
+    def band_db(lo, hi):
+        sel = (freqs >= lo) & (freqs < hi) & mask
+        if not sel.any():
+            return -100.0
+        return float(np.max(rdb[sel]))
+    whoosh = band_db(180, min(2000, max(800, f0 * 0.95)))
+    mid = band_db(max(f0 * 1.05, air_f - 350), air_f + 350)
+    hiss = band_db(5000, 11000)
     h = [1.0] + [rows[k][0] / h1 for k in (2, 3, 4)]
     # A locked H3 as loud as H2 is the clean honk. Keep the measured H2.
     if h[2] > h[1] * 0.5:
@@ -121,9 +149,13 @@ def fit_hold(seg, sr):
         "note": note_name(f0),
         "h": h,
         "h_phase": phase,
-        "floor_db": float(np.clip(floor_db, -62, -46)),
+        "floor_db": float(floor_db if f0 >= 1100 else np.clip(floor_db, -80, -46)),
         "slope_db_oct": float(np.clip(slope, -12, -4)),
         "air_f": air_f,
+        "whoosh_db": whoosh,
+        "mid_db": mid,
+        "hiss_db": hiss,
+        "rise_s": rise_10_90(onset if onset is not None else seg, sr),
     }
 
 
@@ -163,19 +195,39 @@ def fill(measured, ids):
         a, b, t = at(rows, f)
         air_f = mix(a, b, t, "air_f")
         floor = mix(a, b, t, "floor_db")
-        notes.append({
+        whoosh = mix(a, b, t, "whoosh_db")
+        mid = mix(a, b, t, "mid_db")
+        hiss = mix(a, b, t, "hiss_db")
+        rise = mix(a, b, t, "rise_s")
+        lo = max(f * 1.02, air_f - 350)
+        hi = max(lo + 220, min(air_f + 350, lo + 900))
+        bass = f < 520
+        row = {
             "open_holes": i,
             "note": name,
             "f0": round(f, 2),
-            "h": [round(mix(a, b, t, "h") if False else a["h"][k] + (b["h"][k] - a["h"][k]) * t, 6) for k in range(4)],
+            "h": [round(a["h"][k] + (b["h"][k] - a["h"][k]) * t, 6) for k in range(4)],
             "h_phase": [round(a["h_phase"][k] + (b["h_phase"][k] - a["h_phase"][k]) * t, 3) for k in range(4)],
             "floor_db": round(floor, 2),
             "slope_db_oct": round(mix(a, b, t, "slope_db_oct"), 2),
-            "air_db": round(floor + 4, 2),
-            "air_lo_hz": round(max(800, f * 1.4, air_f - 600), 1),
-            "air_hi_hz": round(air_f + 900, 1),
+            "air_db": round(mid, 2),
+            "air_lo_hz": round(lo, 1),
+            "air_hi_hz": round(hi, 1),
+            "whoosh_db": round(whoosh, 2),
+            "whoosh_lo_hz": 180.0,
+            "whoosh_hi_hz": round(min(2000.0, max(700.0, f * 0.92)) if bass else 2000.0, 1),
+            "hiss_db": round(hiss, 2),
+            "hiss_lo_hz": 5000.0,
+            "hiss_hi_hz": 11000.0,
+            "halo_db": -62.0,
+            "halo_lo_hz": round(f - max(28, 0.06 * f), 1),
+            "halo_hi_hz": round(f + max(28, 0.06 * f), 1),
+            "chiff_db": round((whoosh - 8) if bass else (mid + 4), 2),
             **ENVELOPE,
-        })
+        }
+        row["atk_speak_s"] = round(rise, 4)
+        row["chiff_len_s"] = 0.09 if bass else 0.04
+        notes.append(row)
     return notes, rows
 
 
@@ -184,7 +236,7 @@ def chamber_model(notes, instrument, chamber, anchors):
         "schema": "ocarina-twin-v2",
         "instrument": instrument,
         "chamber": str(chamber),
-        "globals": {"voice": "v3k-chamber", "chiff_q": 2.2},
+        "globals": {"voice": "v3l-chamber", "chiff_q": 2.2},
         "notes": notes,
         "recorded": {
             "fit": "per-chamber ladder fit, log-f inside the chamber only",
@@ -209,7 +261,7 @@ def main():
     segs, sr = holds(args.ladder)
     if not segs:
         raise SystemExit("no holds found")
-    measured = [fit_hold(s, sr) for s in segs]
+    measured = [fit_hold(s, sr, onset) for (s, onset, sr) in segs]
     notes, anchors = fill(measured, ids)
     model = chamber_model(notes, args.instrument or finger.get("instrument", ""), args.chamber, anchors)
     out = Path(args.out)
@@ -218,7 +270,7 @@ def main():
         if existing.get("schema") == "ocarina-twin-multi-v1" or "chambers" in existing:
             existing.setdefault("chambers", {})
             existing["chambers"][str(args.chamber)] = {"gain": args.gain, "model": model}
-            existing["voice"] = "v3k-chamber"
+            existing["voice"] = "v3l-chamber"
             payload = existing
         else:
             payload = model

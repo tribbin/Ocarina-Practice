@@ -65,9 +65,9 @@ def boot_instrument(browser, base, inst_id, failures, tag):
     if state["notes"] < 5:
         failures.append(f"{tag}: {inst_id} has only {state['notes']} notes")
     voice = state.get("voice")
-    if not isinstance(voice, dict) or voice.get("rev") != "v3k-chamber":
+    if not isinstance(voice, dict) or voice.get("rev") != "v3l-chamber":
         failures.append(
-            f"{tag}: OCA_DEBUG.voiceCard() must stamp v3k-chamber "
+            f"{tag}: OCA_DEBUG.voiceCard() must stamp v3l-chamber "
             f"(got {voice!r})")
     # twin_model.json: a shipped fit must install as the chamber model —
     # single-chamber schema ({model: {notes}}) or the multi wrapper

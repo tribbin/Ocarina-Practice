@@ -41,5 +41,5 @@ here, refresh its `.opencode/skills/` mirror so both stay word-identical.
   log-f inside that chamber only, written for the v3k voice. Run
   `skills/ocarina-twin/fit_ladder.py`.
 
-The current voice is `js/helmholtz-voice.js` (v3k-chamber). Do not restore the old band-pass fitter or the tone-analysis retune loop.
+The current voice is `js/helmholtz-voice.js` (v3l-chamber). Do not restore the old band-pass fitter or the tone-analysis retune loop.
 
