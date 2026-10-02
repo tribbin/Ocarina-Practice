@@ -517,3 +517,17 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   Verification: bass-triple chart fit, shipped_songs track alignment,
   gen_pages, data_validator, asset_versions, eslint and html-validate passed.
   Changes left uncommitted.
+
+- **2026-10-02 (audio-state-boot-race — the audio_state suite's boot-tail race hardened)** —
+  audio_state.py flaked in CI: the mid-playback suspension found the transport
+  already dead (playing=False paused=False, both asserts). Root cause is the
+  suite side, not the app: its BOOT_WAIT rendezvous passes at module-eval time,
+  ahead of boot()'s async tail (loadInstrument -> fillLibrary ->
+  loadLibraryItem), and that tail's opening stopMelody() (library.js) kills the
+  probe's fresh playback whenever the fetch lands mid-setup — the same latent
+  race class the session-24 log named for every suite that starts audio right
+  after the module rendezvous (only track_accepts had been hardened). The suite
+  now waits on the settled #scale library tail (#scale.value ===
+  'song-of-storms') before the probe plays, per the instruments_load
+  convention; 10/10 local runs green after the fix (the flake reproduced ~1/8
+  before). Test-only change — no app code, no sw VERSION bump.
