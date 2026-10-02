@@ -517,3 +517,33 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   Verification: bass-triple chart fit, shipped_songs track alignment,
   gen_pages, data_validator, asset_versions, eslint and html-validate passed.
   Changes left uncommitted.
+
+- **2026-10-02 (scale-follows-instrument — the open auto-generated scale now follows instrument switches)** —
+  Robin's report: with a C-major/Chromatic tool open, switching the
+  instrument left the old chart's sheet open. Root cause: switchInstrument's
+  wet "stay" path — refreshGeneratedScales re-synthesizes the entry body for
+  the NEW chart under the SAME id during install, so autoSongInRange saw the
+  regenerated body already fitting and never ran loadLibraryItem; #src kept
+  the previous ocarina's notes. Fix (js/app.js switchInstrument): when the
+  open entry carries the generated flag, the switch reloads it even on the
+  same id (stop-path motion, as with a family jump) — the sheet follows the
+  installed chart and the dropdown keeps the tool selected. Pinned red-first
+  by the new instruments_load wet-switch leg f (?song=major boot, switch to
+  stein-double-alto-c: BUILTIN body regenerated AND #src carrying it,
+   selection held, transport never started); sw oco-pwa-v88 → v89. Battery
+  green: instruments_load (leg f red → green), asset_versions,
+  console_hygiene; eslint + html-validate clean.
+
+- **2026-10-02 (audio-state-boot-race — the audio_state suite's boot-tail race hardened)** —
+  audio_state.py flaked in CI: the mid-playback suspension found the transport
+  already dead (playing=False paused=False, both asserts). Root cause is the
+  suite side, not the app: its BOOT_WAIT rendezvous passes at module-eval time,
+  ahead of boot()'s async tail (loadInstrument -> fillLibrary ->
+  loadLibraryItem), and that tail's opening stopMelody() (library.js) kills the
+  probe's fresh playback whenever the fetch lands mid-setup — the same latent
+  race class the session-24 log named for every suite that starts audio right
+  after the module rendezvous (only track_accepts had been hardened). The suite
+  now waits on the settled #scale library tail (#scale.value ===
+  'song-of-storms') before the probe plays, per the instruments_load
+  convention; 10/10 local runs green after the fix (the flake reproduced ~1/8
+  before). Test-only change — no app code, no sw VERSION bump.

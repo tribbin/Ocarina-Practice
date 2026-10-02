@@ -273,7 +273,12 @@ async function switchInstrument(inst) {
   const newSong = autoSongInRange(prevSong);
   if (typeof fillLibrary === "function") fillLibrary(newSong);
   else if (typeof syncLibraryMenu === "function") syncLibraryMenu();
-  if (newSong !== prevSong && typeof loadLibraryItem === "function")
+  // The generated scales' bodies are regenerated for the new chart under the
+  // SAME id (install's refreshGeneratedScales), so the same-id stay above
+  // would keep the previous ocarina's sheet open: reload an open generated
+  // entry so the scale follows the installed instrument.
+  const regenerated = !!(newSong && BUILTIN[newSong] && BUILTIN[newSong].generated);
+  if ((newSong !== prevSong || regenerated) && typeof loadLibraryItem === "function")
     loadLibraryItem(newSong);
   if (typeof render === "function") render();
   // The instrument changed even when the song stayed: the landed-crawler
