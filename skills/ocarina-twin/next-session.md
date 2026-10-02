@@ -92,3 +92,5 @@ Shipped as v3l-chamber. Air bands start above f0; 12-hole D6–F6 are centered o
 
 The slope floor is held 8 dB under the whoosh so it cannot fill the gap the three pieces leave. Partials, `rel_s`, and the `~` hold are still untouched.
 Playback uses the same +28 dB residual-to-RMS shift as v3k, without the −46 clamp and without opening the band under f0. Raw residual dB as a gain was why the air disappeared.
+
+The v3k air band, floor and slope are restored from main. The residual rewrite had replaced that tuned air. Rises stay fitted. Extra whoosh and hiss rows are not shipped.

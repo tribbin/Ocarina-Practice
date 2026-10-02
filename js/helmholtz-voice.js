@@ -215,9 +215,9 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
   noise.connect(floorGain);
   floorGain.connect(out);
 
-  // Air must sit above the note. A band that opens under f0 is the shell.
-  const airLo = Math.max(nf.air_lo_hz || (f0 * 1.05), f0 * 1.02);
-  const airHi = Math.max(airLo + 180, nf.air_hi_hz || (airLo + 700));
+  // Play the fitted air band as written. Do not slide it above f0.
+  const airLo = nf.air_lo_hz || 1800;
+  const airHi = Math.max(airLo + 180, nf.air_hi_hz || 4500);
   const air = ctx.createBufferSource();
   air.buffer = airBuffer(ctx, noise.buffer, airLo, airHi);
   air.loop = true;
