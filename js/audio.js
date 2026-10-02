@@ -6,7 +6,7 @@ import { bumpHoverQuiet, clearHighlight, cueFirstNote, freezeZenGlow,
          tokenSeconds, updateTransportUI } from "./ui.js";
 import { isPracticeActive } from "./practice.js";
 import { wakeHold, wakeDrop } from "./wakelock.js";
-import { loadTwinModelFromObject, interpNote, scheduleHelmholtzNote, VOICE_REV } from "./helmholtz-voice.js?v=3";
+import { loadTwinModelFromObject, interpNote, scheduleHelmholtzNote, VOICE_REV } from "./helmholtz-voice.js?v=11";
 let audioCtx = null;
 let liveVoices = [];
 let melodyBag = [];

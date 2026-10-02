@@ -26,15 +26,6 @@ partition and clone.
   ocarinas, the player-facing formatting conventions (barline-open-lines
   house target), and the transcription craft rules (bar balancing, the
   replace-that-one-token tie rule, loop rests). Companion to the midi skill.
-- `tone-analysis/` — single-tone WAV measurement and synth-approximation
-  workflow: envelope/pitch-stability/harmonic-timbre/noise/onset reports
-  (self-calibrating scripts), recorder FFT-snapshot cross-checks, offline
-  Chrome renders of the repo synth for comparison (with a reproduced-bug
-  log in the SKILL.md), and the staged fastloop tuning loop against
-  recorded reference takes — drives the per-chamber `tone.json` fitting
-  for instruments.json. Feeds §1 B5 of `plans/TODO.md` (chamber tuning
-  for every ocarina); the tone.json schema and recording protocol live in
-  `instruments/README.md`.
 - `song-transposing/` — verified pitch work on `songs.json` bodies:
   transpose/respell between the ocarina charts (incl. the bass-double →
   alto-double +12 pair invariant and the s-form/sharp respelling rules),
@@ -45,3 +36,10 @@ partition and clone.
 `skills/` is the canonical committed home. `.opencode/skills/` holds
 opencode's runtime-registered copies (gitignored) — when a skill changes
 here, refresh its `.opencode/skills/` mirror so both stay word-identical.
+
+- `ocarina-twin/` — ladder to twin_model.json. One chamber per recording,
+  log-f inside that chamber only, written for the v3k voice. Run
+  `skills/ocarina-twin/fit_ladder.py`.
+
+The current voice is `js/helmholtz-voice.js` (v3k-chamber). Do not restore the old band-pass fitter or the tone-analysis retune loop.
+
