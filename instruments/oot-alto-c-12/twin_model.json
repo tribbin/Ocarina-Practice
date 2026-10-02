@@ -3,45 +3,31 @@
   "instrument": "Alto C 12-hole (Ocarina of Time)",
   "chamber": "1",
   "globals": {
-    "voice": "v3k",
+    "voice": "v3k-chamber",
     "chiff_q": 2.2
   },
   "notes": [
     {
-      "level": 0.8,
-      "Q": 45,
-      "atk_pre_s": 0.008,
-      "atk_speak_s": 0.028,
-      "overshoot_db": 0.4,
-      "chiff_peak": 1.4,
-      "chiff_len_s": 0.04,
-      "rel_s": 0.08,
-      "wander_cents_std": 2.5,
-      "wobble_hz": 0.45,
-      "open_holes": 0,
-      "note": "A4",
       "f0": 440.0,
+      "note": "A4",
       "h": [
         1.0,
-        0.016333,
-        0.004979,
-        0.003049
+        0.006618,
+        0.003426,
+        0.000309
       ],
       "h_phase": [
-        0,
-        -0.6,
-        0.1,
-        0.4
+        0.0,
+        0.299,
+        1.354,
+        -0.419
       ],
-      "floor_db": -48.84,
-      "slope_db_oct": -4,
-      "air_db": -50,
-      "air_lo_hz": 2002.8,
-      "air_hi_hz": 4431.8
-    },
-    {
+      "floor_db": -54.2,
+      "slope_db_oct": -10.9,
+      "air_f": 1049.7,
+      "air_db": -50.2,
+      "open_holes": 0,
       "level": 0.8,
-      "Q": 45,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
       "overshoot_db": 0.4,
@@ -50,30 +36,30 @@
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
       "wobble_hz": 0.45,
-      "open_holes": 1,
-      "note": "As4",
+      "air_lo_hz": 2280.0,
+      "air_hi_hz": 3780.0
+    },
+    {
       "f0": 466.16,
+      "note": "As4",
       "h": [
         1.0,
-        0.015973,
-        0.004727,
-        0.002959
+        0.006618,
+        0.003426,
+        0.000309
       ],
       "h_phase": [
-        0,
-        -0.6,
-        0.1,
-        0.4
+        0.0,
+        0.299,
+        1.354,
+        -0.419
       ],
-      "floor_db": -48.71,
-      "slope_db_oct": -4,
-      "air_db": -50,
-      "air_lo_hz": 2025.4,
-      "air_hi_hz": 4457.6
-    },
-    {
+      "floor_db": -54.2,
+      "slope_db_oct": -10.9,
+      "air_f": 1049.7,
+      "air_db": -50.2,
+      "open_holes": 1,
       "level": 0.8,
-      "Q": 45,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
       "overshoot_db": 0.4,
@@ -82,30 +68,30 @@
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
       "wobble_hz": 0.45,
-      "open_holes": 2,
-      "note": "B4",
+      "air_lo_hz": 2280.0,
+      "air_hi_hz": 3780.0
+    },
+    {
       "f0": 493.88,
+      "note": "B4",
       "h": [
         1.0,
-        0.015621,
-        0.004487,
-        0.002873
+        0.006618,
+        0.003426,
+        0.000309
       ],
       "h_phase": [
-        0,
-        -0.6,
-        0.1,
-        0.4
+        0.0,
+        0.299,
+        1.354,
+        -0.419
       ],
-      "floor_db": -48.58,
-      "slope_db_oct": -4,
-      "air_db": -50,
-      "air_lo_hz": 2048.0,
-      "air_hi_hz": 4483.5
-    },
-    {
+      "floor_db": -54.2,
+      "slope_db_oct": -10.9,
+      "air_f": 1049.7,
+      "air_db": -50.2,
+      "open_holes": 2,
       "level": 0.8,
-      "Q": 45,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
       "overshoot_db": 0.4,
@@ -114,30 +100,30 @@
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
       "wobble_hz": 0.45,
-      "open_holes": 3,
-      "note": "C5",
+      "air_lo_hz": 2280.0,
+      "air_hi_hz": 3780.0
+    },
+    {
       "f0": 523.25,
+      "note": "C5",
       "h": [
         1.0,
-        0.015276,
-        0.00426,
-        0.002788
+        0.006618,
+        0.003426,
+        0.000309
       ],
       "h_phase": [
-        0,
-        -0.6,
-        0.1,
-        0.4
+        0.0,
+        0.299,
+        1.354,
+        -0.419
       ],
-      "floor_db": -48.45,
-      "slope_db_oct": -4,
-      "air_db": -50,
-      "air_lo_hz": 2070.6,
-      "air_hi_hz": 4509.3
-    },
-    {
+      "floor_db": -54.2,
+      "slope_db_oct": -10.9,
+      "air_f": 1049.7,
+      "air_db": -50.2,
+      "open_holes": 3,
       "level": 0.8,
-      "Q": 45,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
       "overshoot_db": 0.4,
@@ -146,30 +132,30 @@
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
       "wobble_hz": 0.45,
-      "open_holes": 4,
-      "note": "Cs5",
+      "air_lo_hz": 2280.0,
+      "air_hi_hz": 3780.0
+    },
+    {
       "f0": 554.37,
       "h": [
         1.0,
-        0.014939,
-        0.004044,
-        0.002707
+        0.004731,
+        0.003574,
+        0.000391
       ],
       "h_phase": [
-        0,
-        -0.6,
-        0.1,
-        0.4
+        0.0,
+        -0.429,
+        0.567,
+        -1.358
       ],
-      "floor_db": -48.32,
-      "slope_db_oct": -4,
-      "air_db": -50,
-      "air_lo_hz": 2093.2,
-      "air_hi_hz": 4535.1
-    },
-    {
+      "floor_db": -54.39,
+      "slope_db_oct": -10.06,
+      "air_f": 1382.9,
+      "air_db": -50.39,
+      "note": "Cs5",
+      "open_holes": 4,
       "level": 0.8,
-      "Q": 45,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
       "overshoot_db": 0.4,
@@ -178,30 +164,30 @@
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
       "wobble_hz": 0.45,
-      "open_holes": 5,
-      "note": "D5",
+      "air_lo_hz": 2280.5,
+      "air_hi_hz": 3780.5
+    },
+    {
       "f0": 587.33,
       "h": [
         1.0,
-        0.01461,
-        0.003839,
-        0.002627
+        0.002737,
+        0.00373,
+        0.000478
       ],
       "h_phase": [
-        0,
-        -0.6,
-        0.1,
-        0.4
+        0.0,
+        -1.198,
+        -0.265,
+        -2.35
       ],
-      "floor_db": -48.2,
-      "slope_db_oct": -4,
-      "air_db": -50,
-      "air_lo_hz": 2115.8,
-      "air_hi_hz": 4560.9
-    },
-    {
+      "floor_db": -54.58,
+      "slope_db_oct": -9.18,
+      "air_f": 1735.0,
+      "air_db": -50.58,
+      "note": "D5",
+      "open_holes": 5,
       "level": 0.8,
-      "Q": 45,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
       "overshoot_db": 0.4,
@@ -210,30 +196,30 @@
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
       "wobble_hz": 0.45,
-      "open_holes": 6,
-      "note": "Ds5",
+      "air_lo_hz": 2281.0,
+      "air_hi_hz": 3781.0
+    },
+    {
       "f0": 622.25,
       "h": [
         1.0,
-        0.014288,
-        0.003644,
-        0.00255
+        0.003127,
+        0.003281,
+        0.00042
       ],
       "h_phase": [
-        0,
-        -0.6,
-        0.1,
-        0.4
+        0.0,
+        -1.418,
+        0.973,
+        -2.615
       ],
-      "floor_db": -48.07,
-      "slope_db_oct": -4,
-      "air_db": -50,
-      "air_lo_hz": 2138.4,
-      "air_hi_hz": 4586.8
-    },
-    {
+      "floor_db": -52.18,
+      "slope_db_oct": -10.33,
+      "air_f": 1531.0,
+      "air_db": -48.18,
+      "note": "Ds5",
+      "open_holes": 6,
       "level": 0.8,
-      "Q": 45,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
       "overshoot_db": 0.4,
@@ -242,30 +228,30 @@
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
       "wobble_hz": 0.45,
-      "open_holes": 7,
-      "note": "E5",
+      "air_lo_hz": 2278.4,
+      "air_hi_hz": 3778.4
+    },
+    {
       "f0": 659.26,
       "h": [
         1.0,
-        0.013973,
-        0.003459,
-        0.002476
+        0.003811,
+        0.003114,
+        0.000317
       ],
       "h_phase": [
-        0,
-        -0.6,
-        0.1,
-        0.4
+        0.0,
+        -1.439,
+        1.434,
+        -2.455
       ],
-      "floor_db": -47.94,
-      "slope_db_oct": -4,
-      "air_db": -50,
-      "air_lo_hz": 2161.0,
-      "air_hi_hz": 4612.6
-    },
-    {
+      "floor_db": -49.43,
+      "slope_db_oct": -11.39,
+      "air_f": 1431.0,
+      "air_db": -45.43,
+      "note": "E5",
+      "open_holes": 7,
       "level": 0.8,
-      "Q": 45,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
       "overshoot_db": 0.4,
@@ -274,30 +260,30 @@
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
       "wobble_hz": 0.45,
-      "open_holes": 8,
-      "note": "F5",
+      "air_lo_hz": 2058.1,
+      "air_hi_hz": 3558.1
+    },
+    {
       "f0": 698.46,
       "h": [
         1.0,
-        0.013664,
-        0.003284,
-        0.002403
+        0.004707,
+        0.004483,
+        0.000126
       ],
       "h_phase": [
-        0,
-        -0.6,
-        0.1,
-        0.4
+        0.0,
+        -0.856,
+        -2.681,
+        -0.681
       ],
-      "floor_db": -47.81,
-      "slope_db_oct": -4,
-      "air_db": -50,
-      "air_lo_hz": 2183.6,
-      "air_hi_hz": 4638.4
-    },
-    {
+      "floor_db": -46.43,
+      "slope_db_oct": -10.71,
+      "air_f": 2073.5,
+      "air_db": -42.43,
+      "note": "F5",
+      "open_holes": 8,
       "level": 0.8,
-      "Q": 45,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
       "overshoot_db": 0.4,
@@ -306,30 +292,30 @@
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
       "wobble_hz": 0.45,
-      "open_holes": 9,
-      "note": "Fs5",
+      "air_lo_hz": 800,
+      "air_hi_hz": 2183.3
+    },
+    {
       "f0": 739.99,
       "h": [
         1.0,
-        0.013363,
-        0.003117,
-        0.002333
+        0.007116,
+        0.003803,
+        0.000645
       ],
       "h_phase": [
-        0,
-        -0.6,
-        0.1,
-        0.4
+        0.0,
+        -0.948,
+        -2.552,
+        0.601
       ],
-      "floor_db": -47.68,
-      "slope_db_oct": -4,
-      "air_db": -50,
-      "air_lo_hz": 2206.2,
-      "air_hi_hz": 4664.2
-    },
-    {
+      "floor_db": -46,
+      "slope_db_oct": -10.86,
+      "air_f": 1823.1,
+      "air_db": -42,
+      "note": "Fs5",
+      "open_holes": 9,
       "level": 0.8,
-      "Q": 45,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
       "overshoot_db": 0.4,
@@ -338,30 +324,30 @@
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
       "wobble_hz": 0.45,
-      "open_holes": 10,
-      "note": "G5",
+      "air_lo_hz": 800,
+      "air_hi_hz": 2073.6
+    },
+    {
       "f0": 783.99,
       "h": [
         1.0,
-        0.013068,
-        0.002959,
-        0.002264
+        0.009525,
+        0.003123,
+        0.001163
       ],
       "h_phase": [
-        0,
-        -0.6,
-        0.1,
-        0.4
+        0.0,
+        -1.041,
+        -2.423,
+        1.883
       ],
-      "floor_db": -47.55,
-      "slope_db_oct": -4,
-      "air_db": -50,
-      "air_lo_hz": 2228.8,
-      "air_hi_hz": 4690.1
-    },
-    {
+      "floor_db": -46,
+      "slope_db_oct": -11.0,
+      "air_f": 1572.7,
+      "air_db": -42,
+      "note": "G5",
+      "open_holes": 10,
       "level": 0.8,
-      "Q": 45,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
       "overshoot_db": 0.4,
@@ -370,30 +356,30 @@
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
       "wobble_hz": 0.45,
-      "open_holes": 11,
-      "note": "Gs5",
+      "air_lo_hz": 800,
+      "air_hi_hz": 1964.0
+    },
+    {
       "f0": 830.61,
       "h": [
         1.0,
-        0.01278,
-        0.002809,
-        0.002198
+        0.007678,
+        0.001787,
+        0.000927
       ],
       "h_phase": [
-        0,
-        -0.6,
-        0.1,
-        0.4
+        0.0,
+        0.993,
+        -0.004,
+        -0.151
       ],
-      "floor_db": -47.42,
-      "slope_db_oct": -4,
-      "air_db": -50,
-      "air_lo_hz": 2251.4,
-      "air_hi_hz": 4715.9
-    },
-    {
+      "floor_db": -47.46,
+      "slope_db_oct": -10.85,
+      "air_f": 1243.3,
+      "air_db": -43.46,
+      "note": "Gs5",
+      "open_holes": 11,
       "level": 0.8,
-      "Q": 45,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
       "overshoot_db": 0.4,
@@ -402,30 +388,30 @@
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
       "wobble_hz": 0.45,
-      "open_holes": 12,
-      "note": "A5",
+      "air_lo_hz": 800,
+      "air_hi_hz": 1905.3
+    },
+    {
       "f0": 880.0,
       "h": [
         1.0,
-        0.012498,
-        0.002667,
-        0.002134
+        0.005771,
+        0.000441,
+        0.000681
       ],
       "h_phase": [
-        0,
-        -0.6,
-        0.1,
-        0.4
+        0.0,
+        3.056,
+        2.448,
+        -2.233
       ],
-      "floor_db": -47.29,
-      "slope_db_oct": -4,
-      "air_db": -50,
-      "air_lo_hz": 2274.0,
-      "air_hi_hz": 4741.7
-    },
-    {
+      "floor_db": -50.15,
+      "slope_db_oct": -10.7,
+      "air_f": 912.9,
+      "air_db": -46.15,
+      "note": "A5",
+      "open_holes": 12,
       "level": 0.8,
-      "Q": 45,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
       "overshoot_db": 0.4,
@@ -434,30 +420,30 @@
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
       "wobble_hz": 0.45,
-      "open_holes": 13,
-      "note": "As5",
+      "air_lo_hz": 800,
+      "air_hi_hz": 1847.0
+    },
+    {
       "f0": 932.33,
       "h": [
         1.0,
-        0.012223,
-        0.002532,
-        0.002071
+        0.004292,
+        0.000336,
+        0.000576
       ],
       "h_phase": [
-        0,
-        -0.6,
-        0.1,
-        0.4
+        0.0,
+        0.102,
+        0.554,
+        -1.89
       ],
-      "floor_db": -47.16,
-      "slope_db_oct": -4,
-      "air_db": -50,
-      "air_lo_hz": 2296.6,
-      "air_hi_hz": 4767.6
-    },
-    {
+      "floor_db": -48.04,
+      "slope_db_oct": -10.39,
+      "air_f": 944.8,
+      "air_db": -44.04,
+      "note": "As5",
+      "open_holes": 13,
       "level": 0.8,
-      "Q": 45,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
       "overshoot_db": 0.4,
@@ -466,30 +452,30 @@
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
       "wobble_hz": 0.45,
-      "open_holes": 14,
-      "note": "B5",
+      "air_lo_hz": 800,
+      "air_hi_hz": 1908.3
+    },
+    {
       "f0": 987.77,
       "h": [
         1.0,
-        0.011953,
-        0.002403,
-        0.002011
+        0.002899,
+        0.000631,
+        0.000455
       ],
       "h_phase": [
-        0,
-        -0.6,
-        0.1,
-        0.4
+        0.0,
+        -2.656,
+        -1.033,
+        -1.38
       ],
-      "floor_db": -47.03,
-      "slope_db_oct": -4,
-      "air_db": -50,
-      "air_lo_hz": 2319.2,
-      "air_hi_hz": 4793.4
-    },
-    {
+      "floor_db": -46.14,
+      "slope_db_oct": -9.97,
+      "air_f": 989.3,
+      "air_db": -42.14,
+      "note": "B5",
+      "open_holes": 14,
       "level": 0.8,
-      "Q": 45,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
       "overshoot_db": 0.4,
@@ -498,30 +484,30 @@
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
       "wobble_hz": 0.45,
-      "open_holes": 15,
-      "note": "C6",
+      "air_lo_hz": 800,
+      "air_hi_hz": 1970.8
+    },
+    {
       "f0": 1046.5,
       "h": [
         1.0,
-        0.01169,
-        0.002281,
-        0.001952
+        0.002843,
+        0.004004,
+        0.000185
       ],
       "h_phase": [
-        0,
-        -0.6,
-        0.1,
-        0.4
+        0.0,
+        -1.919,
+        1.459,
+        -0.257
       ],
-      "floor_db": -46.9,
-      "slope_db_oct": -4,
-      "air_db": -50,
-      "air_lo_hz": 2341.8,
-      "air_hi_hz": 4819.2
-    },
-    {
+      "floor_db": -47.85,
+      "slope_db_oct": -8.34,
+      "air_f": 1048.1,
+      "air_db": -43.85,
+      "note": "C6",
+      "open_holes": 15,
       "level": 0.8,
-      "Q": 45,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
       "overshoot_db": 0.4,
@@ -530,30 +516,30 @@
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
       "wobble_hz": 0.45,
-      "open_holes": 16,
-      "note": "Cs6",
+      "air_lo_hz": 800,
+      "air_hi_hz": 2023.9
+    },
+    {
       "f0": 1108.73,
       "h": [
         1.0,
-        0.011432,
-        0.002166,
-        0.001894
+        0.008373,
+        0.003621,
+        0.000258
       ],
       "h_phase": [
-        0,
-        -0.6,
-        0.1,
-        0.4
+        0.0,
+        -0.368,
+        2.256,
+        -1.55
       ],
-      "floor_db": -46.77,
-      "slope_db_oct": -4,
-      "air_db": -50,
-      "air_lo_hz": 2364.4,
-      "air_hi_hz": 4845.0
-    },
-    {
+      "floor_db": -48.33,
+      "slope_db_oct": -7.76,
+      "air_f": 1110.7,
+      "air_db": -44.33,
+      "note": "Cs6",
+      "open_holes": 16,
       "level": 0.8,
-      "Q": 45,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
       "overshoot_db": 0.4,
@@ -562,30 +548,30 @@
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
       "wobble_hz": 0.45,
-      "open_holes": 17,
-      "note": "D6",
+      "air_lo_hz": 800,
+      "air_hi_hz": 2095.5
+    },
+    {
       "f0": 1174.66,
       "h": [
         1.0,
-        0.01118,
-        0.002056,
-        0.001839
+        0.013742,
+        0.00325,
+        0.000328
       ],
       "h_phase": [
-        0,
-        -0.6,
-        0.1,
-        0.4
+        0.0,
+        1.159,
+        3.008,
+        -2.79
       ],
-      "floor_db": -46.65,
-      "slope_db_oct": -4,
-      "air_db": -50,
-      "air_lo_hz": 2387.0,
-      "air_hi_hz": 4870.9
-    },
-    {
+      "floor_db": -48.74,
+      "slope_db_oct": -7.19,
+      "air_f": 1173.4,
+      "air_db": -44.74,
+      "note": "D6",
+      "open_holes": 17,
       "level": 0.8,
-      "Q": 45,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
       "overshoot_db": 0.4,
@@ -594,30 +580,30 @@
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
       "wobble_hz": 0.45,
-      "open_holes": 18,
-      "note": "Ds6",
+      "air_lo_hz": 800,
+      "air_hi_hz": 2168.0
+    },
+    {
       "f0": 1244.51,
       "h": [
         1.0,
-        0.010933,
-        0.001952,
-        0.001785
+        0.009304,
+        0.003592,
+        0.000213
       ],
       "h_phase": [
-        0,
-        -0.6,
-        0.1,
-        0.4
+        0.0,
+        1.228,
+        0.975,
+        -0.742
       ],
-      "floor_db": -46.52,
-      "slope_db_oct": -4,
-      "air_db": -50,
-      "air_lo_hz": 2409.6,
-      "air_hi_hz": 4896.7
-    },
-    {
+      "floor_db": -46.72,
+      "slope_db_oct": -6.9,
+      "air_f": 1245.9,
+      "air_db": -42.72,
+      "note": "Ds6",
+      "open_holes": 18,
       "level": 0.8,
-      "Q": 45,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
       "overshoot_db": 0.4,
@@ -626,30 +612,30 @@
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
       "wobble_hz": 0.45,
-      "open_holes": 19,
-      "note": "E6",
+      "air_lo_hz": 800,
+      "air_hi_hz": 2271.3
+    },
+    {
       "f0": 1318.51,
       "h": [
         1.0,
-        0.010692,
-        0.001853,
-        0.001733
+        0.004865,
+        0.003934,
+        9.8e-05
       ],
       "h_phase": [
-        0,
-        -0.6,
-        0.1,
-        0.4
+        0.0,
+        1.297,
+        -1.058,
+        1.305
       ],
-      "floor_db": -46.39,
-      "slope_db_oct": -4,
-      "air_db": -50,
-      "air_lo_hz": 2432.2,
-      "air_hi_hz": 4922.5
-    },
-    {
+      "floor_db": -46,
+      "slope_db_oct": -6.6,
+      "air_f": 1318.5,
+      "air_db": -42,
+      "note": "E6",
+      "open_holes": 19,
       "level": 0.8,
-      "Q": 45,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
       "overshoot_db": 0.4,
@@ -658,29 +644,57 @@
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
       "wobble_hz": 0.45,
-      "open_holes": 20,
-      "note": "F6",
+      "air_lo_hz": 874.6,
+      "air_hi_hz": 2374.6
+    },
+    {
       "f0": 1396.91,
+      "note": "F6",
       "h": [
         1.0,
-        0.010456,
-        0.001759,
-        0.001682
+        0.004493,
+        0.000762,
+        0.000926
       ],
       "h_phase": [
-        0,
-        -0.6,
-        0.1,
-        0.4
+        0.0,
+        -0.211,
+        -1.729,
+        2.884
       ],
-      "floor_db": -46.26,
-      "slope_db_oct": -4,
-      "air_db": -50,
-      "air_lo_hz": 2454.8,
-      "air_hi_hz": 4948.3
+      "floor_db": -46,
+      "slope_db_oct": -4.6,
+      "air_f": 1391.6,
+      "air_db": -42,
+      "open_holes": 20,
+      "level": 0.8,
+      "atk_pre_s": 0.008,
+      "atk_speak_s": 0.028,
+      "overshoot_db": 0.4,
+      "chiff_peak": 1.4,
+      "chiff_len_s": 0.04,
+      "rel_s": 0.08,
+      "wander_cents_std": 2.5,
+      "wobble_hz": 0.45,
+      "air_lo_hz": 878.0,
+      "air_hi_hz": 2378.0
     }
   ],
   "recorded": {
-    "fit": "v3k Python ladder law, phase-locked partials, colored floor, air band"
-  }
+    "fit": "per-chamber from the ladder holds, log-f inside the chamber only",
+    "anchors": [
+      "C5",
+      "D5",
+      "E5",
+      "F5",
+      "G5",
+      "A5",
+      "B5",
+      "C6",
+      "D6",
+      "E6",
+      "F6"
+    ]
+  },
+  "voice": "v3k-chamber"
 }
