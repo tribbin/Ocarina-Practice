@@ -1,22 +1,12 @@
 /**
  * Helmholtz ocarina voice for Web Audio.
  *
- * Replaces the additive PeriodicWave + fixed windPark/windWarm path
- * inside playNoteAt. Scheduling, bags, cut-bus and freqOf stay in
- * audio.js — call scheduleHelmholtzNote() where the old osc graph
- * was built.
- *
- *   import { loadTwinModel, interpNote, scheduleHelmholtzNote } from "./helmholtz-voice.js";
- *   const twin = await loadTwinModel("instruments/oot-alto-c-12/twin_model.json");
- *   const handle = scheduleHelmholtzNote(ctx, dest, {
- *     model: twin, f0: freqOf(id), when, holdSec, intoSlide
- *   });
- *   handle.stop(when + holdSec + 0.08);
- *
- * Shipped identity: v45-helmholtz — the last pair that matches
- * ocarina-practice.com (oco-pwa-v45). The mid-air upgrade is parked.
+ * v3i-ladder: dry fundamental, phase-locked partials, falling air band.
+ * Attack, speak, release, chiff timing, vibrato and the cut-bus are unchanged.
+ * Chorus and reverb stay in audio.js.
  */
-export const VOICE_REV = "v45-helmholtz";
+export const VOICE_REV = "v3i-ladder";
+
 export function loadTwinModelFromObject(obj) {
   if (!obj || !Array.isArray(obj.notes) || !obj.notes.length) {
     throw new Error("twin_model.json: missing notes[]");
@@ -57,15 +47,21 @@ export function interpNote(model, f0) {
     const t = Math.log(f0 / a.f0) / Math.log(b.f0 / a.f0);
     const hlen = Math.max(a.h.length, b.h.length);
     const h = [];
-    for (let k = 0; k < hlen; k++) h.push(lerp(a.h[k] || 0, b.h[k] || 0, t));
+    const hPhase = [];
+    for (let k = 0; k < hlen; k++) {
+      h.push(lerp(a.h[k] || 0, b.h[k] || 0, t));
+      const pa = (a.h_phase && a.h_phase[k]) || 0;
+      const pb = (b.h_phase && b.h_phase[k]) || 0;
+      hPhase.push(lerp(pa, pb, t));
+    }
     const keys = [
       "level", "Q", "noise_Q", "noise_res_db", "noise_hiss_db",
       "noise_slope_db_oct", "atk_pre_s", "atk_speak_s", "overshoot_db",
       "chiff_peak", "chiff_len_s", "rel_s", "wander_cents_std",
-      "wobble_pct", "wobble_hz",
+      "wobble_pct", "wobble_hz", "air_lo_hz", "air_hi_hz",
     ];
-    const out = { note: null, f0, h, open_holes: t < 0.5 ? a.open_holes : b.open_holes };
-    keys.forEach((k) => { out[k] = lerp(a[k], b[k], t); });
+    const out = { note: null, f0, h, h_phase: hPhase, open_holes: t < 0.5 ? a.open_holes : b.open_holes };
+    keys.forEach((k) => { out[k] = lerp(a[k] == null ? 0 : a[k], b[k] == null ? 0 : b[k], t); });
     return out;
   }
   return Object.assign({}, notes[notes.length - 1], { f0 });
@@ -74,20 +70,14 @@ export function interpNote(model, f0) {
 let _noiseBuf = null;
 function noiseBuffer(ctx) {
   if (_noiseBuf && _noiseBuf.sampleRate === ctx.sampleRate) return _noiseBuf;
-  // A short loop is a line comb: the 0.5 s loop measured every noise line
-  // at k×2 Hz in the old engine, and a 2 s loop spaces the same artifact at
-  // 0.5 Hz. 4 s + a crossfaded wrap keeps the bed stochastic (the same
-  // discipline as the old wind buffer, 2026-09-27).
   const n = Math.floor(ctx.sampleRate * 4);
   const buf = ctx.createBuffer(1, n, ctx.sampleRate);
   const d = buf.getChannelData(0);
-  // light pink: leaky integrate white
   let acc = 0;
   for (let i = 0; i < n; i++) {
     acc = 0.97 * acc + (Math.random() * 2 - 1);
     d[i] = acc * 0.15;
   }
-  // crossfade the tail INTO the head so the wrap is continuous
   const k = Math.floor(ctx.sampleRate * 0.01);
   for (let i = 0; i < k; i++) {
     const w = (i + 1) / (k + 1);
@@ -99,18 +89,20 @@ function noiseBuffer(ctx) {
 
 function dbToLin(db) { return Math.pow(10, db / 20); }
 
-/**
- * Build and start one note. Returns { fade, stop, until } so the
- * existing melody bag / cut-bus can own the lifetime.
- *
- * opts:
- *   model, f0, when, holdSec, dest,
- *   intoSlide (bool) — skip release, leave gain up for a glide takeover
- *   master (number)  — extra linear scale (site masterLevel)
- *   slideFromHz      — if set, frequency ramps from this over slideSec
- *   slideSec         — default 0.03
- *   vibrato          — { rate, depth, delay } or null
- */
+function leanedWave(ctx, h, phase) {
+  const n = Math.max(6, (h || []).length);
+  const real = new Float32Array(n);
+  const imag = new Float32Array(n);
+  for (let k = 1; k < n; k++) {
+    const amp = h[k - 1] || 0;
+    const ph = (phase && phase[k - 1]) || 0;
+    // imag is the sine term; phase 0 is a sine, matching the cycle fit
+    real[k] = amp * Math.sin(ph);
+    imag[k] = amp * Math.cos(ph);
+  }
+  return ctx.createPeriodicWave(real, imag, { disableNormalization: true });
+}
+
 export function scheduleHelmholtzNote(ctx, dest, opts) {
   const model = opts.model;
   const f0 = +opts.f0;
@@ -127,9 +119,11 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
   out.gain.value = master;
   out.connect(dest);
 
-  // --- cavity tone (H1 through Helmholtz BP) ---
+  // dry fundamental plus the phase-locked partials. No cavity bandpass:
+  // that filter was the low-pass muffle.
   const osc = ctx.createOscillator();
-  osc.type = "sine";
+  if (nf.h_phase) osc.setPeriodicWave(leanedWave(ctx, nf.h, nf.h_phase));
+  else osc.type = "sine";
   const startF = opts.slideFromHz && opts.slideFromHz > 0 ? opts.slideFromHz : f0;
   osc.frequency.setValueAtTime(startF, when);
   if (opts.slideFromHz && opts.slideFromHz > 0) {
@@ -143,18 +137,11 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
   wander.connect(wanderGain);
   wanderGain.connect(osc.frequency);
 
-  const toneBp = ctx.createBiquadFilter();
-  toneBp.type = "bandpass";
-  toneBp.frequency.value = f0;
-  toneBp.Q.value = Math.max(8, nf.Q || 45);
-
   const bodyGain = ctx.createGain();
   bodyGain.gain.value = 0;
-  osc.connect(toneBp);
-  toneBp.connect(bodyGain);
+  osc.connect(bodyGain);
   bodyGain.connect(out);
 
-  // --- period-synchronous turbulence ---
   const noise = ctx.createBufferSource();
   noise.buffer = noiseBuffer(ctx);
   noise.loop = true;
@@ -163,7 +150,6 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
   syncOsc.type = "sine";
   syncOsc.frequency.value = f0;
   const shaper = ctx.createWaveShaper();
-  // maps sinφ ∈ [-1,1] → 0.35 + sync*(0.5-0.5*sinφ) roughly
   const curve = new Float32Array(256);
   const syncAmt = g.sync_amt == null ? 0.65 : g.sync_amt;
   for (let i = 0; i < 256; i++) {
@@ -187,14 +173,22 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
   noiseBp.connect(resGain);
   resGain.connect(bodyGain);
 
+  // air band, not a shelf. Levels still ride the existing hiss envelope.
+  const airLo = nf.air_lo_hz || g.hiss_hp_hz || 1800;
+  const airHi = nf.air_hi_hz || 5000;
   const hissHp = ctx.createBiquadFilter();
   hissHp.type = "highpass";
-  hissHp.frequency.value = g.hiss_hp_hz || 2800;
+  hissHp.frequency.value = airLo;
   hissHp.Q.value = 0.7;
+  const hissLp = ctx.createBiquadFilter();
+  hissLp.type = "lowpass";
+  hissLp.frequency.value = airHi;
+  hissLp.Q.value = 0.7;
   const hissGain = ctx.createGain();
   hissGain.gain.value = 0;
   syncGain.connect(hissHp);
-  hissHp.connect(hissGain);
+  hissHp.connect(hissLp);
+  hissLp.connect(hissGain);
   hissGain.connect(out);
 
   const chiffBp = ctx.createBiquadFilter();
@@ -207,22 +201,23 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
   chiffBp.connect(chiffGain);
   chiffGain.connect(out);
 
-  // --- dry labium partials (H2..) ---
+  // old models have no phase: keep the dry partials. v3i bakes them into the wave.
   const partials = [];
-  for (let k = 2; k < (nf.h || []).length; k++) {
-    const hk = nf.h[k - 1];
-    if (!(hk > 1e-4)) continue;
-    const p = ctx.createOscillator();
-    p.type = "sine";
-    p.frequency.value = f0 * k;
-    const pg = ctx.createGain();
-    pg.gain.value = hk;
-    p.connect(pg);
-    pg.connect(out);
-    partials.push(p);
+  if (!nf.h_phase) {
+    for (let k = 2; k < (nf.h || []).length; k++) {
+      const hk = nf.h[k - 1];
+      if (!(hk > 1e-4)) continue;
+      const p = ctx.createOscillator();
+      p.type = "sine";
+      p.frequency.value = f0 * k;
+      const pg = ctx.createGain();
+      pg.gain.value = hk;
+      p.connect(pg);
+      pg.connect(out);
+      partials.push(p);
+    }
   }
 
-  // optional zen vibrato on f0 only
   let vib = null;
   if (opts.vibrato && opts.vibrato.depth) {
     vib = ctx.createOscillator();
@@ -236,7 +231,6 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
     vg.connect(osc.frequency);
   }
 
-  // envelopes
   const tOn = when + pre;
   const tSpeak = tOn + speak;
   const tHoldEnd = when + hold;
@@ -258,7 +252,6 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
     }
   }
   envGain(bodyGain, 1);
-  // hiss amplitude lives in this envelope peak (do not also pre-scale .value)
   envGain(hissGain, dbToLin(nf.noise_hiss_db || -50));
 
   const chiffPeak = Math.max(0, (nf.chiff_peak || 1) - 1) * dbToLin(nf.noise_res_db || -28);
