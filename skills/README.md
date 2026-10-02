@@ -45,3 +45,8 @@ partition and clone.
 `skills/` is the canonical committed home. `.opencode/skills/` holds
 opencode's runtime-registered copies (gitignored) — when a skill changes
 here, refresh its `.opencode/skills/` mirror so both stay word-identical.
+
+- `ocarina-twin/` — ladder to twin_model.json. One chamber per recording,
+  log-f inside that chamber only, written for the v3k voice. Run
+  `skills/ocarina-twin/fit_ladder.py`.
+
