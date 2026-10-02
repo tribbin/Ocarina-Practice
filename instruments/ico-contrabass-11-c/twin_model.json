@@ -25,7 +25,7 @@
         -1.573,
         -2.32
       ],
-      "floor_db": -70.5,
+      "floor_db": -68,
       "slope_db_oct": -10.7,
       "air_db": -75.0,
       "air_lo_hz": 550,
@@ -67,7 +67,7 @@
         -1.674,
         -1.879
       ],
-      "floor_db": -70.5,
+      "floor_db": -68,
       "slope_db_oct": -10.7,
       "air_db": -75.89,
       "air_lo_hz": 550,
@@ -109,7 +109,7 @@
         -2.146,
         0.176
       ],
-      "floor_db": -70.5,
+      "floor_db": -68,
       "slope_db_oct": -10.7,
       "air_db": -76.78,
       "air_lo_hz": 550,
@@ -151,7 +151,7 @@
         -2.612,
         2.192
       ],
-      "floor_db": -70.5,
+      "floor_db": -68.67,
       "slope_db_oct": -10.7,
       "air_db": -77.67,
       "air_lo_hz": 550,
@@ -193,7 +193,7 @@
         -2.727,
         1.824
       ],
-      "floor_db": -70.5,
+      "floor_db": -69.56,
       "slope_db_oct": -10.7,
       "air_db": -78.56,
       "air_lo_hz": 550,
@@ -235,7 +235,7 @@
         -2.295,
         1.545
       ],
-      "floor_db": -70.73,
+      "floor_db": -70.44,
       "slope_db_oct": -10.66,
       "air_db": -79.44,
       "air_lo_hz": 550,
@@ -277,7 +277,7 @@
         1.603,
         1.827
       ],
-      "floor_db": -73.34,
+      "floor_db": -71.33,
       "slope_db_oct": -10.24,
       "air_db": -80.33,
       "air_lo_hz": 550,
@@ -319,7 +319,7 @@
         0.063,
         1.374
       ],
-      "floor_db": -74.47,
+      "floor_db": -72.22,
       "slope_db_oct": -9.72,
       "air_db": -81.22,
       "air_lo_hz": 550,
@@ -361,7 +361,7 @@
         -2.562,
         0.775
       ],
-      "floor_db": -75.44,
+      "floor_db": -73.11,
       "slope_db_oct": -9.19,
       "air_db": -82.11,
       "air_lo_hz": 550,
@@ -403,7 +403,7 @@
         -1.527,
         0.011
       ],
-      "floor_db": -78.54,
+      "floor_db": -74.0,
       "slope_db_oct": -8.69,
       "air_db": -83.0,
       "air_lo_hz": 550,
@@ -445,7 +445,7 @@
         0.214,
         -0.785
       ],
-      "floor_db": -81.0,
+      "floor_db": -74.89,
       "slope_db_oct": -8.21,
       "air_db": -83.89,
       "air_lo_hz": 550,
@@ -487,7 +487,7 @@
         0.292,
         -0.241
       ],
-      "floor_db": -79.38,
+      "floor_db": -75.78,
       "slope_db_oct": -8.1,
       "air_db": -84.78,
       "air_lo_hz": 550,
@@ -529,7 +529,7 @@
         0.366,
         0.308
       ],
-      "floor_db": -76.72,
+      "floor_db": -76.67,
       "slope_db_oct": -8.02,
       "air_db": -85.67,
       "air_lo_hz": 550,
@@ -613,7 +613,7 @@
         0.152,
         -0.172
       ],
-      "floor_db": -74.21,
+      "floor_db": -78.44,
       "slope_db_oct": -9.21,
       "air_db": -87.44,
       "air_lo_hz": 550,
@@ -655,7 +655,7 @@
         2.244,
         -2.985
       ],
-      "floor_db": -70.9,
+      "floor_db": -79.33,
       "slope_db_oct": -9.6,
       "air_db": -88.33,
       "air_lo_hz": 550,
@@ -697,7 +697,7 @@
         2.244,
         -2.985
       ],
-      "floor_db": -70.9,
+      "floor_db": -80.22,
       "slope_db_oct": -9.6,
       "air_db": -89.22,
       "air_lo_hz": 550,
@@ -739,7 +739,7 @@
         2.244,
         -2.985
       ],
-      "floor_db": -70.9,
+      "floor_db": -81.11,
       "slope_db_oct": -9.6,
       "air_db": -90.11,
       "air_lo_hz": 550,
@@ -781,7 +781,7 @@
         2.244,
         -2.985
       ],
-      "floor_db": -70.9,
+      "floor_db": -82.0,
       "slope_db_oct": -9.6,
       "air_db": -91.0,
       "air_lo_hz": 550,
