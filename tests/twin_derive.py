@@ -14,7 +14,6 @@
 #
 # Derived census (byte-identical proofed before the bodies left):
 #   song-of-time-bass          = song-of-time             -12
-#   song-of-storms-bass        = song-of-storms          -12
 #   sarias-song-bass           = sarias-song             -12
 #   botw-theme-down3           = botw-theme              -12
 #   concerning-hobbits-short-c = concerning-hobbits-short  -2 (sharp table)
@@ -25,6 +24,9 @@
 #   eponas-song-bass — one bracket label ("A2" vs the base's "A1") plus the
 #     same hand-spelling story: flat-side Bb beside sharp-side F#/C#,
 #     both against C naturals.
+#   song-of-storms-bass — its own arrangement (Robin, 2026-10-02): the lead
+#     sits an octave down only for the first half, and its bass track
+#     rests where the held B4 beat against the low A4/D5.
 # kokiri-forest is no twin (audit refusal-free, NOT-ALIGNED).
 #
 #   python3 tests/twin_derive.py        # headless & silent
@@ -87,12 +89,6 @@ DERIVES = [
         "base": 'song-of-time',
         "shift": -12,
         "fixture": '|["Opening"] A4/4. D4/2. F4/4.\n| A4/4. D4/2. F4/4.\n| A4/8. C5/8. B4/4. G4/4. F4/8. G4/8.\n| A4/4. D4/4. C4/8. E4/8. D4/4.\n| -/1\n\n|["Middle repeat 1"] D4/8. C4/8. E4/4. C4/4. E4/8. F4/8.\n| D4/1\n| D4/8. C4/8. E4/4. C4/4. F4/8. G4/8.\n| D4/1\n| A4/8. C5/8. B4/4. C5/4. A4/4.\n| C5/4. G4/4. A4/4. D4/8. C4/8.\n| E4/4. D4/1 -/8\n| F4/8. G4/8. F4/4. G4/4. E4/8. C4/8.\n| F4/8. E4/8. D4/1 -/8\n\n|["Middle repeat 2"] D4/8. C4/8. E4/4. C4/4. E4/8. F4/8.\n| D4/1\n| D4/8. C4/8. E4/4. C4/4. F4/8. G4/8.\n| D4/1\n| A4/8. C5/8. B4/4. C5/4. A4/4.\n| C5/4. G4/4. A4/4. D4/8. C4/8.\n| E4/4. D4/1 -/8\n| F4/8. G4/8. F4/4. G4/4. E4/8. C4/8.\n| F4/8. E4/8. D4/1 -/8\n\n|["End"] A4/4. D4/2. F4/4.\n| A4/4. D4/2. F4/4.\n| A4/8. C5/8. B4/4. G4/4. F4/8. G4/8.\n| A4/4. D4/4. C4/8. E4/8. D4/4.\n| -/1.',
-    },
-    {
-        "key": 'song-of-storms-bass',
-        "base": 'song-of-storms',
-        "shift": -12,
-        "fixture": 'D4/8 ~ F4/8 D5/2 | D4/8 ~ F4/8 D5/2 |\nE5/4. ~ F5/8 ~ E5/8 ~ F5/8 | ~ E5/8 C5/8 A4/2 |\nA4/4 D4/4 F4/8 G4/8 | A4/2. |\nA4/4 D4/4 F4/8 G4/8 | E4/2. |\nD4/8 ~ F4/8 D5/2 | D4/8 ~ F4/8 D5/2 |\nE5/4. ~ F5/8 ~ E5/8 ~ F5/8 | ~ E5/8 C5/8 A4/2 |\nA4/4 D4/4 F4/8 G4/8 | A4/2 A4/4 |\nD4/2. | r/2.',
     },
     {
         "key": 'sarias-song-bass',
