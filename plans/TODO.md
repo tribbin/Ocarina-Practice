@@ -76,6 +76,8 @@ session-24/26/27/28 logs):
 
 ## 1. Bugs (correctness / data loss)
 
+- [ ] **The open auto-generated scale must follow an instrument switch** — with the C-major or Chromatic tool open, the wet-switch "stay" keeps the editor on the previous chart's notes: refreshGeneratedScales regenerates the entry's body for the new chart under the SAME id, so autoSongInRange sees it already fitting and loadLibraryItem never runs; the switch must reload the open generated entry so the sheet matches the newly installed ocarina. `🟧 🔴 ⚙S`
+
 ## 2. Robustness / error handling
 
 ## 3. Security (low today — matters if data files become user-supplied)
