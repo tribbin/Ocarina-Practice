@@ -3,7 +3,7 @@
  * phase-locked partials, slope-colored floor, air band, chiff only at the attack.
  * No halo, no cavity band-pass. Envelope timing is unchanged.
  */
-export const VOICE_REV = "v3k";
+export const VOICE_REV = "v3k-chamber";
 
 export function loadTwinModelFromObject(obj) {
   if (!obj || !Array.isArray(obj.notes) || !obj.notes.length) {
@@ -107,7 +107,13 @@ function coloredBuffer(ctx, slope) {
   const rms = Math.sqrt(acc / n) || 1;
   const buf = ctx.createBuffer(1, n, ctx.sampleRate);
   const d = buf.getChannelData(0);
+  const fade = Math.floor(ctx.sampleRate * 0.02);
   for (let i = 0; i < n; i++) d[i] = re[i] / rms;
+  for (let i = 0; i < fade; i++) {
+    const w = i / fade;
+    const tail = d[n - fade + i];
+    d[n - fade + i] = tail * (1 - w) + d[i] * w;
+  }
   _colored.set(key, buf);
   return buf;
 }
@@ -266,7 +272,7 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
 
   osc.start(when); wander.start(when); noise.start(when); air.start(when);
   if (vib) vib.start(when);
-  const stopAt = tOff + 0.02;
+  const stopAt = tOff + 0.06;
   function stopNodes(t) {
     const tt = t != null ? t : ctx.currentTime;
     try { osc.stop(tt); } catch (e) {}
@@ -280,12 +286,14 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
     until: stopAt,
     fade(t) {
       const tt = t != null ? t : ctx.currentTime;
-      try {
-        bodyGain.gain.cancelScheduledValues(tt);
-        bodyGain.gain.setValueAtTime(bodyGain.gain.value, tt);
-        bodyGain.gain.linearRampToValueAtTime(0, tt + 0.03);
-      } catch (e) {}
-      stopNodes(tt + 0.04);
+      for (const node of [bodyGain, floorGain, airGain, chiffGain]) {
+        try {
+          node.gain.cancelScheduledValues(tt);
+          node.gain.setValueAtTime(node.gain.value, tt);
+          node.gain.linearRampToValueAtTime(0, tt + 0.05);
+        } catch (e) {}
+      }
+      stopNodes(tt + 0.07);
     },
     stop(t) { this.fade(t); },
     frequency: osc.frequency,
