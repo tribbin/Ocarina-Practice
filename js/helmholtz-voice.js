@@ -8,7 +8,7 @@
  * Attack, speak, release, overshoot and the cut-bus are the existing
  * envelope. Chorus and reverb stay in audio.js.
  */
-export const VOICE_REV = "v3i";
+export const VOICE_REV = "v3i-floor";
 
 export function loadTwinModelFromObject(obj) {
   if (!obj || !Array.isArray(obj.notes) || !obj.notes.length) {
@@ -126,6 +126,23 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
   haloBp.connect(haloGain);
   haloGain.connect(out);
 
+  // Falling floor, the body of the Python air. Highpassed so it does not
+  // sit under the note. The buffer is already pink, about -6 dB/octave.
+  const floorHp = ctx.createBiquadFilter();
+  floorHp.type = "highpass";
+  floorHp.frequency.value = Math.max(900, 2.2 * f0);
+  floorHp.Q.value = 0.7;
+  const floorLp = ctx.createBiquadFilter();
+  floorLp.type = "lowpass";
+  floorLp.frequency.value = 6000;
+  floorLp.Q.value = 0.7;
+  const floorGain = ctx.createGain();
+  floorGain.gain.value = 0;
+  noise.connect(floorHp);
+  floorHp.connect(floorLp);
+  floorLp.connect(floorGain);
+  floorGain.connect(out);
+
   const airLo = nf.air_lo_hz || 1800;
   const airHi = nf.air_hi_hz || 5000;
   const airHp = ctx.createBiquadFilter();
@@ -161,7 +178,7 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
     if (hk < 1e-4) continue;
     const p = ctx.createOscillator();
     p.type = "sine";
-    p.frequency.value = f0 * k + (k - 1) * 0.35;
+    p.frequency.value = f0 * k;
     const pg = ctx.createGain();
     pg.gain.value = hk;
     p.connect(pg);
@@ -203,6 +220,7 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
   }
   envGain(bodyGain, 1);
   envGain(haloGain, dbToLin(nf.halo_db == null ? -34 : nf.halo_db));
+  envGain(floorGain, dbToLin(nf.floor_db == null ? -54 : nf.floor_db));
   envGain(airGain, dbToLin(nf.air_db == null ? (nf.noise_hiss_db == null ? -50 : nf.noise_hiss_db) : nf.air_db));
 
   const chiffPeak = Math.max(0, (nf.chiff_peak || 1) - 1) * dbToLin((nf.air_db == null ? -50 : nf.air_db) + 6);
