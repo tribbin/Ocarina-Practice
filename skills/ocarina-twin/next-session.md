@@ -91,3 +91,4 @@ The air band must start above f0. On D6–F6 of the 12-hole, center it on the me
 Shipped as v3l-chamber. Air bands start above f0; 12-hole D6–F6 are centered on the measured peak (about 700 Hz wide) and no longer clamped up to −46. Whoosh, hiss and a narrow halo are separate rows. `atk_speak_s` follows the measured rises (bass C4 is 69 ms). `rel_s` and the `~` hold are unchanged. Bass chiff is longer and quieter; alto chiff is not boosted.
 
 The slope floor is held 8 dB under the whoosh so it cannot fill the gap the three pieces leave. Partials, `rel_s`, and the `~` hold are still untouched.
+Playback uses the same +28 dB residual-to-RMS shift as v3k, without the −46 clamp and without opening the band under f0. Raw residual dB as a gain was why the air disappeared.
