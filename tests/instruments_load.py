@@ -657,6 +657,45 @@ def main():
             if tst["playing"]:
                 failures.append("typed: a wet switch must not start transport")
             page.close()
+            # f) the open generated scale must follow the instrument: the
+            #    C-major/Chromatic bodies are synthesized for the loaded
+            #    chart under the SAME id, so the wet-switch "stay" (same id,
+            #    no loadLibraryItem) would keep the old chart's sheet open.
+            page = browser.new_page()
+            errs = []
+            page.on("pageerror", lambda e: errs.append(str(e)))
+            page.goto(base + "?song=major")
+            page.wait_for_function(BOOT_WAIT)
+            page.wait_for_function(
+                "() => document.getElementById('scale').value === 'major'")
+            old_major = page.evaluate("() => BUILTIN.major.body")
+            sheet_before = page.evaluate(
+                "() => document.getElementById('src').value")
+            page.select_option("#instSel", "stein-double-alto-c")
+            try:
+                page.wait_for_function(
+                    "() => document.getElementById('scale').value === 'major' &&"
+                    " BUILTIN.major.body !== " + json.dumps(old_major) +
+                    " && document.getElementById('src').value"
+                    " .indexOf(BUILTIN.major.body) >= 0",
+                    timeout=15000)
+            except Exception:
+                failures.append("scale-follow: the open generated scale did "
+                                "not refresh to the new chart's body on the "
+                                "instrument switch")
+            fst = page.evaluate(AUTO_STATE)
+            if errs:
+                failures.append(f"scale-follow: page errors {errs}")
+            if fst["sel"] != "major":
+                failures.append(f"scale-follow: #scale {fst['sel']!r} != "
+                                "'major' (the open tool must stay selected)")
+            elif fst["src"] == sheet_before:
+                failures.append("scale-follow: the editor still carries the "
+                                "pre-switch chart's sheet")
+            if fst["playing"]:
+                failures.append("scale-follow: a wet switch must not start "
+                                "transport (isMelodyPlaying() true)")
+            page.close()
 
             browser.close()
     finally:
