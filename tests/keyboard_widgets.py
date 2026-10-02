@@ -88,7 +88,11 @@ async () => {
     if (btn) btn.click();
   }
   const strip = document.getElementById('tokens');
-  const toks = [...strip.querySelectorAll('.tok[role="button"]')];
+  // Start at the first playable note chip: a song may open on rest bars,
+  // and rest chips never audition.
+  const allToks = [...strip.querySelectorAll('.tok[role="button"]')];
+  const firstNote = allToks.findIndex(t => /(^|\s)ch\S/.test(t.className) && !t.classList.contains('tie'));
+  const toks = firstNote > 0 ? allToks.slice(firstNote) : allToks;
   const out = { tokenCount: toks.length, tabbable: 0, labels: 0,
                 arrow: null, playedFromToken: null };
   if (!toks.length) return out;
@@ -191,7 +195,11 @@ async () => {
   }
   const rest = (ms) => new Promise(r => setTimeout(r, ms));
   const strip = document.getElementById('tokens');
-  const toks = [...strip.querySelectorAll('.tok[role="button"]')];
+  // Start at the first playable note chip: a song may open on rest bars,
+  // and rest chips never audition.
+  const allToks = [...strip.querySelectorAll('.tok[role="button"]')];
+  const firstNote = allToks.findIndex(t => /(^|\s)ch\S/.test(t.className) && !t.classList.contains('tie'));
+  const toks = firstNote > 0 ? allToks.slice(firstNote) : allToks;
   const out = { tokenCount: toks.length };
   if (toks.length < 3) return out;
   if (typeof stopMelody === 'function') { try { stopMelody(); } catch (e) {} }
@@ -419,7 +427,7 @@ def main():
                         "tokens: arrowing over a playable note must light it "
                         "up (focus highlight)")
                 hp = t["hpCalls"] or []
-                if not hp or hp[0]["i"] != 1:
+                if not hp or not hp[0].get("id"):
                     failures.append(
                         f"tokens: arrowing over a playable note must enter "
                         f"the hover-preview path (audition), got {hp!r}")
