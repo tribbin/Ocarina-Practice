@@ -248,15 +248,17 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
   const os = Math.pow(10, (nf.overshoot_db || 0) / 20);
   function envGain(node, peak) {
     const p = node.gain;
-    const speakAt = hold < 0.16 ? tOn + Math.min(speak, hold * 0.35) : tSpeak;
+    const speakAt = hold < 0.16 ? tOn + Math.min(speak, Math.max(0.008, hold * 0.35)) : tSpeak;
     p.cancelScheduledValues(when);
-    p.setValueAtTime(0.0001, when);
-    p.exponentialRampToValueAtTime(Math.max(0.0001, peak * os), speakAt);
-    if (opts.intoSlide) p.setValueAtTime(Math.max(0.0001, peak), tHoldEnd);
+    p.setValueAtTime(0, when);
+    p.setValueAtTime(0, tOn);
+    p.linearRampToValueAtTime(peak * os, speakAt);
+    p.linearRampToValueAtTime(peak, speakAt + 0.02);
+    if (opts.intoSlide) p.setValueAtTime(peak, tHoldEnd);
     else {
-      const relAt = Math.max(speakAt + 0.01, tHoldEnd - Math.min(rel, hold));
-      p.setValueAtTime(Math.max(0.0001, peak), relAt);
-      p.exponentialRampToValueAtTime(0.0001, tOff);
+      // Release stays inside the hold the page already shortened. Do not subtract rel again.
+      p.setValueAtTime(peak, Math.max(speakAt + 0.015, tHoldEnd - 0.012));
+      p.linearRampToValueAtTime(0.0001, tOff);
     }
   }
   envGain(bodyGain, 1);
@@ -292,7 +294,7 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
         try {
           node.gain.cancelScheduledValues(tt);
           node.gain.setValueAtTime(node.gain.value, tt);
-          node.gain.exponentialRampToValueAtTime(0.0001, tt + 0.06);
+          node.gain.linearRampToValueAtTime(0.0001, tt + 0.05);
         } catch (e) {}
       }
       stopNodes(tt + 0.09);
