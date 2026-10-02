@@ -76,8 +76,6 @@ session-24/26/27/28 logs):
 
 ## 1. Bugs (correctness / data loss)
 
-- [ ] **The open auto-generated scale must follow an instrument switch** — with the C-major or Chromatic tool open, the wet-switch "stay" keeps the editor on the previous chart's notes: refreshGeneratedScales regenerates the entry's body for the new chart under the SAME id, so autoSongInRange sees it already fitting and loadLibraryItem never runs; the switch must reload the open generated entry so the sheet matches the newly installed ocarina. `🟧 🔴 ⚙S`
-
 ## 2. Robustness / error handling
 
 ## 3. Security (low today — matters if data files become user-supplied)
@@ -519,3 +517,19 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   Verification: bass-triple chart fit, shipped_songs track alignment,
   gen_pages, data_validator, asset_versions, eslint and html-validate passed.
   Changes left uncommitted.
+
+- **2026-10-02 (scale-follows-instrument — the open auto-generated scale now follows instrument switches)** —
+  Robin's report: with a C-major/Chromatic tool open, switching the
+  instrument left the old chart's sheet open. Root cause: switchInstrument's
+  wet "stay" path — refreshGeneratedScales re-synthesizes the entry body for
+  the NEW chart under the SAME id during install, so autoSongInRange saw the
+  regenerated body already fitting and never ran loadLibraryItem; #src kept
+  the previous ocarina's notes. Fix (js/app.js switchInstrument): when the
+  open entry carries the generated flag, the switch reloads it even on the
+  same id (stop-path motion, as with a family jump) — the sheet follows the
+  installed chart and the dropdown keeps the tool selected. Pinned red-first
+  by the new instruments_load wet-switch leg f (?song=major boot, switch to
+  stein-double-alto-c: BUILTIN body regenerated AND #src carrying it,
+  selection held, transport never started); sw oco-pwa-v88 → v89. Battery
+  green: instruments_load (leg f red → green), asset_versions,
+  console_hygiene; eslint + html-validate clean.
