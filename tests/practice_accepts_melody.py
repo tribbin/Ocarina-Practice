@@ -36,7 +36,6 @@ from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parent.parent
 TICK_FEED_MS = 30
-FIRST_BAR_SAFE_IDX = 5  # past the first bar (fresh-entry await is allowed there)
 HEADLESS = "--headed" not in sys.argv
 
 CASES = [
@@ -87,6 +86,15 @@ SRC => new Promise(resolve => {
     window.__pracFrame = ev ? { hz: ev.hz, rms: 0.4 } : { hz: 0, rms: 0 };
   }, 30);
   OCA_PRACTICE.start();
+  // Fresh-entry await is allowed until the first bar that holds a note has
+  // closed — a rest-only intro pushes that point past any fixed index.
+  const firstBarEnd = P => {
+    const t = P.tokens || [];
+    const n = t.findIndex(x => x.type === "note");
+    if (n < 0) return Infinity;
+    const b = t.findIndex((x, i) => i > n && x.type === "bar");
+    return b < 0 ? Infinity : b;
+  };
   let awaitLate = false;
   // The arbiter waits for the session to be SEEN engaged before the stop
   // signal means anything: on a slow CI box the first poll tick can race the
@@ -97,7 +105,7 @@ SRC => new Promise(resolve => {
   let started = false, idleStreak = 0;
   const poll = setInterval(() => {
     const P = OCA_PRACTICE._p;
-    if (P.state === "await" && P.idx > 5) awaitLate = true;
+    if (P.state === "await" && P.idx > firstBarEnd(P)) awaitLate = true;
     if (OCA_PRACTICE.active() && !P.paused) { started = true; }
     if (!OCA_PRACTICE.active() || P.paused) {
       if (!started) { idleStreak = 0; return; }   // engage still racing in
@@ -121,10 +129,19 @@ SRC => new Promise(resolve => {
   // a separate-note dip ("dip"), otherwise sound the pitch the tuner
   // currently demands.
   OCA_PRACTICE.start();
+  // Fresh-entry await is allowed until the first bar that holds a note has
+  // closed — a rest-only intro pushes that point past any fixed index.
+  const firstBarEnd = P => {
+    const t = P.tokens || [];
+    const n = t.findIndex(x => x.type === "note");
+    if (n < 0) return Infinity;
+    const b = t.findIndex((x, i) => i > n && x.type === "bar");
+    return b < 0 ? Infinity : b;
+  };
   let awaitLate = false, wentBack = false, lastIdx = 0;
   const feed = setInterval(() => {
     const P = OCA_PRACTICE._p;
-    if (P.state === "await" && P.idx > 5) awaitLate = true;
+    if (P.state === "await" && P.idx > firstBarEnd(P)) awaitLate = true;
     if (P.idx < lastIdx) wentBack = true;
     lastIdx = Math.max(lastIdx, P.idx);
     if (P.state === "await" || P.state === "dip" || P.state === "rest" || !P.bar) {
