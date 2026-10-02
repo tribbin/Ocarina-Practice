@@ -248,28 +248,31 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
   const os = Math.pow(10, (nf.overshoot_db || 0) / 20);
   function envGain(node, peak) {
     const p = node.gain;
+    const speakAt = hold < 0.16 ? tOn + Math.min(speak, hold * 0.35) : tSpeak;
     p.cancelScheduledValues(when);
-    p.setValueAtTime(0, when);
-    p.setValueAtTime(0, tOn);
-    p.linearRampToValueAtTime(peak * os, tSpeak);
-    p.linearRampToValueAtTime(peak, tSpeak + 0.04);
-    if (opts.intoSlide) p.setValueAtTime(peak, tHoldEnd);
+    p.setValueAtTime(0.0001, when);
+    p.exponentialRampToValueAtTime(Math.max(0.0001, peak * os), speakAt);
+    if (opts.intoSlide) p.setValueAtTime(Math.max(0.0001, peak), tHoldEnd);
     else {
-      p.setValueAtTime(peak, Math.max(tSpeak + 0.02, tHoldEnd - rel));
-      p.linearRampToValueAtTime(0, tOff);
+      const relAt = Math.max(speakAt + 0.01, tHoldEnd - Math.min(rel, hold));
+      p.setValueAtTime(Math.max(0.0001, peak), relAt);
+      p.exponentialRampToValueAtTime(0.0001, tOff);
     }
   }
   envGain(bodyGain, 1);
   envGain(floorGain, dbToLin(nf.floor_db == null ? -54 : nf.floor_db));
   envGain(airGain, dbToLin(nf.air_db == null ? -50 : nf.air_db));
-  const chiffPeak = dbToLin((nf.air_db == null ? -50 : nf.air_db) + 4);
-  const tCh1 = tOn + Math.max(0.02, nf.chiff_len_s || 0.028);
-  chiffGain.gain.setValueAtTime(0, when);
-  chiffGain.gain.setValueAtTime(0, tOn);
-  chiffGain.gain.linearRampToValueAtTime(chiffPeak, tOn + (tCh1 - tOn) * 0.35);
-  chiffGain.gain.linearRampToValueAtTime(0, tCh1);
+  // A chiff on every 16th triplet is the tick. Only notes long enough to be a blow get one.
+  if (hold >= 0.16) {
+    const chiffPeak = dbToLin((nf.air_db == null ? -50 : nf.air_db) + 4);
+    const tCh1 = tOn + Math.max(0.02, nf.chiff_len_s || 0.028);
+    chiffGain.gain.setValueAtTime(0.0001, when);
+    chiffGain.gain.exponentialRampToValueAtTime(Math.max(0.0001, chiffPeak), tOn + (tCh1 - tOn) * 0.35);
+    chiffGain.gain.exponentialRampToValueAtTime(0.0001, tCh1);
+  }
 
-  osc.start(when); wander.start(when); noise.start(when); air.start(when);
+  osc.start(when); wander.start(when); const offset = Math.random() * Math.max(0, noise.buffer.duration - 0.05);
+  noise.start(when, offset); air.start(when, offset);
   if (vib) vib.start(when);
   const stopAt = tOff + 0.06;
   function stopNodes(t) {
@@ -289,10 +292,10 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
         try {
           node.gain.cancelScheduledValues(tt);
           node.gain.setValueAtTime(node.gain.value, tt);
-          node.gain.linearRampToValueAtTime(0, tt + 0.05);
+          node.gain.exponentialRampToValueAtTime(0.0001, tt + 0.06);
         } catch (e) {}
       }
-      stopNodes(tt + 0.07);
+      stopNodes(tt + 0.09);
     },
     stop(t) { this.fade(t); },
     frequency: osc.frequency,
