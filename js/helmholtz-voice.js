@@ -1,11 +1,14 @@
 /**
- * Helmholtz ocarina voice for Web Audio.
+ * Helmholtz ocarina voice. v3i replaces the tone graph.
  *
- * v3i-ladder: dry fundamental, phase-locked partials, falling air band.
- * Attack, speak, release, chiff timing, vibrato and the cut-bus are unchanged.
- * Chorus and reverb stay in audio.js.
+ * Dry sine. H2/H3/H4 are separate oscillators, slightly detuned so they
+ * drift and do not lock into a steam-horn wave. Noise is a falling floor,
+ * a narrow halo on f0, and an air band. Chiff only on the attack.
+ *
+ * Attack, speak, release, overshoot and the cut-bus are the existing
+ * envelope. Chorus and reverb stay in audio.js.
  */
-export const VOICE_REV = "v3i-ladder";
+export const VOICE_REV = "v3i";
 
 export function loadTwinModelFromObject(obj) {
   if (!obj || !Array.isArray(obj.notes) || !obj.notes.length) {
@@ -16,13 +19,7 @@ export function loadTwinModelFromObject(obj) {
     schema: obj.schema || "ocarina-twin-v2",
     instrument: obj.instrument || "",
     chamber: String(obj.chamber || "1"),
-    globals: Object.assign({
-      hiss_hp_hz: 2800,
-      chiff_q: 2.2,
-      sync_amt: 0.65,
-      drive_gain: 0.55,
-      Q_prior: 45,
-    }, obj.globals || {}),
+    globals: Object.assign({ halo_q: 7.5, chiff_q: 2.2, sync_amt: 0.35 }, obj.globals || {}),
     notes,
   };
 }
@@ -33,34 +30,27 @@ export async function loadTwinModel(url) {
 }
 
 function lerp(a, b, t) { return a + (b - a) * t; }
+function dbToLin(db) { return Math.pow(10, db / 20); }
 
 export function interpNote(model, f0) {
   const notes = model.notes;
   if (!notes.length) throw new Error("empty twin model");
   if (f0 <= notes[0].f0) return Object.assign({}, notes[0], { f0 });
-  if (f0 >= notes[notes.length - 1].f0) {
-    return Object.assign({}, notes[notes.length - 1], { f0 });
-  }
+  if (f0 >= notes[notes.length - 1].f0) return Object.assign({}, notes[notes.length - 1], { f0 });
   for (let i = 0; i < notes.length - 1; i++) {
     const a = notes[i], b = notes[i + 1];
     if (f0 > b.f0) continue;
     const t = Math.log(f0 / a.f0) / Math.log(b.f0 / a.f0);
-    const hlen = Math.max(a.h.length, b.h.length);
+    const hlen = Math.max((a.h || []).length, (b.h || []).length);
     const h = [];
-    const hPhase = [];
-    for (let k = 0; k < hlen; k++) {
-      h.push(lerp(a.h[k] || 0, b.h[k] || 0, t));
-      const pa = (a.h_phase && a.h_phase[k]) || 0;
-      const pb = (b.h_phase && b.h_phase[k]) || 0;
-      hPhase.push(lerp(pa, pb, t));
-    }
+    for (let k = 0; k < hlen; k++) h.push(lerp(a.h[k] || 0, b.h[k] || 0, t));
     const keys = [
-      "level", "Q", "noise_Q", "noise_res_db", "noise_hiss_db",
-      "noise_slope_db_oct", "atk_pre_s", "atk_speak_s", "overshoot_db",
-      "chiff_peak", "chiff_len_s", "rel_s", "wander_cents_std",
-      "wobble_pct", "wobble_hz", "air_lo_hz", "air_hi_hz",
+      "level", "Q", "noise_Q", "halo_db", "floor_db", "slope_db_oct",
+      "air_db", "air_lo_hz", "air_hi_hz", "noise_res_db", "noise_hiss_db",
+      "atk_pre_s", "atk_speak_s", "overshoot_db", "chiff_peak", "chiff_len_s",
+      "rel_s", "wander_cents_std", "wobble_pct", "wobble_hz",
     ];
-    const out = { note: null, f0, h, h_phase: hPhase, open_holes: t < 0.5 ? a.open_holes : b.open_holes };
+    const out = { note: null, f0, h, open_holes: t < 0.5 ? a.open_holes : b.open_holes };
     keys.forEach((k) => { out[k] = lerp(a[k] == null ? 0 : a[k], b[k] == null ? 0 : b[k], t); });
     return out;
   }
@@ -75,8 +65,8 @@ function noiseBuffer(ctx) {
   const d = buf.getChannelData(0);
   let acc = 0;
   for (let i = 0; i < n; i++) {
-    acc = 0.97 * acc + (Math.random() * 2 - 1);
-    d[i] = acc * 0.15;
+    acc = 0.98 * acc + (Math.random() * 2 - 1);
+    d[i] = acc * 0.12;
   }
   const k = Math.floor(ctx.sampleRate * 0.01);
   for (let i = 0; i < k; i++) {
@@ -85,22 +75,6 @@ function noiseBuffer(ctx) {
   }
   _noiseBuf = buf;
   return buf;
-}
-
-function dbToLin(db) { return Math.pow(10, db / 20); }
-
-function leanedWave(ctx, h, phase) {
-  const n = Math.max(6, (h || []).length);
-  const real = new Float32Array(n);
-  const imag = new Float32Array(n);
-  for (let k = 1; k < n; k++) {
-    const amp = h[k - 1] || 0;
-    const ph = (phase && phase[k - 1]) || 0;
-    // imag is the sine term; phase 0 is a sine, matching the cycle fit
-    real[k] = amp * Math.sin(ph);
-    imag[k] = amp * Math.cos(ph);
-  }
-  return ctx.createPeriodicWave(real, imag, { disableNormalization: true });
 }
 
 export function scheduleHelmholtzNote(ctx, dest, opts) {
@@ -119,17 +93,13 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
   out.gain.value = master;
   out.connect(dest);
 
-  // dry fundamental plus the phase-locked partials. No cavity bandpass:
-  // that filter was the low-pass muffle.
   const osc = ctx.createOscillator();
-  if (nf.h_phase) osc.setPeriodicWave(leanedWave(ctx, nf.h, nf.h_phase));
-  else osc.type = "sine";
+  osc.type = "sine";
   const startF = opts.slideFromHz && opts.slideFromHz > 0 ? opts.slideFromHz : f0;
   osc.frequency.setValueAtTime(startF, when);
   if (opts.slideFromHz && opts.slideFromHz > 0) {
     osc.frequency.exponentialRampToValueAtTime(Math.max(20, f0), when + (opts.slideSec || 0.03));
   }
-
   const wander = ctx.createOscillator();
   wander.frequency.value = Math.max(0.2, (nf.wobble_hz || 4) * 0.35);
   const wanderGain = ctx.createGain();
@@ -146,76 +116,57 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
   noise.buffer = noiseBuffer(ctx);
   noise.loop = true;
 
-  const syncOsc = ctx.createOscillator();
-  syncOsc.type = "sine";
-  syncOsc.frequency.value = f0;
-  const shaper = ctx.createWaveShaper();
-  const curve = new Float32Array(256);
-  const syncAmt = g.sync_amt == null ? 0.65 : g.sync_amt;
-  for (let i = 0; i < 256; i++) {
-    const x = (i / 255) * 2 - 1;
-    curve[i] = 0.35 + syncAmt * 0.65 * (0.5 - 0.5 * x);
-  }
-  shaper.curve = curve;
-  const syncGain = ctx.createGain();
-  syncGain.gain.value = 0;
-  syncOsc.connect(shaper);
-  shaper.connect(syncGain.gain);
-  noise.connect(syncGain);
+  const haloBp = ctx.createBiquadFilter();
+  haloBp.type = "bandpass";
+  haloBp.frequency.value = f0;
+  haloBp.Q.value = g.halo_q || 7.5;
+  const haloGain = ctx.createGain();
+  haloGain.gain.value = 0;
+  noise.connect(haloBp);
+  haloBp.connect(haloGain);
+  haloGain.connect(out);
 
-  const noiseBp = ctx.createBiquadFilter();
-  noiseBp.type = "bandpass";
-  noiseBp.frequency.value = f0;
-  noiseBp.Q.value = Math.max(4, nf.noise_Q || 12);
-  const resGain = ctx.createGain();
-  resGain.gain.value = dbToLin(nf.noise_res_db || -28);
-  syncGain.connect(noiseBp);
-  noiseBp.connect(resGain);
-  resGain.connect(bodyGain);
-
-  // air band, not a shelf. Levels still ride the existing hiss envelope.
-  const airLo = nf.air_lo_hz || g.hiss_hp_hz || 1800;
+  const airLo = nf.air_lo_hz || 1800;
   const airHi = nf.air_hi_hz || 5000;
-  const hissHp = ctx.createBiquadFilter();
-  hissHp.type = "highpass";
-  hissHp.frequency.value = airLo;
-  hissHp.Q.value = 0.7;
-  const hissLp = ctx.createBiquadFilter();
-  hissLp.type = "lowpass";
-  hissLp.frequency.value = airHi;
-  hissLp.Q.value = 0.7;
-  const hissGain = ctx.createGain();
-  hissGain.gain.value = 0;
-  syncGain.connect(hissHp);
-  hissHp.connect(hissLp);
-  hissLp.connect(hissGain);
-  hissGain.connect(out);
+  const airHp = ctx.createBiquadFilter();
+  airHp.type = "highpass";
+  airHp.frequency.value = airLo;
+  airHp.Q.value = 0.7;
+  const airLp = ctx.createBiquadFilter();
+  airLp.type = "lowpass";
+  airLp.frequency.value = airHi;
+  airLp.Q.value = 0.7;
+  const airGain = ctx.createGain();
+  airGain.gain.value = 0;
+  noise.connect(airHp);
+  airHp.connect(airLp);
+  airLp.connect(airGain);
+  airGain.connect(out);
 
   const chiffBp = ctx.createBiquadFilter();
   chiffBp.type = "bandpass";
-  chiffBp.frequency.value = f0;
+  chiffBp.frequency.value = Math.min(1800, f0 * 3);
   chiffBp.Q.value = g.chiff_q || 2.2;
   const chiffGain = ctx.createGain();
   chiffGain.gain.value = 0;
-  syncGain.connect(chiffBp);
+  noise.connect(chiffBp);
   chiffBp.connect(chiffGain);
   chiffGain.connect(out);
 
-  // old models have no phase: keep the dry partials. v3i bakes them into the wave.
+  // Separate oscillators, a fraction of a hertz off, so they do not lock.
   const partials = [];
-  if (!nf.h_phase) {
-    for (let k = 2; k < (nf.h || []).length; k++) {
-      const hk = nf.h[k - 1];
-      if (!(hk > 1e-4)) continue;
-      const p = ctx.createOscillator();
-      p.type = "sine";
-      p.frequency.value = f0 * k;
-      const pg = ctx.createGain();
-      pg.gain.value = hk;
-      p.connect(pg);
-      pg.connect(out);
-      partials.push(p);
-    }
+  const h = nf.h || [];
+  for (let k = 2; k <= 4; k++) {
+    const hk = h[k - 1] || 0;
+    if (hk < 1e-4) continue;
+    const p = ctx.createOscillator();
+    p.type = "sine";
+    p.frequency.value = f0 * k + (k - 1) * 0.35;
+    const pg = ctx.createGain();
+    pg.gain.value = hk;
+    p.connect(pg);
+    pg.connect(bodyGain);
+    partials.push(p);
   }
 
   let vib = null;
@@ -244,25 +195,24 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
     p.setValueAtTime(0, tOn);
     p.linearRampToValueAtTime(peak * os, tSpeak);
     p.linearRampToValueAtTime(peak, tSpeak + 0.04);
-    if (opts.intoSlide) {
-      p.setValueAtTime(peak, tHoldEnd);
-    } else {
+    if (opts.intoSlide) p.setValueAtTime(peak, tHoldEnd);
+    else {
       p.setValueAtTime(peak, Math.max(tSpeak + 0.02, tHoldEnd - rel));
       p.linearRampToValueAtTime(0, tOff);
     }
   }
   envGain(bodyGain, 1);
-  envGain(hissGain, dbToLin(nf.noise_hiss_db || -50));
+  envGain(haloGain, dbToLin(nf.halo_db == null ? -34 : nf.halo_db));
+  envGain(airGain, dbToLin(nf.air_db == null ? (nf.noise_hiss_db == null ? -50 : nf.noise_hiss_db) : nf.air_db));
 
-  const chiffPeak = Math.max(0, (nf.chiff_peak || 1) - 1) * dbToLin(nf.noise_res_db || -28);
-  const tCh0 = tOn;
+  const chiffPeak = Math.max(0, (nf.chiff_peak || 1) - 1) * dbToLin((nf.air_db == null ? -50 : nf.air_db) + 6);
   const tCh1 = tOn + Math.max(0.02, nf.chiff_len_s || 0.045);
   chiffGain.gain.setValueAtTime(0, when);
-  chiffGain.gain.setValueAtTime(0, tCh0);
-  chiffGain.gain.linearRampToValueAtTime(chiffPeak, tCh0 + (tCh1 - tCh0) * 0.35);
+  chiffGain.gain.setValueAtTime(0, tOn);
+  chiffGain.gain.linearRampToValueAtTime(chiffPeak, tOn + (tCh1 - tOn) * 0.35);
   chiffGain.gain.linearRampToValueAtTime(0, tCh1);
 
-  osc.start(when); wander.start(when); syncOsc.start(when); noise.start(when);
+  osc.start(when); wander.start(when); noise.start(when);
   partials.forEach((p) => p.start(when));
   if (vib) vib.start(when);
 
@@ -271,7 +221,6 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
     const tt = t != null ? t : ctx.currentTime;
     try { osc.stop(tt); } catch (e) {}
     try { wander.stop(tt); } catch (e) {}
-    try { syncOsc.stop(tt); } catch (e) {}
     try { noise.stop(tt); } catch (e) {}
     partials.forEach((p) => { try { p.stop(tt); } catch (e) {} });
     if (vib) try { vib.stop(tt); } catch (e) {}
