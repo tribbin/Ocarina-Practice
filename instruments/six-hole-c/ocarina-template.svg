@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<!-- Half vents are not drawn in this template. fingerings.json `half` is painted by js/ocarina.js as a left half-disc. Hole ids are data-hole; inkscape labels name the finger and do not match the id (L-middle-large is the left index, L-ring the left middle, thumb-6 is data-hole R-thumb). -->
+<svg
+   width="150"
+   height="150"
+   viewBox="0 0 39.687499 39.6875"
+   version="1.1"
+   id="svg1"
+   xml:space="preserve"
+   inkscape:version="1.4.4 (dcaf3e7, 2026-05-05)"
+   sodipodi:docname="ocarina-template.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"><sodipodi:namedview
+   id="namedview1"
+   pagecolor="#ffffff"
+   bordercolor="#000000"
+   borderopacity="0.25"
+   inkscape:showpageshadow="2"
+   inkscape:pageopacity="0.0"
+   inkscape:pagecheckerboard="0"
+   inkscape:deskcolor="#d1d1d1"
+   inkscape:zoom="5.6568542"
+   inkscape:cx="19.622213"
+   inkscape:cy="90.067726"
+   inkscape:window-width="3440"
+   inkscape:window-height="1369"
+   inkscape:window-x="-8"
+   inkscape:window-y="-8"
+   inkscape:window-maximized="1"
+   inkscape:current-layer="g38" />
+  <defs
+   id="defs1" />
+  <g
+   inkscape:label="Layer 1"
+   inkscape:groupmode="layer"
+   id="layer1">
+    <g
+   id="g38"
+   inkscape:label="ocarina drawing"
+   transform="matrix(0.16340482,-0.1804452,0.1804452,0.16340482,-30.215211,-36.833672)"
+   style="display:inline;opacity:1">
+      <g
+   id="g1"
+   inkscape:label="ocarina shape"
+   transform="matrix(2.8305442,2.9769702,-2.9769702,2.8305442,112.42992,-14.051267)"
+   style="display:inline"><path
+     style="opacity:1;fill:#0051f7;fill-opacity:1;stroke:#000000;stroke-width:0.48709791;stroke-dasharray:none"
+     d="M 19.92409,34.05465 C 18.414713,34.017843 17.973697,34.1292 17.698527,33.524756 17.400532,32.870174 15.620859,28.216958 13.388706,26.247516 7.6705537,21.202352 7.7553922,17.137417 7.8071347,15.614269 7.8656342,13.892214 7.8348753,8.676426 16.179492,3.9918833 c 1.722012,-0.9667115 1.76632,-3.03807046 3.638619,-3.03807048 1.837834,-2e-8 2.0945,2.05020678 3.638619,2.89676498 8.598553,4.7141297 8.47911,10.0114362 8.584317,11.7636912 0.10517,1.751641 0.09932,5.388797 -5.934836,11.057164 -1.984235,1.863951 -3.673946,6.252772 -3.956557,6.853323 -0.282612,0.600548 -0.88841,0.529894 -2.225564,0.529894 z"
+     id="path5"
+     sodipodi:nodetypes="csssssssssc"
+     transform="rotate(1.3928162,-2451.2913,561.77084)" /></g>
+      <g
+   id="g36"
+   inkscape:label="note holes"
+   transform="rotate(-1.3928156,-5380.8113,5143.0405)">
+        <g
+   id="g35"
+   inkscape:label="left fingers">
+          
+          <circle
+   style="fill:#ffffff;stroke:#111111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round"
+   id="L-middle-large"
+   cx="72.860008"
+   cy="407.30643"
+   inkscape:label="index finger"
+   class="hole"
+   data-hole="L-middle-large"
+   r="7.0573468" />
+          
+          <circle
+   style="fill:#ffffff;stroke:#111111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round"
+   id="L-ring"
+   cx="102.51302"
+   cy="403.29834"
+   inkscape:label="middle finger"
+   class="hole"
+   data-hole="L-ring"
+   r="6.9365821" />
+          
+        </g>
+        <g
+   id="g34"
+   style="opacity:1"
+   inkscape:label="right fingers">
+          
+          <g
+   id="g31"
+   inkscape:label="chamber"
+   style="display:inline;opacity:1">
+            <circle
+   style="fill:#ffffff;stroke:#111111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round"
+   id="R1-index"
+   cx="312.66171"
+   cy="352.26877"
+   inkscape:label="index finger"
+   class="hole"
+   data-hole="R1-index"
+   transform="rotate(27.446107)"
+   r="5.6208444" />
+            
+            <circle
+   style="fill:#ffffff;stroke:#111111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round"
+   id="R1-middle-large"
+   cx="265.00851"
+   cy="358.79999"
+   inkscape:label="middle finger"
+   class="hole"
+   data-hole="R1-middle-large"
+   transform="rotate(20.313996)"
+   r="3.1728613" />
+            
+            
+          </g>
+          
+        </g>
+        <circle
+   style="fill:#ffffff;stroke:#111111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round"
+   id="thumb"
+   cx="28.31868"
+   cy="434.35986"
+   r="8.1892958"
+   inkscape:label="thumb hole left"
+   class="hole"
+   data-hole="thumb" /><circle
+   style="display:inline;fill:#ffffff;stroke:#111111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round"
+   id="thumb-6"
+   cx="79.800957"
+   cy="494.06567"
+   r="8.1892958"
+   inkscape:label="thumb hole right"
+   class="hole"
+   data-hole="R-thumb" />
+      </g>
+      <g
+   id="g30"
+   transform="rotate(-42.366289,240.80816,418.44332)"
+   inkscape:label="blow holes">
+        
+        
+        
+      <rect
+   style="fill:#ffffff;stroke:#111111;stroke-width:0.8"
+   id="blow-ch1"
+   width="3.7217088"
+   height="11.253739"
+   x="44.528461"
+   y="146.01956"
+   inkscape:label="chamber"
+   class="blow"
+   data-blow="blow-ch1" /></g>
+    <path
+   style="display:none;fill:#1b1ba8;stroke:#ff0000;stroke-width:0.997742;stroke-linecap:round;stroke-linejoin:round"
+   d="M 204.1256,-2.0926042 -4.9413901,187.2311"
+   id="path4" /></g>
+  </g>
+</svg>

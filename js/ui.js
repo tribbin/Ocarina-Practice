@@ -202,7 +202,7 @@ function appendNoteCard(sheet, t, i) {
   const card = document.createElement("div");
   card.className = "card" + (ch ? " ch" + ch : "");
   card.dataset.i = String(i);
-  card.innerHTML = `<div class="compact">${ocarinaSVG(COVER[id] || [], ch)}</div>
+  card.innerHTML = `<div class="compact">${ocarinaSVG(COVER[id] || [], ch, (typeof HALF !== "undefined" && HALF && HALF[id]) || [])}</div>
     <div class="meta"><span class="nm">${spelledLabel(t)}${t.staccato ? '<span class="stac-mark" title="staccato (short, with a pause)">\u2022</span>' : ''}</span>
      <span class="dur">${durLabel(t.dur, t.dotted, t.triplet)}</span></div>`;
   sheet.appendChild(card);
@@ -294,7 +294,7 @@ function liveCardHtml(t, tokens, i) {
     const nxt = nextPitchToken(tokens, i);
     const id = nxt ? nxt.id : null;
     const ch = id ? CHAMBER[id] : 1;
-    const svg = ocarinaSVG(id ? (COVER[id] || []) : [], ch);
+    const svg = ocarinaSVG(id ? (COVER[id] || []) : [], ch, id ? ((typeof HALF !== "undefined" && HALF && HALF[id]) || []) : []);
     return `<div class="compact">
         <div class="live-oca">${svg}</div>
         <div class="rest-over">rest</div>
@@ -305,7 +305,7 @@ function liveCardHtml(t, tokens, i) {
   const id = t.id;
   if ((t.type === "note" || t.type === "tie") && NOTES.includes(id)) {
     const ch = CHAMBER[id];
-    return `<div class="compact">${ocarinaSVG(COVER[id] || [], ch)}</div>
+    return `<div class="compact">${ocarinaSVG(COVER[id] || [], ch, (typeof HALF !== "undefined" && HALF && HALF[id]) || [])}</div>
       <div class="meta"><span class="nm">${spelledLabel(t)}${t.staccato ? '<span class="stac-mark" title="staccato (short, with a pause)">\u2022</span>' : ''}</span>
         <span class="dur">${combinedDurLabel(tokens, i)}</span></div>`;
   }

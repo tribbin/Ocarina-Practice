@@ -14,7 +14,8 @@
 #   fingerings.json per instrument: s-spelled note-id grammar (ids carry an
 #     octave and never a display sharp — 'Fs4' not 'F#4', the gen_pages
 #     live-boot lesson), unique ids, non-empty display, ascending pitch
-#     order, covered arrays reference real hole names, chamber ints,
+#     order, covered and half arrays reference real hole names (a hole is
+#     never both), chamber ints,
 #     range{low,high} strings
 #   songs.json: every entry has name + body, scalar fields typed correctly
 #     (the parser owns body grammar; the slug/suffix/chain contract is not
@@ -240,6 +241,20 @@ class V:
                     for c in covered:
                         if c not in hole_names:
                             self.err(label, "unknown-hole", f"{nid} covers {c!r}")
+            half = n.get("half")
+            if half is not None:
+                if not isinstance(half, list) \
+                        or any(not isinstance(c, str) for c in half):
+                    self.err(label, "bad-half", f"{nid}")
+                elif hole_names is not None:
+                    for c in half:
+                        if c not in hole_names:
+                            self.err(label, "unknown-hole", f"{nid} half {c!r}")
+                if isinstance(covered, list) and isinstance(half, list):
+                    both = sorted(set(covered) & set(half))
+                    if both:
+                        self.err(label, "half-and-covered",
+                                 f"{nid} lists {both} as both covered and half")
         rng = d.get("range")
         if rng is not None and (not isinstance(rng, dict)
                                 or not isinstance(rng.get("low"), str)
@@ -558,6 +573,24 @@ def v7():
               GOOD_FINGERINGS.replace('"covered": ["hole-a"]',
                                       '"covered": ["ghost-hole"]'))
         expect_hits(validate(tmp), "ghost-hole", "unknown-hole")
+
+
+
+@case("half arrays must name real holes and not also be covered")
+def v7b():
+    with tempfile.TemporaryDirectory() as td:
+        tmp = good_sandbox(td)
+        write(tmp, "instruments/alpha/fingerings.json",
+              GOOD_FINGERINGS.replace(
+                  '"covered": []',
+                  '"covered": [], "half": ["ghost-hole"]'))
+        expect_hits(validate(tmp), "ghost-hole", "unknown-hole")
+        write(tmp, "instruments/alpha/fingerings.json",
+              GOOD_FINGERINGS.replace(
+                  '"covered": ["hole-a"]',
+                  '"covered": ["hole-a"], "half": ["hole-a"]',
+                  1))
+        expect_hits(validate(tmp), "hole-a", "half-and-covered")
 
 
 @case("tone present-but-corrupt caught; deliberate-absent allowed")
