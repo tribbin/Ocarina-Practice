@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- 7-hole OoT pendant. Functional holes use data-hole. The two center holes are faux and ignored in fingerings.json. Half vents are painted by js/ocarina.js. Replace this drawing freely; keep the data-hole and data-blow values. -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="200" height="120" viewBox="0 0 200 120" version="1.1" id="svg1">
+  <g id="body" inkscape:label="ocarina outline">
+    <path inkscape:label="ocarina outline" fill="#7eb0dc" stroke="#1c3348" stroke-width="1.2"
+      d="M18 62 C18 48 34 40 52 40 C78 40 96 36 118 34 C150 31 176 40 184 52 C192 64 186 78 168 82 C148 86 124 84 100 84 C70 84 40 80 26 72 C16 66 16 64 18 62 Z"/>
+    <path inkscape:label="mouthpiece" fill="#8ebbe0" stroke="#1c3348" stroke-width="1"
+      d="M168 46 C178 40 190 38 196 46 C200 52 198 64 190 68 C182 72 172 66 168 58 Z"/>
+  </g>
+  <g id="holes" inkscape:label="note holes">
+    <circle class="hole" id="R-ring" data-hole="R-ring" cx="42" cy="64" r="5.2" fill="#ffffff" stroke="#111111" stroke-width="0.8" inkscape:label="right ring subhole"/>
+    <circle class="hole" id="R1-middle" data-hole="R1-middle-large" cx="64" cy="58" r="6.2" fill="#ffffff" stroke="#111111" stroke-width="0.8" inkscape:label="right middle"/>
+    <circle class="hole" id="R1-index" data-hole="R1-index" cx="86" cy="62" r="6.6" fill="#ffffff" stroke="#111111" stroke-width="0.8" inkscape:label="right index"/>
+    <circle class="hole" id="faux-upper" data-hole="faux-upper" cx="108" cy="52" r="5.4" fill="#ffffff" stroke="#111111" stroke-width="0.8" inkscape:label="faux upper"/>
+    <circle class="hole" id="faux-lower" data-hole="faux-lower" cx="112" cy="70" r="5.4" fill="#ffffff" stroke="#111111" stroke-width="0.8" inkscape:label="faux lower"/>
+    <circle class="hole" id="L-middle" data-hole="L-ring" cx="132" cy="58" r="6.4" fill="#ffffff" stroke="#111111" stroke-width="0.8" inkscape:label="left middle"/>
+    <circle class="hole" id="L-index" data-hole="L-middle-large" cx="152" cy="64" r="7.2" fill="#ffffff" stroke="#111111" stroke-width="0.8" inkscape:label="left index"/>
+    <circle class="hole" id="thumb" data-hole="thumb" cx="78" cy="96" r="6.4" fill="#ffffff" stroke="#111111" stroke-width="0.8" inkscape:label="left thumb"/>
+    <circle class="hole" id="thumb-right" data-hole="R-thumb" cx="118" cy="96" r="6.4" fill="#ffffff" stroke="#111111" stroke-width="0.8" inkscape:label="right thumb"/>
+  </g>
+  <g id="voicing" inkscape:label="blow holes">
+    <rect class="blow" id="blow-ch1" data-blow="blow-ch1" x="186" y="48" width="4" height="12" fill="#ffffff" stroke="#111111" stroke-width="0.6" inkscape:label="chamber"/>
+  </g>
+</svg>
