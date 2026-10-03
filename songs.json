@@ -65,6 +65,12 @@
     "swing": 50,
     "body": "|[\"A\"] D6/8 B5/8 A5/2 | D6/8 B5/8 A5/2 |\nD6/8 B5/8 A5/4 B5/4 | A5/2. |\nF#5/4 F5/4 F#5/4 | C#6/8 D6/8 B5/2 |\nD6/2 D6/4 | C#6/8 B5/8 A5/2 |\n|[\"A2\"] D6/8 B5/8 A5/2 | D6/8 B5/8 A5/2 |\nD6/8 B5/8 A5/4 B5/4 | A5/2. |\nF#5/4 F5/4 F#5/4 | B5/8 C#6/8 D6/2 |\nD6/2 E6/4 | D6/2. |\n|[\"B\"] Bb5/8 Bb5/8 Bb5/4 Bb5/4 | Bb5/4 C6/4 Bb5/4 |\nBb5/8 A5/8 A5/4 C6/4 | F5/2. |\nG5/8 G5/8 G5/4 G5/4 | G5/4 A5/4 Bb5/4 |\nA5/2. | -/2. |\nBb5/8 Bb5/8 Bb5/4 Bb5/4 | Bb5/4 C6/4 Bb5/4 |\nBb5/8 A5/8 A5/4 C6/4 | F5/2. |\nG5/8 G5/8 G5/4 G5/4 | G5/4 A5/4 Bb5/4 |\nA5/2. | r/2.\n\n#track contrabass audible 100\n| D3/8 F#3/8 A3/8 r/8 A3/8 F#3/8\n| C#3/8 F3/8 A3/8 r/8 A3/8 F3/8\n| C3/8 F#3/8 A3/8 r/8 A3/8 F#3/8\n| B2/8 D3/8 G3/8 r/8 G3/8 D3/8\n| Bb3/8 D3/8 F#3/8 r/8 F#3/8 D3/8\n| A3/8 D3/8 F#3/8 r/8 F#3/8 D3/8\n| G3/8 D3/8 G3/8 r/8 G3/8 D3/8\n| A3/8 E3/8 G3/8 r/8 G3/8 E3/8\n| D3/8 F#3/8 A3/8 r/8 A3/8 F#3/8\n| C#3/8 F3/8 A3/8 r/8 A3/8 F3/8\n| C3/8 F#3/8 A3/8 r/8 A3/8 F#3/8\n| B2/8 D3/8 G3/8 r/8 G3/8 D3/8\n| Bb3/8 D3/8 F#3/8 r/8 F#3/8 D3/8\n| A3/8 D3/8 F#3/8 r/8 F#3/8 D3/8\n| G3/8 D3/8 G3/8 r/8 A3/8 E3/8\n| D3/8 F#3/8 A3/8 r/8 A3/8 F#3/8\n| Bb3/4 D4/8 F4/8 D4/8 Bb3/8\n| C3/8 Bb3/8 C4/8 E4/8 C4/8 Bb3/8\n| F3/8 A3/8 C4/8 F4/8 C4/8 A3/8\n| D3/8 F3/8 A3/8 D4/8 A3/8 F3/8\n| G3/4 Bb3/8 F4/8 Bb3/8 G3/8\n| C3/8 G3/8 Bb3/8 E4/8 Bb3/8 G3/8\n| G3/8 F3/8 A3/8 D4/8 A3/8 F3/8\n| F3/4 A3/8 Eb4/8 A3/8 F3/8\n| Bb3/4 D4/8 F4/8 D4/8 Bb3/8\n| Bb3/4 E4/8 G3/8 E4/8 Bb3/8\n| F3/8 A3/8 C4/8 F4/8 C4/8 A3/8\n| D3/8 A3/8 D4/8 F4/8 D4/8 A3/8\n| G3/4 Bb3/8 D4/8 Bb3/8 G3/8\n| F3/4 Bb3/8 D4/8 Bb3/8 F3/8\n| E3/4 Bb3/8 D4/8 Bb3/8 G3/8\n| A3/8 G3/8 C#4/8 E4/8 C#4/8 A3/8"
   },
+  "minuet-of-forest": {
+    "name": "Minuet of Forest",
+    "group": "Zelda on Alto",
+    "tempo": 100,
+    "body": "| D5/8 D6/8 B5/2\n| A5/8 B5/8 A5/2\n\n| D5/8 D6/8 B5/2\n| A5/8 B5/8 A5/2\n\n| E5/8 A5/8 G5 A5\n| G5/8t A5/8t G5/8t F#5/2\n| E5/2.\n| -/2.\n\n#track bass audible 50\n\n| r/4 E4! E4!\n| r/4 E4! E4!\n\n| r/4 E4! E4!\n| r/4 E4! E4!\n\n| r/4 E4! E4!\n| r/4 D4! D4!\n| r/4 E4! E4!\n| r/2.\n\n#track contrabass audible 50\n\n| E3 r/2\n| A3 r/2\n\n| E3/2 r/4\n| A3/2 r/4\n\n| C3/2 r/4\n| D3/2 r/4\n| E3/2.\n| -/2."
+  },
   "eponas-song-bass": {
     "name": "Epona's Song (bass)",
     "group": "Zelda on Bass",

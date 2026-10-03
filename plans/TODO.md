@@ -586,3 +586,14 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   fills the left side. Held for Robin if he wants that side flipped.
   data_validator green. No sw bump (fingerings and the template are
   DATA_NETWORK_FIRST).
+
+- **2026-10-03 (Minuet of Forest added)** —
+  Added `minuet-of-forest` to songs.json under Zelda on Alto at tempo 100.
+  The body is the supplied melody plus `#track bass audible 50` and
+  `#track contrabass audible 50`; title and tempo stay in the library
+  metadata. Eight bars of 3/4 on every stream. No sw bump: songs.json is
+  DATA_NETWORK_FIRST. Verification: data_validator, shipped_songs (the new
+  song aligns bar-for-bar), gen_pages (11 stubs, the minuet landing boots
+  with zero out-of-range marks), and a headless load of the library entry
+  (headers prepended, triplet glyph, no bad chips, bass staccato and
+  contrabass pitches present in the parsed tracks).
