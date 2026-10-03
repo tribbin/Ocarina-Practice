@@ -6,12 +6,14 @@
   },
   "system": "English pendant 6-hole plus right-ring subhole",
   "source": {
-    "chart": "7-hole scale sheet. Only A♯ is a half-hole: the right-ring tip, everything else covered.",
-    "core": "C5–D♯6 follow the shipped 6-hole English chart, right-ring open. Accidentals on that chart that were half-holed are open here; this sheet does not half them.",
-    "subhole": "A4 covers the right ring. A♯4 half-covers it. B4 opens it. From C5 up it stays open.",
-    "top": "E6 and F6 are not half-holed on this sheet. E6 keeps the 6-hole all-open fingering; F6 is the same fingering until a chart distinguishes them.",
-    "faux": "The two center front holes are decorative. They are in the SVG and ignored here.",
-    "svg_ids": "Functional ids match the 6-hole data-hole names plus R-ring. Faux holes are faux-upper and faux-lower."
+    "chart": "7-hole scale sheet is leading. A♯4 and B4 are drawn with the same coverage: four body holes and both thumbs covered, right-ring tip half. They are not different fingerings on this sheet.",
+    "subhole": "A4 fills the right ring. A♯4 and B4 half it. From C5 up it is open.",
+    "d5": "D5 covers the right middle as well. On this sheet C5 and D5 are the same fingering.",
+    "e5": "E5 opens the right middle. The other three body holes and both thumbs stay covered.",
+    "d6": "D6 covers the left middle (middle top hole) and the right thumb. Left thumb is open.",
+    "rest": "The other notes still follow the 6-hole English chart with the right ring open, until those glyphs are checked the same way.",
+    "faux": "The two center front holes are decorative and ignored.",
+    "svg_ids": "Functional ids match the 6-hole data-hole names plus R-ring."
   },
   "chambers": {
     "1": {
@@ -44,7 +46,7 @@
       "hand": "right",
       "finger": "ring",
       "chamber": 1,
-      "note": "subhole: full A4, half A♯4, open from B4 up"
+      "note": "subhole: full A4, half A♯4 and B4, open from C5 up"
     },
     "thumb": {
       "hand": "left",
@@ -113,6 +115,9 @@
         "R1-middle-large",
         "thumb",
         "R-thumb"
+      ],
+      "half": [
+        "R-ring"
       ]
     },
     {
@@ -150,6 +155,7 @@
         "L-middle-large",
         "L-ring",
         "R1-index",
+        "R1-middle-large",
         "thumb",
         "R-thumb"
       ],
@@ -175,7 +181,7 @@
       "covered": [
         "L-middle-large",
         "L-ring",
-        "R1-middle-large",
+        "R1-index",
         "thumb",
         "R-thumb"
       ],
@@ -288,7 +294,8 @@
       "display": "D₆",
       "chamber": 1,
       "covered": [
-        "thumb"
+        "L-ring",
+        "R-thumb"
       ],
       "tab": "h"
     },
