@@ -586,3 +586,12 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   fills the left side. Held for Robin if he wants that side flipped.
   data_validator green. No sw bump (fingerings and the template are
   DATA_NETWORK_FIRST).
+
+- **2026-10-03 (tick_override waits for the library tail)** —
+  tests/tick_override.py L1 failed when it read #tickMel as soon as
+  BUILTIN['song-of-time'].tick was false. initBuiltin publishes that
+  field before boot's await loadInstrument, and loadLibraryItem applies
+  the override only at the tail, so the read saw the HTML default
+  (checked). Each leg now waits until #scale holds the landed song, and
+  each leg gets its own browser context so an earlier click cannot
+  answer a later visit. Five local runs green. Test-only; no sw bump.
