@@ -11,6 +11,10 @@ range and the file paths stay there). Folder contents:
       tone.json              OPTIONAL: fitted per-chamber tone anchors
       twin_model.json        OPTIONAL: fitted Helmholtz twin model
 
+A note may list `half`: hole ids that are vented, not closed. The painter
+draws a left half-disc (the songbook glyph) and does not treat them as
+covered. A hole must not appear in both arrays. Older charts omit `half`.
+
 `instruments.json` entries may carry `"tone": "instruments/<id>/tone.json"`
 and `"twin": "instruments/<id>/twin_model.json"`.
 A missing file is normal — that ocarina then keeps the baked-in generic model

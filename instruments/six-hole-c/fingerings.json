@@ -1,0 +1,272 @@
+{
+  "instrument": "Alto C 6-hole (OcarinaSongbook chart)",
+  "range": {
+    "low": "C5",
+    "high": "E6"
+  },
+  "system": "English pendant 6-hole, OcarinaSongbook 2014 chart",
+  "source": {
+    "chart": "https://ocarinasongbook.com/fingering-charts/six-hole/six-hole-ocarina-fingering-chart.pdf",
+    "staff": "The OcarinaSongbook chart prints these an octave down (C4 on the ledger line through E5) so they stay on the staff. This instrument is an alto, so the ids are the sounding pitches, C5–E6.",
+    "diagram": "Player view. Four holes inside the body circle, two thumb holes drawn under it. Filled = covered, open ring = open, half-disc = half vent.",
+    "half": "Cs4 half-vents the right index (R1-index); Ds4 half-vents the right middle (R1-middle-large). `half` is not also in `covered`. The painter draws a left half-disc on those holes.",
+    "svg_ids": "Hole ids are the template data-hole values. L-middle-large is the left index (inkscape label), L-ring is the left middle. Right thumb element id is thumb-6; its data-hole is R-thumb."
+  },
+  "diagram": {
+    "orientation": "player view, thumbs under the body",
+    "top_left": "L-middle-large",
+    "bottom_left": "L-ring",
+    "top_right": "R1-index",
+    "bottom_right": "R1-middle-large",
+    "thumb_left": "thumb",
+    "thumb_right": "R-thumb"
+  },
+  "chambers": {
+    "1": {
+      "blow": "blow-ch1",
+      "color": "#0051f7"
+    }
+  },
+  "holes": {
+    "L-middle-large": {
+      "hand": "left",
+      "finger": "index",
+      "chamber": 1,
+      "svg_id": "L-middle-large",
+      "note": "data-hole L-middle-large; inkscape label is index finger"
+    },
+    "L-ring": {
+      "hand": "left",
+      "finger": "middle",
+      "chamber": 1,
+      "svg_id": "L-ring",
+      "note": "data-hole L-ring; inkscape label is middle finger"
+    },
+    "R1-index": {
+      "hand": "right",
+      "finger": "index",
+      "chamber": 1,
+      "svg_id": "R1-index"
+    },
+    "R1-middle-large": {
+      "hand": "right",
+      "finger": "middle",
+      "chamber": 1,
+      "svg_id": "R1-middle-large"
+    },
+    "thumb": {
+      "hand": "left",
+      "finger": "thumb",
+      "chamber": 1,
+      "svg_id": "thumb"
+    },
+    "R-thumb": {
+      "hand": "right",
+      "finger": "thumb",
+      "chamber": 1,
+      "svg_id": "thumb-6",
+      "note": "element id thumb-6, data-hole R-thumb"
+    }
+  },
+  "notes": [
+    {
+      "id": "C5",
+      "display": "C₅",
+      "tab": "w",
+      "chamber": 1,
+      "covered": [
+        "L-middle-large",
+        "L-ring",
+        "R1-index",
+        "R1-middle-large",
+        "thumb",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "Cs5",
+      "display": "C♯₅/D♭₅",
+      "tab": "e",
+      "chamber": 1,
+      "covered": [
+        "L-middle-large",
+        "L-ring",
+        "R1-middle-large",
+        "thumb",
+        "R-thumb"
+      ],
+      "half": [
+        "R1-index"
+      ]
+    },
+    {
+      "id": "D5",
+      "display": "D₅",
+      "tab": "r",
+      "chamber": 1,
+      "covered": [
+        "L-middle-large",
+        "L-ring",
+        "R1-middle-large",
+        "thumb",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "Ds5",
+      "display": "D♯₅/E♭₅",
+      "tab": "t",
+      "chamber": 1,
+      "covered": [
+        "L-middle-large",
+        "L-ring",
+        "R1-index",
+        "thumb",
+        "R-thumb"
+      ],
+      "half": [
+        "R1-middle-large"
+      ]
+    },
+    {
+      "id": "E5",
+      "display": "E₅",
+      "tab": "y",
+      "chamber": 1,
+      "covered": [
+        "L-middle-large",
+        "L-ring",
+        "R1-index",
+        "thumb",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "F5",
+      "display": "F₅",
+      "tab": "u",
+      "chamber": 1,
+      "covered": [
+        "L-middle-large",
+        "L-ring",
+        "thumb",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "Fs5",
+      "display": "F♯₅/G♭₅",
+      "tab": "i",
+      "chamber": 1,
+      "covered": [
+        "L-ring",
+        "R1-index",
+        "R1-middle-large",
+        "thumb",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "G5",
+      "display": "G₅",
+      "tab": "o",
+      "chamber": 1,
+      "covered": [
+        "L-ring",
+        "R1-middle-large",
+        "thumb",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "Gs5",
+      "display": "G♯₅/A♭₅",
+      "tab": "p",
+      "chamber": 1,
+      "covered": [
+        "L-ring",
+        "R1-index",
+        "thumb",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "A5",
+      "display": "A₅",
+      "tab": "a",
+      "chamber": 1,
+      "covered": [
+        "L-ring",
+        "thumb",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "As5",
+      "display": "A♯₅/B♭₅",
+      "tab": "s",
+      "chamber": 1,
+      "covered": [
+        "R1-middle-large",
+        "thumb",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "B5",
+      "display": "B₅",
+      "tab": "d",
+      "chamber": 1,
+      "covered": [
+        "R1-index",
+        "thumb",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "C6",
+      "display": "C₆",
+      "tab": "f",
+      "chamber": 1,
+      "covered": [
+        "thumb",
+        "R-thumb"
+      ]
+    },
+    {
+      "id": "Cs6",
+      "display": "C♯₆/D♭₆",
+      "tab": "g",
+      "chamber": 1,
+      "covered": [
+        "R1-middle-large",
+        "thumb"
+      ]
+    },
+    {
+      "id": "D6",
+      "display": "D₆",
+      "tab": "h",
+      "chamber": 1,
+      "covered": [
+        "thumb"
+      ]
+    },
+    {
+      "id": "Ds6",
+      "display": "D♯₆/E♭₆",
+      "tab": "j",
+      "chamber": 1,
+      "covered": [
+        "R1-middle-large"
+      ]
+    },
+    {
+      "id": "E6",
+      "display": "E₆",
+      "tab": "k",
+      "chamber": 1,
+      "covered": []
+    }
+  ]
+}

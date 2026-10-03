@@ -40,6 +40,8 @@ function installFingerings(fing) {
   window.DISPLAY = Object.fromEntries(fing.notes.map(n => [n.id, n.display]));
   window.CHAMBER = Object.fromEntries(fing.notes.map(n => [n.id, n.chamber]));
   window.COVER = Object.fromEntries(fing.notes.map(n => [n.id, n.covered]));
+  // Optional half-vent per note (6-hole C#/D#). Absent on every older chart.
+  window.HALF = Object.fromEntries(fing.notes.map(n => [n.id, Array.isArray(n.half) ? n.half : []]));
   // The C-major/chromatic library entries live off the loaded chart —
   // regenerate them for the newly installed instrument (never shipped data).
   refreshGeneratedScales(window.NOTES);

@@ -5,7 +5,7 @@
       "id": "ico-oak-leaf-bass-c-triple",
       "type": "Triple Bass C",
       "version": "Imperial City Oak Leaf",
-      "range": "A3–G6",
+      "range": "A3\u2013G6",
       "fingerings": "instruments/ico-oak-leaf-bass-c-triple/fingerings.json",
       "svg": "instruments/ico-oak-leaf-bass-c-triple/ocarina-template.svg",
       "twin": "instruments/ico-oak-leaf-bass-c-triple/twin_model.json"
@@ -14,7 +14,7 @@
       "id": "stein-double-alto-c",
       "type": "Double Alto C",
       "version": "Focalink Stein",
-      "range": "A4–C7",
+      "range": "A4\u2013C7",
       "fingerings": "instruments/stein-double-alto-c/fingerings.json",
       "svg": "instruments/stein-double-alto-c/ocarina-template.svg",
       "twin": "instruments/stein-double-alto-c/twin_model.json"
@@ -23,7 +23,7 @@
       "id": "oot-alto-c-12",
       "type": "Alto C 12-hole",
       "version": "Ocarina of Time",
-      "range": "A4–F6",
+      "range": "A4\u2013F6",
       "fingerings": "instruments/oot-alto-c-12/fingerings.json",
       "svg": "instruments/oot-alto-c-12/ocarina-template.svg",
       "twin": "instruments/oot-alto-c-12/twin_model.json",
@@ -39,8 +39,8 @@
     {
       "id": "ico-contrabass-11-c",
       "type": "Contrabass 11-hole C",
-      "version": "Imperial City",
-      "range": "B2–F4",
+      "version": "(dummy)",
+      "range": "B2\u2013F4",
       "fingerings": "instruments/ico-contrabass-11-c/fingerings.json",
       "svg": "instruments/ico-contrabass-11-c/ocarina-template.svg",
       "twin": "instruments/ico-contrabass-11-c/twin_model.json"
@@ -49,10 +49,19 @@
       "id": "dummy-bass-c-double",
       "type": "Double Bass C",
       "version": "(dummy)",
-      "range": "A3–C6",
+      "range": "A3\u2013C6",
       "fingerings": "instruments/dummy-bass-c-double/fingerings.json",
       "svg": "instruments/ico-oak-leaf-bass-c-triple/ocarina-template.svg",
       "twin": "instruments/dummy-bass-c-double/twin_model.json"
+    },
+    {
+      "id": "six-hole-c",
+      "type": "Alto C 6-hole",
+      "version": "(dummy)",
+      "range": "C5\u2013E6",
+      "fingerings": "instruments/six-hole-c/fingerings.json",
+      "svg": "instruments/six-hole-c/ocarina-template.svg",
+      "twin": "instruments/six-hole-c/twin_model.json"
     }
   ]
 }

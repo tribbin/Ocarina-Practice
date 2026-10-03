@@ -65,9 +65,13 @@ function installOcarinaTemplate(svgText) {
   return ok;
 }
 
-function ocarinaSVG(covered, chamber) {
+function ocarinaSVG(covered, chamber, half) {
   const big = document.getElementById("bigSmall");
+  // half is part of the memo key: two notes can share a covered set and differ
+  // only in which hole is half-vented. Empty half leaves the painted svg
+  // byte-identical to the covered-only path.
   const key = svgClock + "|" + chamber + "|" + (covered || []).join(",") + "|" +
+    (half || []).join(",") + "|" +
     (big && big.getAttribute("aria-pressed") === "true" ? "big" : "reg");
   const hit = svgHtmlCache.get(key);
   if (hit != null) return hit;
@@ -83,6 +87,7 @@ function ocarinaSVG(covered, chamber) {
     clone.setAttribute("preserveAspectRatio", "xMidYMid meet");
     tagOcarinaParts(clone);
     const set = new Set(covered || []);
+    const halfSet = new Set(half || []);
     const holes = (window.FING && FING.holes) || {};
     clone.querySelectorAll("[data-hole]").forEach(el => {
       const hid = el.getAttribute("data-hole") || "";
@@ -102,7 +107,10 @@ function ocarinaSVG(covered, chamber) {
         if (!holeCh || holeCh !== chamber) el.style.opacity = "0.25";
         return;
       }
-      el.style.fill = set.has(hid) ? "#1a120c" : "#ffffff";
+      // Half wins over covered: a finger is on the hole, but the chart vents it.
+      // The disc is painted after enlargeSmallHoles so a grown radius is the one
+      // the semicircle follows. Left half matches the songbook glyph.
+      el.style.fill = (set.has(hid) && !halfSet.has(hid)) ? "#1a120c" : "#ffffff";
       // Chamber comes from the fingering data, not the id.
       const holeCh = meta.chamber || 1;
       el.style.opacity = (holeCh === chamber) ? "1" : "0.25";
@@ -119,6 +127,7 @@ function ocarinaSVG(covered, chamber) {
     if (bigBtn && bigBtn.getAttribute("aria-pressed") === "true") {
       enlargeSmallHoles(clone);
     }
+    if (halfSet.size) paintHalfHoles(clone, halfSet);
     const html = clone.outerHTML;
     // Bulk reset instead of per-entry eviction: miss bursts re-warm a few
     // dozen entries in one render, never a pathological set of them.
@@ -130,6 +139,45 @@ function ocarinaSVG(covered, chamber) {
     d.textContent = String(e); // error text must never become live markup
     return d.innerHTML;
   }
+}
+
+
+// Left half-disc over a white hole. A path sibling, not a gradient: card svgs
+// share a document, so a url(#id) fill would collide, and a rotated hole
+// (the 6-hole right index carries a transform) needs the same transform on
+// the disc. Only half notes grow this path, so covered-only cards stay
+// byte-identical.
+function paintHalfHoles(svg, halfSet) {
+  const NS = "http://www.w3.org/2000/svg";
+  svg.querySelectorAll("[data-hole]").forEach(el => {
+    const hid = el.getAttribute("data-hole") || "";
+    if (!halfSet.has(hid)) return;
+    const tag = el.tagName.toLowerCase();
+    const cx = el.getAttribute("cx");
+    const cy = el.getAttribute("cy");
+    if (cx == null || cy == null) return;
+    let rx, ry;
+    if (tag === "circle") rx = ry = el.getAttribute("r");
+    else if (tag === "ellipse") {
+      rx = el.getAttribute("rx");
+      ry = el.getAttribute("ry");
+    } else return;
+    if (!rx || !ry) return;
+    const disc = document.createElementNS(NS, "path");
+    disc.setAttribute("d",
+      "M " + cx + " " + (+cy - +ry) + " A " + rx + " " + ry +
+      " 0 0 0 " + cx + " " + (+cy + +ry) + " Z");
+    disc.setAttribute("class", "hole-half");
+    disc.setAttribute("data-hole-half", hid);
+    disc.style.fill = "#1a120c";
+    disc.style.stroke = "none";
+    disc.style.pointerEvents = "none";
+    const tf = el.getAttribute("transform");
+    if (tf) disc.setAttribute("transform", tf);
+    el.style.fill = "#ffffff";
+    el.setAttribute("data-vent", "half");
+    el.after(disc);
+  });
 }
 
 function tagOcarinaParts(svg) {
