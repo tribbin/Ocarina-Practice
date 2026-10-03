@@ -2,6 +2,7 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <!-- Half vents are not drawn in this template. fingerings.json `half` is painted by js/ocarina.js as a left half-disc. Hole ids are data-hole; inkscape labels name the finger and do not match the id (L-middle-large is the left index, L-ring the left middle, thumb-6 is data-hole R-thumb). -->
+
 <svg
    width="150"
    height="150"
@@ -23,9 +24,9 @@
    inkscape:pageopacity="0.0"
    inkscape:pagecheckerboard="0"
    inkscape:deskcolor="#d1d1d1"
-   inkscape:zoom="5.6568542"
-   inkscape:cx="19.622213"
-   inkscape:cy="90.067726"
+   inkscape:zoom="90.509667"
+   inkscape:cx="90.984756"
+   inkscape:cy="39.272048"
    inkscape:window-width="3440"
    inkscape:window-height="1369"
    inkscape:window-x="-8"
@@ -94,24 +95,24 @@
             <circle
    style="fill:#ffffff;stroke:#111111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round"
    id="R1-index"
-   cx="312.66171"
-   cy="352.26877"
+   cx="-422.40662"
+   cy="-208.38258"
    inkscape:label="index finger"
    class="hole"
    data-hole="R1-index"
-   transform="rotate(27.446107)"
+   transform="rotate(-130.40321)"
    r="5.6208444" />
             
             <circle
    style="fill:#ffffff;stroke:#111111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round"
    id="R1-middle-large"
-   cx="265.00851"
-   cy="358.79999"
    inkscape:label="middle finger"
    class="hole"
    data-hole="R1-middle-large"
-   transform="rotate(20.313996)"
-   r="3.1728613" />
+   transform="rotate(-130.9173)"
+   r="3.1728613"
+   cy="-186.97119"
+   cx="-404.97989" />
             
             
           </g>
