@@ -36,10 +36,11 @@ handoff replaced), minute dry H2–H6 labium partials. The additive
 timbre/wind machinery in `js/audio.js` (PeriodicWave + windPark/warm/rough
 shelves + edge whistle + chiff/ot bursts, `voiceProfileFor`, `V_ANCHORS`)
 is the LEGACY voice: dormant while a twin model drives the instrument —
-every ocarina currently declares `twin` (steins and 12-hole on fitted
-ladder models, the three bass instruments on Grok's GUESSED ones —
-`guessed: true`, scaled from the measured 12-hole, placeholders until
-real held-take refits land); removal is a later cleanup on Robin's word
+every ocarina currently declares `twin` (12-hole, 6-hole, stein and the
+oak triple on fitted ladder models; the dummy double rides the oak's
+recorded chamber 1/2 fits and the contrabass is an octave-down
+extrapolation of the oak chamber 1 — placeholders until real recordings
+land); removal is a later cleanup on Robin's word
 (the additive path still backs the support red-green comparisons).
 tone.json stays on disk only while the
 additive voice still reads it: the 12-hole's was removed with its swap

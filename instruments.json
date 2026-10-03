@@ -57,7 +57,7 @@
     {
       "id": "six-hole-c",
       "type": "Alto C 6-hole",
-      "version": "(dummy)",
+      "version": "STL Plastic",
       "range": "C5\u2013E6",
       "fingerings": "instruments/six-hole-c/fingerings.json",
       "svg": "instruments/six-hole-c/ocarina-template.svg",

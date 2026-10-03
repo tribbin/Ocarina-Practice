@@ -547,3 +547,26 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   'song-of-storms') before the probe plays, per the instruments_load
   convention; 10/10 local runs green after the fix (the flake reproduced ~1/8
   before). Test-only change — no app code, no sw VERSION bump.
+
+- **2026-10-03 (6-hole STL Plastic twin lands from Robin's ladder)** —
+  Robin added research/recording/6-hole-ladder.wav (gitignored, 22 s) and
+  reported the instrument is an STL Plastic 6-hole. fit_ladder.py cut 10
+  held white-key takes (C5 D5 E5 F5 G5 A5 B5 C6 D6 E6) and wrote 17 rows to
+  instruments/six-hole-c/twin_model.json; the six chromatic half-vent
+  notes log-f interpolate between their white anchors, the same convention
+  as the 12-hole fit, and the guessed placeholder (with its "guessed"
+  flags) retires. Measured rows clamp to the -46 dB floor ceiling on every
+  note (the plastic 6-hole residual floor sits ~8 dB above the 12-hole's)
+  and 7 of the 10 measured air peaks (E5 and G5-E6, ~1.06-1.1x f0) land in
+  the note-skirt region, so their bands ride the fitter's 1.4x-f0
+  low-edge clamp — the shell class next-session.md's noise-shape work
+  targets. instruments.json
+  version "(dummy)" -> "STL Plastic"; the instruments/README census moves
+  the six-hole into the fitted-ladder group. HELD FOR ROBIN'S FIELD CHECK
+  on the audible voice. Suites: data_validator, tone_stages,
+  instruments_load (all 6 instruments boot; six-hole twin installs),
+  eslint + html-validate clean. No sw bump: twin + manifest are
+  DATA_NETWORK_FIRST data (ed7b197 precedent). Housekeeping: removed the
+  stale local __pycache__ shells under skills/tone-analysis and
+  skills/ocarina-twin/ocarina_twin that tripped tone_stages' exists()
+  guards on this machine.
