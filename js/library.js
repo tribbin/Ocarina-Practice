@@ -622,7 +622,8 @@ function loadLibraryItem(id) {
     tempo = item.tempo || tempoFromText(item.body) || 96;
     swing = item.swing != null ? item.swing : (swingFromText(item.body) || 0);
     tick = item.tick;
-    document.getElementById("src").value = withPlayHeaders(body.trim(), item.name, tempo, swing);
+    document.getElementById("src").value = withPlayHeaders(
+      body.trim(), item.name, tempo, swing, undefined, item.meter || null);
     loadedId = id;
   } else {
     const item = userLib()[id];

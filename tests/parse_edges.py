@@ -221,6 +221,15 @@ HEADERS = r"""
     wTickFresh: withPlayHeaders("# t\nC4", null, 96, 0, false),
     wt: withTempoLine("# swing 40\nC4", 80),
     wtt: withTitleAndTempo("C4", "Fresh", 120),
+    // meter is a header attribute, stored on the song and written under tempo
+    rMeter: [meterFromText("# tempo 100\n# meter 3/4\nC4"),
+             meterFromText("# tempo 100\nC4"),
+             meterFromText("# meter  6 / 8\nC4")],
+    rTitleMeter: titleFromText("# meter 3/4\n# Minuet of Forest\nC4"),
+    meterIgnored: parse("# meter 3/4\nC4 D4").map(x => x.type),
+    wMeter: withPlayHeaders("C4", "Minuet of Forest", 100, 0, null, "3/4"),
+    wMeterPreserve: withPlayHeaders("# T\n# tempo 90\n# meter 6/8\nC4", null, 100, 0),
+    wMeterOrder: withPlayHeaders("# meter 5/4\nC4", "T", 90, 10, false, "3/4"),
   };
 }
 """
@@ -565,6 +574,27 @@ def main():
                   w["wTickFresh"] == "# t\n# tempo 96\n# tick off\nC4",
                   f"explicit off adds the line where none existed: "
                   f"{w['wTickFresh']!r}")
+            check("meterFromText", w["rMeter"] == ["3/4", None, "6/8"],
+                  f"meter header reads N/N and ignores a song without one: "
+                  f"{w['rMeter']!r}")
+            check("titleFromTextMeter", w["rTitleMeter"] == "Minuet of Forest",
+                  f"a meter line must never read as the title: "
+                  f"{w['rTitleMeter']!r}")
+            check("meterLineIgnored", w["meterIgnored"] == ["note", "note"],
+                  f"'# meter' must stay an invisible comment: "
+                  f"{w['meterIgnored']!r}")
+            check("wMeter",
+                  w["wMeter"] == "# Minuet of Forest\n# tempo 100\n# meter 3/4\nC4",
+                  f"meter is written directly under tempo: {w['wMeter']!r}")
+            check("wMeterPreserve",
+                  w["wMeterPreserve"] == "# T\n# tempo 100\n# meter 6/8\nC4",
+                  f"an omitted meter keeps the leading line: "
+                  f"{w['wMeterPreserve']!r}")
+            check("wMeterOrder",
+                  w["wMeterOrder"] ==
+                  "# T\n# tempo 90\n# meter 3/4\n# swing 10\n# tick off\nC4",
+                  f"meter sits under tempo, ahead of swing and tick: "
+                  f"{w['wMeterOrder']!r}")
 
             if errs:
                 failures.append(f"page errors {errs}")
