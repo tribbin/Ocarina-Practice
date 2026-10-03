@@ -611,3 +611,12 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   shipped_songs, song_txt_roundtrip, gen_pages, eslint on the two scripts,
   and a headless load of both songs (header order, one high phrase plus one
   low phrase, bass listed under Zelda on Bass on the triple).
+
+- **2026-10-03 (tick_override waits for the library tail)** —
+  tests/tick_override.py L1 failed when it read #tickMel as soon as
+  BUILTIN['song-of-time'].tick was false. initBuiltin publishes that
+  field before boot's await loadInstrument, and loadLibraryItem applies
+  the override only at the tail, so the read saw the HTML default
+  (checked). Each leg now waits until #scale holds the landed song, and
+  each leg gets its own browser context so an earlier click cannot
+  answer a later visit. Five local runs green. Test-only; no sw bump.

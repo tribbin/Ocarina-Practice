@@ -31,6 +31,15 @@ TICK_KEY = "oco-bass-c-tick"
 from suite_server import start_server
 
 
+def landed(song):
+    # initBuiltin publishes BUILTIN during boot(), ahead of the await inside
+    # loadInstrument. The song's tick override is applied only at the tail,
+    # in loadLibraryItem, which also selects #scale. Reading #tickMel before
+    # that tail sees the HTML default (checked) and reports a false miss.
+    return ("() => { const s = document.getElementById('scale');"
+            f" return !!(s && s.value === '{song}'); }}")
+
+
 def main():
     failures = []
     httpd, port = start_server()
@@ -40,15 +49,23 @@ def main():
             browser = p.chromium.launch(
                 headless="--headed" not in sys.argv,
                 args=["--autoplay-policy=no-user-gesture-required"])
-            page = browser.new_page()
             errs = []
-            page.on("pageerror", lambda e: errs.append(str(e)))
+
+            def open_page():
+                # A fresh context per leg: localStorage is per context, and
+                # these legs each describe a visit that has not stored a
+                # preference yet. Sharing one context lets an earlier click
+                # answer a later landing.
+                ctx = browser.new_context()
+                page = ctx.new_page()
+                page.on("pageerror", lambda e: errs.append(str(e)))
+                return ctx, page
+
+            ctx, page = open_page()
 
             # L1 — the landing override applies and nothing is written
             page.goto(f"{base}/?song=song-of-time&inst=oot-alto-c-12")
-            page.wait_for_function(
-                "window.BUILTIN && window.BUILTIN['song-of-time']"
-                " && BUILTIN['song-of-time'].tick === false")
+            page.wait_for_function(landed("song-of-time"))
             checked = page.evaluate(
                 "document.getElementById('tickMel').checked")
             if checked:
@@ -58,14 +75,12 @@ def main():
             if stored is not None:
                 failures.append(f"the override must not write the "
                                 f"preference, got {stored!r}")
-            page.close()
+            ctx.close()
 
-            # L2..L5 — one lived-in session: switch, click, override amid
-            page = browser.new_page()
-            page.on("pageerror", lambda e: errs.append(str(e)))
+            # L2..L3 — one visit: the default, then the user's click
+            ctx, page = open_page()
             page.goto(f"{base}/?song=song-of-storms&inst=oot-alto-c-12")
-            page.wait_for_function(
-                "window.BUILTIN && document.getElementById('tickMel')")
+            page.wait_for_function(landed("song-of-storms"))
             # storms carries no tick declaration; nothing stored yet — the
             # in-session default (HTML checked) stands
             if not page.evaluate("document.getElementById('tickMel').checked"):
@@ -77,14 +92,12 @@ def main():
             page.wait_for_function(
                 "!document.getElementById('tickMel').checked"
                 f" && localStorage.getItem('{TICK_KEY}') === '0'")
-            page.close()
+            ctx.close()
 
             # L4 — the override amid a set preference must not eat it
-            page = browser.new_page()
-            page.on("pageerror", lambda e: errs.append(str(e)))
+            ctx, page = open_page()
             page.goto(f"{base}/?song=song-of-storms&inst=oot-alto-c-12")
-            page.wait_for_function(
-                "window.BUILTIN && document.getElementById('tickMel')")
+            page.wait_for_function(landed("song-of-storms"))
             page.click("#tickBtn")
             page.wait_for_function(
                 f"localStorage.getItem('{TICK_KEY}') === '0'")
@@ -108,27 +121,24 @@ def main():
                 " { bubbles: true })); }")
             page.wait_for_function(
                 "!document.getElementById('tickMel').checked")
-            page.close()
+            ctx.close()
 
             # L5 — the click DURING the override confirms the preference
-            page = browser.new_page()
-            page.on("pageerror", lambda e: errs.append(str(e)))
+            ctx, page = open_page()
             page.goto(f"{base}/?song=song-of-time&inst=oot-alto-c-12")
+            page.wait_for_function(landed("song-of-time"))
             page.wait_for_function(
-                "window.BUILTIN && !document.getElementById('tickMel')"
-                ".checked")
+                "() => !document.getElementById('tickMel').checked")
             page.click("#tickBtn")
             page.wait_for_function(
                 "document.getElementById('tickMel').checked"
                 f" && localStorage.getItem('{TICK_KEY}') === '1'")
-            page.close()
+            ctx.close()
 
             # L6 — the programmatic application never writes the pref
-            page = browser.new_page()
-            page.on("pageerror", lambda e: errs.append(str(e)))
+            ctx, page = open_page()
             page.goto(f"{base}/?song=song-of-storms&inst=oot-alto-c-12")
-            page.wait_for_function(
-                "window.BUILTIN && document.getElementById('tickMel')")
+            page.wait_for_function(landed("song-of-storms"))
             page.click("#tickBtn")               # user intent off
             page.wait_for_function(
                 f"localStorage.getItem('{TICK_KEY}') === '0'")
@@ -140,7 +150,7 @@ def main():
             if stored != "0":
                 failures.append(f"the programmatic application must not "
                                 f"write the preference, got {stored!r}")
-            page.close()
+            ctx.close()
 
             if errs:
                 failures.append(f"page errors: {errs}")
