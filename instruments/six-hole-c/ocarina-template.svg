@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
-<!-- Half vents are not drawn in this template. fingerings.json `half` is painted by js/ocarina.js as a left half-disc. Hole ids are data-hole; inkscape labels name the finger and do not match the id (L-middle-large is the left index, L-ring the left middle, thumb-6 is data-hole R-thumb). -->
+<!-- Half vents are not drawn in this template. fingerings.json `half` is painted by js/ocarina.js as a left half-disc. Hole ids are data-hole. Element ids name the finger: L-index (data-hole L-middle-large) and R1-index sit nearer the mouthpiece; L-middle (data-hole L-ring) and R1-middle (data-hole R1-middle-large) sit farther from it. The right thumb element id is thumb-right (data-hole R-thumb). -->
 
 <svg
    width="150"
@@ -24,9 +24,9 @@
    inkscape:pageopacity="0.0"
    inkscape:pagecheckerboard="0"
    inkscape:deskcolor="#d1d1d1"
-   inkscape:zoom="90.509667"
-   inkscape:cx="90.984756"
-   inkscape:cy="39.272048"
+   inkscape:zoom="11.313708"
+   inkscape:cx="100.36497"
+   inkscape:cy="75.085905"
    inkscape:window-width="3440"
    inkscape:window-height="1369"
    inkscape:window-x="-8"
@@ -64,7 +64,7 @@
           
           <circle
    style="fill:#ffffff;stroke:#111111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round"
-   id="L-middle-large"
+   id="L-index"
    cx="72.860008"
    cy="407.30643"
    inkscape:label="index finger"
@@ -72,15 +72,16 @@
    data-hole="L-middle-large"
    r="7.0573468" />
           
-          <circle
+          <ellipse
    style="fill:#ffffff;stroke:#111111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round"
-   id="L-ring"
+   id="L-middle"
    cx="102.51302"
    cy="403.29834"
    inkscape:label="middle finger"
    class="hole"
    data-hole="L-ring"
-   r="6.9365821" />
+   rx="7.5395856"
+   ry="6.9365821" />
           
         </g>
         <g
@@ -105,7 +106,7 @@
             
             <circle
    style="fill:#ffffff;stroke:#111111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round"
-   id="R1-middle-large"
+   id="R1-middle"
    inkscape:label="middle finger"
    class="hole"
    data-hole="R1-middle-large"
@@ -120,7 +121,7 @@
         </g>
         <circle
    style="fill:#ffffff;stroke:#111111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round"
-   id="thumb"
+   id="thumb-left"
    cx="28.31868"
    cy="434.35986"
    r="8.1892958"
@@ -128,7 +129,7 @@
    class="hole"
    data-hole="thumb" /><circle
    style="display:inline;fill:#ffffff;stroke:#111111;stroke-width:0.6;stroke-linecap:round;stroke-linejoin:round"
-   id="thumb-6"
+   id="thumb-right"
    cx="79.800957"
    cy="494.06567"
    r="8.1892958"

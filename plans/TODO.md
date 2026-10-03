@@ -570,3 +570,19 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   stale local __pycache__ shells under skills/tone-analysis and
   skills/ocarina-twin/ocarina_twin that tripped tone_stages' exists()
   guards on this machine.
+
+- **2026-10-03 (six-hole chart rows follow the new template)** —
+  The new six-hole template names the fingers on the elements: index holes
+  sit nearer the mouthpiece, middle-finger holes farther from it, same way
+  up as the OcarinaSongbook glyph (mouthpiece at the bottom). The chart had
+  those rows swapped, so every note that distinguishes index from middle
+  painted the other hole, and C#/D# half-vented the wrong right-hand hole.
+  fingerings.json now covers the songbook holes: C# half-vents the right
+  middle, D# half-vents the right index, and the diagram block records
+  top row = middle fingers. svg_id notes follow the renamed elements
+  (L-index, L-middle, R1-middle, thumb-left, thumb-right). The half-disc
+  stays the painter's left half under the template's existing -130 degree
+  hole rotation, which fills the right side of the hole; the songbook glyph
+  fills the left side. Held for Robin if he wants that side flipped.
+  data_validator green. No sw bump (fingerings and the template are
+  DATA_NETWORK_FIRST).

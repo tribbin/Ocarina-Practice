@@ -8,16 +8,16 @@
   "source": {
     "chart": "https://ocarinasongbook.com/fingering-charts/six-hole/six-hole-ocarina-fingering-chart.pdf",
     "staff": "The OcarinaSongbook chart prints these an octave down (C4 on the ledger line through E5) so they stay on the staff. This instrument is an alto, so the ids are the sounding pitches, C5–E6.",
-    "diagram": "Player view. Four holes inside the body circle, two thumb holes drawn under it. Filled = covered, open ring = open, half-disc = half vent.",
-    "half": "Cs4 half-vents the right index (R1-index); Ds4 half-vents the right middle (R1-middle-large). `half` is not also in `covered`. The painter draws a left half-disc on those holes.",
-    "svg_ids": "Hole ids are the template data-hole values. L-middle-large is the left index (inkscape label), L-ring is the left middle. Right thumb element id is thumb-6; its data-hole is R-thumb."
+    "diagram": "Same way up as the template: mouthpiece at the bottom, thumbs under the body. Filled = covered, open ring = open, half-disc = half vent. The top row (farther from the mouthpiece) is the middle fingers; the bottom row (nearer the mouthpiece) is the index fingers.",
+    "half": "Cs5 half-vents the right middle (R1-middle-large, farther from the mouthpiece); Ds5 half-vents the right index (R1-index, nearer the mouthpiece). `half` is not also in `covered`. The painter draws a left half-disc on those holes.",
+    "svg_ids": "Hole ids are the template data-hole values. L-middle-large is the left index (element id L-index, nearer the mouthpiece); L-ring is the left middle (element id L-middle). Right middle element id is R1-middle; its data-hole is R1-middle-large. Right thumb element id is thumb-right; its data-hole is R-thumb."
   },
   "diagram": {
-    "orientation": "player view, thumbs under the body",
-    "top_left": "L-middle-large",
-    "bottom_left": "L-ring",
-    "top_right": "R1-index",
-    "bottom_right": "R1-middle-large",
+    "orientation": "mouthpiece at the bottom of the drawing, thumbs under the body",
+    "top_left": "L-ring",
+    "bottom_left": "L-middle-large",
+    "top_right": "R1-middle-large",
+    "bottom_right": "R1-index",
     "thumb_left": "thumb",
     "thumb_right": "R-thumb"
   },
@@ -32,40 +32,42 @@
       "hand": "left",
       "finger": "index",
       "chamber": 1,
-      "svg_id": "L-middle-large",
-      "note": "data-hole L-middle-large; inkscape label is index finger"
+      "svg_id": "L-index",
+      "note": "data-hole L-middle-large; nearer the mouthpiece. Element id L-index."
     },
     "L-ring": {
       "hand": "left",
       "finger": "middle",
       "chamber": 1,
-      "svg_id": "L-ring",
-      "note": "data-hole L-ring; inkscape label is middle finger"
+      "svg_id": "L-middle",
+      "note": "data-hole L-ring; farther from the mouthpiece. Element id L-middle."
     },
     "R1-index": {
       "hand": "right",
       "finger": "index",
       "chamber": 1,
-      "svg_id": "R1-index"
+      "svg_id": "R1-index",
+      "note": "nearer the mouthpiece"
     },
     "R1-middle-large": {
       "hand": "right",
       "finger": "middle",
       "chamber": 1,
-      "svg_id": "R1-middle-large"
+      "svg_id": "R1-middle",
+      "note": "data-hole R1-middle-large; farther from the mouthpiece. Element id R1-middle."
     },
     "thumb": {
       "hand": "left",
       "finger": "thumb",
       "chamber": 1,
-      "svg_id": "thumb"
+      "svg_id": "thumb-left"
     },
     "R-thumb": {
       "hand": "right",
       "finger": "thumb",
       "chamber": 1,
-      "svg_id": "thumb-6",
-      "note": "element id thumb-6, data-hole R-thumb"
+      "svg_id": "thumb-right",
+      "note": "element id thumb-right, data-hole R-thumb"
     }
   },
   "notes": [
@@ -91,12 +93,12 @@
       "covered": [
         "L-middle-large",
         "L-ring",
-        "R1-middle-large",
+        "R1-index",
         "thumb",
         "R-thumb"
       ],
       "half": [
-        "R1-index"
+        "R1-middle-large"
       ]
     },
     {
@@ -107,7 +109,7 @@
       "covered": [
         "L-middle-large",
         "L-ring",
-        "R1-middle-large",
+        "R1-index",
         "thumb",
         "R-thumb"
       ]
@@ -120,12 +122,12 @@
       "covered": [
         "L-middle-large",
         "L-ring",
-        "R1-index",
+        "R1-middle-large",
         "thumb",
         "R-thumb"
       ],
       "half": [
-        "R1-middle-large"
+        "R1-index"
       ]
     },
     {
@@ -136,7 +138,7 @@
       "covered": [
         "L-middle-large",
         "L-ring",
-        "R1-index",
+        "R1-middle-large",
         "thumb",
         "R-thumb"
       ]
@@ -159,7 +161,7 @@
       "tab": "i",
       "chamber": 1,
       "covered": [
-        "L-ring",
+        "L-middle-large",
         "R1-index",
         "R1-middle-large",
         "thumb",
@@ -172,8 +174,8 @@
       "tab": "o",
       "chamber": 1,
       "covered": [
-        "L-ring",
-        "R1-middle-large",
+        "L-middle-large",
+        "R1-index",
         "thumb",
         "R-thumb"
       ]
@@ -184,8 +186,8 @@
       "tab": "p",
       "chamber": 1,
       "covered": [
-        "L-ring",
-        "R1-index",
+        "L-middle-large",
+        "R1-middle-large",
         "thumb",
         "R-thumb"
       ]
@@ -196,7 +198,7 @@
       "tab": "a",
       "chamber": 1,
       "covered": [
-        "L-ring",
+        "L-middle-large",
         "thumb",
         "R-thumb"
       ]
@@ -207,7 +209,7 @@
       "tab": "s",
       "chamber": 1,
       "covered": [
-        "R1-middle-large",
+        "R1-index",
         "thumb",
         "R-thumb"
       ]
@@ -218,7 +220,7 @@
       "tab": "d",
       "chamber": 1,
       "covered": [
-        "R1-index",
+        "R1-middle-large",
         "thumb",
         "R-thumb"
       ]
@@ -239,7 +241,7 @@
       "tab": "g",
       "chamber": 1,
       "covered": [
-        "R1-middle-large",
+        "R1-index",
         "thumb"
       ]
     },
@@ -258,7 +260,7 @@
       "tab": "j",
       "chamber": 1,
       "covered": [
-        "R1-middle-large"
+        "R1-index"
       ]
     },
     {
