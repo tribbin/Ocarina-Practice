@@ -1,13 +1,13 @@
 {
-  "instrument": "6-hole C (OcarinaSongbook chart)",
+  "instrument": "Alto C 6-hole (OcarinaSongbook chart)",
   "range": {
-    "low": "C4",
-    "high": "E5"
+    "low": "C5",
+    "high": "E6"
   },
   "system": "English pendant 6-hole, OcarinaSongbook 2014 chart",
   "source": {
     "chart": "https://ocarinasongbook.com/fingering-charts/six-hole/six-hole-ocarina-fingering-chart.pdf",
-    "staff": "Pitches are the notes printed on that chart (C4 on the ledger line through E5). A soprano pendant often sounds an octave higher; this file does not transpose.",
+    "staff": "The OcarinaSongbook chart prints these an octave down (C4 on the ledger line through E5) so they stay on the staff. This instrument is an alto, so the ids are the sounding pitches, C5–E6.",
     "diagram": "Player view. Four holes inside the body circle, two thumb holes drawn under it. Filled = covered, open ring = open, half-disc = half vent.",
     "half": "Cs4 half-vents the right index (R1-index); Ds4 half-vents the right middle (R1-middle-large). `half` is not also in `covered`. The painter draws a left half-disc on those holes.",
     "svg_ids": "Hole ids are the template data-hole values. L-middle-large is the left index (inkscape label), L-ring is the left middle. Right thumb element id is thumb-6; its data-hole is R-thumb."
@@ -70,8 +70,8 @@
   },
   "notes": [
     {
-      "id": "C4",
-      "display": "C₄",
+      "id": "C5",
+      "display": "C₅",
       "tab": "w",
       "chamber": 1,
       "covered": [
@@ -84,8 +84,8 @@
       ]
     },
     {
-      "id": "Cs4",
-      "display": "C♯₄/D♭₄",
+      "id": "Cs5",
+      "display": "C♯₅/D♭₅",
       "tab": "e",
       "chamber": 1,
       "covered": [
@@ -100,8 +100,8 @@
       ]
     },
     {
-      "id": "D4",
-      "display": "D₄",
+      "id": "D5",
+      "display": "D₅",
       "tab": "r",
       "chamber": 1,
       "covered": [
@@ -113,8 +113,8 @@
       ]
     },
     {
-      "id": "Ds4",
-      "display": "D♯₄/E♭₄",
+      "id": "Ds5",
+      "display": "D♯₅/E♭₅",
       "tab": "t",
       "chamber": 1,
       "covered": [
@@ -129,8 +129,8 @@
       ]
     },
     {
-      "id": "E4",
-      "display": "E₄",
+      "id": "E5",
+      "display": "E₅",
       "tab": "y",
       "chamber": 1,
       "covered": [
@@ -142,8 +142,8 @@
       ]
     },
     {
-      "id": "F4",
-      "display": "F₄",
+      "id": "F5",
+      "display": "F₅",
       "tab": "u",
       "chamber": 1,
       "covered": [
@@ -154,8 +154,8 @@
       ]
     },
     {
-      "id": "Fs4",
-      "display": "F♯₄/G♭₄",
+      "id": "Fs5",
+      "display": "F♯₅/G♭₅",
       "tab": "i",
       "chamber": 1,
       "covered": [
@@ -167,8 +167,8 @@
       ]
     },
     {
-      "id": "G4",
-      "display": "G₄",
+      "id": "G5",
+      "display": "G₅",
       "tab": "o",
       "chamber": 1,
       "covered": [
@@ -179,8 +179,8 @@
       ]
     },
     {
-      "id": "Gs4",
-      "display": "G♯₄/A♭₄",
+      "id": "Gs5",
+      "display": "G♯₅/A♭₅",
       "tab": "p",
       "chamber": 1,
       "covered": [
@@ -191,8 +191,8 @@
       ]
     },
     {
-      "id": "A4",
-      "display": "A₄",
+      "id": "A5",
+      "display": "A₅",
       "tab": "a",
       "chamber": 1,
       "covered": [
@@ -202,8 +202,8 @@
       ]
     },
     {
-      "id": "As4",
-      "display": "A♯₄/B♭₄",
+      "id": "As5",
+      "display": "A♯₅/B♭₅",
       "tab": "s",
       "chamber": 1,
       "covered": [
@@ -213,8 +213,8 @@
       ]
     },
     {
-      "id": "B4",
-      "display": "B₄",
+      "id": "B5",
+      "display": "B₅",
       "tab": "d",
       "chamber": 1,
       "covered": [
@@ -224,8 +224,8 @@
       ]
     },
     {
-      "id": "C5",
-      "display": "C₅",
+      "id": "C6",
+      "display": "C₆",
       "tab": "f",
       "chamber": 1,
       "covered": [
@@ -234,8 +234,8 @@
       ]
     },
     {
-      "id": "Cs5",
-      "display": "C♯₅/D♭₅",
+      "id": "Cs6",
+      "display": "C♯₆/D♭₆",
       "tab": "g",
       "chamber": 1,
       "covered": [
@@ -244,8 +244,8 @@
       ]
     },
     {
-      "id": "D5",
-      "display": "D₅",
+      "id": "D6",
+      "display": "D₆",
       "tab": "h",
       "chamber": 1,
       "covered": [
@@ -253,8 +253,8 @@
       ]
     },
     {
-      "id": "Ds5",
-      "display": "D♯₅/E♭₅",
+      "id": "Ds6",
+      "display": "D♯₆/E♭₆",
       "tab": "j",
       "chamber": 1,
       "covered": [
@@ -262,8 +262,8 @@
       ]
     },
     {
-      "id": "E5",
-      "display": "E₅",
+      "id": "E6",
+      "display": "E₆",
       "tab": "k",
       "chamber": 1,
       "covered": []

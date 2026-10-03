@@ -56,9 +56,9 @@
     },
     {
       "id": "six-hole-c",
-      "type": "6-hole C",
+      "type": "Alto C 6-hole",
       "version": "OcarinaSongbook chart",
-      "range": "C4\u2013E5",
+      "range": "C5\u2013E6",
       "fingerings": "instruments/six-hole-c/fingerings.json",
       "svg": "instruments/six-hole-c/ocarina-template.svg",
       "twin": "instruments/six-hole-c/twin_model.json"
