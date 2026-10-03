@@ -143,7 +143,8 @@
         "L-ring",
         "R1-index",
         "thumb",
-        "R-thumb"
+        "R-thumb",
+        "R-ring"
       ],
       "tab": "e"
     },
@@ -155,7 +156,6 @@
         "L-middle-large",
         "L-ring",
         "R1-index",
-        "R1-middle-large",
         "thumb",
         "R-thumb"
       ],
@@ -170,7 +170,8 @@
         "L-ring",
         "R1-middle-large",
         "thumb",
-        "R-thumb"
+        "R-thumb",
+        "R-ring"
       ],
       "tab": "t"
     },
@@ -181,9 +182,9 @@
       "covered": [
         "L-middle-large",
         "L-ring",
-        "R1-index",
         "thumb",
-        "R-thumb"
+        "R-thumb",
+        "R1-middle-large"
       ],
       "tab": "y"
     },
@@ -284,8 +285,8 @@
       "display": "C♯₆/D♭₆",
       "chamber": 1,
       "covered": [
-        "R1-index",
-        "thumb"
+        "R1-middle-large",
+        "R-thumb"
       ],
       "tab": "g"
     },
@@ -294,7 +295,6 @@
       "display": "D₆",
       "chamber": 1,
       "covered": [
-        "L-ring",
         "R-thumb"
       ],
       "tab": "h"
@@ -304,7 +304,7 @@
       "display": "D♯₆/E♭₆",
       "chamber": 1,
       "covered": [
-        "R1-index"
+        "L-middle-large"
       ],
       "tab": "j"
     },
@@ -312,7 +312,9 @@
       "id": "E6",
       "display": "E₆",
       "chamber": 1,
-      "covered": []
+      "covered": [
+        "R1-middle-large"
+      ]
     },
     {
       "id": "F6",
