@@ -69,7 +69,15 @@
     "name": "Minuet of Forest",
     "group": "Zelda on Alto",
     "tempo": 100,
+    "meter": "3/4",
     "body": "| D5/8 D6/8 B5/2\n| A5/8 B5/8 A5/2\n\n| D5/8 D6/8 B5/2\n| A5/8 B5/8 A5/2\n\n| E5/8 A5/8 G5 A5\n| G5/8t A5/8t G5/8t F#5/2\n| E5/2.\n| -/2.\n\n#track bass audible 50\n\n| r/4 E4! E4!\n| r/4 E4! E4!\n\n| r/4 E4! E4!\n| r/4 E4! E4!\n\n| r/4 E4! E4!\n| r/4 D4! D4!\n| r/4 E4! E4!\n| r/2.\n\n#track contrabass audible 50\n\n| E3 r/2\n| A3 r/2\n\n| E3/2 r/4\n| A3/2 r/4\n\n| C3/2 r/4\n| D3/2 r/4\n| E3/2.\n| -/2."
+  },
+  "minuet-of-forest-bass": {
+    "name": "Minuet of Forest (bass)",
+    "group": "Zelda on Bass",
+    "tempo": 100,
+    "meter": "3/4",
+    "body": "| D5/8 D6/8 B5/2\n| A5/8 B5/8 A5/2\n\n| D4/8 D5/8 B4/2\n| A4/8 B4/8 A4/2\n\n| E5/8 A5/8 G5 A5\n| G5/8t A5/8t G5/8t F#5/2\n| E5/2.\n| -/2.\n\n#track bass audible 50\n\n| r/4 E4! E4!\n| r/4 E4! E4!\n\n| r/4 E4! E4!\n| r/4 E4! E4!\n\n| r/4 E4! E4!\n| r/4 D4! D4!\n| r/4 E4! E4!\n| r/2.\n\n#track contrabass audible 50\n\n| E3 r/2\n| A3 r/2\n\n| E3/2 r/4\n| A3/2 r/4\n\n| C3/2 r/4\n| D3/2 r/4\n| E3/2.\n| -/2."
   },
   "eponas-song-bass": {
     "name": "Epona's Song (bass)",

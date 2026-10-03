@@ -433,6 +433,18 @@ function isTickComment(line) {
   return /^#\s*tick\s+(on|off)\s*$/i.test(String(line));
 }
 
+// Time signature lives on the song record ("meter": "3/4") and is written
+// into the editor header. It is not notation: playback still follows the
+// written durations. A line counts only when it is exactly N/N.
+function isMeterComment(line) {
+  return /^#\s*meter\s+\d+\s*\/\s*\d+\s*$/i.test(String(line));
+}
+
+function meterFromText(text) {
+  const m = String(text).match(/(^|\n)#\s*meter\s+(\d+\s*\/\s*\d+)\s*(?=\n|$)/i);
+  return m ? m[2].replace(/\s+/g, "") : null;
+}
+
 // false iff the text declares "# tick off"; null otherwise (absent OR
 // "# tick on" — on is the default and is never forced by text).
 function tickFromText(text) {
@@ -449,18 +461,22 @@ function swingFromText(text) {
   return m ? +m[1] : null;
 }
 
+function isMetaHeader(line) {
+  return isTempoComment(line) || isSwingComment(line) || isTickComment(line)
+    || isMeterComment(line);
+}
+
 function titleFromText(text) {
   const line = String(text || "").split("\n").find(l =>
-    l.startsWith("#") && !isTempoComment(l) && !isSwingComment(l)
-    && !isTickComment(l)
+    l.startsWith("#") && !isMetaHeader(l)
   );
   return line ? line.replace(/^#\s*/, "") : "";
 }
 
-function withPlayHeaders(body, name, bpm, swing, tick) {
-  // Split off the LEADING header block (title/tempo/swing/tick comment lines
-  // at the very top) from the musical body. Tempo/swing lines that appear
-  // later in the body are inline changes and must be preserved.
+function withPlayHeaders(body, name, bpm, swing, tick, meter) {
+  // Split off the LEADING header block (title/tempo/meter/swing/tick comment
+  // lines at the very top) from the musical body. Tempo/swing lines that
+  // appear later in the body are inline changes and must be preserved.
   const lines = String(body || "").split("\n");
   let h = 0;
   while (h < lines.length && lines[h].trim().startsWith("#")) h++;
@@ -471,14 +487,23 @@ function withPlayHeaders(body, name, bpm, swing, tick) {
   if (name) {
     title.push("# " + String(name).trim());
   } else {
-    const t0 = headerLines.find(
-      l => !isTempoComment(l) && !isSwingComment(l) && !isTickComment(l)
-    );
+    const t0 = headerLines.find(l => !isMetaHeader(l));
     if (t0) title.push(t0);
   }
   const t = bpm != null ? bpm : 100;
   const s = Math.max(0, +(swing != null ? swing : 0) || 0);
   const head = [...title, "# tempo " + t];
+  // meter: a string writes "# meter N/N" directly under the tempo. null
+  // keeps a leading declaration already in the text (Save File / paste).
+  // Anything else drops a stale line.
+  let meterLine = null;
+  if (typeof meter === "string" && /^\d+\/\d+$/.test(meter.trim())) {
+    meterLine = "# meter " + meter.trim();
+  } else if (meter == null) {
+    const m0 = headerLines.find(isMeterComment);
+    if (m0) meterLine = m0;
+  }
+  if (meterLine) head.push(meterLine);
   if (s > 0) head.push("# swing " + s);
   // tick: only the OPT-OUT is written (Robin, 2026-09-30) — ticking is the
   // default and "# tick on" is never enforced, so the line appears only when
@@ -503,9 +528,10 @@ function withTitleAndTempo(body, name, bpm) {
   return withPlayHeaders(body, name, bpm, swing != null ? swing : 0);
 }
 
-export { durLabel, isOutOfRange, isTickComment, isTrackHeader, octSub, parse, parseTracks,
-         pretty, rangeCheck, spelledLabel, midiOf, swingFromText, tempoFromText,
-         tickFromText, titleFromText, withPlayHeaders, withTempoLine, withTitleAndTempo };
+export { durLabel, isOutOfRange, isMeterComment, isTickComment, isTrackHeader, octSub,
+         parse, parseTracks, pretty, rangeCheck, spelledLabel, midiOf, meterFromText,
+         swingFromText, tempoFromText, tickFromText, titleFromText, withPlayHeaders,
+         withTempoLine, withTitleAndTempo };
 
 // Classic-script compat surface (tests + dev console call these by global).
 window.parse = parse; window.titleFromText = titleFromText; window.pretty = pretty;
@@ -518,3 +544,4 @@ window.withTempoLine = withTempoLine;
 window.withTitleAndTempo = withTitleAndTempo;
 window.rangeCheck = rangeCheck; window.isOutOfRange = isOutOfRange;
 window.isTickComment = isTickComment; window.tickFromText = tickFromText;
+window.isMeterComment = isMeterComment; window.meterFromText = meterFromText;

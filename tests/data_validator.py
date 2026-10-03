@@ -297,6 +297,11 @@ class V:
                     self.err("songs.json", "bad-field", f"{key}: {field} must be a number")
             if "group" in item and not isinstance(item["group"], str):
                 self.err("songs.json", "bad-field", f"{key}: group must be a string")
+            if "meter" in item and not (
+                    isinstance(item["meter"], str)
+                    and re.fullmatch(r"\d+/\d+", item["meter"])):
+                self.err("songs.json", "bad-field",
+                         f"{key}: meter must be a N/N time signature")
             # The intended-instrument declaration (Robin, 2026-09-25): a
             # song may name the ocarina it was WRITTEN for — the landing
             # stub seeds that instrument when any family member fits its
@@ -632,6 +637,11 @@ def v10():
         assert any("no-body" in e and "empty" in e for e in errs), errs
         write(tmp, "songs.json", '{"t": {"name": "T", "body": "C4", "hidden": "yes"}}')
         expect_hits(validate(tmp), "hidden", "bad-field")
+        write(tmp, "songs.json", '{"t": {"name": "T", "body": "C4", "meter": "3/4"}}')
+        errs = validate(tmp)
+        assert not any("meter" in e for e in errs), errs
+        write(tmp, "songs.json", '{"t": {"name": "T", "body": "C4", "meter": 3}}')
+        expect_hits(validate(tmp), "meter", "bad-field")
 
 
 @case("bad default id caught")

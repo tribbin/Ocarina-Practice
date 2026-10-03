@@ -23,13 +23,16 @@ pair math — this file owns general notation and conventions.
 ```
 
 - Optional fields: `swing` (0–100-ish; omit or 0 = straight; 67 ≈ triplet
-  shuffle), `hidden: true` (WIP carrier — stays in Git but hidden from the
-  dropdown until "Show hidden songs"; songs with out-of-range notes for the
-  current ocarina are auto-hidden the same way), `tick` (stores the
+  shuffle), `meter` (`"3/4"`, a `N/N` time signature stored on the record,
+  never in the body), `hidden: true` (WIP carrier — stays in Git but hidden
+  from the dropdown until "Show hidden songs"; songs with out-of-range notes
+  for the current ocarina are auto-hidden the same way), `tick` (stores the
   metronome switch with the entry; `"tick": false` makes the song load with
   the metronome off).
 - `body` carries melody only, no leading `#` headers — the loader prepends
-  `# name`, `# tempo`, and `# swing` (only when swing > 0) into the editor.
+  `# name`, `# tempo`, `# meter N/N` (only when the record has `meter`),
+  and `# swing` (only when swing > 0) into the editor. Meter is a label;
+  bar lengths still come from the written durations.
 - Load the song in the app after every edit: no out-of-range marks,
   duration glyphs match the source, `# swing` absent when 0.
 

@@ -597,3 +597,17 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   with zero out-of-range marks), and a headless load of the library entry
   (headers prepended, triplet glyph, no bad chips, bass staccato and
   contrabass pitches present in the parsed tracks).
+
+- **2026-10-03 (Minuet of Forest meter and bass arrangement)** —
+  Both minuet entries store `"meter": "3/4"` on the record. The body stays
+  notation only; load writes `# meter 3/4` on the line under `# tempo`, and
+  Save File keeps a leading meter line that is already in the text. Meter
+  is a label — durations still decide the bar. `minuet-of-forest-bass` is
+  the supplied arrangement under Zelda on Bass: the repeated phrase is an
+  octave down (D4/D5/B4, A4/B4/A4) and the tracks are unchanged. The -bass
+  key rides the alto landing page, the same grace-period rule as the other
+  family bass copies. No sw bump (js and songs.json are DATA_NETWORK_FIRST).
+  Verification: data_validator (meter must be N/N), parse_edges,
+  shipped_songs, song_txt_roundtrip, gen_pages, eslint on the two scripts,
+  and a headless load of both songs (header order, one high phrase plus one
+  low phrase, bass listed under Zelda on Bass on the triple).
