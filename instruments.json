@@ -37,6 +37,15 @@
       ]
     },
     {
+      "id": "oot-alto-c-7",
+      "type": "Alto C 7-hole",
+      "version": "Ocarina of Time",
+      "range": "A4\u2013F6",
+      "fingerings": "instruments/oot-alto-c-7/fingerings.json",
+      "svg": "instruments/oot-alto-c-7/ocarina-template.svg",
+      "twin": "instruments/oot-alto-c-7/twin_model.json"
+    },
+    {
       "id": "ico-contrabass-11-c",
       "type": "Contrabass 11-hole C",
       "version": "(dummy)",
