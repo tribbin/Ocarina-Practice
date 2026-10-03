@@ -46,8 +46,17 @@
       "twin": "instruments/oot-alto-c-7/twin_model.json"
     },
     {
+      "id": "six-hole-c",
+      "type": "Alto C 6-hole",
+      "version": "STL Plastic",
+      "range": "C5\u2013E6",
+      "fingerings": "instruments/six-hole-c/fingerings.json",
+      "svg": "instruments/six-hole-c/ocarina-template.svg",
+      "twin": "instruments/six-hole-c/twin_model.json"
+    },
+    {
       "id": "ico-contrabass-11-c",
-      "type": "Contrabass 11-hole C",
+      "type": "Contrabass C 11-hole",
       "version": "(dummy)",
       "range": "B2\u2013F4",
       "fingerings": "instruments/ico-contrabass-11-c/fingerings.json",
@@ -62,15 +71,6 @@
       "fingerings": "instruments/dummy-bass-c-double/fingerings.json",
       "svg": "instruments/ico-oak-leaf-bass-c-triple/ocarina-template.svg",
       "twin": "instruments/dummy-bass-c-double/twin_model.json"
-    },
-    {
-      "id": "six-hole-c",
-      "type": "Alto C 6-hole",
-      "version": "STL Plastic",
-      "range": "C5\u2013E6",
-      "fingerings": "instruments/six-hole-c/fingerings.json",
-      "svg": "instruments/six-hole-c/ocarina-template.svg",
-      "twin": "instruments/six-hole-c/twin_model.json"
     }
   ]
 }
