@@ -39,7 +39,7 @@
     {
       "id": "ico-contrabass-11-c",
       "type": "Contrabass 11-hole C",
-      "version": "Imperial City",
+      "version": "(dummy)",
       "range": "B2\u2013F4",
       "fingerings": "instruments/ico-contrabass-11-c/fingerings.json",
       "svg": "instruments/ico-contrabass-11-c/ocarina-template.svg",
@@ -57,7 +57,7 @@
     {
       "id": "six-hole-c",
       "type": "Alto C 6-hole",
-      "version": "OcarinaSongbook chart",
+      "version": "(dummy)",
       "range": "C5\u2013E6",
       "fingerings": "instruments/six-hole-c/fingerings.json",
       "svg": "instruments/six-hole-c/ocarina-template.svg",
