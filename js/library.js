@@ -1,6 +1,6 @@
 import { isOutOfRange, isTrackHeader, parse, swingFromText, tempoFromText,
          titleFromText, withPlayHeaders } from "./parse.js";
-import { stopMelody } from "./audio.js";
+import { resyncTrackTimes, stopMelody } from "./audio.js";
 import { render, resetLiveTab } from "./ui.js";
 import { practiceInvalidate } from "./practice.js";
 import { ensureOcarinaTemplate } from "./app.js";
@@ -556,6 +556,9 @@ function applyTempoPct(pct) {
   const fLab = document.getElementById("focusTempoVal");
   if (fEl) fEl.value = pct;
   if (fLab) fLab.textContent = pct;
+  // A live dial move re-syncs the #track ledgers against the melody's clock
+  // (the gap between the streams' next onsets must not absorb the change).
+  if (typeof resyncTrackTimes === "function") resyncTrackTimes();
 }
 
 function currentSwing() {
@@ -569,6 +572,10 @@ function applySwing(n) {
   const lab = document.getElementById("swingVal");
   if (el) el.value = String(n);
   if (lab) lab.textContent = String(n);
+  // Live swing move: same ledger re-sync as the tempo dial (the swung
+  // pair the two streams are mid-way through would otherwise keep the old
+  // split on one of them).
+  if (typeof resyncTrackTimes === "function") resyncTrackTimes();
 }
 
 // Optional per-song playback defaults live as JSON fields next to

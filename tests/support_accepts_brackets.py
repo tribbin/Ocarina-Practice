@@ -58,7 +58,7 @@ EQUIVALENCE_PAIRS = [
 # (0.92 taper), a durationless one rings the full bar span.
 ZEN_CASES = [
     (dict(name="mixed song — melody plays, supports ride the melody clock",
-          src="E5/2 [C3/2] E5/2 [~G3/2] E5/2 [E3/2] [-/2] E5/2 r/2",
+          src="# plain probe\nE5/2 [C3/2] E5/2 [~G3/2] E5/2 [E3/2] [-/2] E5/2 r/2",
           wait_ms=7800,
           support={
               "C3": dict(count=1, beats=2.0, rel=2.0),   # full slot: flows into the glide
@@ -158,26 +158,56 @@ CASES => new Promise(resolve => {
     }, 200);
   };
   enterZenFromLink();
-  setTimeout(step, 150);
+  // Boot-tail rendezvous: a fresh page's async loadLibraryItem can land after
+  // step()'s first src set and kill the probe's fresh playback mid-boot
+  // (the session-24 suite-side race family). Wait for the settled #scale
+  // library tail before the first case plays.
+  const arm = () => {
+    const s = document.getElementById('scale');
+    if (s && s.value === 'song-of-storms') return setTimeout(step, 150);
+    setTimeout(arm, 60);
+  };
+  arm();
 })
 """
 
+# The plain-gating leg. Same boot-tail rendezvous, plus the typed case's OWN
+# title as the debounce-settle rendezvous: the probe plays the case song ONLY
+# after the boot's Song of Storms (whose audible #track block carries E3 —
+# note(track): the old E3-in-plain-view flake was that track note, not a
+# bracket firing) has fully landed and the typed render has settled.
 PLAIN_DRIVER = """
-CASE => new Promise(resolve => {
-  document.getElementById('src').value = CASE.src;
-  render();
+CASE => new Promise((resolve, reject) => {
   const events = [];
-  setNoteSink((id) => { events.push({ id }); });
-  // Plain view: toggleZen's in-place branch would go to zen from the
-  // fallback-plain state; force NON-zen by exiting the fallback first.
-  if (document.body.classList.contains("zen-fallback")) toggleZen();
-  setTimeout(() => {
-    playMelody();
+  const setSrc = () => {
+    document.getElementById('src').value = CASE.src;
+    render();
+    const t0 = performance.now();
+    const armTitle = () => {
+      if (document.getElementById('title').textContent === 'plain probe') return go();
+      if (performance.now() - t0 > 8000) {
+        reject(new Error('plain leg: title never settled on "plain probe"')); return;
+      }
+      setTimeout(armTitle, 50);
+    };
+    armTitle();
+  };
+  const go = () => {
+    setNoteSink((id) => { events.push({ id }); });
     setTimeout(() => {
-      resolve({ events,
-                focus: document.getElementById('tabPanel').classList.contains('focus') });
-    }, 3000);
-  }, 150);
+      playMelody();
+      setTimeout(() => {
+        resolve({ events,
+                  focus: document.getElementById('tabPanel').classList.contains('focus') });
+      }, 3000);
+    }, 150);
+  };
+  const arm = () => {
+    const s = document.getElementById('scale');
+    if (s && s.value === 'song-of-storms') return setSrc();
+    setTimeout(arm, 60);
+  };
+  arm();
 })
 """
 

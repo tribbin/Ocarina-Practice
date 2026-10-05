@@ -1384,7 +1384,9 @@ function wireUi() {
   const swingVal = document.getElementById("swingVal");
   if (swingEl && swingVal) {
     swingEl.addEventListener("input", () => {
-      swingVal.textContent = swingEl.value;
+      // applySwing re-writes the clamped value + label AND re-syncs the
+      // #track ledgers against the melody's clock for the live move.
+      applySwing(+swingEl.value);
       persistPlayHeaders();
     });
   }
