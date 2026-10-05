@@ -67,6 +67,7 @@ session-24/26/27/28 logs):
 
 | Item | Section |
 |---|---|
+| **Lead/support desync fix — three causes measured 2026-10-05 (tempo-dial move, swing-dial move, pause/resume across an inline tempo marker; root = independent per-stream time ledgers + wall-clock parameter sampling), approach pick HELD for Robin: S1 surgical rebase (recommended) / S2 position-based speed+swing lines / S3 unified walker** | §1 |
 | **USABILITY BATCH — CLOSED ✅ 2026-09-30 (approved 2026-09-30, session-24 handoff; ALL EIGHT code items landed: `3eb740d` + `f84b564` + `46dec09` + `0588d99` + `d41563a` (coffee icon + duck glyph) + `6b1a805` (duck opaque face) + `0ba4f55` (coffee line under issues) + `6a59020` (coffee cup 2.5×, middle-aligned) + song .txt round-trip `c1ca8bc` + media-session announce/keys `01adf62` (sw oco-pwa-v77); zen-chorus audit report-only; small-screen pass complete: `d77a153` → `ed31f89` + `b666034`, Robin's three phone defects pinned at `30e496d` + `2016408` + `740d637`; Robin's 2026-09-30 field pass: all good; media-keys next/prev left unwired by his ruling)** | §1/§7/§9 |
 | HiFi stays UNPUBLISHED — the retune + favorites pass is accepted, but Robin holds publication for now (2026-09-30) | hold |
 | Shipped-songs standardization stays HELD for Robin's later-stage pass; the permalinks corpora ride his planting as always | §9 |
@@ -75,6 +76,10 @@ session-24/26/27/28 logs):
 ---
 
 ## 1. Bugs (correctness / data loss)
+
+- [ ] **Lead/support desync on live dial moves + marker-straddling pause — three causes measured, fix approach HELD for Robin (S1 recommended)** — investigation 2026-10-05 (harness-measured, recipe inlined below; probes were /tmp/opencode/sync_probe.py, transient): root = the melody and each #track stream keep INDEPENDENT absolute-time ledgers (melodyNextTime / w.nextTime), coupled only at start/resume/wrap, while tempoSpeed() and currentSwing() are sampled LIVE at each walker's own next step — any parameter change lands on each ledger at its own next onset, and the time-gap between those onsets absorbs the change permanently. Confirmed: (a) tempo-dial 100%→50% mid-song, 8th-note melody + quarter-note 'audible 50' track, 96 bpm: track lands 0.3125 s early (= 0.5-beat gap × q × Δ(1/speed)), persistent; zero-gap control (change fired with both next onsets coincident) stays locked; (b) swing 0→100 fired exactly at an odd half-beat melody position: track lands +0.1042 s late = q/6 exactly, persistent; (c) pause/resume with an inline '# tempo 120' marker sitting between the melody's next-onset position and the track's: rebaseTrackTimes (audio.js:1563) applies ONE quarterAt(w.pos96) to the whole gap instead of integrating the tempo line — track lands 0.0625 s early = 0.5 × (q_old − q_new) exactly, persistent; no-marker control stays locked. Fix options: S1 surgical — a melody-span integration helper (piecewise over the tempo line, live speed/swing, melody token spans bound the gap) feeding rebaseTrackTimes (fixes c) AND a rebase-from-melody-ledger call wired into the two dial input handlers (ui.js:1371/1386, fixes a+b); expected ≤0.35 s one-time seam from onsets already scheduled in the old regime (unavoidable without rescheduling). S2 architecture-consistent — generalize the session-24 position-based tempo line into speedAt(pos)/swingAt(pos) lines, dial change appends an entry at the melody's next-onset position, T(P) single-valued by construction. S3 long-term — one unified walker with per-stream lanes (the support-plan pattern); parked. HELD: Robin picks the approach, then red-first — transport_schedule gains the three legs above (probe recipe: setNoteSink capture with gain split, pair each track onset to the nearest melody onset, split buckets at the perturbation ctx-time; legs (a) gate on OCA_DEBUG.melodyPos96()%96===48, (c) pauses when melodyPos96===720 against the marker at beat 8). Doc-only transients, no fix owed: onsets due inside the resume lead window clamp to now+0.02 (one-note bunch, self-heals); main-thread stall past SCHED_AHEAD (spike-watch territory); the first-note "hurries" field symptom now has a likely mechanism — a suspended-ctx start computes startWhen off the frozen clock, so after resume() the first onsets clamp to a 20 ms lead instead of 50 ms (harness never reproduces it because its ctx never suspends). Also documented, not lead/support desync: bracket supports ride melody pivots so they cannot desync, but their open-span durations divide by tempoSpeed() while their bounded holds don't (audio.js:1366/1413 vs 1415) — inconsistent under the dial. `🟧 🟠 ⚙M`
+
+- [ ] **Track-walker data edges: bad-chip start offset + unequal loop totals (user-typed data only)** — alignTracksToBeats (audio.js:1468) burns 0 grid beats on 'bad' chips while the live track walker burns tokenGridBeats (1 beat, the music-math fallback): a mid-song start (token click, practice→play swap) past a bad chip in a track plays that track's content k beats early, k = chips before the start point — measured: quarter-note melody, 8th-note track with 'zz' in bar 1, start at beat 2.0 anchors B4 where a from-0 run plays G4; the onsets stay on the shared clock so onset-time suites are blind to it (pitch-aware check needed). One-line fix: count bad tokens as 1 beat in the alignment walk. Separate edge: a user track whose live total ≠ the melody's total drifts per loop wrap while looping (shipped songs are pinned bar-for-bar by shipped_songs; user text is unchecked — a totals chip/warning is a feature call, not owed). No shipped song or shipped data is affected. `🟨 ⚪ ⚙S`
 
 ## 2. Robustness / error handling
 
@@ -620,3 +625,36 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   (checked). Each leg now waits until #scale holds the landed song, and
   each leg gets its own browser context so an earlier click cannot
   answer a later visit. Five local runs green. Test-only; no sw bump.
+
+- **2026-10-05 (lead/support desync investigation — three causes confirmed by measurement, held for Robin's approach pick)** —
+  Robin asked for all possible causes + solutions of lead/support out-of-sync (pause/play,
+  tempo, swing). Root: melody and each #track stream keep independent absolute-time
+  ledgers (melodyNextTime / w.nextTime), coupled only at start/resume/loop-wrap, while
+  tempoSpeed() and currentSwing() are sampled live at each walker's own next step. Harness
+  probes (8th-note melody + quarter-note 'audible 50' track, 96 bpm, setNoteSink gain split,
+  track onsets paired to nearest melody onset): (a) tempo dial 100%→50% fired at an odd
+  half-beat — track permanently 0.3125 s early = 0.5-beat gap × q × Δ(1/speed); fired at a
+  zero-gap beat start — locked (control). (b) swing 0→100 fired at an odd half-beat — track
+  permanently +0.1042 s late = q/6 exactly. (c) pause/resume with '# tempo 120' at beat 8
+  and pause while the melody's next onset sits at 7.5 — rebaseTrackTimes applies one
+  quarterAt(w.pos96) to the whole 7.5→8.0 gap, so the track lands 0.0625 s early =
+  0.5 × (0.625−0.500) exactly; no-marker pause — locked (control). Data edges (user text
+  only): alignTracksToBeats burns 0 grid on bad chips, the live walker burns 1 — a
+  mid-song start past a chip plays the track's content k beats early (measured B4 where a
+  from-0 run plays G4; onsets stay clock-locked, onset-time suites are blind); a user
+  track whose total ≠ the melody's drifts per loop wrap (shipped songs pinned by
+  shipped_songs). Transients (self-healing, no fix owed): resume clamps onsets due inside
+  the 50 ms lead window to now+0.02 (one-note bunch); dial-change seam ≤ 0.35 s from
+  onsets already scheduled in the old regime; main-thread stall past SCHED_AHEAD
+  (spike-watch territory). The held first-note "hurries" now has a likely mechanism: a
+  suspended-ctx start computes startWhen off the frozen clock, so first onsets clamp to a
+  20 ms lead (harness ctx never suspends — why it stayed unreproducible). Ruled out:
+  bracket supports (anchored to melody pivots; only their duration semantics are
+  inconsistent under the dial — open spans ÷ tempoSpeed, bounded holds not), the tick
+  (melody ledger), duck (gain only), song load / text edit / instrument switch (stop +
+  restart). Fix options: S1 surgical = tempo-line span integration helper feeding
+  rebaseTrackTimes + rebase-from-melody-ledger on the two dial input handlers (ui.js
+  1371/1386), ~⚙M, red-first via the three probe legs; S2 = position-based
+  speedAt(pos)/swingAt(pos) lines generalizing the session-24 tempo line; S3 = one
+  unified walker with lanes, parked. Boarded in §1 ×2; hot list refreshed. No app code
+  touched; branch fix-support-track-sync at main's tip, ready for the fix.
