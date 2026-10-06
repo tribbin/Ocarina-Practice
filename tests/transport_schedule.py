@@ -39,6 +39,11 @@
 #      Each new leg pairs every track onset with the nearest melody onset and
 #      asserts the delta stays under tolerance before AND after the
 #      perturbation (the pre-bucket is the harness's own control).
+#   10. A live tempo-dial move UP from the 10% floor is heard within the
+#      scaled remainder of the MELODY's own pending onset, not one whole
+#      stale slow step of mostly silence: the dial handlers must re-scale
+#      melodyNextTime by the speed ratio (the resyncTrackTimes family,
+#      aimed at the melody's own ledger this time).
 #
 #   python3 tests/transport_schedule.py      # headless & silent
 
@@ -681,6 +686,104 @@ def main():
             res = page.evaluate(REBASE_DRIVER, MARKER_SONG)
             check_lock(failures, "marker-rebase lock", res)
 
+            # ---------- 10: melody pickup across a dial move up from the floor ----------
+            print('== melody pickup across a dial move up from 10%', flush=True)
+            # The dial starts at the 10% floor BEFORE playback, so one melody
+            # step at these quarters is 6.25 s (0.625 s quarter / 0.1 speed):
+            # when the dial jumps back to 100% at ~1.6 s the pending next
+            # onset is frozen up to ~4.7 s out under the old schedule — the
+            # stale silence of Robin's field report. The rebase must scale
+            # that remainder by the speed ratio (10%→100% = one tenth), not
+            # leave it to play out; the 100% regime must hold afterwards.
+            RESP_SONG = ("# T3 dial pickup\n"
+                         "# tempo 96\n"
+                         "| C5/4 D5/4 E5/4 F5/4\n"
+                         "| G5/4 A5/4 B5/4 C6/4")
+            res = page.evaluate("""
+              (SRC) => new Promise((resolve, reject) => {
+                const notes = [];
+                let changeAt = 0;
+                setNoteSink((id, when, dur, s, i, g) =>
+                  notes.push({ id: id, when: when, g: g }));
+                const title = String(SRC).split("\\n")[0].replace(/^#\\s*/, "");
+                document.getElementById('src').value = SRC;
+                render();
+                const t0 = Date.now();
+                const arm = () => {
+                  if (document.getElementById('title').textContent !== title) {
+                    if (Date.now() - t0 > 4000) { reject(new Error("pickup: title never matched")); return; }
+                    setTimeout(arm, 30);
+                    return;
+                  }
+                  const d = document.getElementById('tempo');
+                  d.value = '10';
+                  d.dispatchEvent(new Event('input'));
+                  playMelody(0);
+                  const c0 = audioCtx.currentTime;
+                  const fire = () => {
+                    const cur = audioCtx.currentTime;
+                    if (!changeAt && cur > c0 + 1.6) {
+                      changeAt = cur;
+                      d.value = '100';
+                      d.dispatchEvent(new Event('input'));
+                    }
+                    if (!changeAt && cur > c0 + 12) { reject(new Error('pickup: move window missed')); return; }
+                    if (!changeAt && cur > c0 + 40) { reject(new Error('pickup: never moved')); return; }
+                    if (changeAt) {
+                      // Collect on the song's own auto-stop: the whole
+                      // schedule must complete in either regime, so the
+                      // 8-onset count stays a pollution detector.
+                      if (!isMelodyPlaying() && !isMelodyPaused()) {
+                        d.value = '100';
+                        d.dispatchEvent(new Event('input'));
+                        setNoteSink(null);
+                        setTimeout(() => resolve({
+                          changeAt: changeAt,
+                          notes: notes.filter(n => n.g === 1).sort((a, b) => a.when - b.when)
+                        }), 150);
+                        return;
+                      }
+                      if (cur > c0 + 40) { reject(new Error('pickup: never stopped')); return; }
+                    }
+                    setTimeout(fire, 5);
+                  };
+                  fire();
+                };
+                arm();
+              })
+            """, RESP_SONG)
+            nn = res["notes"]
+            if len(nn) != 8:
+                failures.append(
+                    f"dial-pickup leg: expected 8 melody onsets, got {len(nn)}")
+            elif nn[1]["when"] < res["changeAt"]:
+                failures.append(
+                    f"dial-pickup leg: the second melody onset landed "
+                    f"{res['changeAt'] - nn[1]['when']:.3f}s BEFORE the "
+                    "move-window fired — the 10% floor did not pace the "
+                    "pending step (or the move missed its window): harness "
+                    "problem, not the change")
+            else:
+                lead = nn[1]["when"] - res["changeAt"]
+                if lead > 0.9:
+                    failures.append(
+                        f"dial-pickup leg: the first onset after the move "
+                        f"back to 100% landed {lead:.3f}s later (want ≤0.9s "
+                        "— the stale low-dial step's remainder must be "
+                        "re-scaled by the speed ratio, not left to play out)")
+                elif lead < 0.02:
+                    failures.append(
+                        f"dial-pickup leg: the moved onset came {lead:.3f}s "
+                        f"at/before the move itself — the rebase must keep "
+                        "the scaled remainder, not jump the phase")
+                bad = [b["when"] - a["when"] for a, b in zip(nn[1:], nn[2:])
+                       if not (0.5 < b["when"] - a["when"] < 0.75)]
+                if bad:
+                    failures.append(
+                        f"dial-pickup leg: post-move onset gaps {bad} — the "
+                        "new 100% regime must hold at 0.625s steps after the "
+                        "rebase")
+
             print('== closing browser', flush=True)
             if errs:
                 failures.append(f"page errors {errs}")
@@ -693,12 +796,14 @@ def main():
         for f in failures:
             print("  - " + f)
         return 1
-    print("\nPASS: scheduler arithmetic (events, durations, onset gaps, grid, "
-          "auto-stop), loop-parity replay, cut-bus generation lifecycle with "
-          "no zombies, the Lite voice leaves layers out of the build, and the "
-          "named #track stream stays phase-locked to the melody clock across "
-          "a pause/resume, a mid-song tempo-marker change, a live tempo-dial "
-          "move, a live swing move and a marker-straddling resume.")
+        print("\nPASS: scheduler arithmetic (events, durations, onset gaps, grid, "
+              "auto-stop), loop-parity replay, cut-bus generation lifecycle with "
+              "no zombies, the Lite voice leaves layers out of the build, the "
+              "named #track stream stays phase-locked to the melody clock across "
+              "a pause/resume, a mid-song tempo-marker change, a live tempo-dial "
+              "move, a live swing move and a marker-straddling resume, and the "
+              "melody's own pending onset re-scales with a dial move up from "
+              "the 10% floor so the pickup is heard within the remainder.")
     return 0
 
 

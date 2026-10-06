@@ -1,6 +1,6 @@
 import { isOutOfRange, isTrackHeader, parse, swingFromText, tempoFromText,
          titleFromText, withPlayHeaders } from "./parse.js";
-import { resyncTrackTimes, stopMelody } from "./audio.js";
+import { resyncTrackTimes, resyncMelodyTempo, stopMelody } from "./audio.js";
 import { render, resetLiveTab } from "./ui.js";
 import { practiceInvalidate } from "./practice.js";
 import { ensureOcarinaTemplate } from "./app.js";
@@ -556,8 +556,12 @@ function applyTempoPct(pct) {
   const fLab = document.getElementById("focusTempoVal");
   if (fEl) fEl.value = pct;
   if (fLab) fLab.textContent = pct;
-  // A live dial move re-syncs the #track ledgers against the melody's clock
-  // (the gap between the streams' next onsets must not absorb the change).
+  // A live dial move re-scales the melody's own pending onset FIRST (the
+  // from-speed's mirror lives beside it — a range input's value is already
+  // the new one when its input event fires, so the DOM cannot supply the
+  // from-value), then re-anchors the #track ledgers — they must derive
+  // from the melody's moved anchor, not the frozen pre-move one.
+  if (typeof resyncMelodyTempo === "function") resyncMelodyTempo();
   if (typeof resyncTrackTimes === "function") resyncTrackTimes();
 }
 

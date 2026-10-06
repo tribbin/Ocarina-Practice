@@ -1620,6 +1620,33 @@ function fireSupportEvent(e, when) {
     rebaseTrackTimes(melodyNextTime);
   }
 
+  // The tempo-dial mirror of resyncTrackTimes, aimed at the melody's OWN
+  // ledger: its pending onset (melodyNextTime) was paced under the dial
+  // speed of the step that set it, and the absolute time stays frozen
+  // until it arrives — at the dial's low end a move back up would wait
+  // out one whole stale step of mostly silence before the new tempo is
+  // audible. Scale the remaining wait by the ratio between the paced
+  // speed and the dial's new one — exact for the dial, since the pending
+  // distance is beats × quarter / speed and only the speed changes: the
+  // next onset keeps its grid phase and the pickup lands inside the
+  // scaled remainder. Runs BEFORE resyncTrackTimes so the streams
+  // re-anchor from the moved anchor. The mirror below is the speed the
+  // pending distance last paced under: adopted at every transport
+  // (re)start (scheduleMelody's seed resets melodyNextTime, so the old
+  // pacing dies with it) and every time this runs; a range input's
+  // value arrives with the event already holding the new speed, so the
+  // DOM cannot supply the from-side.
+  let tempoDialSpeed = 1;
+  function resyncMelodyTempo() {
+    const speed = tempoSpeed();
+    const ratio = tempoDialSpeed / speed;
+    tempoDialSpeed = speed; // the ledger adopts the new pacing from here on
+    if (!melodyPlaying || !audioCtx || Math.abs(ratio - 1) < 1e-6) return;
+    const now = audioCtx.currentTime;
+    if (melodyNextTime <= now) return;
+    melodyNextTime = Math.max(now + 0.02, now + (melodyNextTime - now) * ratio);
+  }
+
 
 // ---- shared highlight plan ------------------------------------------------
 // Every scheduled token used to carry its OWN setTimeout for highlightToken —
@@ -1677,7 +1704,12 @@ function scheduleMelody(when) {
   if (!melodyPlaying) return;
   walkTrackStreams(); // every tick: the named tracks push their due notes too
   // First call after (re)start seeds the clock from the passed absolute time.
-  if (when != null) melodyNextTime = when;
+  if (when != null) {
+    melodyNextTime = when;
+    // The pending-onset pacing mirror dies with the transported ledger: a
+    // (re)seeded melodyNextTime is paced from now on by the live dial.
+    tempoDialSpeed = tempoSpeed();
+  }
   pruneBag(melodyBag);
   while (melodyNextTime < audioCtx.currentTime + SCHED_AHEAD) {
     let atBar = (melodyIdx === melodyFrom);
@@ -1745,7 +1777,7 @@ function scheduleMelody(when) {
       fireDueSupport(melodyIdx, noteWhen);
       // Tempo dial: % of the song's own speed, live — mid-song slider
       // moves apply to upcoming notes of EVERY stream (the dial handlers
-      // re-sync the track ledgers, see resyncTrackTimes).
+      // rescale the melody's own pending onset too, see resyncMelodyTempo).
       const step = stepSec(tok, melodyPos96);
     melodyPos96 += Math.round(tokenGridBeats(tok) * 96);
     const pitched = (tok.type === "note" || tok.type === "tie") && NOTES.includes(tok.id);
@@ -1788,7 +1820,7 @@ function scheduleMelody(when) {
 export { AUDIO_DEFAULTS, audioCtx, audioPerfReset, audioPerfSnapshot, cutLive, freqOf,
          getReverbBus, installTwinModel, isMelodyPaused, isMelodyPlaying, liteMode,
          melodyDuckOn, pauseMelody, perf, playMelody, playNote, playNoteAt, quarterSecFor,
-         resyncTrackTimes, resumeMelody, reverbEnabled, setBassEnabled, setMelodyDuck,
+         resyncTrackTimes, resyncMelodyTempo, resumeMelody, reverbEnabled, setBassEnabled, setMelodyDuck,
          setPerfAlertListener, setReverbEnabled,
          setVibratoEnabled, soundingGridBeats, stopMelody, syncTransport,
          sysSoundUntilSec, tokenGridBeats, swungBeats, lastHoldIndex, togglePlayPause,
