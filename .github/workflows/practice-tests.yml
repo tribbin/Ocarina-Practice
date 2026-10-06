@@ -67,6 +67,8 @@ jobs:
         run: python tests/parse_edges.py
       - name: Run song .txt round-trip tests
         run: python tests/song_txt_roundtrip.py
+      - name: Run song .txt file-loader tests
+        run: python tests/song_files.py
       - name: Run media-session announce tests
         run: python tests/media_session.py
       - name: Run render-behavior pin

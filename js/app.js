@@ -1,7 +1,8 @@
 import { titleFromText } from "./parse.js";
 import { installOcarinaTemplate, invalidateSvgHtml } from "./ocarina.js";
 import { installTwinModel, isMelodyPlaying } from "./audio.js";
-import { BUILTIN, fillLibrary, initBuiltin, loadedLibraryId, loadLibraryItem,
+import { BUILTIN, builtinFileBodies, fillLibrary, initBuiltin, loadedLibraryId,
+         loadLibraryItem, materializeFileBodies,
          markUrlLanded, refreshGeneratedScales, rewriteLanderUrl,
          songFitsChart, syncLibraryMenu, userLib, wireLibrary } from "./library.js";
 import { buildKB, enterZenFromLink, render, setAppCss, wireUi } from "./ui.js";
@@ -345,7 +346,14 @@ async function boot() {
     songsText = JSON.stringify(songs); // the resume-freshness comparator
     manifestText = JSON.stringify(manifest); // the instrument comparator
     initBuiltin(songs);
-    await loadInstrument(chosen);
+    // Song .txt bodies (board §5 2026-10-07): materialize beside the first
+    // instrument install — the library fill and every songRange read run
+    // after both complete; the generated scale entries refresh off the
+    // chart mid-install and mutate the BUILTIN materialize leaves intact
+    // (no object replacement).
+    const [fileBodies] = await Promise.all([
+      builtinFileBodies(songs), loadInstrument(chosen)]);
+    materializeFileBodies(fileBodies);
     fillInstrumentSelect(chosen.id);
     wireInstrumentPicker();
     wireLibrary();
@@ -415,10 +423,16 @@ async function refreshSongsOnResume() {
   songsRefreshBusy = true;
   try {
     const next = await loadJson("songs.json");
-    const nextText = JSON.stringify(next);
+    // The .txt bodies ride the same freshness check (Robin 2026-10-07: an
+    // updated song must reach players, never a stale cache) — a body-only
+    // edit leaves songs.json's own text unchanged, so the freshness token
+    // is the data AND the fetched file bodies together.
+    const bodies = await builtinFileBodies(next);
+    const nextText = JSON.stringify(next) + "\u0000" + JSON.stringify(bodies);
     if (!nextText || nextText === songsText) return;
     songsText = nextText;
     initBuiltin(next);
+    materializeFileBodies(bodies);
     if (window.NOTES && window.NOTES.length) refreshGeneratedScales(window.NOTES);
     fillLibrary();
   } catch (e) {} finally { // offline / transient data hiccup: try again later
@@ -507,7 +521,7 @@ window.addEventListener("load", () => {
   try { navigator.serviceWorker.register("sw.js").catch(() => {}); } catch (e) {}
 });
 
-export { applyTheme, currentSongId, currentTemplatePath, ensureOcarinaTemplate };
+export { applyTheme, currentSongId, currentTemplatePath, ensureOcarinaTemplate, loadText };
 window.applyTheme = applyTheme; window.currentSongId = currentSongId;
 window.currentSongTitle = currentSongTitle; window.loadText = loadText;
 window.switchInstrument = switchInstrument; window.installFingerings = installFingerings;
