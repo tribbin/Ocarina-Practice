@@ -241,6 +241,44 @@ function quarterAt(pos96) {
   return q;
 }
 
+// One scheduler step in seconds: the swung grid beats of `tok` at grid
+// position `pos96`, times the song's quarter there, divided by the live
+// tempo dial. The melody walker, every track walker and the clock-span
+// integration all share this one rule, so a parameter read (tempo dial,
+// swing) lands on every stream identically when it is taken live.
+function stepSec(tok, pos96) {
+  return Math.max(0.001, swungBeats(tok, pos96) * quarterAt(pos96) / tempoSpeed());
+}
+
+// Signed seconds from grid position a96 to b96 along the melody's token
+// spans, measured under the CURRENT clock parameters: each melody token
+// occupies its grid span and costs exactly one stepSec, so the part of a
+// span inside [a96, b96] costs the matching fraction of that step. The
+// integral is piecewise over the tempo line — a '# tempo' marker inside
+// the interval is honored, which a flat offBeats × quarterAt(end) cannot
+// be. Positions clamp to the song's grid (a track total that outruns the
+// melody cannot stretch the span); the intervals this serves are bounded by
+// one step of either stream, so one pass over the tokens suffices.
+function melodySpanSec(a96, b96) {
+  if (!melodyTokens.length || a96 === b96) return 0;
+  const sign = b96 > a96 ? 1 : -1;
+  const lo = Math.min(a96, b96);
+  const hi = Math.max(a96, b96);
+  let pos = 0;
+  let span = 0;
+  for (const t of melodyTokens) {
+    const w96 = Math.round(tokenGridBeats(t) * 96);
+    if (w96 <= 0) continue;
+    const s0 = pos;
+    const s1 = pos + w96;
+    const overlap = Math.min(s1, hi) - Math.max(s0, lo);
+    if (overlap > 0) span += (overlap / w96) * stepSec(t, s0);
+    pos = s1;
+    if (pos >= hi) break;
+  }
+  return sign * span;
+}
+
 // tokenGridBeats and quarterSecFor ride the music-math import — the
 // binding names keep the windowed compat surface and the ESM export list.
 
@@ -1518,8 +1556,7 @@ function fireSupportEvent(e, when) {
       const tok = w.tokens[w.idx];
       const start96 = w.pos96;
       const noteWhen = Math.max(w.nextTime, audioCtx.currentTime + 0.02);
-      const step = Math.max(0.001, swungBeats(tok, start96) * quarterAt(start96) /
-                    tempoSpeed());
+      const step = stepSec(tok, start96);
       w.pos96 += Math.round(tokenGridBeats(tok) * 96);
       const zen = w.zone === "zen";
       const gated = zen && (!(typeof isFocusMode === "function") || !isFocusMode() ||
@@ -1559,12 +1596,28 @@ function fireSupportEvent(e, when) {
   // beat offset from the melody's next note: a track whose next onset is a
   // beat ahead must stay a beat ahead. Collapsing both streams' next onsets
   // onto one anchor (the old behavior) shifts the whole track by that beat
-  // gap for the rest of the song.
+  // gap for the rest of the song. The offset is integrated piecewise over
+  // the melody's tempo line (melodySpanSec), not one quarter applied to the
+  // whole gap — a '# tempo' marker inside the gap must not re-time the part
+  // of it that plays at the old quarter.
   function rebaseTrackTimes(when) {
     for (const w of trackStreams) {
-      const offBeats = (w.pos96 - melodyPos96) / 96;
-      w.nextTime = when + offBeats * quarterAt(w.pos96) / tempoSpeed();
+      w.nextTime = when + melodySpanSec(melodyPos96, w.pos96);
     }
+  }
+
+  // The tempo/swing dials moved under a live (or paused) transport: the
+  // melody's ledger already picks the new regime up at its next step, so
+  // re-derive every track's nextTime FROM THE MELODY'S LEDGER — its next
+  // onset's time plus the exact tempo-line span to the track's next onset —
+  // instead of letting each walker keep stepping its own frozen ledger
+  // (the gap between the two streams' next onsets would absorb the change
+  // and stay there for the rest of the song). No-op unless a melody with
+  // tracks is live; a paused transport is re-based again on resume, which
+  // supersedes this.
+  function resyncTrackTimes() {
+    if (!melodyTokens.length || !trackStreams.length) return;
+    rebaseTrackTimes(melodyNextTime);
   }
 
 
@@ -1690,8 +1743,10 @@ function scheduleMelody(when) {
     // at this token's exact melody-clock onset.
     if (supportPlan && (tok.type === "note" || tok.type === "rest"))
       fireDueSupport(melodyIdx, noteWhen);
-    const step = Math.max(0.001, swungBeats(tok, melodyPos96) * quarterAt(melodyPos96) /
-                  tempoSpeed()); // tempo dial: % of the song's own speed (live — mid-song slider moves apply to upcoming notes)
+      // Tempo dial: % of the song's own speed, live — mid-song slider
+      // moves apply to upcoming notes of EVERY stream (the dial handlers
+      // re-sync the track ledgers, see resyncTrackTimes).
+      const step = stepSec(tok, melodyPos96);
     melodyPos96 += Math.round(tokenGridBeats(tok) * 96);
     const pitched = (tok.type === "note" || tok.type === "tie") && NOTES.includes(tok.id);
     let didSound = false;
@@ -1733,7 +1788,7 @@ function scheduleMelody(when) {
 export { AUDIO_DEFAULTS, audioCtx, audioPerfReset, audioPerfSnapshot, cutLive, freqOf,
          getReverbBus, installTwinModel, isMelodyPaused, isMelodyPlaying, liteMode,
          melodyDuckOn, pauseMelody, perf, playMelody, playNote, playNoteAt, quarterSecFor,
-         resumeMelody, reverbEnabled, setBassEnabled, setMelodyDuck,
+         resyncTrackTimes, resumeMelody, reverbEnabled, setBassEnabled, setMelodyDuck,
          setPerfAlertListener, setReverbEnabled,
          setVibratoEnabled, soundingGridBeats, stopMelody, syncTransport,
          sysSoundUntilSec, tokenGridBeats, swungBeats, lastHoldIndex, togglePlayPause,

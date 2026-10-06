@@ -25,6 +25,20 @@
 #   6. The same lock survives an inline "# tempo" switch mid-song, including a
 #      track block carrying its own (deliberately different) "# tempo" marker —
 #      the melody's tempo line is authoritative for every stream.
+#   7. The lock also survives a LIVE tempo-dial move mid-song, fired exactly
+#      when the melody's next onset sits on an odd half-beat (the worst case:
+#      the streams' next onsets are a half-beat apart and the time gap between
+#      them absorbs the speed change forever unless the dials re-sync the
+#      tracks against the melody ledger).
+#   8. ...and a LIVE swing move, fired at the same odd-half-beat phase (the
+#      swung pair the two streams are mid-way through no longer sums to the
+#      old beat unless the tracks re-derive from the melody's timeline).
+#   9. ...and a pause/resume whose rebase gap STRADDLES an inline "# tempo"
+#      marker: the track's next onset must be re-anchored by integrating the
+#      tempo line across the gap, not by one quarter applied to the whole gap.
+#      Each new leg pairs every track onset with the nearest melody onset and
+#      asserts the delta stays under tolerance before AND after the
+#      perturbation (the pre-bucket is the harness's own control).
 #
 #   python3 tests/transport_schedule.py      # headless & silent
 
@@ -71,6 +85,185 @@ CAPTURE_DRIVER = """
   arm();
 })
 """
+
+
+# Live-dial and rebase legs share this driver: type the song, arm on the
+# typed song's own title, play, and fire the dial move only when the melody's
+# NEXT unscheduled onset sits on an odd half-beat (melodyPos96 % 96 === 48,
+# with the quarter-note track's next onset then a half-beat away — the
+# nonzero-gap phase that makes a wall-clock parameter change land on the two
+# ledgers at different moments). The dial is written through the real input
+# element, so the app's own handler chain (applyTempoPct/applySwing +
+# persistPlayHeaders) runs. Dials are reset for the following legs.
+DIAL_DRIVER = """
+(p) => new Promise((resolve, reject) => {
+  const notes = [];
+  let changeAt = 0;
+  setNoteSink((id, when, dur, s, i, g) => notes.push({ id: id, when: when, g: g }));
+  const title = String(p.song).split("\\n")[0].replace(/^#\\s*/, "");
+  document.getElementById('src').value = p.song;
+  render();
+  const t0 = Date.now();
+  const arm = () => {
+    if (document.getElementById('title').textContent !== title) {
+      if (Date.now() - t0 > 4000) { reject(new Error("dial: title never matched")); return; }
+      setTimeout(arm, 30);
+      return;
+    }
+    playMelody(0);
+    const c0 = audioCtx.currentTime;
+    const fire = () => {
+      const cur = audioCtx.currentTime;
+      if (!changeAt && cur > c0 + 1.2 && OCA_DEBUG.melodyPos96() % 96 === 48) {
+        changeAt = cur;
+        const d = document.getElementById(p.dial);
+        d.value = p.value;
+        d.dispatchEvent(new Event('input'));
+      }
+      if (!changeAt && cur > c0 + 60) { reject(new Error('dial: gate window missed')); return; }
+      if (changeAt && cur >= changeAt + 4.2) {
+        stopMelody();
+        document.getElementById('tempo').value = '100';
+        document.getElementById('tempo').dispatchEvent(new Event('input'));
+        document.getElementById('swing').value = '0';
+        document.getElementById('swing').dispatchEvent(new Event('input'));
+        setNoteSink(null);
+        setTimeout(() => {
+          const mel = notes.filter(n => n.g === 1).sort((a, b) => a.when - b.when);
+          const out = [];
+          for (const n of notes.filter(n => n.g === 0.5)) {
+            if (!mel.length) continue;
+            let best = Infinity, sign = 0;
+            for (const m of mel) best = Math.min(best, Math.abs(m.when - n.when));
+            for (const m of mel) if (Math.abs(m.when - n.when) === best)
+              sign = n.when - m.when;
+            out.push({ d: sign, w: n.when });
+          }
+          resolve({
+            pre: out.filter(x => x.w < changeAt - 0.4).map(x => x.d),
+            post: out.filter(x => x.w >= changeAt + 0.8).map(x => x.d)
+          });
+        }, 150);
+        return;
+      }
+      setTimeout(fire, 5);
+    };
+    fire();
+  };
+  arm();
+})
+"""
+
+# Pause/resume leg: the marker song carries an inline '# tempo 120' at beat 8;
+# the probe pauses exactly while the melody's NEXT unscheduled onset sits at
+# beat 7.5 (melodyPos96 === 720), so the track's next onset (a quarter on the
+# integer beat 8.0) makes the rebase gap [7.5, 8.0) cross the marker — the
+# rebase must integrate the tempo line across the gap, not apply the
+# marker-side quarter to the whole gap.
+REBASE_DRIVER = """
+(SRC) => new Promise((resolve, reject) => {
+  const notes = [];
+  setNoteSink((id, when, dur, s, i, g) => notes.push({ id: id, when: when, g: g }));
+  const title = String(SRC).split("\\n")[0].replace(/^#\\s*/, "");
+  document.getElementById('src').value = SRC;
+  render();
+  const t0 = Date.now();
+  const arm = () => {
+    if (document.getElementById('title').textContent !== title) {
+      if (Date.now() - t0 > 4000) { reject(new Error("rebase: title never matched")); return; }
+      setTimeout(arm, 30);
+      return;
+    }
+    playMelody(0);
+    const c0 = audioCtx.currentTime;
+    const fire = () => {
+      const cur = audioCtx.currentTime;
+      if (cur > c0 + 3.9 && OCA_DEBUG.melodyPos96() === 720) {
+        pauseMelody();
+        setTimeout(() => {
+          const split = audioCtx.currentTime;
+          resumeMelody();
+          setTimeout(() => {
+            stopMelody();
+            setNoteSink(null);
+            setTimeout(() => {
+              const mel = notes.filter(n => n.g === 1).sort((a, b) => a.when - b.when);
+              const out = [];
+              for (const n of notes.filter(n => n.g === 0.5)) {
+                if (!mel.length) continue;
+                let best = Infinity, sign = 0;
+                for (const m of mel) best = Math.min(best, Math.abs(m.when - n.when));
+                for (const m of mel) if (Math.abs(m.when - n.when) === best)
+                  sign = n.when - m.when;
+                out.push({ d: sign, w: n.when });
+              }
+              resolve({
+                pre: out.filter(x => x.w < split - 0.4).map(x => x.d),
+                post: out.filter(x => x.w >= split + 0.8).map(x => x.d)
+              });
+            }, 150);
+          }, 3200);
+        }, 500);
+        return;
+      }
+      if (cur > c0 + 30) { reject(new Error('rebase: pause window missed')); return; }
+      setTimeout(fire, 5);
+    };
+    fire();
+  };
+  arm();
+})
+"""
+
+DIAL_SONG = ("# T3 dial\n"
+             "# tempo 96\n"
+             "# swing 0\n"
+             "| C5/8 C5/8 D5/8 D5/8 E5/8 E5/8 F5/8 F5/8 |\n"
+             "| G5/8 G5/8 A5/8 A5/8 B5/8 B5/8 C6/8 C6/8 |\n"
+             "| D6/8 D6/8 C6/8 C6/8 B5/8 B5/8 A5/8 A5/8 |\n"
+             "| G5/8 G5/8 F5/8 F5/8 E5/8 E5/8 D5/8 D5/8 |\n"
+             "#track bass audible 50\n"
+             "| E4/4 E4/4 G4/4 G4/4 |\n"
+             "| A4/4 A4/4 G4/4 G4/4 |\n"
+             "| E4/4 E4/4 G4/4 G4/4 |\n"
+             "| A4/4 A4/4 G4/4 G4/4 |\n")
+
+MARKER_SONG = ("# T3 rebase\n"
+               "# tempo 96\n"
+               "# swing 0\n"
+               "| C5/8 C5/8 D5/8 D5/8 E5/8 E5/8 F5/8 F5/8 |\n"
+               "| G5/8 G5/8 A5/8 A5/8 B5/8 B5/8 C6/8 C6/8 |\n"
+               "# tempo 120\n"
+               "| C6/8 C6/8 D6/8 D6/8 E6/8 E6/8 F6/8 G6/8 |\n"
+               "| A5/8 A5/8 B5/8 B5/8 C5/8 C5/8 D5/8 E5/8 |\n"
+               "#track bass audible 50\n"
+               "| E4/4 G4/4 A4/4 G4/4 |\n"
+               "| E4/4 G4/4 A4/4 G4/4 |\n"
+               "| E4/4 G4/4 A4/4 G4/4 |\n"
+               "| C4/4 E4/4 G4/4 E4/4 |\n")
+
+
+def check_lock(failures, label, res, pre_tol=0.03, post_tol=0.02, min_post=2):
+    """Assert the track stays on the melody clock across a perturbation:
+    the pre-bucket is the harness's own control (locked before the move),
+    the post-bucket must stay locked after it."""
+    pre, post = res["pre"], res["post"]
+    if len(post) < min_post:
+        failures.append(f"{label}: post-bucket captured only {len(post)} "
+                        f"track onsets, need >= {min_post}")
+        return
+    pre_max = max(abs(d) for d in pre) if pre else 0.0
+    post_max = max(abs(d) for d in post)
+    if pre_max > pre_tol:
+        failures.append(
+            f"{label}: pre-perturbation lock already broken "
+            f"(max|Δ| {pre_max:.3f}s) — harness problem, not the change")
+    if post_max > post_tol:
+        failures.append(
+            f"{label}: track drifts {post_max * 1000:.0f} ms off the melody "
+            f"clock after the change (max|Δ| {post_max:.4f}s vs the "
+            f"{post_tol * 1000:.0f} ms tolerance; pre-change max|Δ| was "
+            f"{pre_max * 1000:.0f} ms)")
 
 
 def main():
@@ -471,6 +664,23 @@ def main():
                             "follow the melody's tempo line, not its own "
                             f"marker (Δ {t['when'] - want:+.3f}s)")
 
+            # ---------- 7: live tempo-dial move mid-song ----------
+            print('== track phase lock across a live tempo-dial move', flush=True)
+            res = page.evaluate(DIAL_DRIVER, {"song": DIAL_SONG,
+                                              "dial": "tempo", "value": "50"})
+            check_lock(failures, "tempo-dial lock", res)
+
+            # ---------- 8: live swing move mid-song ----------
+            print('== track phase lock across a live swing move', flush=True)
+            res = page.evaluate(DIAL_DRIVER, {"song": DIAL_SONG,
+                                              "dial": "swing", "value": "100"})
+            check_lock(failures, "swing lock", res)
+
+            # ---------- 9: pause/resume rebase across an inline tempo marker ----------
+            print('== track phase lock across a marker-straddling resume', flush=True)
+            res = page.evaluate(REBASE_DRIVER, MARKER_SONG)
+            check_lock(failures, "marker-rebase lock", res)
+
             print('== closing browser', flush=True)
             if errs:
                 failures.append(f"page errors {errs}")
@@ -487,7 +697,8 @@ def main():
           "auto-stop), loop-parity replay, cut-bus generation lifecycle with "
           "no zombies, the Lite voice leaves layers out of the build, and the "
           "named #track stream stays phase-locked to the melody clock across "
-          "a pause/resume and a mid-song tempo change.")
+          "a pause/resume, a mid-song tempo-marker change, a live tempo-dial "
+          "move, a live swing move and a marker-straddling resume.")
     return 0
 
 
