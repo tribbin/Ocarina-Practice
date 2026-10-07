@@ -1,0 +1,64 @@
+# Breath of the Wild Theme (bass)
+# tempo 97
+
+|["Opening (F minor)"] C6/4. D6/8 Eb6/4
+| C6 Bb5 Ab5
+| -/2 G5
+| F5/2. -/4 r/4
+| C6/4. D6/8 Eb6/4
+| C6 Bb5 Ab5
+| Bb5/2 C6
+| -/2.
+
+|["Slow opening (G# minor)"] r/2 G#4/8 D#5/8
+| D#5/8 F#4/8 G#4/2
+| D#5/8 A#4/8 B4 C#5
+| D#5/8 G#4/8 G#5/4. F#5/8
+| D#5/2 G#4/8 F5/8
+| D#5/2.
+| -/2 G#4/8 F5/8
+| -/8 D#5/8 -/2
+| -/2.
+
+|["Ramping up opening (C major)"]
+# tempo 104
+ E5/4. F5/8 G5/4
+| E5/4 D5/4 C5/4
+|  -/2 B4
+| A4/2.
+| E5/4. F5/8 G5/4
+| E5/4 D5/4 C5/4
+| D5/2 E5/4
+| -/2 C4/8 G4/8
+| Gb4/4. Db4/8 F4/8 Gb4/8
+| Ab4/4. Gb4/8 Ab4/8 Db5/8
+| Eb5/8t Ab4/8t Bb4/8t Db5 F5
+| Gb5/2.
+| F5/8 Gb5/8 Ab5/2
+| -/2 Gb5/8t Ab5/8t Cb6/8t
+| Bb5/2. | -/2.
+
+|["Main theme body (G minor)"] G5/8 C5/8 C6/4. Bb5/8
+| G5/2.
+| G5/8 Bb4/8 C5/2
+| G5/8 Db5/8 Eb5 F5
+| G5/8 C5/8 Eb6/4. D6/8
+| G5/2.
+| -/2 Bb5/8 A5/8
+| -/8 G5/2 -/8
+
+|["Main theme body repeat (G minor)"] G5/8 C5/8 C6/4. Bb5/8
+| G5/2.
+| G5/8 Bb4/8 C5/2
+| G5/8 Db5/8 Eb5 F5
+| G5/8 C5/8 Eb6/4. D6/8
+| G5/2.
+| G5/4. A5/8 Bb5
+| -/8 C6/2 -/8
+
+|["End (G minor)"] D5/8 Bb4/8 C5 C5/8 Bb4/8
+| D5/8 A4/8 C5 F5/8 D5/8
+| C5/8 G5/8 G5/8 G5 Eb5/8
+| F5/8 C6/8 -/4 C5/8 D5/8
+| Eb5/4. F5/8 G5
+| F5 D6/2 r/1. C5/1. r/1.

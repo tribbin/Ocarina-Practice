@@ -171,15 +171,23 @@ def harmonize(body, label):
 def main():
     keys = sys.argv[1:]
     data = json.loads(SONGS.read_text(encoding="utf-8"))
+    # The song data split (board §5 2026-10-07): the body lives in the
+    # record's song .txt; the harmonized text writes back to the FILE and
+    # songs.json never carries the notation.
     if not keys:
-        keys = [k for k, s in data.items() if "#track" in (s.get("body") or "")]
+        raise SystemExit("name song ids; every shipped record is metadata "
+                         "now — the bodies are songs/<id>.txt files")
     for key in keys:
-        body = data[key]["body"]
+        rec = data.get(key) or {}
+        f = rec.get("file") if isinstance(rec, dict) else None
+        if not (isinstance(f, str) and f):
+            print(f"{key}: no song .txt pointer — skipped", flush=True)
+            continue
+        body = (ROOT / f).read_text(encoding="utf-8")
         new = harmonize(body, key)
         if new is not None:
-            data[key]["body"] = new
-    SONGS.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n",
-                     encoding="utf-8")
+            (ROOT / f).write_text(new, encoding="utf-8")
+            print(f"{f}: harmonized", flush=True)
 
 if __name__ == "__main__":
     main()

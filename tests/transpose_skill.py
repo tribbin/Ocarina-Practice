@@ -5,15 +5,18 @@
 # no browser, no playwright. Skips (exit 0, named) when node or the
 # skill scripts are absent, so machine-less environments stay green.
 #
-# Pins the semantics agreed 2026-09-23:
+# Pins the semantics agreed 2026-09-23 (write shape re-pinned by the
+# song data split 2026-10-07):
 #   - every [...]-bracket (section labels, bar supports, inline supports,
 #     [-/2] extensions, [~..] glides) passes VERBATIM: supports are
 #     instrument-pinned chambers, never melody
 #   - s-form tokens (Cs4) transpose as their sharp equivalent, output
 #     re-spelled into the sharp system
 #   - note-shift exactness stays the internal guard (src+shift == dst)
-#   - written entries inherit ALL source fields (tick, swing, hidden, ...)
-#     and override name/group/body only
+#   - the written record is metadata + a songs/<id>.txt file: the file
+#     inherits the source's play attributes (a file-backed source keeps
+#     its header block verbatim, title swapped; a record-shaped source
+#     gets the block wrapped), and hidden/name/group ride the record
 #   - comments and inline # tempo lines are untouched
 #   - verify_song reports out-of-chart bodies with exit 1
 
@@ -93,12 +96,27 @@ def main():
             if not dst:
                 failures.append("probe2 entry not written")
             else:
-                for k, want in (("tick", True), ("swing", 33), ("hidden", True),
-                                ("name", "Probe Two"), ("tempo", 96)):
+                for k, want in (("hidden", True),
+                                ("name", "Probe Two")):
                     if dst.get(k) != want:
                         failures.append(f"inherited field {k}: {dst.get(k)!r} != {want!r}")
+                # the split's write shape: the notation lives in the
+                # record's .txt (board §5 2026-10-07), the play attrs ride
+                # its header block — the source's "# tick off"/"# swing 33"
+                # lines pass through the transposer verbatim.
+                if dst.get("file") != "songs/probe2.txt":
+                    failures.append(f"record file pointer: {dst.get('file')!r}")
+                txt = (sandbox / "songs/probe2.txt").read_text(encoding="utf-8")
+                for attr, present in (("# swing 33", True), ("# tempo 96", True),
+                                      ("# tick off", False),
+                                      ("# heading comment", False)):
+                    if (attr in txt) != present:
+                        failures.append(
+                            f"written file {attr!r} presence="
+                            f"{attr in txt} (want {present}):\n"
+                            + txt[:400])
                 for phrase in ('["Section", C2/2]', '[C2/4.]', '[~F2/4]'):
-                    if phrase not in dst["body"]:
+                    if phrase not in txt:
                         failures.append(f"written body lost verbatim: {phrase!r}")
 
         r = run(["node", str(SCRIPTS / "verify_song.cjs"),

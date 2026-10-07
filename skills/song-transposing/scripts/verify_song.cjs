@@ -53,7 +53,11 @@ const [key, chartPath] = process.argv.slice(2);
 const songs = JSON.parse(fs.readFileSync("songs.json", "utf8"));
 if (!songs[key]) { console.error("no song '" + key + "'"); process.exit(2); }
 const parse = loadParse();
-const toks = parse(songs[key].body);
+const toks = parse(songs[key].body != null
+  // The split (board §5 2026-10-07): records carry the notation in
+  // songs/<id>.txt; an inline body is the sandbox/doctoring shape.
+  ? songs[key].body
+  : fs.readFileSync(songs[key].file, "utf8"));
 const notes = toks.filter(t => t.type === "note");
 const bad = toks.filter(t => t.type === "bad");
 const mids = notes.map(tokMidi);

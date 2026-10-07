@@ -99,6 +99,13 @@ def assemble_like_the_workflow(out: Path):
     shutil.copytree(REPO / "js", out / "js", dirs_exist_ok=True)
     shutil.copytree(REPO / "instruments", out / "instruments", dirs_exist_ok=True,
                     ignore=shutil.ignore_patterns("README.md"))
+    # The song .txt bodies ride the artifact too (board §5 2026-10-07):
+    # every shipped song materializes its melody live from songs/<id>.txt.
+    songs = json.loads((REPO / "songs.json").read_text(encoding="utf-8"))
+    files = {r["file"] for r in songs.values() if isinstance(r.get("file"), str)}
+    for f in sorted(files):
+        (out / f).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(REPO / f, out / f)
 
 
 def main():

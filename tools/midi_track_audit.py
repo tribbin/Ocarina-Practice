@@ -148,8 +148,21 @@ def octave_down(pid):
     return pid[:-1] + str(int(pid[-1]) - 1)
 
 def parse_track_blocks(songs_path):
-    """{name: [(bar_index, offset, pitch)]} from a songs.json body."""
-    body = json.loads(Path(songs_path).read_text())[SONG]["body"]
+    """{name: [(bar_index, offset, pitch)]} from a song .txt body.
+
+    With the song data split (board §5 2026-10-07) the notation dropped
+    out of songs.json into songs/<base>.txt; the audited stream is the
+    file the record points at. An INLINE body on the record wins — that is
+    the doctored fixture shape the tripwire legs feed a tempfile copy.
+    """
+    songs_root = Path(songs_path).resolve().parent
+    rec = json.loads(Path(songs_path).read_text())[SONG]
+    if isinstance(rec.get("body"), str) and rec["body"].strip():
+        body = rec["body"]
+    else:
+        f = rec.get("file")
+        body = (songs_root / f).read_text(encoding="utf-8") \
+            if f else ""
     i = body.find("#track")
     out = {}
     while i >= 0:

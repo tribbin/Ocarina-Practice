@@ -57,6 +57,18 @@ WAIT = ("typeof window.parse === 'function' && typeof window.parseTracks === 'fu
 SONGS = r"""
 async () => {
   const manifest = await (await fetch('instruments.json')).json();
+  // The shipped records keep only metadata + (file|derives) pointers; the
+  // tempo lives in the .txt the loader fetched. A derives variant carries
+  // none — its attrs ride the base file (one look through the pointer).
+  const shipped = await (await fetch('songs.json')).json();
+  const tempoOf = (id) => {
+    const rec = shipped[id] || {};
+    const bb = (key) => BUILTIN[key] ? String(BUILTIN[key].body || "") : "";
+    let t = tempoFromText(bb(id));
+    if (t == null && rec.derives && BUILTIN[rec.derives.key])
+      t = tempoFromText(bb(rec.derives.key));
+    return t != null ? t : (+rec.tempo || +((BUILTIN[id] || {}).tempo) || null);
+  };
   const sets = [];
   for (const inst of manifest.instruments) {
     const fj = await (await fetch(inst.fingerings)).json();
@@ -88,7 +100,10 @@ async () => {
       bads: toks.filter(t => t.type === "bad").map(t => t.raw),
       ids,
       name: song.name || "",
-      tempo: song.tempo == null ? null : +song.tempo,
+      // Text-first (the song split, board §5): the .txt's own header owns
+      // the tempo; the record's legacy field is the fallback, and a derives
+      // variant inherits through its base pointer.
+      tempo: tempoOf(id),
       inRangeBy: sets
         .filter(s => ids.length && ids.every(x => s.notes.includes(x)))
         .map(s => s.id),

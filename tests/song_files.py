@@ -107,8 +107,8 @@ def main():
                 headless=HEADLESS,
                 args=["--autoplay-policy=no-user-gesture-required"])
 
-            # L5 first (no doctoring): the shipped inline corpus still boots
-            # into BUILTIN unchanged.
+            # L5 first (no doctoring): the shipped corpus materializes from
+            # its songs/*.txt files into BUILTIN unchanged.
             ctx = browser.new_context()
             page = ctx.new_page()
             errs = []
@@ -117,13 +117,17 @@ def main():
             page.wait_for_function(BOOT_WAIT, timeout=30000)
             shipped = load_songs()
             for probe in ("song-of-storms", "song-of-time"):
-                want = shipped.get(probe, {}).get("body")
+                f = shipped.get(probe, {}).get("file")
+                if isinstance(f, str) and f:
+                    want = (ROOT / f).read_text(encoding="utf-8")
+                else:
+                    want = shipped.get(probe, {}).get("body")
                 got = page.evaluate(
                     "(k) => BUILTIN[k] ? BUILTIN[k].body : null", probe)
                 if got != want:
                     failures.append(
-                        f"L5 inline regression: {probe} body changed "
-                        f"(want {len(want or '')} bytes, got "
+                        f"L5 shipped corpus regression: {probe} body "
+                        f"changed (want {len(want or '')} bytes, got "
                         f"{len(got or '')})")
             if errs:
                 failures.append(f"L5 page errors: {errs}")
@@ -155,7 +159,7 @@ def main():
                         f"{rec!r}")
                 der = page.evaluate("(k) => BUILTIN[k] && BUILTIN[k].body",
                                     FIX_DER_ID)
-                want_der = "\nG5/2 C5/4 D5/4\n"
+                want_der = "G5/2 C5/4 D5/4"
                 if der != want_der:
                     failures.append(
                         f"L1 the derives variant must derive from the base "
@@ -228,7 +232,7 @@ def main():
                         "# meter 3/4\n"
                         "# swing 40\n"
                         "# tick off\n"
-                        "\nG5/2 C5/4 D5/4\n")
+                        "G5/2 C5/4 D5/4")
                 if src != want:
                     failures.append(
                         f"L3 the variant must load the base's attrs over its "

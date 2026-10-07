@@ -173,13 +173,36 @@ def real_report(songs):
     fam_pairs, cross = pairs_from(songs)
     order = {k: i for i, k in enumerate(songs)}
 
+    def leading_attrs(k):
+        # The play attrs live in the record's .txt leading header block
+        # (board §5 2026-10-07); materialize() above loaded the bodies.
+        body = songs[k].get("body") or ""
+        out = {"tempo": None, "tick": None, "swing": None, "meter": None}
+        for ln in body.split("\n"):
+            if not ln.strip().startswith("#"):
+                break
+            m = re.match(r"#\s*tempo\s+(\d+)\s*$", ln, re.I)
+            if m and out["tempo"] is None:
+                out["tempo"] = int(m.group(1))
+            m = re.match(r"#\s*swing\s+(\d+)\s*$", ln, re.I)
+            if m and out["swing"] is None:
+                out["swing"] = int(m.group(1))
+            if re.match(r"#\s*tick\s+off\s*$", ln, re.I):
+                out["tick"] = False
+            m = re.match(r"#\s*meter\s+(\d+\s*/\s*\d+)\s*$", ln, re.I)
+            if m and out["meter"] is None:
+                out["meter"] = re.sub(r"\s+", "", m.group(1))
+        return out
+
     def pair_rep(a, b):
         rep = classify(songs[a].get("body") or "", songs[b].get("body") or "")
         rep["a"], rep["b"] = a, b
+        aa, bb = leading_attrs(a), leading_attrs(b)
         rep["fields"] = {
-            "tempo": (songs[a].get("tempo"), songs[b].get("tempo")),
-            "tick": (songs[a].get("tick"), songs[b].get("tick")),
-            "swing": (songs[a].get("swing"), songs[b].get("swing")),
+            "tempo": (aa["tempo"], bb["tempo"]),
+            "tick": (aa["tick"], bb["tick"]),
+            "swing": (aa["swing"], bb["swing"]),
+            "meter": (aa["meter"], bb["meter"]),
             "group": (songs[a].get("group"), songs[b].get("group")),
         }
         # raw twin meta: headers/brackets presence
