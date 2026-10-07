@@ -923,3 +923,22 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   merging; Search Console should then reach every stub through
   internal links instead of the sitemap alone. Board moves landed on
   the same seo-discovery branch.
+
+- **2026-10-07 (CI red on the push at 37636a3: seo_shell still owned the old zero-per-stub rule — fixed)** —
+  Run 37621902407 (push, branch seo-discovery, job "the practice
+  battery", tests/seo_shell.py step): every stub named "stubs must
+  carry NO JSON-LD" — the session-15 zero-per-stub pin I declared
+  deliberately replaced but only removed from gen_pages, shipping a
+  commit without running the affected suite first (the rule-12 lesson,
+  learned loudly: the SEO coverage line was in the standing §6 list).
+  Fix: seo_shell's stub pass now pins the NEW contract — one canonical,
+  exactly ONE ld+json of the stub's own (MusicComposition +
+  BreadcrumbList in a single @graph), the shell's WebApplication block
+  still refused anywhere, hub indexes excluded from the stub branch
+  (depth-4-only scoping, hubs carry a canonical but no JSON-LD by
+  design). Local re-run of the affected CI steps on this box:
+  seo_shell gen_pages data_validator shipped_songs song_files
+  twin_derive asset_versions library_hardening library_favorites +
+  lint — green; midi_track_audit SKIP-from-absence (research/
+  gitignored, unchanged). The fix lands as one commit on seo-discovery
+  for Robin's push; no app code, no sw bump.
