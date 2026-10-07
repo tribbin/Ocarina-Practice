@@ -130,6 +130,12 @@ window.OCA_DEBUG = {
   // Melody position on the scheduler's integer 96th-of-a-beat grid — the
   // swing parity reads it; suites pin that the integer grid is held exactly.
   melodyPos96() { return melodyPos96; },
+  // Named-track walker positions on the same grid (suites fire perturbations
+  // at a known lead/support phase; index -1 past the stream list).
+  trackPos96(i) {
+    const w = (typeof trackStreams !== "undefined" && trackStreams) ? trackStreams[i] : null;
+    return w ? w.pos96 : -1;
+  },
   // Transport diagnostics (suites + dev panel): how many melody-bag voices
   // are alive right now and how many cut bus generations exist / were cut.
   melodyAlive() { return countAliveVoices(melodyBag); },
@@ -246,9 +252,11 @@ function quarterAt(pos96) {
 // The melody walker, every track walker and the clock-span integration all
 // share this one rule, so a parameter read (tempo dial, swing) lands on
 // every stream identically when it is taken live.
+function spanSec(w96, start96, quarterPos96) {
+  return swungSpanSec(w96 / 96, start96) * quarterAt(quarterPos96) / tempoSpeed();
+}
 function stepSec(tok, pos96) {
-  return Math.max(0.001, swungSpanSec(tokenGridBeats(tok), pos96) *
-                         quarterAt(pos96) / tempoSpeed());
+  return Math.max(0.001, spanSec(Math.round(tokenGridBeats(tok) * 96), pos96, pos96));
 }
 
 // The swung grid map. Every HALF-BEAT segment of the 96th-grid carries a
@@ -283,14 +291,17 @@ function swungSpanSec(beats, pos96) {
 }
 
 // Signed seconds from grid position a96 to b96 along the melody's token
-// spans, measured under the CURRENT clock parameters: each melody token
-// occupies its grid span and costs exactly one stepSec, so the part of a
-// span inside [a96, b96] costs the matching fraction of that step. The
-// integral is piecewise over the tempo line — a '# tempo' marker inside
-// the interval is honored, which a flat offBeats × quarterAt(end) cannot
-// be. Positions clamp to the song's grid (a track total that outruns the
-// melody cannot stretch the span); the intervals this serves are bounded by
-// one step of either stream, so one pass over the tokens suffices.
+// spans, measured under the CURRENT clock parameters. The integral is the
+// TRUE piecewise wall cost — even a PARTIAL span inside a token integrates
+// the swung map from its own start (spanSec, the rule every walker steps
+// by), never a uniform-rate fraction of the whole token's step: under swing
+// a token straddling a half-beat boundary carries two different wall rates,
+// and a re-derivation that scaled the whole token would move the track
+// ledger by exactly the linear-vs-true mismatch (the zen-toggle drift,
+// Robin 2026-10-07). The integral is piecewise over the tempo line — a
+// '# tempo' marker inside the interval is honored, which a flat
+// offBeats × quarterAt(end) cannot be. Positions clamp to the song's grid
+// (a track total that outruns the melody cannot stretch the span).
 function melodySpanSec(a96, b96) {
   if (!melodyTokens.length || a96 === b96) return 0;
   const sign = b96 > a96 ? 1 : -1;
@@ -303,8 +314,9 @@ function melodySpanSec(a96, b96) {
     if (w96 <= 0) continue;
     const s0 = pos;
     const s1 = pos + w96;
-    const overlap = Math.min(s1, hi) - Math.max(s0, lo);
-    if (overlap > 0) span += (overlap / w96) * stepSec(t, s0);
+    const o0 = Math.max(s0, lo);
+    const o1 = Math.min(s1, hi);
+    if (o1 > o0) span += spanSec(o1 - o0, o0, s0);
     pos = s1;
     if (pos >= hi) break;
   }

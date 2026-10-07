@@ -40,10 +40,22 @@
 #      asserts the delta stays under tolerance before AND after the
 #      perturbation (the pre-bucket is the harness's own control).
 #   10. A live tempo-dial move UP from the 10% floor is heard within the
-#      scaled remainder of the MELODY's own pending onset, not one whole
-#      stale slow step of mostly silence: the dial handlers must re-scale
-#      melodyNextTime by the speed ratio (the resyncTrackTimes family,
-#      aimed at the melody's own ledger this time).
+#       scaled remainder of the MELODY's own pending onset, not one whole
+#       stale slow step of mostly silence: the dial handlers must re-scale
+#       melodyNextTime by the speed ratio (the resyncTrackTimes family,
+#       aimed at the melody's own ledger this time).
+#  11. Swung-pair conservation (Robin 2026-10-06): swing redistributes wall
+#       time across the whole 96th grid, so bar-filled with 1/16 tails,
+#       dotted values and mid-half 8ths must integrate the swung map piece
+#       by piece — every bar's start stays k*4q of wall exactly.
+#  12/13. Zen toggles under swing keep lock (Robin 2026-10-07): Zen entry
+#       re-applies the dials through syncFocusMode -> applyTempoPct, whose
+#       re-derivation of every #track ledger must reproduce the exact wall
+#       value the walkers accumulate. The judgement is REAL TIME ONLY: each
+#       captured support onset is paired to its nearest captured melody
+#       onset and the pre/post delta pattern must not move. Leg 12 fires
+#       gate-controlled toggles at the worst phase on a synthetic swung
+#       pair; leg 13 reruns it on the shipped Storms melody+bass arrangement.
 #
 #   python3 tests/transport_schedule.py      # headless & silent
 
@@ -269,6 +281,195 @@ def check_lock(failures, label, res, pre_tol=0.03, post_tol=0.02, min_post=2):
             f"clock after the change (max|Δ| {post_max:.4f}s vs the "
             f"{post_tol * 1000:.0f} ms tolerance; pre-change max|Δ| was "
             f"{pre_max * 1000:.0f} ms)")
+
+
+# Zen-toggle leg: toggles Zen in/out THROUGH the app's own fallback path
+# (?nofs=1 body class + the same onZenChange sync) while a swung transport
+# runs; the first toggle is fired at the worst phase (the melody's next onset
+# on a beat start AND the track's next onset a half-beat inside it), then a
+# fire of repeated toggles follows. The pairing judged is REAL TIME ONLY:
+# every captured support onset is paired to the nearest captured melody
+# onset, and the post-toggles delta pattern must equal the pre-toggle
+# pattern (the streams' relative alignment is compared against itself across
+# the whole session — no walker arithmetic is re-encoded anywhere).
+ZEN_DRIVER = """
+(p) => new Promise((resolve, reject) => {
+  const notes = [];
+  let fireAt = 0, toggles = 0, inside = false;
+  setNoteSink((id, when, dur, s, i, g) => notes.push({ id: id, when: when, g: g }));
+  const title = String(p.song).split("\\n")[0].replace(/^#\\s*/, "");
+  document.getElementById('src').value = p.song;
+  document.getElementById('loopMel').checked = true;
+  const sw = document.getElementById('swing');
+  sw.value = p.swing;
+  sw.dispatchEvent(new Event('input'));
+  render();
+  const t0 = Date.now();
+  const arm = () => {
+    if (document.getElementById('title').textContent !== title) {
+      if (Date.now() - t0 > 4000) { reject(new Error("zen: title never matched")); return; }
+      setTimeout(arm, 30);
+      return;
+    }
+    playMelody(0);
+    const c0 = audioCtx.currentTime;
+    // Perturbation phase gates (p.gate): the lead-side is "mod0" (the
+    // melody's next onset on a beat start) or a fixed grid position; the
+    // support-side likewise on ITS walker position; notCo keeps zero-width
+    // intervals out (co-located pending onsets re-derive to no change) and
+    // behind requires the support walker to sit BELOW the melody's position
+    // (the interval then rides the melody's consumed tokens, where the
+    // partial-span cases actually live).
+    const gate = (g) => {
+      const m = OCA_DEBUG.melodyPos96(), w = OCA_DEBUG.trackPos96(0);
+      if (g.mel === "mod0" ? m % 96 !== 0 : m !== g.mel) return false;
+      if (g.trk === "mod48" ? w % 96 !== 48
+          : g.trk === "mod0" ? w % 96 !== 0 : w !== g.trk) return false;
+      if (g.notCo && w === m) return false;
+      if (g.behind && w >= m) return false;
+      return true;
+    };
+    const gateHit = () => p.gate.some(gate);
+    const fire = () => {
+      const cur = audioCtx.currentTime;
+      if (!fireAt && cur > c0 + p.lead && gateHit()) {
+        fireAt = cur;
+        inside = true;
+        document.getElementById('zen').click();
+      } else if (fireAt && toggles < p.toggles && cur > fireAt + toggles * p.every &&
+                 (inside || gateHit())) {
+        toggles++;
+        inside = !inside;
+        if (inside) document.getElementById('zen').click();
+        else { document.body.classList.remove('zen-fallback');
+               if (window.onZenChange) window.onZenChange(); }
+      }
+      if (!fireAt && cur > c0 + p.lead + 8) {
+        reject(new Error('zen: gate phase never matched')); return;
+      }
+      if (fireAt && cur >= fireAt + 4.8) {
+        const done = () => {
+          stopMelody();
+          document.getElementById('loopMel').checked = false;
+          const keep = document.getElementById('swing');
+          keep.value = '0';
+          keep.dispatchEvent(new Event('input'));
+          setNoteSink(null);
+          setTimeout(() => {
+            const mel = notes.filter(n => n.g === 1).sort((a, b) => a.when - b.when);
+            const pair = (gs) => {
+              const out = [];
+              for (const n of notes.filter(n => gs.includes(n.g))) {
+                if (!mel.length) continue;
+                let best = Infinity, sign = 0;
+                for (const m of mel) best = Math.min(best, Math.abs(m.when - n.when));
+                for (const m of mel) if (Math.abs(m.when - n.when) === best)
+                  sign = n.when - m.when;
+                out.push({ d: sign, w: n.when });
+              }
+              return out;
+            };
+            resolve({
+              fireAt: fireAt,
+              streams: (p.support).map(g => pair([g])),
+            });
+          }, 150);
+        };
+        if (inside) {
+          inside = false;
+          document.body.classList.remove('zen-fallback');
+          if (window.onZenChange) window.onZenChange();
+          setTimeout(done, 120);
+        } else done();
+        return;
+      }
+      setTimeout(fire, 5);
+    };
+    fire();
+  };
+  arm();
+})
+"""
+
+ZEN_SWING_SONG = ("# T3 zen swing\n"
+                  "# tempo 96\n"
+                  "| C5/4 C5/4 C5/4 C5/4 |\n"
+                  "| D5/4 D5/4 D5/4 D5/4 |\n"
+                  "#track bass audible 50\n"
+                  "| E4/8 E4/8 G4/8 G4/8 A4/8 A4/8 G4/8 G4/8 |\n"
+                  "| F4/8 F4/8 A4/8 A4/8 G4/8 G4/8 E4/8 E4/8 |\n")
+
+
+def bucket_pairs(stream, fireAt):
+    """Split a paired stream around the first toggle's wall time: the
+    pre-bucket ends 0.4 s before it, the post-bucket starts 0.8 s after and
+    ends 3.4 s after — inside the capture window, because the walkers
+    schedule ~300 ms of lookahead: a track onset whose paired melody onset
+    was never captured would pair to the PREVIOUS melody onset and fake a
+    moved delta at the capture's cut-off."""
+    return {"pre": [x["d"] for x in stream if x["w"] < fireAt - 0.4],
+            "post": [x["d"] for x in stream
+                     if fireAt + 0.8 <= x["w"] < fireAt + 3.4]}
+
+
+def clusters_of(sorted_values, gap=0.05):
+    out = []
+    start = 0
+    for i in range(1, len(sorted_values)):
+        if sorted_values[i] - sorted_values[i - 1] > gap:
+            out.append(sorted_values[start:i])
+            start = i
+    out.append(sorted_values[start:])
+    return out
+
+
+def check_pattern(failures, label, deltas, tol=0.02, min_pre=2, min_post=4):
+    """Real-time alignment check across a perturbation: the support stream's
+    nearest-melody-onset deltas before the perturbation are the control; after
+    it, the delta PATTERN must be the same (the loop replays the same musical
+    content, so a moved ledger shows up as a moved cluster). Both sides are
+    clustered and compared by mutual coverage — pattern shape, not count."""
+    pre = sorted(deltas["pre"])
+    post = sorted(deltas["post"])
+    if len(post) < min_post:
+        failures.append(f"{label}: post-bucket captured only {len(post)} "
+                        f"support onsets, need >= {min_post}")
+        return
+    # The control is the PRE pattern's own shape (under swing the support
+    # onsets sit off the melody's neighbor onsets by fixed swung fractions;
+    # those clusters are the real-time baseline): the pre deltas must form
+    # stable clusters (the moving-ledger defect shifts every pre cluster).
+    pre_clusters = clusters_of(pre)
+    if len(pre_clusters) > 2 or any(max(c) - min(c) > 0.03 for c in pre_clusters):
+        failures.append(
+            f"{label}: pre-perturbation alignment is not a stable pattern "
+            f"(clusters {[['%.3f' % d for d in c] for c in pre_clusters]}) — "
+            "harness problem, not the change")
+        return
+    post_clusters = clusters_of(post)
+    if len(pre) < min_pre:
+        failures.append(f"{label}: pre-bucket captured only {len(pre)} "
+                        f"support onsets, need >= {min_pre}")
+        return
+    # Mutual coverage: every pre cluster must survive into the post window
+    # and every post cluster must trace back to a pre one.
+    pre_centers = [sum(c) / len(c) for c in pre_clusters]
+    post_centers = [sum(c) / len(c) for c in post_clusters]
+    missed = []
+    for c in pre_centers:
+        if not post or min(abs(d - c) for d in post) > tol:
+            missed.append(c)
+    for c in post_centers:
+        if not pre or min(abs(d - c) for d in pre) > tol:
+            missed.append(c)
+    if missed or len(pre_clusters) != len(post_clusters):
+        failures.append(
+            f"{label}: the support stream's alignment to the melody moved "
+            f"across the toggles (pre clusters "
+            f"{['%.3f' % c for c in pre_centers]}, post clusters "
+            f"{['%.3f' % c for c in post_centers]}; unmatched "
+            f"{['%.3f' % m for m in missed]} vs the {tol * 1000:.0f} ms "
+            "tolerance)")
 
 
 def main():
@@ -858,6 +1059,62 @@ def main():
                             "the swing redistribution so every bar stays "
                             f"exactly {want:.1f}s of wall regardless of the "
                             "widths filling it")
+
+            # ---------- 12: zen-toggle rebase lock under swing ----------
+            print('== track phase lock across zen toggles (swing 100)', flush=True)
+            # Zen entry re-applies the PLAYBACK dials through syncFocusMode ->
+            # applyTempoPct, which re-derives every #track ledger from the
+            # melody's anchor even though nothing moved. Under swing > 0 the
+            # wall-span estimate behind that re-derivation must be the TRUE
+            # piecewise integral the walkers themselves accumulate — a uniform
+            # rate assumed inside a melody token mis-times every rebase whose
+            # interval ends mid-token, and the streams drift by up to q/6
+            # (Robin's field report: toggle zen in/out repeatedly with swing
+            # on and the lead/support pair leaves step for a moment, then
+            # lines up again — the phase re-rolls per toggle).
+            res = page.evaluate(ZEN_DRIVER, {
+                "song": ZEN_SWING_SONG, "swing": "100",
+                "lead": 1.0, "toggles": 5, "every": 0.55,
+                "tracks": [0], "support": [0.5],
+                "gate": [{"mel": "mod0", "trk": "mod48"}],
+            })
+            check_pattern(failures, "zen-toggle swing lock",
+                          bucket_pairs(res["streams"][0], res["fireAt"]))
+
+            # ---------- 13: same lock on the shipped Storms arrangement ----------
+            print('== zen toggles on the shipped Storms melody + bass track', flush=True)
+            # The field leg: Robin heard this on the Outset arrangement over
+            # the triple bass; the shipped Storms bars carry the same real
+            # mixed shape (dotted quarters over 8th vamps, 24-grid rest
+            # offsets) on the stock alto at its own 160 tempo. Same driver,
+            # same real-time lead-vs-support pairing, the shipped data only.
+            STORMS_LEG = ("# T3 zen storms\n"
+                          "# tempo 160\n"
+                          "| D5/8 ~ F5/8 D6/2 |\n"
+                          "| D5/8 ~ F5/8 D6/2 |\n"
+                          "| E6/4. ~ F6/8 ~ E6/8 ~ F6/8 |\n"
+                          "| ~ E6/8 C6/8 A5/2 |\n"
+                          "#track bass audible 70\n"
+                          "| r/4 A4 A4 |\n"
+                          "| r/8 E4/8 B4/2 |\n"
+                          "| r/4 C5 C5 |\n"
+                          "| r/8 E4/8 B4/2 |\n")
+            res = page.evaluate(ZEN_DRIVER, {
+                "song": STORMS_LEG, "swing": "100",
+                "lead": 1.0, "toggles": 5, "every": 0.55,
+                "tracks": [0], "support": [0.7],
+                # bar 3 opens on the dotted E6/4. — its [576,720) span makes
+                # the melody walker sit at 720 only co-located with the bass
+                # (both walkers' next onsets share walls on these bars); the
+                # ONE divergent phase is the tick after their joint 576
+                # consumption: melody pending F6/8 (720), the bass still
+                # pending its first C5 (672) — the span integrator then
+                # rides the consumed dotted's last third as a real partial.
+                "gate": [{"mel": 720, "trk": "mod0", "notCo": True,
+                          "behind": True}],
+            })
+            check_pattern(failures, "zen-toggle Storms lock",
+                          bucket_pairs(res["streams"][0], res["fireAt"]))
 
             print('== closing browser', flush=True)
             if errs:
