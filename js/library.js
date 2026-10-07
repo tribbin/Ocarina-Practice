@@ -1,9 +1,9 @@
 import { isOutOfRange, isTrackHeader, parse, swingFromText, tempoFromText,
-         titleFromText, withPlayHeaders } from "./parse.js";
+         titleFromText, withPlayHeaders, headerBlockPlayAttrs } from "./parse.js";
 import { resyncTrackTimes, resyncMelodyTempo, stopMelody } from "./audio.js";
 import { render, resetLiveTab } from "./ui.js";
 import { practiceInvalidate } from "./practice.js";
-import { ensureOcarinaTemplate } from "./app.js";
+import { ensureOcarinaTemplate, loadText } from "./app.js";
 const LIB_KEY = "oco-bass-c-library";
 const SHOW_HIDDEN_KEY = "oco-bass-c-show-hidden";
 let BUILTIN = {};
@@ -54,22 +54,110 @@ function deriveBody(base, shift) {
 
 function initBuiltin(songs) {
   BUILTIN = songs || {};
-  // The derivation pass: entries declaring a derives record materialize
-  // their body from the base + shift; the record itself leaves BUILTIN so
-  // the published shape stays name/group/tempo/body/... (shipped-songs
-  // probes read exactly that). One level only — bases never derive.
+  for (const k of Object.keys(DERIVED_FROM)) delete DERIVED_FROM[k];
+  // The INLINE derive pass (the split's transition shape: a record whose
+  // base is still a hand body in songs.json). A FILE-backed base derives at
+  // materialize time — the bodies only arrive after the fetch — so those
+  // records keep their derives declaration until then.
   for (const id of Object.keys(BUILTIN)) {
     const d = BUILTIN[id].derives;
     if (!d || typeof d !== "object") continue;
     const base = BUILTIN[d.key];
-    const body = BUILTIN[id].body;
-    if (base && !base.derives &&
-        !(typeof body === "string" && body.trim())) {
-      BUILTIN[id].body = deriveBody(String(base.body || ""), d.shift | 0);
+    if (base && !base.derives && !base.file) {
+      const body = BUILTIN[id].body;
+      if (!(typeof body === "string" && body.trim())) {
+        BUILTIN[id].body = deriveBody(String(base.body || ""), d.shift | 0);
+      }
+      delete BUILTIN[id].derives;
     }
-    delete BUILTIN[id].derives;
   }
   window.BUILTIN = BUILTIN; // compat mirror (shipped-songs probes read it)
+}
+
+// ------------------------------------------------------- song .txt loading
+// Robin's song data split (board §5 2026-10-07): a song's music lives in its
+// own .txt file under songs/ and the shipped record keeps name/group/
+// intended + the `file` pointer; one file can be addressed by several
+// entries (bass/transposed variants ride the derives shift on top of the
+// fetched base text). The music attrs (tempo/meter/swing/tick) live in the
+// .txt's leading header block — text-first: the file's own declaration wins
+// wherever the record carries a legacy one.
+const DERIVED_FROM = {}; // variant id -> its derives.key (records strip both)
+const LAST_FILE_BODIES = {}; // the last successfully fetched file texts
+
+// The text after the leading '# ...' header block — the same split
+// withPlayHeaders applies at rewrite — with the file's blank separators and
+// trailing newline folded away. A file's CONTENT for derivation purposes is
+// the bare notation: the published variant body keeps that shape byte-for-
+// byte (tests/twin_derive freezes the derived bodies as the retired hand
+// transcriptions), so a base-file edit changes exactly the notation a
+// variant inherits.
+function headerlessContent(text) {
+  const lines = String(text || "").split("\n");
+  let h = 0;
+  while (h < lines.length && lines[h].trim().startsWith("#")) h++;
+  let out = lines.slice(h).join("\n");
+  // A file's leading blank separator and trailing newline are file
+  // decoration, not notation.
+  out = out.replace(/^[ \t]*\n/, "").replace(/\n+$/, "");
+  return out;
+}
+
+// One fetch per unique `file`; failures pass null (falling back to the last
+// known bytes at materialize). cache:"no-cache" keeps a freshly deployed
+// song text off the HTTP cache (Pages serves max-age=600), the same rule
+// the service worker's network-first branch applies.
+async function builtinFileBodies(songs) {
+  const files = new Set();
+  for (const item of Object.values(songs || {})) {
+    if (item && typeof item.file === "string" && item.file) files.add(item.file);
+  }
+  const out = {};
+  await Promise.all([...files].map(async p => {
+    try { out[p] = await loadText(p); } catch (e) { out[p] = null; }
+  }));
+  return out;
+}
+
+// Assign fetched bodies (falling back to the last known bytes on a transient
+// fetch failure), derive every record the init pass deferred (file-backed
+// bases), and strip the bookkeeping (file/derives) so the published BUILTIN
+// shape stays name/group/body/... Runs on every data swap (boot init and the
+// resume freshness check alike).
+function materializeFileBodies(bodies) {
+  const texts = bodies || {};
+  for (const id of Object.keys(BUILTIN)) {
+    const item = BUILTIN[id];
+    const f = item && item.file;
+    if (typeof f !== "string" || !f) continue;
+    const raw = texts[f];
+    if (typeof raw === "string" && raw.trim()) {
+      item.body = raw;
+      LAST_FILE_BODIES[f] = raw;
+    } else if (LAST_FILE_BODIES[f] != null) {
+      // offline / transient hiccup: the stale copy beats a blank body — an
+      // offline resume must never blank the library it already had.
+      item.body = LAST_FILE_BODIES[f];
+    }
+  }
+  for (const id of Object.keys(BUILTIN)) {
+    const item = BUILTIN[id];
+    const d = item && item.derives;
+    if (d && typeof d === "object") {
+      const base = BUILTIN[d.key];
+      const baseText = base ? String(base.body || "") : "";
+      const baseIsFile = !!base && base.file != null;
+      const content = baseIsFile ? headerlessContent(baseText) : baseText;
+      const own = typeof item.body === "string" && item.body.trim();
+      if (!own) item.body = deriveBody(content, d.shift | 0);
+      DERIVED_FROM[id] = d.key;
+      delete item.derives;
+    }
+  }
+  // The strips run LAST: a variant reading its base mid-loop must still see
+  // the base's file marker to know the content was file-backed.
+  for (const id of Object.keys(BUILTIN)) delete BUILTIN[id].file;
+  window.BUILTIN = BUILTIN;
 }
 
 const DISPLAY_ID = i => i.replace(/^([A-G])s/, "$1#");
@@ -621,26 +709,44 @@ function loadLibraryItem(id) {
   // in js/practice.js): stop it so the next Practice press starts fresh on
   // this song rather than resuming the replaced song's stale tuner targets.
   if (typeof practiceInvalidate === "function") try { practiceInvalidate(); } catch (e) {}
-  // The song's tempo lives in its text (withPlayHeaders writes the header);
-  // the relative playback speed stays at the user's dial between songs.
-  let tempo = 100;
+  // The song's own tempo lives in its text (withPlayHeaders writes the
+  // header); the relative playback speed stays at the user's dial between
+  // songs.
   let swing = currentSwing();
   let tick;
   let loadedId = "";
   if (BUILTIN[id]) {
     const item = BUILTIN[id];
-    const body = String(item.body || "").replace(/^\s*#.*\n/, "");
-    tempo = item.tempo || tempoFromText(item.body) || 96;
-    swing = item.swing != null ? item.swing : (swingFromText(item.body) || 0);
-    tick = item.tick;
+    const rawText = String(item.body || "");
+    // Music attrs from the .txt's leading header block, text-first (the
+    // song data split, board §5 2026-10-07); the derive chain and then the
+    // record's legacy fields fill what the text does not declare.
+    let a = headerBlockPlayAttrs(rawText);
+    const dk = DERIVED_FROM[id];
+    if (dk && BUILTIN[dk]) {
+      const b = headerBlockPlayAttrs(String(BUILTIN[dk].body || ""));
+      a = { tempo: a.tempo != null ? a.tempo : b.tempo,
+            swing: a.swing != null ? a.swing : b.swing,
+            meter: a.meter != null ? a.meter : b.meter,
+            tick: a.tick != null ? a.tick : b.tick };
+    }
+    const tempo = a.tempo != null ? a.tempo : (item.tempo != null ? item.tempo : 96);
+    const swing = a.swing != null ? a.swing : (item.swing != null ? item.swing : 0);
+    const meter = a.meter != null ? a.meter : (item.meter != null ? item.meter : null);
+    const tick = a.tick != null ? a.tick : item.tick;
     document.getElementById("src").value = withPlayHeaders(
-      body.trim(), item.name, tempo, swing, undefined, item.meter || null);
+      // Byte-preserving: only the leading title line leaves (the JSON name
+      // rewrites it); blank separators and the trailing newline survive, so
+      // a loaded song re-exports byte-identical. An explicit tick opt-out
+      // (text-declared here, or the record's legacy field) WRITES the line
+      // — a derive-derived body carries no leading block to keep it from.
+      rawText.replace(/^\s*#.*\n/, ""), item.name, tempo, swing,
+      tick === false ? false : undefined, meter);
     loadedId = id;
   } else {
     const item = userLib()[id];
     if (item) {
       document.getElementById("src").value = item.body || "";
-      tempo = item.tempo || tempoFromText(item.body) || tempo;
       swing = item.swing != null ? item.swing : (swingFromText(item.body) != null ? swingFromText(item.body) : swing);
       tick = item.tick;
       loadedId = id;
@@ -840,10 +946,11 @@ function wireLibrary() {
   };
 }
 
-export { BUILTIN, applySongTick, applySwing, applyTempoPct,
+export { BUILTIN, applySongTick, applySwing, applyTempoPct, builtinFileBodies,
          clearLibrarySelection, currentSwing,
          fillLibrary, initBuiltin, libToast, loadedLibraryId, loadLibraryItem,
-         markUrlLanded, rewriteLanderUrl, safeAlert, songFitsChart,
+         markUrlLanded, materializeFileBodies, rewriteLanderUrl, safeAlert,
+         songFitsChart,
          songTempo,
          syncLibraryMenu, tempoPct, userLib, wireLibrary, setUserLib, slugName,
          uniqueUserId, showHiddenSongs, refreshGeneratedScales };

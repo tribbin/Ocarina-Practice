@@ -1,0 +1,70 @@
+# Outset Island (bass)
+# tempo 120
+
+|["Opening (Db major)"] Db4/8 Db5/8 r/8 Db5/8 Db4/8 Db5/8 r/8 Db5/8
+| Db4/8 Db5/8 r/8 Db5/8 Db4/8 Db5/8 r/8 Db5/8
+# Db major throughout, pure 4/4 (the game's file; the reduced score's
+# 5/4 da-dum engraving is retired: its fifth beat was the arranger's own
+# extra note, absent in the game's file). Fits the triple bass
+# (A3-G6); the opening pizz vamp rides 2 octaves up, harp-run tails (Bb2/Ab2 in
+# the interludes) sit below the chart and become rests, the outro's final Ab3
+# rings an octave up (Ab4), and trill turns are 16ths with a held fundamental.
+
+|["Tune (Db major)"] Ab4/8 Db5/8 Ab4/8 F4/8 Db4/4 r/8 Db4/16 Eb4/16
+| F4/8 Db4/8 Db4/8 Eb4/8 F4/4 Eb4/4
+| Ab4/8 Ab4/8 Ab4/8 Bb4/8 Db4/4 r/8 Db4/16 Eb4/16
+| F4/8 F4/8 F4/8 Gb4/8 F4/4 Eb4/4
+| Ab5/8 Db6/8 Ab5/8 F5/8 Db5/4 r/8 Db5/16 Eb5/16
+| F5/8 Db5/8 Db5/8 Eb5/8 ~ F5/8 F5/8 Eb5/4
+| Ab5/8 Ab5/8 Ab5/8 Bb5/8 Db5/4 r/8 Db5/16 Eb5/16
+| Ab5/8 Ab5/8 Ab5/8 Bb5/8 Ab5/4 Gb5/4
+
+|["Harp interlude (Db major)"] Ab4/8 Ab4/8 Ab4/8 Ab4/8 Db4/8 F4/8 Ab4/8 Db5/8
+| F5/8 Db5/8 Ab4/8 F4/8 Db4/8 r/4.
+| Ab4/8 Ab4/8 Ab4/8 Ab4/8 Db4/8 F4/8 Ab4/8 Db5/8
+| F5/8 Db5/8 Ab4/8 F4/8 Db4/8 r/4.
+
+|["Tune B (Db major)"] Ab5/8 Db6/8 Ab5/8 F5/8 Eb5/8. F5/8. Gb5/8
+| Ab5/16 ~ Bb5/16 ~ Ab5/4 ~ Gb5/16 ~ Ab5/16 ~ Gb5/4 F5/8 Eb5/8
+| F5/8 Db5/4. Db4/8 C4/8 Db4/8 F4/8
+| r/8 C5/8 C5/4 F5/4 Eb4/4
+
+|["Groove (Db major)"] r/8 Eb5/8 Eb5/4 r/8 C5/8 C5/4
+| r/8 Db5/8 Db5/4 r/8 Bb4/8 Bb4/4
+| r/8 C5/8 C5/4 r/8 Ab4/8 Ab4/4
+| r/8 Bb4/8 Bb4/4 r/8 Gb4/8 Gb4/8 Ab4/16 Gb4/16
+| F4/1
+| Eb4/1
+| Db4/1
+| Eb4/1
+| Db4/8 Db5/8 r/8 Db5/8 Db4/8 Db5/8 r/8 Db5/8
+| Db4/8 Db5/8 r/8 Db5/8 Db4/8 Db5/8 r/8 Db5/8
+
+|["Tune return (Db major)"] Ab4/8 Db5/8 Ab4/8 F4/8 Db4/4 r/8 Db4/16 Eb4/16
+| F4/8 Db4/8 Db4/8 Eb4/8 F4/4 Eb4/4
+| Ab4/8 Ab4/8 Ab4/8 Bb4/8 Db4/4 r/8 Db4/16 Eb4/16
+| F4/8 F4/8 F4/8 Gb4/8 F4/4 Eb4/4
+| Ab5/8 Db6/8 Ab5/8 F5/8 Db5/4 r/8 Db5/16 Eb5/16
+| F5/8 Db5/8 Db5/8 Eb5/8 ~ F5/8 F5/8 Eb5/4
+| Ab5/8 Ab5/8 Ab5/8 Bb5/8 Db5/4 r/8 Db5/16 Eb5/16
+| F5/8 F5/8 F5/8 Gb5/8 F5/4 Eb5/4
+
+|["Harp interlude return (Db major)"] Ab4/8 Ab4/8 Ab4/8 Ab4/8 Db4/8 F4/8 Ab4/8 Db5/8
+| F5/8 Db5/8 Ab4/8 F4/8 Db4/8 r/4.
+| Ab4/8 Ab4/8 Ab4/8 Ab4/8 Db4/8 F4/8 Ab4/8 Db5/8
+| F5/8 Db5/8 Ab4/8 F4/8 Db4/8 r/4.
+
+|["Tune B return (Db major)"] Ab5/8 Db6/8 Ab5/8 F5/8 Eb5/8. F5/8. Gb5/8
+| Ab5/16 ~ Bb5/16 ~ Ab5/4 ~ Gb5/16 ~ Ab5/16 ~ Gb5/4 F5/8 Eb5/8
+| F5/8 Db5/4. Db4/8 C4/8 Db4/8 F4/8
+| r/8 C5/8 C5/4 F5/4 Eb5/4
+
+|["Groove return (Db major)"] r/8 C5/8 C5/4 r/8 Ab4/8 Ab4/4
+| r/8 Db5/8 Db5/4 r/8 Bb4/8 Bb4/4
+| r/8 C5/8 C5/4 r/8 Ab4/8 Ab4/4
+| r/8 Bb4/8 Bb4/4 r/8 Gb4/8 Gb4/8 Ab4/16 Gb4/16
+
+|["Outro (Db major)"] r/4 Ab4/16 ~ Bb4/16 ~ Ab4/4 ~ Gb4/16 ~ Ab4/16 ~ Gb4/4
+| F4/16 ~ Gb4/16 ~ F4/4 Eb4/8 Db4/8 C4/8 Db4/8 Eb4/8
+| Db4/4. Ab4/2 -/8
+| -/4 r/4 r/4 r/4

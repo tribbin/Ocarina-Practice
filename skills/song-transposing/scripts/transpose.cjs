@@ -93,9 +93,20 @@ function main() {
   const src = songs[srcKey];
   if (!src) throw new Error("no song '" + srcKey + "' in songs.json");
 
+  // The song data split (board §5 2026-10-07): the notation lives in the
+  // record's song .txt; records are metadata + a pointer. A source that
+  // still ships a body (a sandbox or an unsplit WIP) reads it directly.
+  const srcText = (typeof src.body === "string" && src.body.trim())
+    ? src.body
+    : (typeof src.file === "string" && src.file
+        ? fs.readFileSync(src.file, "utf8")
+        : "");
+  if (!srcText.trim())
+    throw new Error("song '" + srcKey + "' has neither body nor a readable file");
+
   const parse = loadParse();
-  const srcNotes = parse(src.body).filter(t => t.type === "note");
-  const dstBody = transpose(src.body, shift);
+  const srcNotes = parse(srcText).filter(t => t.type === "note");
+  const dstBody = transpose(srcText, shift);
   const dstNotes = parse(dstBody).filter(t => t.type === "note");
   const bad = parse(dstBody).filter(t => t.type === "bad");
   if (bad.length)
@@ -124,13 +135,43 @@ function main() {
 
   if (dry) { console.log(dstBody); return; }
   if (!dstKey) { console.log("(no dstKey given: nothing written)"); return; }
-  songs[dstKey] = Object.assign({}, src, {
-    name: name || src.name,
+  // The split's write shape: the record carries metadata + the file pointer;
+  // the notation (inheriting every source play attribute) writes to
+  // songs/<dstKey>.txt. A file-backed source's leading block passes through
+  // the transposer verbatim, so the destination file keeps header order and
+  // inline tempo changes — only the title line swaps to the dst name. A
+  // body-shaped source (sandbox record) walks the record-attrs wrap.
+  const dstName = name || src.name;
+  const fileName = "songs/" + dstKey + ".txt";
+  const pointed = !(typeof src.body === "string" && src.body.trim());
+  let fileText;
+  if (pointed) {
+    fileText = dstBody.replace(/^#.*\n/, "# " + dstName + "\n");
+  } else {
+    // A body-shaped source had its attrs in the record: wrap the header
+    // block around the transposed notation so the file carries them.
+    const loadNames = ["tempoFromText", "swingFromText", "tickFromText",
+                       "meterFromText", "withPlayHeaders"];
+    for (const n of loadNames)
+      if (typeof window[n] !== "function")
+        throw new Error("parse.js window surface lacks " + n);
+    fileText = window.withPlayHeaders(
+      dstBody, dstName,
+      src.tempo != null ? src.tempo : window.tempoFromText(srcText),
+      src.swing != null ? src.swing : window.swingFromText(srcText),
+      src.tick != null ? src.tick : window.tickFromText(srcText),
+      src.meter != null ? src.meter : window.meterFromText(srcText));
+  }
+  songs[dstKey] = {
+    name: dstName,
     group: group || src.group,
-    body: dstBody,
-  });
+    file: fileName,
+  };
+  if (src.hidden === true) songs[dstKey].hidden = true;
+  require("fs").mkdirSync("songs", { recursive: true });
+  fs.writeFileSync(fileName, fileText);
   fs.writeFileSync("songs.json", JSON.stringify(songs, null, 2));
-  console.log("wrote songs.json entry '" + dstKey + "'");
+  console.log("wrote " + fileName + " and the songs.json entry '" + dstKey + "'");
 }
 function midiOfChartLow(chart) { const m = /^([A-G])([#bs]?)(\d)$/.exec(chart.range.low); return chartMidi(m); }
 function midiOfChartHigh(chart) { const m = /^([A-G])([#bs]?)(\d)$/.exec(chart.range.high); return chartMidi(m); }

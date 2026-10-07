@@ -14,6 +14,7 @@ on:
       - "css/**"
       - "js/**"
       - "songs.json"
+      - "songs/*.txt"
       - "instruments.json"
       - "instruments/**"
       - "sw.js"
@@ -58,9 +59,10 @@ jobs:
           for f in index.html sw.js manifest.webmanifest favicon.svg icon-192.png icon-512.png hyrule.webp songs.json instruments.json robots.txt; do
             cp "$f" site/
           done
-          mkdir -p site/css site/js site/instruments
+          mkdir -p site/css site/js site/instruments site/songs
           cp -r css/. site/css/
           cp -r js/. site/js/
+          cp songs/*.txt site/songs/
           find instruments -type f \( -name "*.json" -o -name "*.svg" \) -print0 | while IFS= read -r -d '' f; do
             d="site/$(dirname "$f")"; mkdir -p "$d"; cp "$f" "$d/"
           done

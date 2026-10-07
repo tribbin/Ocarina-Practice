@@ -274,6 +274,15 @@ class V:
         if s is None or not isinstance(s, dict):
             return
         known = self._manifest_ids()
+        # The song data split (Robin 2026-10-07): a record is METADATA plus
+        # one pointer — `file` names the songs/<id>.txt the notation lives
+        # in; `derives` declares a transposition of another record's file.
+        # The music itself (notation and every play attribute) lives only in
+        # the .txt now; a record carrying body/tempo/swing/tick/meter is a
+        # legacy artifact that must migrate.
+        KNOWN_FIELDS = {"name", "group", "intended", "hidden", "file",
+                        "derives"}
+        LEGACY_MUSIC_FIELDS = ("body", "tempo", "swing", "tick", "meter")
         for key, item in s.items():
             if not isinstance(item, dict):
                 self.err("songs.json", "bad-shape", f"{key} is not an object")
@@ -281,27 +290,35 @@ class V:
             name = item.get("name")
             if not isinstance(name, str) or not name:
                 self.err("songs.json", "no-name", key)
-            body = item.get("body")
-            # A hand body is required EXCEPT on a derives entry: the record
-            # declares an at-load derivation instead (a body beside a
-            # record is the redundant double the derives block flags).
-            if (not isinstance(body, str) or not body.strip()) \
-                    and "derives" not in item:
-                self.err("songs.json", "no-body", key)
-            for field in ("hidden", "tick"):
-                if field in item and not isinstance(item[field], bool):
-                    self.err("songs.json", "bad-field", f"{key}: {field} must be bool")
-            for field in ("tempo", "swing"):
-                if field in item and (isinstance(item[field], bool)
-                                      or not isinstance(item[field], (int, float))):
-                    self.err("songs.json", "bad-field", f"{key}: {field} must be a number")
+            for unk in sorted(set(item) - KNOWN_FIELDS):
+                self.err("songs.json", "unknown-field",
+                         f"{key}: unknown field {unk!r} (known: name, group, "
+                         + "intended, hidden, file, derives)")
+            for field in LEGACY_MUSIC_FIELDS:
+                if field in item:
+                    self.err("songs.json", "legacy-audio-field",
+                             f"{key}: {field} lives in the song .txt's "
+                             "leading header block now, not in songs.json")
+            if "hidden" in item and not isinstance(item["hidden"], bool):
+                self.err("songs.json", "bad-field", f"{key}: hidden must be bool")
             if "group" in item and not isinstance(item["group"], str):
                 self.err("songs.json", "bad-field", f"{key}: group must be a string")
-            if "meter" in item and not (
-                    isinstance(item["meter"], str)
-                    and re.fullmatch(r"\d+/\d+", item["meter"])):
-                self.err("songs.json", "bad-field",
-                         f"{key}: meter must be a N/N time signature")
+            # The pointer: a `file` record must name an existing, nonempty
+            # song .txt carrying its tempo (text-first: with no record
+            # fallback left, a missing tempo header would silently boot at
+            # 96). A `derives` record must be the only pointer on the entry.
+            file_ref = item.get("file")
+            has_file = file_ref is not None
+            if "derives" not in item and not has_file:
+                self.err("songs.json", "no-file", key)
+            if has_file:
+                if not isinstance(file_ref, str) or not file_ref \
+                        or file_ref.startswith("/") or ".." in file_ref.split("/"):
+                    self.err("songs.json", "bad-file",
+                             f"{key}: file must be a repo-relative path "
+                             f"without .. segments, got {file_ref!r}")
+                else:
+                    self._song_file(file_ref, key)
             # The intended-instrument declaration (Robin, 2026-09-25): a
             # song may name the ocarina it was WRITTEN for — the landing
             # stub seeds that instrument when any family member fits its
@@ -316,10 +333,10 @@ class V:
                     self.err("songs.json", "bad-intended",
                              f"{key}: intended {intended!r} is no manifest instrument id")
             # Derived twins (board §9 2026-09-25): a derives record declares
-            # the AT-LOAD derivation {key: base, shift, flats?}. The variant
-            # must not ALSO ship a hand body (redundant, the two would
-            # fight), the base must be a different key that keeps its hand
-            # body and never itself derives, and the record shape is strict.
+            # the AT-LOAD derivation {key: base, shift}. The variant owns NO
+            # pointer of its own (its body materializes from the base's
+            # file), the base must be a different file-backed key that never
+            # itself derives, and the record shape is strict.
             if "derives" in item:
                 dr = item["derives"]
                 if not isinstance(dr, dict) or "key" not in dr \
@@ -346,11 +363,11 @@ class V:
                             self.err("songs.json", "bad-derives",
                                      f"{key}: base {base_key!r} itself "
                                      "derives (one level)")
-                        elif not isinstance(base.get("body"), str) \
-                                or not base["body"].strip():
+                        elif not (isinstance(base.get("file"), str)
+                                  and base.get("file")):
                             self.err("songs.json", "bad-derives",
-                                     f"{key}: base {base_key!r} must keep "
-                                     "a hand body")
+                                     f"{key}: base {base_key!r} must point "
+                                     "at its own song .txt")
                     shift = dr.get("shift")
                     if isinstance(shift, bool) or not isinstance(shift, int):
                         self.err("songs.json", "bad-derives",
@@ -358,11 +375,31 @@ class V:
                     elif abs(shift) > 24:
                         self.err("songs.json", "bad-derives",
                                  f"{key}: derives.shift beyond two octaves")
-                body = item.get("body")
-                if isinstance(body, str) and body.strip():
+                if has_file:
                     self.err("songs.json", "bad-derives",
-                             f"{key}: a derives record replaces its body — "
-                             "ship one, not both")
+                             f"{key}: a derives record carries no file of "
+                             "its own — the variant materializes from the "
+                             "base's")
+
+    def _song_file(self, rel, shaded_by):
+        p = self.root / rel
+        if not p.is_file():
+            self.err("songs.json", "missing-file",
+                     f"{shaded_by}: song file {rel} not found")
+            return
+        try:
+            text = p.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            self.err("songs.json", "bad-file",
+                     f"{shaded_by}: song file {rel} is not UTF-8")
+            return
+        if not text.strip():
+            self.err("songs.json", "empty-file", f"{shaded_by}: {rel}")
+            return
+        if not re.search(r"(?im)^#\s*tempo\s+\d+\s*$", text):
+            self.err("songs.json", "no-tempo-header",
+                     f"{shaded_by}: {rel} must carry a '# tempo N' header "
+                     "(the record keeps no tempo field to fall back to)")
 
 
 def validate(root):
@@ -398,9 +435,9 @@ GOOD_FINGERINGS = """{
 
 GOOD_SONGS = """{
   "some-song": {"name": "Some Song", "group": "Other",
-                "tempo": 120, "body": "C4 D4 E4"},
+                "file": "songs/some-song.txt"},
   "hidden-one": {"name": "Hidden", "group": "Other", "hidden": true,
-                 "body": "C4"}
+                 "file": "songs/hidden-one.txt"}
 }"""
 
 CASES = []
@@ -426,6 +463,12 @@ def good_sandbox(td):
     write(tmp, "instruments/alpha/ocarina-template.svg", "<svg/>")
     write(tmp, "instruments/alpha/special.svg", "<svg/>")
     write(tmp, "songs.json", GOOD_SONGS)
+    # The song .txt bodies the records point at (board §5 2026-10-07):
+    # title/tempo header block, blank line, the notation.
+    write(tmp, "songs/some-song.txt",
+          "# Some Song\n# tempo 120\n\nC4 D4 E4\n")
+    write(tmp, "songs/hidden-one.txt",
+          "# Hidden\n# tempo 100\n\nC4\n")
     return tmp
 
 
@@ -447,58 +490,109 @@ def v0():
             raise AssertionError(f"good corpus flagged: {errs}")
 
 
+def song_json(extra_pair):
+    """A valid songs.json with one extra record pair appended."""
+    return GOOD_SONGS[:-1].rstrip() + ",\n  " + extra_pair + "}"
+
+
 @case("derives record shape (good, then each defect class) caught")
 def v01():
     with tempfile.TemporaryDirectory() as td:
         tmp = good_sandbox(td)
-        # the good shape: a variant derives from the base, no hand body
-        good = GOOD_SONGS.replace(
-            '"name": "Some Song", "group": "Other",\n                '
-            '"tempo": 120, "body": "C4 D4 E4"},',
-            '"name": "Some Song", "group": "Other",\n                '
-            '"tempo": 120, "body": "C4 D4 E4"},\n'
-            '  "some-song-12": {"name": "Some Song 12", "group": "Other",'
-            ' "tempo": 120,\n                 "derives": {"key": "some-song",'
-            ' "shift": -12}},')
-        write(tmp, "songs.json", good)
+        # the good shape: a variant derives from the file-backed base —
+        # no own pointer, no hand field anywhere on the record
+        write(tmp, "songs.json", song_json(
+            '"some-song-12": {"name": "Some Song 12", "group": "Other",'
+            ' "derives": {"key": "some-song", "shift": -12}}'))
         errs = validate(tmp)
         if errs:
             raise AssertionError(f"good derive shape flagged: {errs}")
-        # ship-one-not-both: a hand body beside the record is a defect
-        write(tmp, "songs.json", good.replace('"derives": {"key":',
-                                              '"body": "C4", "derives": {"key":'))
+        # the focused legs below mutate exactly one defect each.
+        # a derives record carries no own file (the variant materializes
+        # from the base's): the double pointer is the ship-one-not-both
+        write(tmp, "songs.json", song_json(
+            '"some-song-12": {"name": "Some Song 12", "group": "Other",'
+            ' "file": "songs/some-song.txt",'
+            ' "derives": {"key": "some-song", "shift": -12}}'))
         expect_hits(validate(tmp), "some-song-12", "bad-derives")
-        # unknown field
-        write(tmp, "songs.json", good.replace(
-            '"shift": -12}}', '"shift": -12, "weird": true}}'))
+        # unknown derives field
+        write(tmp, "songs.json", song_json(
+            '"some-song-12": {"name": "Some Song 12", "group": "Other",'
+            ' "derives": {"key": "some-song", "shift": -12,'
+            ' "weird": true}}'))
         expect_hits(validate(tmp), "some-song-12", "bad-derives")
         # self-derive
-        write(tmp, "songs.json", good.replace(
-            '"key": "some-song"', '"key": "some-song-12"'))
+        write(tmp, "songs.json", song_json(
+            '"some-song-12": {"name": "Some Song 12", "group": "Other",'
+            ' "derives": {"key": "some-song-12", "shift": -12}}'))
         expect_hits(validate(tmp), "some-song-12", "bad-derives")
         # missing base
-        write(tmp, "songs.json", good.replace(
-            '"key": "some-song"', '"key": "no-such-song"'))
+        write(tmp, "songs.json", song_json(
+            '"some-song-12": {"name": "Some Song 12", "group": "Other",'
+            ' "derives": {"key": "no-such-song", "shift": -12}}'))
         expect_hits(validate(tmp), "no-such-song", "bad-derives")
-        # base with no body
-        write(tmp, "songs.json", good.replace(
-            '"tempo": 120, "body": "C4 D4 E4"},\n',
-            '"tempo": 120},\n').replace(
-            '"body": "C4", "derives": {', '"derives": {'))
-        expect_hits(validate(tmp), "some-song", "bad-derives")
+        # base with no pointer of its own
+        write(tmp, "songs.json",
+              GOOD_SONGS[:-1].rstrip() +
+              ',\n  "some-song-12": {"name": "Some Song 12", "group": "Other",'
+              ' "derives": {"key": "no-pointer", "shift": -12}},'
+              '\n  "no-pointer": {"name": "No Pointer", "group": "Other"}}')
+        expect_hits(validate(tmp), "no-pointer", "bad-derives")
         # shift not an integer
-        write(tmp, "songs.json", good.replace(
-            '"shift": -12', '"shift": -12.5'))
+        write(tmp, "songs.json", song_json(
+            '"some-song-12": {"name": "Some Song 12", "group": "Other",'
+            ' "derives": {"key": "some-song", "shift": -12.5}}'))
         expect_hits(validate(tmp), "some-song-12", "bad-derives")
         # shift beyond two octaves
-        write(tmp, "songs.json", good.replace(
-            '"shift": -12', '"shift": 25'))
+        write(tmp, "songs.json", song_json(
+            '"some-song-12": {"name": "Some Song 12", "group": "Other",'
+            ' "derives": {"key": "some-song", "shift": 25}}'))
         expect_hits(validate(tmp), "some-song-12", "bad-derives")
         # flats (a retired concept — spelling is body-territory) lands in
         # the unknown-field catch
-        write(tmp, "songs.json", good.replace(
-            '"shift": -12}}', '"shift": -12, "flats": "yes"}}'))
+        write(tmp, "songs.json", song_json(
+            '"some-song-12": {"name": "Some Song 12", "group": "Other",'
+            ' "derives": {"key": "some-song", "shift": -12,'
+            ' "flats": "yes"}}'))
         expect_hits(validate(tmp), "some-song-12", "bad-derives")
+
+
+@case("the split: no music or play attribute stays in songs.json")
+def v01b():
+    with tempfile.TemporaryDirectory() as td:
+        tmp = good_sandbox(td)
+        # the music attrs live in the .txt; a record field is legacy now
+        for legacy in ("body", "tempo", "swing", "tick", "meter"):
+            write(tmp, "songs.json", song_json(
+                '"legacy-carrier": {"name": "Legacy", "group": "Other",'
+                ' "file": "songs/some-song.txt",'
+                ' "' + legacy + '": "x"}'))
+            expect_hits(validate(tmp), "legacy-carrier", "legacy-audio-field")
+
+
+@case("song file pointer defects: missing, escapes, empty, no tempo header")
+def v01c():
+    with tempfile.TemporaryDirectory() as td:
+        tmp = good_sandbox(td)
+        # missing file
+        (tmp / "songs/some-song.txt").unlink()
+        expect_hits(validate(tmp), "some-song", "missing-file")
+        write(tmp, "songs/some-song.txt",
+              "# Some Song\n# tempo 120\n\nC4 D4 E4\n")
+        # path escapes the repo
+        write(tmp, "songs.json", GOOD_SONGS.replace(
+            '"file": "songs/some-song.txt"', '"file": "../some-song.txt"'))
+        expect_hits(validate(tmp), "some-song", "bad-file")
+        write(tmp, "songs.json", GOOD_SONGS.replace(
+            '"file": "songs/some-song.txt"', '"file": "/etc/passwd"'))
+        expect_hits(validate(tmp), "some-song", "bad-file")
+        write(tmp, "songs.json", GOOD_SONGS)
+        # an empty body file
+        write(tmp, "songs/some-song.txt", "  \n")
+        expect_hits(validate(tmp), "some-song", "empty-file")
+        # without a tempo header the loader would silently boot at 96
+        write(tmp, "songs/some-song.txt", "# Some Song\n\nC4 D4 E4\n")
+        expect_hits(validate(tmp), "some-song", "no-tempo-header")
 
 
 @case("duplicate JSON keys caught on both data files")
@@ -511,7 +605,7 @@ def v1():
         expect_hits(validate(tmp), "instruments", "duplicate")
         write(tmp, "instruments.json", GOOD_MANIFEST)
         write(tmp, "songs.json", GOOD_SONGS.replace(
-            '"tempo": 120,', '"tempo": 120, "tempo": 121,'))
+            '"group": "Other"', '"group": "Other", "group": "Other"', 1))
         expect_hits(validate(tmp), "songs.json", "duplicate")
 
 
@@ -626,22 +720,29 @@ def v9():
         assert any("missing-file" in e and "special.svg" in e for e in errs), errs
 
 
-@case("songs.json entries need name+body and typed scalars")
+@case("song records need name + a file pointer, typed scalars only")
 def v10():
     with tempfile.TemporaryDirectory() as td:
         tmp = good_sandbox(td)
         write(tmp, "songs.json",
-              '{"bad": {"group": "Other"}, "empty": {"name": "E", "body": "   "}}')
+              '{"bad": {"group": "Other"}, "pointerless": {"name": "E"}}')
         errs = validate(tmp)
         assert any("no-name" in e and "bad" in e for e in errs), errs
-        assert any("no-body" in e and "empty" in e for e in errs), errs
-        write(tmp, "songs.json", '{"t": {"name": "T", "body": "C4", "hidden": "yes"}}')
+        assert any("no-file" in e and "pointerless" in e for e in errs), errs
+        write(tmp, "songs.json",
+              '{"t": {"name": "T", "file": "songs/hidden-one.txt",'
+              ' "hidden": "yes"}}')
         expect_hits(validate(tmp), "hidden", "bad-field")
-        write(tmp, "songs.json", '{"t": {"name": "T", "body": "C4", "meter": "3/4"}}')
-        errs = validate(tmp)
-        assert not any("meter" in e for e in errs), errs
-        write(tmp, "songs.json", '{"t": {"name": "T", "body": "C4", "meter": 3}}')
-        expect_hits(validate(tmp), "meter", "bad-field")
+        # the music attrs live in the .txt; a record field is legacy now
+        write(tmp, "songs.json",
+              '{"t": {"name": "T", "file": "songs/hidden-one.txt",'
+              ' "meter": "3/4"}}')
+        expect_hits(validate(tmp), "meter", "legacy-audio-field")
+        # unknown record fields are refused (a typo can never silently ride)
+        write(tmp, "songs.json",
+              '{"t": {"name": "T", "file": "songs/hidden-one.txt",'
+              ' "title": "X"}}')
+        expect_hits(validate(tmp), "title", "unknown-field")
 
 
 @case("bad default id caught")

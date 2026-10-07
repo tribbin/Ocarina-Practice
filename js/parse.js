@@ -466,6 +466,44 @@ function isMetaHeader(line) {
     || isMeterComment(line);
 }
 
+// The leading header block's play attributes, read off the same split
+// withPlayHeaders applies at rewrite time: only the run of '# ...' lines at
+// the very top may declare tempo/swing/meter/tick. Lines deeper in the text
+// are inline changes — they never drive the dials at song load (a mid-body
+// '# tempo' marker is a playback event, not the song's base tempo).
+function headerBlockPlayAttrs(text) {
+  const out = { tempo: null, swing: null, meter: null, tick: null };
+  const lines = String(text || "").split("\n");
+  let h = 0;
+  while (h < lines.length && lines[h].trim().startsWith("#")) {
+    const l = lines[h];
+    if (out.tempo == null) {
+      const t = l.match(/^#\s*tempo\s+(\d+)\s*$/i);
+      if (t) out.tempo = +t[1];
+    }
+    if (out.swing == null) {
+      const s = l.match(/^#\s*swing\s+(\d+)\s*$/i);
+      if (s) out.swing = +s[1];
+    }
+    if (out.meter == null && isMeterComment(l)) {
+      out.meter = meterFromText("\n" + l + "\n");
+    }
+    if (out.tick == null && isTickComment(l)) {
+      // the asymmetry: only the opt-out is a declaration; "# tick on" is a
+      // plain header comment and never forces ticking on.
+      out.tick = offTick_fromLine(l) ? false : null;
+    }
+    h++;
+  }
+  return out;
+}
+
+// parse exported the off-only semantics from tickFromText; inside the block
+// walk the declaration comparison is direct.
+function offTick_fromLine(line) {
+  return /^#\s*tick\s+off\s*$/i.test(String(line));
+}
+
 function titleFromText(text) {
   const line = String(text || "").split("\n").find(l =>
     l.startsWith("#") && !isMetaHeader(l)
@@ -531,6 +569,7 @@ function withTitleAndTempo(body, name, bpm) {
 export { durLabel, isOutOfRange, isMeterComment, isTickComment, isTrackHeader, octSub,
          parse, parseTracks, pretty, rangeCheck, spelledLabel, midiOf, meterFromText,
          swingFromText, tempoFromText, tickFromText, titleFromText, withPlayHeaders,
+         headerBlockPlayAttrs,
          withTempoLine, withTitleAndTempo };
 
 // Classic-script compat surface (tests + dev console call these by global).
@@ -545,3 +584,4 @@ window.withTitleAndTempo = withTitleAndTempo;
 window.rangeCheck = rangeCheck; window.isOutOfRange = isOutOfRange;
 window.isTickComment = isTickComment; window.tickFromText = tickFromText;
 window.isMeterComment = isMeterComment; window.meterFromText = meterFromText;
+window.headerBlockPlayAttrs = headerBlockPlayAttrs;

@@ -761,3 +761,74 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   Robin's elections. Suites: full sweep 50/50 (433 s), lint clean, sw
   oco-pwa-v96. Holds for his field check: the new 16th/dotted/mid-half
   timing feel. Branch swing-track-pace off tempo-dial-rebase per Robin.
+
+- **2026-10-07 (song-txt-files opened — Robin asks the song data split: music to .txt files, songs.json keeps metadata)** —
+  Robin's ask: songs stored as .txt files referenced from songs.json (group,
+  name — which can differ from the .txt's own title — intended instrument
+  stay metadata); bodies retrieved/referenced per song; ONE .txt file can be
+  addressed multiple times (bass-transposed versions etc.); the aim is
+  human-readable editing and exported web-app files dropping in as-is
+  (Save File's round-trip headers already carry title/tempo/swing/tick/
+  meter + #track blocks). Fields that belong to the music rather than
+  metadata MAY relocate into the .txt. Survey done (no code yet):
+  library.js initBuiltin/loadLibraryItem/songOutOfRange/songFitsChart are
+  the body consumers; boot loads songs.json + resume compares its text;
+  sw.js DATA_NETWORK_FIRST covers songs.json and the install derive caches
+  it; gen_song_pages.py reads songs[key].body for chart fit; data_validator
+  and twin_derive fixtures read songs.json shapes. Robin's follow-up rules
+  in update propagation (2026-10-07): players must receive updated songs,
+  never stale cached bodies — the .txt files join the network-first regimen
+  and the resume freshness check extends to the bodies. Remaining forks
+  batched to Robin (retrieval timing, JSON-vs-.txt field placement,
+  directory name); item boarded §5. Branch song-txt-files created as the
+  placeholder; no app code yet.
+
+- **2026-10-07 (session — the song data split lands in three units: loader, data, serving)** —
+  Robin's ask (music → .txt files referenced from songs.json, one file
+  addressable by several entries, exported files drop in as-is, update
+  propagation required) worked through his answered batch (boot prefetch;
+  music attrs text-first in the .txt headers, JSON = name/group/intended
+  + pointers; directory songs/). Red-first tests/song_files.py (5 legs).
+  LOADER `1b2acaf`: library.js builtinFileBodies/materializeFileBodies
+  assign bodies from files, derive file-backed variants from the base
+  file's CONTENT (headerlessContent strips the leading block + blank +
+  trailing newline; variant bodies stay byte-equal to twin_derive's
+  frozen hand transcriptions), strip file/derives from the published
+  BUILTIN shape, and fall back to the last fetched bytes on a failed
+  fetch (an offline resume never blanks the library); parse.js gains
+  headerBlockPlayAttrs (leading-block-only attr read — a mid-body '#
+  tempo' marker is a playback event, never the base tempo); the load
+  flips text-first with byte-preserving editor text (only the title
+  line leaves; the trailing newline survives so a loaded file re-exports
+  byte-identical); the resume token spans songs.json + the fetched
+  bodies. DATA `498bbb3`: the migration wrote 17 songs/*.txt files and
+  slimmed songs.json (4 derives variants stay pointers); melody_transpose
+  gained the shared file loader + content strip and its octave fast path
+  now passes the track-stream gate (it was silently shifting contrabass
+  content an octave down on every -12 derivation — the frozen fixtures
+  stayed byte-valid); tools follow the bodies (track_harmonize reads and
+  writes the record's own .txt, midi_track_audit takes the pointer with
+  an inline doctoring fallback, audit_twins reads attrs off the leading
+  header block, transpose.cjs writes metadata + a file inheriting the
+  source header block with the title swapped, verify_song follows the
+  pointer); data_validator enforces the split shape (pointer required,
+  legacy-audio-field classes, unknown fields named, files checked to
+  exist non-empty UTF-8 with a tempo header) + sandbox legs; deploy-site
+  allowlist/trigger covers songs/; gen_pages staging assembles the files;
+  shipped_songs' metadata probe resolves tempo text-first through the
+  derive chain. SERVING e59dd53: sw.js DATA_NETWORK_FIRST covers
+  songs/*.txt, the install derive precaches every record's file,
+  offline_pwa's freshness legs rebase onto pointer sentinels + a new
+  .txt-only-edit resume leg. Suite sweep green: song_files,
+  data_validator, shipped_songs (23 songs, 11 aligned multi-track),
+  twin_derive, gen_pages (11 stubs), parse_edges, song_txt_roundtrip,
+  library_hardening, library_favorites, offline_pwa (4 freshness legs),
+  asset_versions, theme_prepaint, instruments_load, console_hygiene,
+  transpose_skill (proven locally with the node tarball), midi_track_audit
+  SKIP-from-absence (research/ gitignored); eslint + html-validate clean;
+  sw oco-pwa-v97. DONE: the octave-drift discovery above was a REAL
+  latent defect the split exposed (the JS engine had the gate, the python
+  twin did not). Robin's instruction closed the session: merge latest
+  main into song-txt-files and push. HOLD: the field check of the live
+  workflow (edit a song .txt, the update lands fresh on the phone) and
+  the deployed first-visit bodies after the next main deploy.

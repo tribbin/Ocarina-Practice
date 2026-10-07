@@ -80,6 +80,11 @@ def main():
             page.wait_for_function(
                 "() => caches.match('songs.json').then(Boolean)",
                 timeout=15000)
+            # The song .txt bodies precache with the data (board §5): the
+            # install derive adds every record's `file` to the same room.
+            page.wait_for_function(
+                "() => caches.match('songs/song-of-storms.txt').then(Boolean)",
+                timeout=15000)
             # The strip is drawn by boot's FIRST render, which settles after
             # WAIT's NOTES install (the template fetch rides ahead of it) —
             # the rendered strip itself is the rendezvous, not the install.
@@ -207,9 +212,12 @@ def main():
 
             # --- data freshness legs (Robin, 2026-09-28: deployed songs had
             # to ride a SECOND reload under stale-while-revalidate, and a
-            # phone-app resume never re-checked anything) ---
+            # phone-app resume never re-checked anything; with the song data
+            # split the body rides its own .txt, so a .txt-only edit must be
+            # detected too) ---
             songs_path = ROOT / "songs.json"
             pristine = songs_path.read_bytes()
+            SENT_HANDS = "pwa-freshness-sentinel-"
             try:
                 # (a) an online RELOAD lands the deployed data on the FIRST
                 # reload: the same installed worker now serves the released
@@ -221,23 +229,29 @@ def main():
                     data = _json.loads(pristine.decode("utf-8"))
                     data[key] = {
                         "name": "PWA Freshness Sentinel",
-                        "group": "Other", "tempo": 97,
-                        "body": "C4 D4 E4 | r/2.",
+                        "group": "Other",
+                        "file": f"songs/{key}.txt",
                     }
                     songs_path.write_text(
                         _json.dumps(data, separators=(",", ":")),
                         encoding="utf-8")
-                with_sentinel("pwa-freshness-sentinel-a")
+                    (ROOT / f"songs/{key}.txt").write_text(
+                        "# PWA Freshness Sentinel\n# tempo 97\n\n"
+                        "C4 D4 E4 | r/2.\n", encoding="utf-8")
+                with_sentinel(SENT_HANDS + "a")
                 page.reload()
                 page.wait_for_function(WAIT)
                 try:
                     page.wait_for_function(
                         "() => Object.keys(window.BUILTIN)"
-                        ".includes('pwa-freshness-sentinel-a')", timeout=15000)
+                        ".includes('" + SENT_HANDS + "a') && (window.BUILTIN['"
+                        + SENT_HANDS + "a'].body || '').includes('r/2.')",
+                        timeout=15000)
                 except Exception:
                     failures.append(
-                        "an online reload must land the released data on "
-                        "the FIRST reload (stale-while-revalidate lag)")
+                        "an online reload must land the released data AND "
+                        "its .txt body on the FIRST reload "
+                        "(stale-while-revalidate lag)")
 
                 # (b) a RESUME (visibility back to visible, nothing running)
                 # re-fetches the data network-first and swaps the library
@@ -250,20 +264,47 @@ def main():
                 # One real clock-second separates the serve before any
                 # rewrite.
                 time.sleep(1.1)
-                with_sentinel("pwa-freshness-sentinel-b")
+                with_sentinel(SENT_HANDS + "b")
                 page.evaluate(
                     "() => document.dispatchEvent"
                     "(new Event('visibilitychange'))")
                 try:
                     page.wait_for_function(
                         "() => Object.keys(window.BUILTIN)"
-                        ".includes('pwa-freshness-sentinel-b')", timeout=15000)
+                        ".includes('" + SENT_HANDS + "b') && (window.BUILTIN['"
+                        + SENT_HANDS + "b'].body || '').includes('r/2.')",
+                        timeout=15000)
                 except Exception:
                     failures.append(
                         "an app resume must re-fetch songs.json and swap "
                         "the library when the bytes changed")
+
+                # (c) a BODY-ONLY edit (songs.json byte-identical) reaches a
+                # resumed app through the same breadth (Robin 2026-10-07:
+                # updated songs must reach players, never a stale cache).
+                # The 30 s SONGS_REFRESH_GAP debounce was just consumed by
+                # leg (b)'s dispatch: one gap later the gate owns it.
+                time.sleep(31)
+                (ROOT / f"songs/{SENT_HANDS}b.txt").write_text(
+                    "# PWA Freshness Sentinel\n# tempo 97\n\n"
+                    "C4 F4 A4 | r/2.\n", encoding="utf-8")
+                page.evaluate(
+                    "() => document.dispatchEvent"
+                    "(new Event('visibilitychange'))")
+                try:
+                    page.wait_for_function(
+                        "() => (window.BUILTIN['" + SENT_HANDS + "b'] || {})"
+                        ".body && BUILTIN['" + SENT_HANDS + "b'].body"
+                        ".includes('C4 F4 A4')", timeout=15000)
+                except Exception:
+                    failures.append(
+                        "a resume must land a .txt-only body edit (the "
+                        "songs.json text comparator alone would never see it)")
             finally:
                 songs_path.write_bytes(pristine)
+                for stem in ("a", "b"):
+                    (ROOT / f"songs/{SENT_HANDS}{stem}.txt").unlink(
+                        missing_ok=True)
 
             # --- engine freshness leg (Robin, 2026-09-29: /js/ rides
             # network-first). The deploy that started the noise hunt served

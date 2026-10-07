@@ -102,7 +102,7 @@ DERIVES = [
         "key": 'botw-theme-down3',
         "base": 'botw-theme',
         "shift": -12,
-        "fixture": '|["Opening"] A5/4. B5/8 C6/4\n| A5 G5 F5\n| -/2 E5\n| D5/2. -/4 r/4\n| A5/4. B5/8 C6/4\n| A5 G5 F5\n| G5/2 A5\n| -/2.\n\n|["Slow opening"] r/2 F4/8 C5/8\n| C5/8 D#4/8 F4/2\n| C5/8 G4/8 G#4 A#4\n| C5/8 F4/8 F5/4. D#5/8\n| C5/2 F4/8 D5/8\n| C5/2.\n| -/2 F4/8 D5/8\n| -/8 C5/8 -/2\n| -/2.\n\n# tempo 104\n|["Ramping up opening"] C#5/4. D5/8 E5/4\n| C#5/4 B4/4 A4/4\n|  -/2 G#4\n| F#4/2.\n| C#5/4. D5/8 E5/4\n| C#5/4 B4/4 A4/4\n| B4/2 C#5/4\n| -/2 A3/8 E4/8\n| D#4/4. A#3/8 D4/8 D#4/8\n| F4/4. D#4/8 F4/8 A#4/8\n| C5/8t F4/8t G4/8t A#4 D5\n| D#5/2.\n| D5/8 D#5/8 F5/2\n| -/2 D#5/8t F5/8t G#5/8t\n| G5/2. | -/2.\n\n|["Main theme body"] E5/8 A4/8 A5/4. G5/8\n| E5/2.\n| E5/8 G4/8 A4/2\n| E5/8 A#4/8 C5 D5\n| E5/8 A4/8 C6/4. B5/8\n| E5/2.\n| -/2 G5/8 F#5/8\n| -/8 E5/2 -/8\n\n|["Main theme body repeat"] E5/8 A4/8 A5/4. G5/8\n| E5/2.\n| E5/8 G4/8 A4/2\n| E5/8 A#4/8 C5 D5\n| E5/8 A4/8 C6/4. B5/8\n| E5/2.\n| E5/4. F#5/8 G5\n| -/8 A5/2 -/8\n\n|["End"] B4/8 G4/8 A4 A4/8 G4/8\n| B4/8 F#4/8 A4 D5/8 B4/8\n| A4/8 E5/8 E5/8 E5 C5/8\n| D5/8 A5/8 -/4 A4/8 B4/8\n| C5/4. D5/8 E5\n| D5 B5/2 r/1. A4/1. r/1.\n',
+        "fixture": '|["Opening"] A5/4. B5/8 C6/4\n| A5 G5 F5\n| -/2 E5\n| D5/2. -/4 r/4\n| A5/4. B5/8 C6/4\n| A5 G5 F5\n| G5/2 A5\n| -/2.\n\n|["Slow opening"] r/2 F4/8 C5/8\n| C5/8 D#4/8 F4/2\n| C5/8 G4/8 G#4 A#4\n| C5/8 F4/8 F5/4. D#5/8\n| C5/2 F4/8 D5/8\n| C5/2.\n| -/2 F4/8 D5/8\n| -/8 C5/8 -/2\n| -/2.\n\n# tempo 104\n|["Ramping up opening"] C#5/4. D5/8 E5/4\n| C#5/4 B4/4 A4/4\n|  -/2 G#4\n| F#4/2.\n| C#5/4. D5/8 E5/4\n| C#5/4 B4/4 A4/4\n| B4/2 C#5/4\n| -/2 A3/8 E4/8\n| D#4/4. A#3/8 D4/8 D#4/8\n| F4/4. D#4/8 F4/8 A#4/8\n| C5/8t F4/8t G4/8t A#4 D5\n| D#5/2.\n| D5/8 D#5/8 F5/2\n| -/2 D#5/8t F5/8t G#5/8t\n| G5/2. | -/2.\n\n|["Main theme body"] E5/8 A4/8 A5/4. G5/8\n| E5/2.\n| E5/8 G4/8 A4/2\n| E5/8 A#4/8 C5 D5\n| E5/8 A4/8 C6/4. B5/8\n| E5/2.\n| -/2 G5/8 F#5/8\n| -/8 E5/2 -/8\n\n|["Main theme body repeat"] E5/8 A4/8 A5/4. G5/8\n| E5/2.\n| E5/8 G4/8 A4/2\n| E5/8 A#4/8 C5 D5\n| E5/8 A4/8 C6/4. B5/8\n| E5/2.\n| E5/4. F#5/8 G5\n| -/8 A5/2 -/8\n\n|["End"] B4/8 G4/8 A4 A4/8 G4/8\n| B4/8 F#4/8 A4 D5/8 B4/8\n| A4/8 E5/8 E5/8 E5 C5/8\n| D5/8 A5/8 -/4 A4/8 B4/8\n| C5/4. D5/8 E5\n| D5 B5/2 r/1. A4/1. r/1.',
     },
     {
         "key": 'concerning-hobbits-short-c',
@@ -126,13 +126,17 @@ def main():
     songs = json.loads((ROOT / "songs.json").read_text(encoding="utf-8"))
 
     # --- data shape (pure python, no browser) ------------------------------
+    # The song data split (board §5 2026-10-07): the notation left songs.json
+    # into songs/<id>.txt; base records carry the `file` pointer, variant
+    # records the derives declaration.
     for d in DERIVES:
         rec = songs.get(d["key"])
         if rec is None:
             failures.append(f"{d['key']}: missing from songs.json")
             continue
-        if "body" in rec:
-            failures.append(f"{d['key']}: hand body must leave songs.json "
+        if "body" in rec or "file" in rec:
+            failures.append(f"{d['key']}: a derives record is a pointer — "
+                            "no hand body, no own file "
                             "(it lives frozen in this suite now)")
         dr = rec.get("derives")
         if not isinstance(dr, dict):
@@ -146,13 +150,17 @@ def main():
             failures.append(f"{d['key']}: derives.shift {dr.get('shift')!r} "
                             f"!= the proven {d['shift']}")
         base = songs.get(dr.get("key") or "")
-        if "body" not in (base or {}):
-            failures.append(f"{d['key']}: base {dr.get('key')!r} must keep "
-                            "a hand body (bases never derive)")
+        base_file = (base or {}).get("file")
+        if not (isinstance(base_file, str) and base_file and
+                (ROOT / base_file).is_file()):
+            failures.append(f"{d['key']}: base {dr.get('key')!r} must point "
+                            "at its own song .txt file (bases never derive)")
     for held in HELD_HAND_WRITTEN:
-        if "body" not in songs.get(held, {}):
+        hf = (songs.get(held, {}) or {}).get("file")
+        if not (isinstance(hf, str) and hf and (ROOT / hf).is_file()):
             failures.append(f"{held}: the held key keeps its hand body "
-                            "(it is authored content, not derivable)")
+                            "under its own song .txt (it is authored "
+                            "content, not derivable)")
         if "derives" in songs.get(held, {}):
             failures.append(f"{held}: the held key must not carry a "
                             "derives record")
@@ -173,8 +181,12 @@ def main():
             errs = []
             page.on("pageerror", lambda e: errs.append(str(e)))
             page.goto(base)
+            # The derive finishes inside boot's async tail (materialize runs
+            # beside the first instrument install) — wait for the BODIES,
+            # not the paper-thin entry publication.
             page.wait_for_function(
-                'window.BUILTIN && window.BUILTIN["song-of-time-bass"]')
+                'window.BUILTIN && window.BUILTIN["song-of-time-bass"] && '
+                'window.BUILTIN["song-of-time-bass"].body')
             got = page.evaluate(
                 "() => Object.fromEntries(Object.entries(window.BUILTIN)"
                 ".map(([k, v]) => [k, v.body == null ? null : String(v.body)]))")

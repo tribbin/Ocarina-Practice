@@ -1,0 +1,178 @@
+# Outset Island (arrangement)
+# tempo 120
+# tick off
+
+# Outset Island arrangement, interpreted from the game's own MIDI
+# (research/LoZWW_Outset_Island.mid). Pure 4/4, bar k = file measure k;
+# the old 5/4 da-dum engraving retired (its extra beat was the reduced
+# score's own slip: an Eb absent from the game's file). Every label below
+# carries the bass's own chord root for that bar; layer notes live
+# beside each block below.
+
+|["1 Opening (D♭)"] Db4/8 Db5/8 r/8 Db5/8 Db4/8 Db5/8 r/8 Db5/8
+|["2 Opening (D♭)"] Db4/8 Db5/8 r/8 Db5/8 Db4/8 Db5/8 r/8 Db5/8
+|["3 Tune (D♭/F)"] Ab4/8 Db5/8 Ab4/8 F4/8 Db4/4 r/8 Db4/16 Eb4/16
+|["4 Tune (G♭/A♭)"] F4/8 Db4/8 Db4/8 Eb4/8 F4/4 Eb4/4
+|["5 Tune (F/B♭)"] Ab4/8 Ab4/8 Ab4/8 Bb4/8 Db4/4 r/8 Db4/16 Eb4/16
+|["6 Tune (E♭/A♭)"] F4/8 F4/8 F4/8 Gb4/8 F4/4 Eb4/4
+|["7 Tune (D♭/F)"] Ab5/8 Db6/8 Ab5/8 F5/8 Db5/4 r/8 Db5/16 Eb5/16
+|["8 Tune (G♭/A♭)"] F5/8 Db5/8 Db5/8 Eb5/8 ~ F5/8 F5/8 Eb5/4
+|["9 Tune (F/B♭)"] Ab5/8 Ab5/8 Ab5/8 Bb5/8 Db5/4 r/8 Db5/16 Eb5/16
+|["10 Tune (E♭/A♭)"] Ab5/8 Ab5/8 Ab5/8 Bb5/8 Ab5/4 Gb5/4
+|["11 Harp (F)"] Ab4/8 Ab4/8 Ab4/8 Ab4/8 Db4/8 F4/8 Ab4/8 Db5/8
+|["12 Harp (B♭)"] F5/8 Db5/8 Ab4/8 F4/8 Db4/8 r/4.
+|["13 Harp (F)"] Ab4/8 Ab4/8 Ab4/8 Ab4/8 Db4/8 F4/8 Ab4/8 Db5/8
+|["14 Harp (B♭)"] F5/8 Db5/8 Ab4/8 F4/8 Db4/8 r/4.
+|["15 Tune B (E♭)"] Ab5/8 Db6/8 Ab5/8 F5/8 Eb5/8. F5/8. Gb5/8
+|["16 Tune B (E♭)"] Ab5/16 ~ Bb5/16 ~ Ab5/4 ~ Gb5/16 ~ Ab5/16 ~ Gb5/4 F5/8 Eb5/8
+|["17 Tune B (A♭)"] F5/8 Db5/4. Db4/8 C4/8 Db4/8 F4/8
+|["18 Tune B da-dum (A♭)"] r/8 C5/8 C5/4 F5/4 Eb4/4
+|["19 Groove (D♭)"] r/8 Eb5/8 Eb5/4 r/8 C5/8 C5/4
+|["20 Groove (D♭)"] r/8 Db5/8 Db5/4 r/8 Bb4/8 Bb4/4
+|["21 Groove (D♭)"] r/8 C5/8 C5/4 r/8 Ab4/8 Ab4/4
+|["22 Groove (D♭)"] r/8 Bb4/8 Bb4/4 r/8 Gb4/8 Gb4/8 Ab4/16 Gb4/16
+|["23 Groove (D♭)"] F4/1
+|["24 Groove (D♭)"] Eb4/1
+|["25 Groove (D♭)"] Db4/1
+|["26 Groove (D♭)"] Eb4/1
+|["27 Groove (D♭)"] Db4/8 Db5/8 r/8 Db5/8 Db4/8 Db5/8 r/8 Db5/8
+|["28 Groove (D♭)"] Db4/8 Db5/8 r/8 Db5/8 Db4/8 Db5/8 r/8 Db5/8
+|["29 Groove (D♭/F)"] Ab4/8 Db5/8 Ab4/8 F4/8 Db4/4 r/8 Db4/16 Eb4/16
+|["30 Groove (G♭/A♭)"] F4/8 Db4/8 Db4/8 Eb4/8 F4/4 Eb4/4
+|["31 Tune ret (F/B♭)"] Ab4/8 Ab4/8 Ab4/8 Bb4/8 Db4/4 r/8 Db4/16 Eb4/16
+|["32 Tune ret (E♭/A♭)"] F4/8 F4/8 F4/8 Gb4/8 F4/4 Eb4/4
+|["33 Tune ret (D♭/F)"] Ab5/8 Db6/8 Ab5/8 F5/8 Db5/4 r/8 Db5/16 Eb5/16
+|["34 Tune ret (G♭/A♭)"] F5/8 Db5/8 Db5/8 Eb5/8 ~ F5/8 F5/8 Eb5/4
+|["35 Tune ret (F/B♭)"] Ab5/8 Ab5/8 Ab5/8 Bb5/8 Db5/4 r/8 Db5/16 Eb5/16
+|["36 Tune ret (E♭/A♭)"] F5/8 F5/8 F5/8 Gb5/8 F5/4 Eb5/4
+|["37 Tune ret (F)"] Ab4/8 Ab4/8 Ab4/8 Ab4/8 Db4/8 F4/8 Ab4/8 Db5/8
+|["38 Tune ret (B♭)"] F5/8 Db5/8 Ab4/8 F4/8 Db4/8 r/4.
+|["39 Harp ret (F)"] Ab4/8 Ab4/8 Ab4/8 Ab4/8 Db4/8 F4/8 Ab4/8 Db5/8
+|["40 Harp ret (B♭)"] F5/8 Db5/8 Ab4/8 F4/8 Db4/8 r/4.
+|["41 Harp ret (E♭)"] Ab5/8 Db6/8 Ab5/8 F5/8 Eb5/8. F5/8. Gb5/8
+|["42 Harp ret (E♭)"] Ab5/16 ~ Bb5/16 ~ Ab5/4 ~ Gb5/16 ~ Ab5/16 ~ Gb5/4 F5/8 Eb5/8
+|["43 Tune B ret (A♭)"] F5/8 Db5/4. Db4/8 C4/8 Db4/8 F4/8
+|["44 Tune B ret (A♭)"] r/8 C5/8 C5/4 F5/4 Eb5/4
+|["45 Tune B ret (D♭)"] r/8 C5/8 C5/4 r/8 Ab4/8 Ab4/4
+|["46 Tune B ret (D♭)"] r/8 Db5/8 Db5/4 r/8 Bb4/8 Bb4/4
+|["47 Groove ret (D♭)"] r/8 C5/8 C5/4 r/8 Ab4/8 Ab4/4
+|["48 Groove ret (D♭)"] r/8 Bb4/8 Bb4/4 r/8 Gb4/8 Gb4/8 Ab4/16 Gb4/16
+|["49 Outro (D♭)"] r/4 Ab4/16 ~ Bb4/16 ~ Ab4/4 ~ Gb4/16 ~ Ab4/16 ~ Gb4/4
+|["50 Outro (D♭)"] F4/16 ~ Gb4/16 ~ F4/4 Eb4/8 Db4/8 C4/8 Db4/8 Eb4/8
+|["51 Outro (D♭)"] Db4/4. Ab4/2 -/8
+|["52 Outro (D♭)"] -/4 r/4 r/4 r/4
+
+#track bass audible 50
+| Db3/8 Db4/8 r/8 Ab4/8 Db3/8 Db4/8 r/8 Ab4/8
+| Db3/8 Db4/8 r/8 Ab4/8 Db3/8 Db4/8 r/8 Ab4/8
+| Db4/8 Db4/8 r/8 Ab4/8 F4/8 F5/8 r/8 F4/8
+| Gb4/8 Gb5/8 r/8 Gb4/8 Ab4/8 Ab5/8 r/8 Gb4/8
+| F4/8 F5/8 r/8 Db5/8 Bb4/8 Bb5/8 r/8 Bb4/8
+| Eb4/8 Eb5/8 r/8 Eb4/8 Ab4/8 Ab5/8 r/8 Ab4/8
+| Db4/8 Db5/8 r/8 Ab4/8 F4/8 F5/8 r/8 F4/8
+| Gb4/8 Gb5/8 r/8 Gb4/8 Ab4/8 Ab5/8 r/8 Gb4/8
+| F4/8 F5/8 r/8 Db5/8 Bb4/8 Bb5/8 r/8 Bb4/8
+| Eb4/8 Eb5/8 r/8 Eb4/8 Ab4/8 Ab4/8 r/8 Ab4/8
+| F4/8 F5/8 r/8 Bb4/8 F4/8 F5/8 r/8 Bb4/8
+| Bb3/8 Bb4/8 r/8 F3/8 Bb3/8 Bb4/8 r/8 Ab4/8
+| F4/8 F5/8 r/8 Bb4/8 F4/8 F5/8 r/8 Bb4/8
+| Bb3/8 Bb4/8 r/8 F3/8 Bb3/8 Bb4/8 r/8 Ab4/8
+| Eb4/8 Eb5/8 r/8 Bb4/8 Eb4/8 Eb4/8 r/8 Bb4/8
+| Eb4/8 Eb5/8 r/8 Bb4/8 Eb4/8 Eb5/8 r/8 Bb4/8
+| Ab4/8 Ab5/8 r/8 Eb5/8 Ab4/8 Ab5/8 r/8 Eb5/8
+| Ab4/8 Ab4/8 r/8 Eb4/8 Ab4/8 Ab4/8 r/8 Eb3/8
+| Db4/8 Db5/8 r/8 Ab4/8 Db4/8 Db5/8 r/8 Ab4/8
+| Db4/8 Db4/8 r/8 Ab4/8 Db4/8 Db5/8 r/8 Ab4/8
+| Db4/8 Db5/8 r/8 Ab4/8 Db4/8 Db5/8 r/8 Ab3/8
+| Db4/8 Db5/8 r/8 Ab4/8 Db4/8 Db5/8 r/8 Ab3/8
+| Db4/8 Db5/8 r/8 Ab4/8 Db4/8 Db5/8 r/8 Ab4/8
+| Db4/8 Db5/8 r/8 Ab4/8 Db4/8 Db5/8 r/8 Ab4/8
+| Db3/8 Db5/8 r/8 Ab4/8 Db3/8 Db5/8 r/8 Ab4/8
+| Db4/8 Db5/8 r/8 Ab4/8 Db4/8 Db5/8 r/8 Ab4/8
+| Db3/8 Db4/8 r/8 Ab4/8 Db3/8 Db4/8 r/8 Ab4/8
+| Db3/8 Db4/8 r/8 Ab4/8 Db3/8 Db4/8 r/8 Ab4/8
+| Db4/8 Db4/8 r/8 Ab4/8 F4/8 F5/8 r/8 F4/8
+| Gb4/8 Gb5/8 r/8 Gb4/8 Ab4/8 Ab5/8 r/8 Gb4/8
+| F4/8 F5/8 r/8 Db5/8 Bb4/8 Bb5/8 r/8 Bb4/8
+| Eb4/8 Eb5/8 r/8 Eb4/8 Ab4/8 Ab5/8 r/8 Ab4/8
+| Db4/8 Db5/8 r/8 Ab4/8 F4/8 F5/8 r/8 F4/8
+| Gb4/8 Gb5/8 r/8 Gb4/8 Ab4/8 Ab5/8 r/8 Gb4/8
+| F4/8 F5/8 r/8 Db5/8 Bb4/8 Bb5/8 r/8 Bb4/8
+| Eb4/8 Eb5/8 r/8 Eb4/8 Ab4/8 Ab5/8 r/8 Ab4/8
+| F4/8 F5/8 r/8 Bb4/8 F4/8 F5/8 r/8 Bb4/8
+| Bb3/8 Bb4/8 r/8 F3/8 Bb3/8 Bb4/8 r/8 Ab4/8
+| F4/8 F5/8 r/8 Bb4/8 F4/8 F5/8 r/8 Bb4/8
+| Bb3/8 Bb4/8 r/8 F3/8 Bb3/8 Bb4/8 r/8 Ab4/8
+| Eb4/8 Eb5/8 r/8 Bb4/8 Eb4/8 Eb4/8 r/8 Bb4/8
+| Eb4/8 Eb5/8 r/8 Bb4/8 Eb4/8 Eb5/8 r/8 Bb4/8
+| Ab4/8 Ab5/8 r/8 Eb5/8 Ab4/8 Ab5/8 r/8 Eb5/8
+| Ab4/8 Ab4/8 r/8 Eb4/8 Ab4/8 Ab4/8 r/8 Eb4/8
+| Db4/8 Db5/8 r/8 Ab4/8 Db4/8 Db5/8 r/8 Ab3/8
+| Db4/8 Db4/8 r/8 Ab4/8 Db4/8 Db5/8 r/8 Ab4/8
+| Db4/8 Db5/8 r/8 Ab4/8 Db4/8 Db5/8 r/8 Ab3/8
+| Db4/8 Db5/8 r/8 Ab4/8 Db4/8 Db5/8 r/8 Ab3/8
+| Db4/8 Db5/8 r/8 Ab3/8 Db4/8 Db5/8 r/8 Ab4/8
+| Db4/8 Db5/8 r/8 Ab4/8 Db3/8 Db5/8 r/8 Ab4/8
+| Db3/8 Db5/8 r/8 Ab3/8 Db4/8 Db5/8 r/8 Ab3/8
+| Db4/8 Db5/8 r/8 Ab4/8 Db4/8 Db5/8 r/8 Ab4/8
+
+#track contrabass audible 75
+# The game bass's own root segments: octave/fifth bounces merge into
+# one run, a new pitch class opens a segment; the measure root rides
+# the game's own lowest hit +12 (its sub-bass band = this register).
+# Whole holds, split only at real mid-measure root changes
+# (Db3/F3-class splits), the da-dum's Ab1 as Ab2, and the closing
+# measure holds the root so the loop lands clean.
+
+| Db3/1
+| Db3/1
+| Db3/2 F3/2
+| Gb3/2 Ab3/2
+| F3/2 Bb3/2
+| Eb3/2 Ab3/2
+| Db3/2 F3/2
+| Gb3/2 Ab3/2
+| F3/2 Bb3/2
+| Eb3/2 Ab3/2
+| F3/1
+| Bb2/1
+| F3/1
+| Bb2/1
+| Eb3/1
+| Eb3/1
+| Ab3/1
+| Ab2/1
+| Db3/1
+| Db3/1
+| Db3/1
+| Db3/1
+| Db3/1
+| Db3/1
+| Db3/1
+| Db3/1
+| Db3/1
+| Db3/1
+| Db3/2 F3/2
+| Gb3/2 Ab3/2
+| F3/2 Bb3/2
+| Eb3/2 Ab3/2
+| Db3/2 F3/2
+| Gb3/2 Ab3/2
+| F3/2 Bb3/2
+| Eb3/2 Ab3/2
+| F3/1
+| Bb2/1
+| F3/1
+| Bb2/1
+| Eb3/1
+| Eb3/1
+| Ab3/1
+| Ab2/1
+| Db3/1
+| Db3/1
+| Db3/1
+| Db3/1
+| Db3/1
+| Db3/1
+| Db3/1
+| Db3/1

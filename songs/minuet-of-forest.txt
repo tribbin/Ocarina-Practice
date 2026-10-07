@@ -1,0 +1,40 @@
+# Minuet of Forest
+# tempo 100
+# meter 3/4
+
+| D5/8 D6/8 B5/2
+| A5/8 B5/8 A5/2
+
+| D5/8 D6/8 B5/2
+| A5/8 B5/8 A5/2
+
+| E5/8 A5/8 G5 A5
+| G5/8t A5/8t G5/8t F#5/2
+| E5/2.
+| -/2.
+
+#track bass audible 50
+
+| r/4 E4! E4!
+| r/4 E4! E4!
+
+| r/4 E4! E4!
+| r/4 E4! E4!
+
+| r/4 E4! E4!
+| r/4 D4! D4!
+| r/4 E4! E4!
+| r/2.
+
+#track contrabass audible 50
+
+| E3 r/2
+| A3 r/2
+
+| E3/2 r/4
+| A3/2 r/4
+
+| C3/2 r/4
+| D3/2 r/4
+| E3/2.
+| -/2.
