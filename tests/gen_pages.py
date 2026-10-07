@@ -80,6 +80,11 @@ def expected_stub_keys():
     return keys
 
 
+# The hub categories mirror the emitted set (one /song/<cat>/ hub each).
+HUB_CATS = sorted({category_of(SONGS[k].get("group"))
+                   for k in expected_stub_keys()})
+
+
 def run_gen(out, *extra):
     subprocess.run([sys.executable, str(REPO / "tools" / "gen_song_pages.py"),
                     "--out", str(out)] + list(extra),
@@ -115,7 +120,14 @@ def main():
         out2 = Path(td) / "site2"
         for out in (out1, out2):
             run_gen(out, "--site-prefix", "/", "--origin", SITE_ORIGIN)
-        pages1 = sorted((out1 / "song").rglob("index.html"))
+        # Stub set only: the tree now also carries the hub indexes at
+        # song/index.html and song/<cat>/index.html (SEO pass 2026-10-07) —
+        # those ride their own legs below, never the per-stub contracts.
+        def stubs_only(out):
+            root_depth = len(Path(out, "song").parts)
+            return sorted(p for p in Path(out, "song").rglob("index.html")
+                          if len(p.parts) == root_depth + 3)
+        pages1 = stubs_only(out1)
 
         expected = []
         for key in expected_stub_keys():
@@ -150,6 +162,76 @@ def main():
                 failures.append(f"{rel}: og/title missing the song name")
             if f'song={member}&inst={inst}' not in stub:
                 failures.append(f"{rel}: seed must carry song={member}&inst={inst}")
+            # The SEO pass (Robin, 2026-10-07): titles/descriptions carry
+            # the base record's game + aka searches, exactly one structured
+            # data script per stub (MusicComposition + breadcrumb), and a
+            # visible intro block with the melody letters and links up the
+            # internal directory.
+            base = SONGS[key]
+            aka_m = base.get("aka") or []
+            game_m = base.get("game")
+            desc_m = gen.page_description(
+                SONGS[member].get("name") or key, aka_m, game_m)
+            title_m = gen.page_title(
+                SONGS[member].get("name") or key, aka_m, game_m)
+            if f'<title>{title_m}</title>' not in stub:
+                failures.append(f"{rel}: static title missing/wrong "
+                                f"(want {title_m!r})")
+            if f'<meta name="description" content="{desc_m}" />' not in stub:
+                failures.append(f"{rel}: meta description missing/wrong")
+            if f'<meta property="og:title" content="{title_m}" />' not in stub:
+                failures.append(f"{rel}: og:title missing/wrong")
+            if f'<meta property="og:description" content="{desc_m}" />' not in stub:
+                failures.append(f"{rel}: og:description missing/wrong")
+            # Exactly ONE structured-data script per stub: MusicComposition
+            # (its alternateName only when the record declares aliases, its
+            # genre only when the game is declared) riding a breadcrumb.
+            ld = re.findall(
+                r'<script type="application/ld\+json">(.*?)</script>',
+                stub, re.DOTALL)
+            if len(ld) != 1:
+                failures.append(f"{rel}: per-stub JSON-LD not exactly one")
+            else:
+                g = json.loads(ld[0])
+                _types = {n.get("@type") for n in g.get("@graph", [])}
+                if g.get("@context") != "https://schema.org" or \
+                        _types != {"MusicComposition", "BreadcrumbList"}:
+                    failures.append(f"{rel}: stub JSON-LD graph shape "
+                                    f"{_types} / context {g.get('@context')!r}")
+                mc = next((n for n in g.get("@graph", [])
+                           if n.get("@type") == "MusicComposition"), {})
+                alt = mc.get("alternateName")
+                if aka_m and alt != aka_m:
+                    failures.append(f"{rel}: MusicComposition alternateName "
+                                    f"{alt!r} != {aka_m!r}")
+                if not aka_m and alt is not None:
+                    failures.append(f"{rel}: alternateName declared without "
+                                    f"data aliases")
+                if game_m and mc.get("genre") != game_m:
+                    failures.append(f"{rel}: MusicComposition genre "
+                                    f"{mc.get('genre')!r} != {game_m!r}")
+                if not game_m and mc.get("genre"):
+                    failures.append(f"{rel}: genre declared without a game")
+                if mc.get("name") != (SONGS[member].get("name") or key):
+                    failures.append(f"{rel}: MusicComposition name mismatch")
+                crumbs = next((n for n in g.get("@graph", [])
+                               if n.get("@type") == "BreadcrumbList"), {})
+                _chain = [i.get("name") for i in crumbs.get("itemListElement", [])
+                          if isinstance(i, dict)]
+                if _chain != ["Ocarina Practice", gen.category_label(cat),
+                              SONGS[member].get("name") or key]:
+                    failures.append(f"{rel}: breadcrumb chain {_chain!r}")
+            # The intro block: visible, with the name, the letter notes and
+            # the up-directory links (category hub, root hub, brand root).
+            if '<section class="seo-about"' not in stub:
+                failures.append(f"{rel}: intro block missing")
+            else:
+                _intro = stub.split('<section class="seo-about"')[1]
+                if f'<a href="/song/{cat}/"' not in _intro or \
+                        '<a href="/song/"' not in _intro:
+                    failures.append(f"{rel}: intro hub links missing")
+                if re.search(r'<span class="seo-notes">\s*</span>', _intro):
+                    failures.append(f"{rel}: intro letter-note span empty")
             # The og/meta social set: every stub carries the full preview
             # card (site name/type/description + the generated icon) so a
             # bare link preview names the song AND has an image.
@@ -157,11 +239,6 @@ def main():
                 failures.append(f"{rel}: og:type missing")
             if '<meta property="og:site_name" content="Ocarina Practice" />' not in stub:
                 failures.append(f"{rel}: og:site_name missing")
-            name_m = SONGS[member].get("name") or key
-            desc_m = (f"Play {name_m} on the ocarina: hole-fingering tab, "
-                      f"playback and practice with the built-in tuner.")
-            if f'<meta property="og:description" content="{desc_m}" />' not in stub:
-                failures.append(f"{rel}: og:description missing/wrong")
             if ('<meta property="og:image" '
                     f'content="{SITE_ORIGIN}/icon-512.png" />') not in stub:
                 failures.append(f"{rel}: og:image missing/wrong")
@@ -176,7 +253,7 @@ def main():
         out3 = Path(td) / "site3"
         run_gen(out3, "--site-prefix", "/Ocarina-Practice",
                 "--origin", "https://verify.example")
-        leg = sorted((out3 / "song").rglob("index.html"))[0]
+        leg = stubs_only(out3)[0]
         rel3 = str(leg.relative_to(out3)).replace("\\", "/")
         key3 = rel3.split("/")[2]
         cat3 = rel3.split("/")[1]
@@ -190,6 +267,15 @@ def main():
                 'content="https://verify.example/Ocarina-Practice/icon-512.png" />') \
                 not in stub3:
             failures.append(f"legacy leg {rel3}: og:image prefix missing")
+        # The hubs honor the mount too (the directory must relocate with
+        # the artifact, same promise the <base> injection kept).
+        hub3 = (out3 / "song" / "index.html")
+        if not hub3.exists():
+            failures.append("legacy mount leg: root hub missing")
+        elif '<link rel="canonical" href="/Ocarina-Practice/song/"' \
+                not in hub3.read_text(encoding="utf-8"):
+            failures.append("legacy mount leg: root hub canonical prefix "
+                            "missing")
 
         # Sitemap: home + every stub URL, nothing suppressed, sorted.
         sitemap = (out1 / "sitemap.xml")
@@ -201,12 +287,46 @@ def main():
                     if el.tag == SITEMAP_NS + "loc"] or \
                    [el.text and el.text.strip() for el in root.iter()
                     if el.tag.endswith("}loc")]
-            want = sorted([SITE_ORIGIN + "/"] + [
-                f"{SITE_ORIGIN}/song/{category_of(SONGS[k].get('group'))}/{k}/"
-                for k in expected_stub_keys()])
+            want = sorted([SITE_ORIGIN + "/", SITE_ORIGIN + "/song/"]
+                          + [f"{SITE_ORIGIN}/song/{c}/"
+                             for c in HUB_CATS]
+                          + [f"{SITE_ORIGIN}/song/"
+                             f"{category_of(SONGS[k].get('group'))}/{k}/"
+                             for k in expected_stub_keys()])
             if locs != want:
                 failures.append("sitemap loc set mismatch:\n  got "
                                 f"{locs}\n  want {want}")
+
+        # The SEO internal directory (Robin, 2026-10-07): /song/ root hub
+        # plus one hub per emitted category — static pages (zero scripts),
+        # canonical on their own path, each linking EVERY landing URL
+        # under its category so crawlers reach all stubs by links alone.
+        if not (out1 / "song" / "index.html").exists():
+            failures.append("root hub /song/ missing")
+        else:
+            hub = (out1 / "song" / "index.html").read_text(encoding="utf-8")
+            if "<script" in hub:
+                failures.append("root hub carries a script tag (static only)")
+            if '<link rel="canonical" href="/song/"' not in hub:
+                failures.append("root hub canonical missing/wrong")
+            for k in expected_stub_keys():
+                c = category_of(SONGS[k].get("group"))
+                if f'href="/song/{c}/{k}/' not in hub:
+                    failures.append(f"root hub misses its {k} link")
+        for c in HUB_CATS:
+            cp = out1 / "song" / c / "index.html"
+            if not cp.exists():
+                failures.append(f"{c} hub missing")
+                continue
+            ch = cp.read_text(encoding="utf-8")
+            if "<script" in ch:
+                failures.append(f"{c} hub carries a script tag")
+            if f'<link rel="canonical" href="/song/{c}/"' not in ch:
+                failures.append(f"{c} hub canonical missing/wrong")
+            for k in expected_stub_keys():
+                if category_of(SONGS[k].get("group")) == c and \
+                        f'href="/song/{c}/{k}/' not in ch:
+                    failures.append(f"{c} hub misses its {k} link")
 
         # Ladder pin: after the re-key the Song-of-Time BASE carries the
         # 12-hole-fitting arrangement (the old -alto body) and the bass body
@@ -228,7 +348,7 @@ def main():
             failures.append(".nojekyll missing from staging")
 
         b1 = [p.read_bytes() for p in pages1]
-        b2 = [p.read_bytes() for p in sorted((out2 / "song").rglob("index.html"))]
+        b2 = [p.read_bytes() for p in stubs_only(out2)]
         if b1 != b2:
             failures.append("generator not byte-deterministic across runs")
 
@@ -277,12 +397,27 @@ def main():
                         n = sum(1 for el in root.iter()
                                 if el.tag == SITEMAP_NS + "loc"
                                 or el.tag.endswith("}loc"))
-                        if n != 1 + len(expected_stub_keys()):
+                        want_n = (1 + 1 + len(HUB_CATS)
+                                  + len(expected_stub_keys()))
+                        if n != want_n:
                             failures.append(
                                 f"served sitemap has {n} locs, want "
-                                f"{1 + len(expected_stub_keys())}")
+                                f"{want_n}")
                 except Exception as e:
                     failures.append(f"sitemap.xml fetch failed: {e}")
+
+            # The hubs SERVE (this is the crawl surface, not just staging):
+            # root + every category hub answer 200 with a real grid.
+            for hub_path in ("/song/",) + tuple(
+                    f"/song/{c}/" for c in HUB_CATS):
+                try:
+                    st, served_hub = get_local(hub_path)
+                    if st != 200:
+                        failures.append(f"served hub {hub_path} status {st}")
+                    elif "hub-grid" not in served_hub:
+                        failures.append(f"served hub {hub_path} lacks the grid")
+                except Exception as e:
+                    failures.append(f"served hub {hub_path} fetch failed: {e}")
 
             with sync_playwright() as p:
                 browser = p.chromium.launch(headless=True)
@@ -500,10 +635,14 @@ def main():
             return 1
         print(f"PASS gen_pages: {len(pages1)} landing stubs — every base URL "
               "boots its ladder-chosen arrangement with ZERO out-of-range "
-              "marks, clean console; sitemap enumerates home + the exact "
-              "stub set; robots.txt serves its Sitemap pointer; the mounted "
-              "stub rewrites land on the mount root (instrument switch, "
-              "song switch, typed replacement)")
+              "marks, clean console; each stub carries the SEO title/"
+              "description pair, exactly one structured-data script and "
+              "the visible intro block; the /song/ hub + category hubs "
+              "serve link-only grids that reach every stub; sitemap "
+              "enumerates home + hubs + the exact stub set; robots.txt "
+              "serves its Sitemap pointer; the mounted stub rewrites land "
+              "on the mount root (instrument switch, song switch, typed "
+              "replacement)")
         return 0
 
 

@@ -56,19 +56,18 @@ first circle → urgency, last letter → effort.
 ## Hot list (importance across all types)
 
 Picks for the next session(s), roughly damage × imminence ÷ effort
-(refreshed 2026-09-30 late, session-28: the v45 Helmholtz pair is the
-shipping voice — the mid-air upgrade stays parked in git history;
-dummy/contrabass/oak ride Grok's guessed per-chamber twins until real
-recordings land; the usability batch is CLOSED 2026-09-30 — all eight code
-items landed (round-trip `c1ca8bc`, media-session `01adf62`, both this
-session), Robin's field pass came back all good, and media-keys next/prev
-stay unwired by his ruling; decisions + state in the
-session-24/26/27/28 logs):
+(refreshed 2026-10-07: the §1 desync family CLOSED on Robin's three
+field-check passes — the ≤0.35 s dial-move seam, the pickup's floor feel
+and the swung-pair 16th/dotted timing feel; the usability batch CLOSED
+2026-09-30 with all eight code items landed and his field pass good;
+Outset's out-of-carve melody LEFT AS-IS by his ruling — the version is
+not made for the 12-hole/alto; the remaining owed-code picks are the two
+§1 rows below, the standing holds unchanged):
 
 | Item | Section |
 |---|---|
-| **Lead/support desync fix LANDED as S1 `9ef5ca1` on fix-support-track-sync (tempo-dial move, swing-dial move and marker-straddling pause/resume all phase-lock the #track streams now; full sweep 50/50 ×2, sw oco-pwa-v94) — one hold: Robin's field check of the ≤0.35 s dial-move seam** — pickup follow-up LANDED on tempo-dial-rebase (the melody's own stale step re-scales on a live tempo-dial move, `resyncMelodyTempo`; transport_schedule leg 10 red-first, pre-fix wait 4.679 s; full sweep 50/50, lint clean, sw oco-pwa-v95); swing-pair conservation LANDED on swing-track-pace (swungSpanSec 96th-grid map, leg 11 red-first ±0.0833 s/bar additive → exact; sw oco-pwa-v96) — holds: the ≤0.35 s seam, the pickup's floor feel, and the conserved-pair 16th/dotted timing feel | §1 |
-| **USABILITY BATCH — CLOSED ✅ 2026-09-30 (approved 2026-09-30, session-24 handoff; ALL EIGHT code items landed: `3eb740d` + `f84b564` + `46dec09` + `0588d99` + `d41563a` (coffee icon + duck glyph) + `6b1a805` (duck opaque face) + `0ba4f55` (coffee line under issues) + `6a59020` (coffee cup 2.5×, middle-aligned) + song .txt round-trip `c1ca8bc` + media-session announce/keys `01adf62` (sw oco-pwa-v77); zen-chorus audit report-only; small-screen pass complete: `d77a153` → `ed31f89` + `b666034`, Robin's three phone defects pinned at `30e496d` + `2016408` + `740d637`; Robin's 2026-09-30 field pass: all good; media-keys next/prev left unwired by his ruling)** | §1/§7/§9 |
+| **Note HOLDS ignore swing and the tempo dial — notes ring 47–105 ms past the next onset at swing 100 and under-ring below the dial (§1; behavior change ⇒ red-first overhang-0-at-swing-100, full sweep, his field check)** | §1 |
+| Track-walker data edges: bad-chip start-offset one-liner (+ unequal-loop-totals warning stays a feature call held for Robin, not owed) | §1 |
 | HiFi stays UNPUBLISHED — the retune + favorites pass is accepted, but Robin holds publication for now (2026-09-30) | hold |
 | Shipped-songs standardization stays HELD for Robin's later-stage pass; the permalinks corpora ride his planting as always | §9 |
 | Library widening (search, reordering beyond the pin) stays parked until Robin elects it | §9 |
@@ -77,13 +76,9 @@ session-24/26/27/28 logs):
 
 ## 1. Bugs (correctness / data loss)
 
-- [ ] **Lead/support desync on live dial moves + marker-straddling pause — three causes measured, fix approach HELD for Robin (S1 recommended)** — investigation 2026-10-05 (harness-measured, recipe inlined below; probes were /tmp/opencode/sync_probe.py, transient): root = the melody and each #track stream keep INDEPENDENT absolute-time ledgers (melodyNextTime / w.nextTime), coupled only at start/resume/wrap, while tempoSpeed() and currentSwing() are sampled LIVE at each walker's own next step — any parameter change lands on each ledger at its own next onset, and the time-gap between those onsets absorbs the change permanently. Confirmed: (a) tempo-dial 100%→50% mid-song, 8th-note melody + quarter-note 'audible 50' track, 96 bpm: track lands 0.3125 s early (= 0.5-beat gap × q × Δ(1/speed)), persistent; zero-gap control (change fired with both next onsets coincident) stays locked; (b) swing 0→100 fired exactly at an odd half-beat melody position: track lands +0.1042 s late = q/6 exactly, persistent; (c) pause/resume with an inline '# tempo 120' marker sitting between the melody's next-onset position and the track's: rebaseTrackTimes (audio.js:1563) applies ONE quarterAt(w.pos96) to the whole gap instead of integrating the tempo line — track lands 0.0625 s early = 0.5 × (q_old − q_new) exactly, persistent; no-marker control stays locked. Fix options: S1 surgical — a melody-span integration helper (piecewise over the tempo line, live speed/swing, melody token spans bound the gap) feeding rebaseTrackTimes (fixes c) AND a rebase-from-melody-ledger call wired into the two dial input handlers (ui.js:1371/1386, fixes a+b); expected ≤0.35 s one-time seam from onsets already scheduled in the old regime (unavoidable without rescheduling). S2 architecture-consistent — generalize the session-24 position-based tempo line into speedAt(pos)/swingAt(pos) lines, dial change appends an entry at the melody's next-onset position, T(P) single-valued by construction. S3 long-term — one unified walker with per-stream lanes (the support-plan pattern); parked. HELD: Robin picks the approach, then red-first — transport_schedule gains the three legs above (probe recipe: setNoteSink capture with gain split, pair each track onset to the nearest melody onset, split buckets at the perturbation ctx-time; legs (a) gate on OCA_DEBUG.melodyPos96()%96===48, (c) pauses when melodyPos96===720 against the marker at beat 8). Doc-only transients, no fix owed: onsets due inside the resume lead window clamp to now+0.02 (one-note bunch, self-heals); main-thread stall past SCHED_AHEAD (spike-watch territory); the first-note "hurries" field symptom now has a likely mechanism — a suspended-ctx start computes startWhen off the frozen clock, so after resume() the first onsets clamp to a 20 ms lead instead of 50 ms (harness never reproduces it because its ctx never suspends). Also documented, not lead/support desync: bracket supports ride melody pivots so they cannot desync, but their open-span durations divide by tempoSpeed() while their bounded holds don't (audio.js:1366/1413 vs 1415) — inconsistent under the dial. **S1 LANDED 2026-10-05 `9ef5ca1` (fix-support-track-sync)**: stepSec = the one shared per-step rule (melody walker, every track walker, span integral), melodySpanSec integrates the melody's tempo line piecewise across the rebase gap, rebaseTrackTimes(when) = when + span, and the dial setters (applyTempoPct ×2 mirrors, applySwing) call resyncTrackTimes(melodyNextTime) — the swing slider now routes through applySwing so the single #swing path resyncs too. transport_schedule legs 7–9 pinned red-first with the pre-fix failures at exactly the predicted skews; full sweep 50/50 ×2, eslint + html-validate clean; sw oco-pwa-v94. Remaining: the ≤0.35 s dial-move seam (onsets already inside the 30 ms lookahead keep their old spacing until the resync) is audible behavior — HELD FOR ROBIN'S FIELD CHECK. FOLLOW-UP LANDED (2026-10-06, branch tempo-dial-rebase): Robin's field report — dragging the tempo dial to the floor and back up waits out one whole stale step of mostly silence before the pickup — got the mirror-image fix (`resyncMelodyTempo`, the resync family aimed at the melody's OWN ledger): a live tempo-dial input re-scales the melody's pending onset (melodyNextTime) by the ratio between the speed it was paced under and the dial's new one (exact for the dial: only the speed changed), and runs BEFORE resyncTrackTimes so the #track streams re-anchor from the moved anchor. The from-speed lives in a module mirror (tempoDialSpeed) because a range input's value already holds the NEW one when its input event fires — the DOM cannot supply the from-side, which the leg caught red-first in the first cut. Pinned red-first by transport_schedule leg 10 (dial up from the 10% floor mid-stale-step: pre-fix the first post-move onset landed 4.679 s later; post-fix inside the ≤0.9 s bound, the scaled-ratio prediction ~0.47 s). Robin elected the ratio rebase with the overhanging ringing note left to decay naturally (not faded via bag fade); the slider floor stays 10% (floor raise rejected this round). HOLDS for Robin's field check: (1) still open — the ≤0.35 s dial-move seam; (2) new — the pickup's feel: a speed-up lets the stale note ring out under the early next onsets, a slow-down stretches the pending gap. Known uncovered edge, noted not owed: the swing dial's own melody remainder does not rebase (a swung step is a one-beat-class stale wait at full dial; the ratio math is not exact under swing's odd/even reweighting). Full sweep 50/50 (416 s), eslint + html-validate clean, sw oco-pwa-v95. FIX LANDED (2026-10-06, branch swing-track-pace): swung pairs now conserve — audio.js `swungSpanSec` maps every half-beat segment of the 96th-grid to a fixed wall share (longF = 0.5+s/6 first half, the remainder second) and `stepSec` costs tokens by their segment overlaps, so a pair sums to EXACTLY one beat whatever widths fill it: 1/16 tails (Outset bar 3 ran +83 ms/bar), dotted values (the Storms `E6/4.` bar ran short), mid-half 8ths (the Saria E6/16 ~ F6/8 D6/16 beat) — the old exact-half-token-only rule leaked s/6 per bar, ADDITIVE, which is precisely Robin's "short swung notes do not fit in the grid / 1/96 resolution" field read. Boundary-aligned exact-half tokens keep their shipped pace bit-for-bit. Pinned red-first by transport_schedule leg 11 (three leak-shaped bars ×3 repeats: pre-fix ±0.0833 s per bar growing to ±0.1667, post-fix exact) registered in the same suite; the melody-vs-support realtime pairing on the saved two-track Storms capture showed pre-fix −62.5 → −125 ms monotone accumulation in 0.167-beat steps, post-fix stationary (zero growth). HOLDS FOR ROBIN'S FIELD CHECK: the new 16th/dotted/mid-half timing feel on his device (they now compress into the short side of the pair). `🟧 🟠 ⚙M`
-
 - [ ] **Track-walker data edges: bad-chip start offset + unequal loop totals (user-typed data only)** — alignTracksToBeats (audio.js:1468) burns 0 grid beats on 'bad' chips while the live track walker burns tokenGridBeats (1 beat, the music-math fallback): a mid-song start (token click, practice→play swap) past a bad chip in a track plays that track's content k beats early, k = chips before the start point — measured: quarter-note melody, 8th-note track with 'zz' in bar 1, start at beat 2.0 anchors B4 where a from-0 run plays G4; the onsets stay on the shared clock so onset-time suites are blind to it (pitch-aware check needed). One-line fix: count bad tokens as 1 beat in the alignment walk. Separate edge: a user track whose live total ≠ the melody's total drifts per loop wrap while looping (shipped songs are pinned bar-for-bar by shipped_songs; user text is unchecked — a totals chip/warning is a feature call, not owed). No shipped song or shipped data is affected. `🟨 ⚪ ⚙S`
 
 - [ ] **Note HOLDS ignore swing and the tempo dial — notes overhang real-time into the next onset at swing > 0** — battery find 2026-10-06 (held over during the pair-conservation battery): `hold = soundingGridBeats × quarterAt` is sized by the UNSWUNG grid width in the melody walker (audio.js), `soundTrackToken` and the support-plan spans alike; under swing 100 a short 8th's swung slot is 0.333 beats while its hold stays 0.5×0.92, so notes ring 47–105 ms PAST the next onset (measured overhangs: Storms bass 21/mel 21, Saria 52, OOT 22 up to 105.6 ms, Outset 22, Minuet-bass 19 — ZERO at swing 0; glide/tie chains stack past the plain short-8th 47.5 ms). Holds also never divide by tempoSpeed() → below-dial plays under-ring every slot (staccato-ish gaps). Fix shape: one shared swung-integrated slot (stepSec's own segment map over the tie-chain span) × the existing 0.92/intoSlide/staccato factors, dial-aware; melody, tokens and supports switch together. Behavior change ⇒ red-first (overhang = 0 at swing 100) + full sweep + his field check. `🟨 🟠 ⚙M`
-
-- [ ] **Melody range check silently drops out-of-carve notes — Outset plays only 75 of 288 melody notes on the alto** — battery find 2026-10-06: the melody walker's `NOTES.includes(tok.id)` gate (audio.js) silences any pitch the loaded instrument's chart lacks while the token still occupies its grid time; Outset is Db-major with many Cs4-class notes below the alto's A4 floor (sharp-spelled chart), so the audible melody is a sparse ~26% line whose surviving notes read as drift/lost pace against the tick. Storms/Saria/OOT melodies are carve-clean (they verified full-count). Options held for Robin: re-key the Outset melody up an octave on the alto (ships a chart change), leave as is + document, or a visual "n silent off-instrument notes" cue. The silent-keep-grid behavior itself is the melody's own carve semantics — the fix call is his. `🟧 🟡 ⚙S`
 
 ## 2. Robustness / error handling
 
@@ -112,6 +107,8 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
 - [ ] **Standardize shipped songs to the `skills/ocarina-melodies` conventions** (barline at wrap start, named sections where players want headers) — HELD for Robin's later-stage pass; verify/shipped_songs are the gates; no playback changes expected. `🟢 ⚪ ⚙M`
 
 - [ ] **Library search / pinning widening** — favorites pinning SHIPPED 2026-09-26 `390c431` (star + first persisted Favorites group); the widening (search box, reordering beyond the pin, grouping options) stays parked until Robin elects it. `🟢 ⚪ ⚙S`
+
+- [ ] **SEO discovery pass: searchable landing content + internal hub pages (deploy-side generator work, no repo app changes)** — Robin's ask 2026-10-07 first-priority after the Search Console lag showed crawlers find the pages via the sitemap only: full pass per his answered batch — (a) per-song `aka` + `game` fields on base records in songs.json (data_validator learns them, derives stay pure pointers; the game/aka table is Robin-approved before landing), OoT-weighted ("that game will release soon"); (b) the generator enriches each stub's title/description with AKA + game + "ocarina tabs"; (c) a visible intro block at each stub's bottom: what the tab is, AKA, game, the melody's letter notes, links up to the hubs; (d) per-stub MusicComposition JSON-LD with alternateName + BreadcrumbList (replaces the deliberate zero-JSON-LD pin); (e) /song/ + /song/<cat>/ hub pages Robin sketched as an instruments-vs-songs(variations) grid linking every landing URL; sitemap gains the hub locs. Deploy-only: index.html/sw.js untouched, no sw bump; gen_pages pins + data_validator battery update in the same commit. The data + generator halves LANDED on seo-discovery (`8b3d113` games+aka data + data_validator battery, `0aec42e` generator: SEO titles/descriptions, per-stub MusicComposition JSON-LD over a breadcrumb, visible intro blocks with the melody's letter notes, /song/ + category hubs with the instruments-vs-variations grid whose cells deep-link the seeded pairing, sitemap home+hubs+stubs) - gen_pages, data_validator, shipped_songs, twin_derive, song_files, asset_versions, eslint + html-validate all green; no sw bump (index.html/sw.js untouched - deploy stays generated artifacts + songs.json); HELD FOR ROBIN: the intro block's look across themes, the hub grid's shape, the titles' wording - his pass on the live pages after merging `🟨 🔴 ⚙M`
 
 > **Idle idea pool: `plans/IDEAS.txt`.** A live document Robin edits over time and ROBIN'S ALONE — the AI never writes it (it may be read, and only lifted into TODO.md when Robin explicitly asks). TODO carries no copy or summary: when an idea from it is picked up, read the FILE fresh at that moment; never rely on a remembered or transcribed version.
 
@@ -832,3 +829,118 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   main into song-txt-files and push. HOLD: the field check of the live
   workflow (edit a song .txt, the update lands fresh on the phone) and
   the deployed first-visit bodies after the next main deploy.
+
+- **2026-10-07 (board-only close-out: the desync family and Outset's carve find both close on Robin's rulings)** —
+  Robin's field check passed all three remaining holds of the §1 desync
+  item — the ≤0.35 s dial-move seam from the S1 resync family `9ef5ca1`,
+  the tempo-dial pickup's floor feel `25dba27` and the swung-pair
+  16th/dotted timing feel `337567d` (96th-grid conservation) — and the
+  item moved to DONE with the whole fix family named in its struck
+  text. His second ruling closed the Outset out-of-carve find: the
+  current version is not made for the 12-hole/alto, leave it as-is
+  (no re-key, no visual cue). Hot list refreshed to the remaining
+  owed-code picks: the note-holds/swing item (🟨 🟠 ⚙M — holds sized by
+  unswung width ring 47–105 ms past the next onset at swing 100 and
+  under-ring below the dial; red-first overhang-0-at-swing-100, full
+  sweep, his field check) and the bad-chip alignment one-liner
+  (🟨 ⚪ ⚙S; its unequal-totals half stays a feature call held for
+  Robin). No app code touched; board moves landed on placeholder
+  branch board-close (pushing stays Robin's).
+
+- **2026-10-07 (Search Console "Page with redirect" — investigation finds only intentional legacy redirects, nothing ours to fix)** —
+  Robin relayed a Google Search Console notice: a new "Page with
+  redirect" reason blocking some pages from indexing. Measured on the
+  live site: every sitemap URL (12 locs) and the home answer 200
+  straight; all canonical/og:url/internal URLs are emitted ONLY in
+  apex + https + trailing-slash form (gen_song_pages, library.js
+  zenStubPath/rewriteLanderUrl, ui.js); no github.io or no-slash
+  variants are ever emitted by shipped code. The redirect classes that
+  DO exist are all intentional infra: http→https,
+  www.ocarina-practice.com→apex, no-slash `/song/…`→slash (Pages
+  directory DOI), and `tribbin.github.io/Ocarina-Practice/**`→the
+  matching apex path (Pages' custom-domain redirect — the pre-2026-09-25
+  project-page mount URLs). The notice's timing matches the domain flip:
+  Google holds the legacy URLs it indexed before the flip and reports
+  them as redirect-excluded on recrawl; the targets (the indexed
+  equivalents) serve 200. Verdict: no defect, no code change, no sw
+  bump; the report self-cleans as recrawls process. Held for Robin:
+  paste an example affected URL from the Search Console report if any
+  apex/https/slash-form source shows up — that would be a class I
+  could not reproduce today.
+
+- **2026-10-07 (Search Console follow-up: the report is recrawl lag, Robin elects to keep the landing seed)** —
+  Robin's Search Console data closed the picture: the "Page with
+  redirect" set is the OLD stub URLs plus the www home (last crawl
+  Sep 26, 2026 — one day after the domain flip), while the pages
+  verified Oct 2-3 (stormsellites, sarias, eponas, OoT-opening, home,
+  outset) are indexed fine. The five apex song URLs in the report are
+  in the live sitemap and answer 200 with byte-identical mechanics to
+  the indexed five — nothing at the HTTP level to fix; the split is
+  recrawl timing, and his reindex requests should clear them. Ruling
+  recorded: the www entry STAYS a redirect-classification by design
+  (www 301s to apex forever, never indexable — correct); only apex
+  entries were worth requests. Second ruling: the landing stub's
+  replaceState seed (?song=<member>&inst=<intended>, the boot
+  mechanism — botw-theme seeds its intended bass triple and the bass
+  member) STAYS as is; the visible URL change is accepted. Held: he
+  re-checks Search Console later to confirm the five flipped.
+
+- **2026-10-07 (SEO discovery pass lands on seo-discovery — the pages become searchable on their own merits)** —
+  Robin's ask: "make finding our content easier — 'Lon Lon Ranch' and
+  'ocarina tabs' should find us, and Ocarina of Time releases soon so
+  that phrase must ride the OoT songs." His batch (rule-4 questions
+  answered): FULL pass; per-song `aka` + `game` in songs.json; the
+  /song/ and category hubs carry an instruments-vs-variations grid; the
+  drafted game/aka naming table approved (Epona's Song → Lon Lon Ranch;
+  Song of Storms → Windmill Song/Windmill Hut; Song of Time → Temple of
+  Time; Saria's Song → Lost Woods; Zelda's Lullaby → Royal Family
+  Lullaby; Minuet of Forest → Sacred Forest Meadow; Concerning Hobbits
+  alias; Outset → The Wind Waker; BotW theme → Breath of the Wild).
+  DATA `8b3d113`: 11 base records gain `aka`/`game`; data_validator
+  learns both (typed scalars, list-internal uniqueness, no own-name
+  repeats) and refuses them on pure-pointer derives, with the sandbox
+  battery extended (18 classes now). GENERATOR `0aec42e`: title/og-title
+  = "Epona's Song (Lon Lon Ranch) — Ocarina of Time Tabs | Ocarina
+  Practice" (games whose own name carries "Ocarina" skip the doubled
+  word), one ≤160-char description carrying the tabs words per stub,
+  exactly ONE structured-data script per stub (MusicComposition + 
+  BreadcrumbList in one @graph — the zero-JSON-LD-per-stub rule
+  deliberately replaced), and a VISIBLE intro block at each stub's
+  bottom: name, aliases ("also known as"), game, the melody as plain
+  letter notes, links up the directory. The /song/ root hub + per-
+  category hubs are static (zero scripts), grid cells deep-link
+  `?song=<member>&inst=<inst>` so a grid click BOOTS that pairing.
+  Sitemap: home + /song/ + category hubs + stubs (15 locs). No repo
+  index.html/sw.js change — no sw bump; the deploy trigger paths
+  already cover songs.json + tools/gen_song_pages.py (the workflow
+  regenerates every page on his merge; workflow_dispatch can preview
+  the branch's artifact). Suites: gen_pages (extended: the SEO pins,
+  the served hub stage, mount-relocatable hub canonicals), 
+  data_validator, shipped_songs (23 songs, 11 aligned), twin_derive,
+  song_files, asset_versions; eslint + html-validate clean. Held for
+  Robin: the intro block's look across themes, the hub grid's shape,
+  the titles' wording — his pass happens on the live pages after
+  merging; Search Console should then reach every stub through
+  internal links instead of the sitemap alone. Board moves landed on
+  the same seo-discovery branch.
+
+- **2026-10-07 (CI red on the push at 37636a3: seo_shell still owned the old zero-per-stub rule — fixed)** —
+  Run 37621902407 (push, branch seo-discovery, job "the practice
+  battery", tests/seo_shell.py step): every stub named "stubs must
+  carry NO JSON-LD" — the session-15 zero-per-stub pin I declared
+  deliberately replaced but only removed from gen_pages, shipping a
+  commit without running the affected suite first (the rule-12 lesson,
+  learned loudly: the SEO coverage line was in the standing §6 list).
+  Fix: seo_shell's stub pass now pins the NEW contract — one canonical,
+  exactly ONE ld+json of the stub's own (MusicComposition +
+  BreadcrumbList in a single @graph), the shell's WebApplication block
+  still refused anywhere, hub indexes excluded from the stub branch
+  (depth-4-only scoping, hubs carry a canonical but no JSON-LD by
+  design). Local re-run of the affected CI steps on this box:
+  seo_shell gen_pages data_validator shipped_songs song_files
+  twin_derive asset_versions library_hardening library_favorites +
+  lint — green; midi_track_audit SKIP-from-absence (research/
+  gitignored, unchanged). The fix lands as one commit on seo-discovery
+  for Robin's push; no app code, no sw bump.
+
+CI 37625577098 (push at a36dfd3 on PR #51) went red once at reduced_motion - .perf-btn.alerted 'lost its pulse, got None' - while the same tree passed 5/5 isolated locally and the app surface is byte-identical to main on this branch: the suite's own known transient class (same shape as the 2026-10-05 sweep flake; the probe's read landed before the animation state settled on a slow runner). No repo change; the failed job was left for Robin's re-run. HARDENING HELD: if it reproduces anywhere, the leg gets pinned red-first and its rendezvous hardened before any theory.

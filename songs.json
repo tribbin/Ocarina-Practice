@@ -2,7 +2,8 @@
   "ocarina-of-time-opening": {
     "name": "Ocarina of Time opening song",
     "group": "Zelda on Alto",
-    "file": "songs/ocarina-of-time-opening.txt"
+    "file": "songs/ocarina-of-time-opening.txt",
+    "game": "Ocarina of Time"
   },
   "ocarina-of-time-opening-bass": {
     "name": "Ocarina of Time opening song (bass)",
@@ -12,7 +13,11 @@
   "song-of-time": {
     "name": "Song of Time",
     "group": "Zelda on Alto",
-    "file": "songs/song-of-time.txt"
+    "file": "songs/song-of-time.txt",
+    "aka": [
+      "Temple of Time"
+    ],
+    "game": "Ocarina of Time"
   },
   "song-of-time-bass": {
     "name": "Song of Time (bass)",
@@ -25,7 +30,12 @@
   "song-of-storms": {
     "name": "Song of Storms",
     "group": "Zelda on Alto",
-    "file": "songs/song-of-storms.txt"
+    "file": "songs/song-of-storms.txt",
+    "aka": [
+      "Windmill Song",
+      "Windmill Hut"
+    ],
+    "game": "Ocarina of Time"
   },
   "song-of-storms-bass": {
     "name": "Song of Storms (bass)",
@@ -35,7 +45,11 @@
   "sarias-song": {
     "name": "Saria's Song",
     "group": "Zelda on Alto",
-    "file": "songs/sarias-song.txt"
+    "file": "songs/sarias-song.txt",
+    "aka": [
+      "Lost Woods"
+    ],
+    "game": "Ocarina of Time"
   },
   "sarias-song-bass": {
     "name": "Saria's Song (bass)",
@@ -48,12 +62,20 @@
   "eponas-song": {
     "name": "Epona's Song",
     "group": "Zelda on Alto",
-    "file": "songs/eponas-song.txt"
+    "file": "songs/eponas-song.txt",
+    "aka": [
+      "Lon Lon Ranch"
+    ],
+    "game": "Ocarina of Time"
   },
   "minuet-of-forest": {
     "name": "Minuet of Forest",
     "group": "Zelda on Alto",
-    "file": "songs/minuet-of-forest.txt"
+    "file": "songs/minuet-of-forest.txt",
+    "aka": [
+      "Sacred Forest Meadow"
+    ],
+    "game": "Ocarina of Time"
   },
   "minuet-of-forest-bass": {
     "name": "Minuet of Forest (bass)",
@@ -68,7 +90,11 @@
   "concerning-hobbits-short": {
     "name": "Concerning Hobbits short",
     "group": "Other",
-    "file": "songs/concerning-hobbits-short.txt"
+    "file": "songs/concerning-hobbits-short.txt",
+    "aka": [
+      "Concerning Hobbits"
+    ],
+    "game": "The Lord of the Rings"
   },
   "concerning-hobbits-short-c": {
     "name": "Concerning Hobbits short (in C)",
@@ -82,7 +108,8 @@
     "name": "Breath of the Wild Theme (double alto C)",
     "group": "Zelda on Alto",
     "intended": "ico-oak-leaf-bass-c-triple",
-    "file": "songs/botw-theme.txt"
+    "file": "songs/botw-theme.txt",
+    "game": "Breath of the Wild"
   },
   "botw-theme-bass": {
     "name": "Breath of the Wild Theme (bass)",
@@ -100,18 +127,24 @@
   "zelda-lullaby-bass": {
     "name": "Zelda's Lullaby",
     "group": "Zelda on Bass",
-    "file": "songs/zelda-lullaby-bass.txt"
+    "file": "songs/zelda-lullaby-bass.txt",
+    "aka": [
+      "Royal Family Lullaby"
+    ],
+    "game": "Ocarina of Time"
   },
   "kokiri-forest": {
     "name": "Kokiri Forest (bass)",
     "group": "Zelda on Bass",
     "intended": "ico-oak-leaf-bass-c-triple",
-    "file": "songs/kokiri-forest.txt"
+    "file": "songs/kokiri-forest.txt",
+    "game": "Ocarina of Time"
   },
   "outset-island": {
     "name": "Outset Island (bass)",
     "group": "Zelda on Bass",
-    "file": "songs/outset-island.txt"
+    "file": "songs/outset-island.txt",
+    "game": "The Wind Waker"
   },
   "outset-island-midi": {
     "name": "Outset Island (arrangement)",
