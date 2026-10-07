@@ -844,3 +844,24 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   (🟨 ⚪ ⚙S; its unequal-totals half stays a feature call held for
   Robin). No app code touched; board moves landed on placeholder
   branch board-close (pushing stays Robin's).
+
+- **2026-10-07 (Search Console "Page with redirect" — investigation finds only intentional legacy redirects, nothing ours to fix)** —
+  Robin relayed a Google Search Console notice: a new "Page with
+  redirect" reason blocking some pages from indexing. Measured on the
+  live site: every sitemap URL (12 locs) and the home answer 200
+  straight; all canonical/og:url/internal URLs are emitted ONLY in
+  apex + https + trailing-slash form (gen_song_pages, library.js
+  zenStubPath/rewriteLanderUrl, ui.js); no github.io or no-slash
+  variants are ever emitted by shipped code. The redirect classes that
+  DO exist are all intentional infra: http→https,
+  www.ocarina-practice.com→apex, no-slash `/song/…`→slash (Pages
+  directory DOI), and `tribbin.github.io/Ocarina-Practice/**`→the
+  matching apex path (Pages' custom-domain redirect — the pre-2026-09-25
+  project-page mount URLs). The notice's timing matches the domain flip:
+  Google holds the legacy URLs it indexed before the flip and reports
+  them as redirect-excluded on recrawl; the targets (the indexed
+  equivalents) serve 200. Verdict: no defect, no code change, no sw
+  bump; the report self-cleans as recrawls process. Held for Robin:
+  paste an example affected URL from the Search Console report if any
+  apex/https/slash-form source shows up — that would be a class I
+  could not reproduce today.
