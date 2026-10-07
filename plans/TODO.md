@@ -942,3 +942,5 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   lint — green; midi_track_audit SKIP-from-absence (research/
   gitignored, unchanged). The fix lands as one commit on seo-discovery
   for Robin's push; no app code, no sw bump.
+
+CI 37625577098 (push at a36dfd3 on PR #51) went red once at reduced_motion - .perf-btn.alerted 'lost its pulse, got None' - while the same tree passed 5/5 isolated locally and the app surface is byte-identical to main on this branch: the suite's own known transient class (same shape as the 2026-10-05 sweep flake; the probe's read landed before the animation state settled on a slow runner). No repo change; the failed job was left for Robin's re-run. HARDENING HELD: if it reproduces anywhere, the leg gets pinned red-first and its rendezvous hardened before any theory.
