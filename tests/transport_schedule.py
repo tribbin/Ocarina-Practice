@@ -784,6 +784,81 @@ def main():
                         "new 100% regime must hold at 0.625s steps after the "
                         "rebase")
 
+            # ---------- 11: swung-pair conservation across non-8th bar fills ----------
+            print('== swung-pair conservation (16th tails, dotted values, mid-half 8ths)', flush=True)
+            # Swing only re-times EXACT half-beat tokens today, so whatever
+            # else fills a swung pair (1/16 tails, dotted values, an 8th
+            # starting mid-half at a 24-96th position) fails to absorb the
+            # long/short redistribution: the pair's wall length lands off one
+            # beat by s/6, every bar, ADDITIVE — Robin's field drift (the
+            # Outset bar-3 1/16 tail runs long ~83 ms/bar, the Storms
+            # dotted-quarter bar and the Saria mid-half beat run short).
+            # Each leg song = one bar shape repeated 3x; every bar's start
+            # must sit at start + k*4q under swing 100 (q = 0.5 at tempo 120).
+            CONSERVE_LEG = """
+              (SRC) => new Promise((resolve, reject) => {
+                const notes = [];
+                setNoteSink((id, when, dur, s, i, g) =>
+                  notes.push({ id: id, when: when, g: g }));
+                const title = String(SRC).split("\\n")[0].replace(/^#\\s*/, "");
+                document.getElementById('src').value = SRC;
+                render();
+                const t0 = Date.now();
+                const arm = () => {
+                  if (document.getElementById('title').textContent !== title) {
+                    if (Date.now() - t0 > 4000) { reject(new Error("conserve: title never matched")); return; }
+                    setTimeout(arm, 30);
+                    return;
+                  }
+                  const d = document.getElementById('swing');
+                  d.value = '100';
+                  d.dispatchEvent(new Event('input'));
+                  playMelody(0);
+                  const poll = setInterval(() => {
+                    if (!isMelodyPlaying() && !isMelodyPaused()) {
+                      clearInterval(poll);
+                      setNoteSink(null);
+                      const keep = document.getElementById('swing');
+                      keep.value = '0';
+                      keep.dispatchEvent(new Event('input'));
+                      setTimeout(() => resolve(
+                        notes.filter(n => n.g === 1).sort((a, b) => a.when - b.when)), 150);
+                    }
+                  }, 50);
+                };
+                arm();
+              })
+            """
+            for tag, bar, stride, bar_beats in (
+                ("16th-tail (Outset bar 3, shifted in-carve)",
+                 "| B4/8 E5/8 B4/8 C5/8 Cs5/4 r/8 r/16 E5/16", 6, 4.0),
+                ("dotted-quarter (Storms theme A bar 3)",
+                 "| E6/4. F6/8 E6/8 F6/8", 4, 3.0),
+                ("mid-half 8th (Saria theme line 4)",
+                 "| B5/8 A5/8 C6/8 B5/8 D6/8 C6/8 E6/16 F6/8 D6/16", 9, 4.0)):
+                song = (f"# T3 conserve\n# tempo 120\n"
+                        + " ".join(bar for _ in range(3)) + " |")
+                ons = page.evaluate(CONSERVE_LEG, song)
+                need = stride * 3
+                if len(ons) < need:
+                    failures.append(
+                        f"conserve {tag}: captured {len(ons)} melody onsets, "
+                        f"need {need}")
+                    continue
+                bar0 = ons[0]["when"]
+                for k in range(1, 3):
+                    got = ons[stride * k]["when"] - bar0
+                    want = k * bar_beats * 0.5
+                    if abs(got - want) > 0.03:
+                        failures.append(
+                            f"conserve {tag}: bar {k + 1}'s start sits "
+                            f"{got - want:+.4f}s off the conserved grid "
+                            f"(onset {got:.4f}s vs wanted {want:.4f}s) — "
+                            "the pair's non-half-beat contents must absorb "
+                            "the swing redistribution so every bar stays "
+                            f"exactly {want:.1f}s of wall regardless of the "
+                            "widths filling it")
+
             print('== closing browser', flush=True)
             if errs:
                 failures.append(f"page errors {errs}")

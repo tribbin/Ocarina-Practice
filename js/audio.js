@@ -241,13 +241,45 @@ function quarterAt(pos96) {
   return q;
 }
 
-// One scheduler step in seconds: the swung grid beats of `tok` at grid
-// position `pos96`, times the song's quarter there, divided by the live
-// tempo dial. The melody walker, every track walker and the clock-span
-// integration all share this one rule, so a parameter read (tempo dial,
-// swing) lands on every stream identically when it is taken live.
+// One scheduler step in seconds: the token's grid span measured through the
+// swung map, times the song's quarter there, divided by the live tempo dial.
+// The melody walker, every track walker and the clock-span integration all
+// share this one rule, so a parameter read (tempo dial, swing) lands on
+// every stream identically when it is taken live.
 function stepSec(tok, pos96) {
-  return Math.max(0.001, swungBeats(tok, pos96) * quarterAt(pos96) / tempoSpeed());
+  return Math.max(0.001, swungSpanSec(tokenGridBeats(tok), pos96) *
+                         quarterAt(pos96) / tempoSpeed());
+}
+
+// The swung grid map. Every HALF-BEAT segment of the 96th-grid carries a
+// fixed wall share of its beat: the first half of each swung pair takes
+// longF (0.5 + s/6), the second the remainder — so a pair's wall length is
+// EXACTLY one beat whatever widths fill it. A token's cost = the sum of the
+// segment-overlap fractions it covers, which conserves beats across the
+// 1/16 tails (Outset bar 3), dotted values (the Storms E6/4. bar) and
+// mid-half 8ths (the Saria E6/16 ~ F6/8 D6/16 beat) that the old
+// exact-half-tokens-only rule left running s/6 long or short EVERY bar,
+// ADDITIVE (Robin 2026-10-06: "the short swung notes do not fit in the
+// grid", the 1/96 resolution). An exact half-beat token sitting on a
+// segment boundary receives the identical longF/shortF the old rule gave
+// it, so the clean cases hold their shipped pace bit-for-bit.
+function swungSpanSec(beats, pos96) {
+  const s = (typeof currentSwing === "function" ? currentSwing() : 0) / 100;
+  const w96 = Math.round(beats * 96);
+  if (s <= 0 || w96 <= 0) return beats;
+  const longF = 0.5 + s / 6;
+  let pos = pos96;
+  let remain = w96;
+  let wall = 0;
+  while (remain > 0) {
+    const off = pos % 48;
+    let span = 48 - off;
+    if (span > remain) span = remain;
+    wall += span * ((Math.floor(pos / 48) % 2 === 0 ? longF : 1 - longF) / 48);
+    pos += span;
+    remain -= span;
+  }
+  return wall;
 }
 
 // Signed seconds from grid position a96 to b96 along the melody's token
