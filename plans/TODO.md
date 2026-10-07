@@ -91,8 +91,6 @@ Nothing open — the WAV-export backlog dropped by Robin's audit 2026-09-28 (the
 
 ## 5. Architecture / maintenance
 
-- [ ] **Song data split — the music moves to .txt files, songs.json keeps metadata + a file pointer** (Robin's ask, 2026-10-07): a song's body leaves songs.json and lives in its own human-editable .txt file (the web app's Save File round-trip shape, so an exported melody drops into the repo as-is); songs.json keeps group/name (authoritative even where the .txt's internal title differs)/intended etc. and points at the file; one .txt may be addressed by several entries (bass/transposed variants ride the existing derives shift on top of the fetched base text). Working notes: the loader materializes bodies from the files; sw.js adds the .txt paths to DATA_NETWORK_FIRST + the install derive; gen_song_pages, data_validator and the twin_derive fixtures follow the bodies to the files. DECIDED (Robin's addition 2026-10-07): update propagation is REQUIRED — when he updates songs, players must receive the fresh bodies, never a stale cache (the .txt files join the network-first serving regimen, and the phone-resume freshness check extends to the bodies: a .txt-only edit must be seen by a resumed app even though songs.json's own text does not change). DECIDED (Robin's answered batch, 2026-10-07 late): ① BOOT PREFETCH — every unique .txt fetched in parallel during boot (library hidden filter + ⚠ badges keep working); ③ MUSIC ATTRS MOVE TO THE .TXT — only name/group/intended (plus derives/file) stay JSON; tempo/tick/swing/meter live in the .txt headers and become text-first (loader precedence flips: the file's own header wins); ④ directory songs/ beside songs.json, songs/<id>.txt. `🟧 🔴 ⚙M`
-
 ## 6. Tests & CI
 
 Currently covered (don't lose this): practice acceptance (4 cases strict+closed-loop), practice dip gate (hold-through blocked, silence/50%-notch dips pass, 75% duck shut, legato free), practice seat across view rebuilds + zen-entry stopMelody + overlay zen-only seats, console-hygiene boot scan (4 boots; allowlist = manifest-declared tone misses), support-bracket battery incl. bit-identical melody-vs-support equivalence + Zen timing/gating, instrument load/tone-model install per manifest (incl. svgWhen id/title paths + boot diagnostics in per-leg fresh contexts), render pin (chips/grid/scroll-band/highlight/focus-restore + typed-render debounce contract), svg clone coordinates, debug panel build-on-open contract, transport scheduler arithmetic/cut-bus/lite + the lead/support phase-lock battery (pause/resume, inline tempo change, live tempo-dial move, live swing move, marker-straddling rebase), practice history, template safety, theme toggle, offline SW boot+swap, ac worker parity, swing grid, sr hints, spike watch (the tick hunt), the session-14 batch (wake lock lifecycle, tick-override semantics, asset-version token equality, twin-derivation byte-identity, transposer skill, practice dials), the session-15 additions (SEO shell shape + zero-per-stub JSON-LD, zen note-bar glide five-legger, suite-server teardown hardening, board-tool empty-run linting), and the session-16/16-cont. additions (track acceptance battery incl. mix ratios, hifi retune, library favorites star + readability, tests/midi_track_audit = the pure-python source-measure audit with a displaced-downbeat tripwire over tools/midi_track_audit.py), and the session-17-cont. additions (tests/tone_stages = the DEFAULT stage verification after synth-code or note-value changes — rebuilt session 18 for the twin voice: fit-row regression caps + the decay-release gate measured on the ADOPTED handoff baseline after Robin's field ruling (onset/hold stage bands stay measured-for-eyes in the artifact, never gated — their caps could not survive wobble-window luck without flapping); instruments_load pins the twin install/uninstall shapes and waits for both model round-trips; data_validator checks the twin schema; CI installs scipy+soundfile so the fitter analysis runs there;''. **Sweep policy (Robin, 2026-09-26): the full run_all sweep runs only for sound-engine touches; data/song changes run the directly-affected suites (see AGENTS.md §12)** — full sweep 47/47 at the stage-verification commit (including tone_stages) is the last under the policy (including the new audit suite). CI = push/PR/manual, explicitly not a deploy gate. (.github/workflows/practice-tests.yml — console-hygiene + 46 suite steps + eslint + html-validate + board verify (46 after the 2026-09-28 audit removal; instrument_switch_race's step gone); local run-all counts 46 suites (47 before the removal); 42 green 2026-09-25 — see DONE) NOTE: practice_accepts flaked ONE strict case under full-sweep load 2026-09-23, green twice standalone afterward and in the diag run — watch it, the arbiter hardening already took one such race; support_accepts flaked the same class 2026-09-24 (fixed wall-clock read window vs audio-clock lag under sweep CPU contention) and got the class cure: the read is now a real rendezvous with wall-fire stamps + ctx snapshots `335c4b4`). **Third member 2026-09-25 (CLI run `36110497803`, job 107992645371): practice_dip's leg A stalled the full 15 s timeout at maxIdx 0** — same SHA the local sweep had green; a DIFFERENT injury inside the same family: the suite's rendezvous (OCA_PRACTICE+NOTES) unlocks INSIDE loadInstrument (the stretch between installFingerings and boot's tail), where fillLibrary/loadLibraryItem(home) → practiceInvalidate is still owed — a session started mid-boot died when the tail landed; the stall reproduces at will with CDP network latency, cured by the rule-13 real rendezvous: the #scale options guard (filled only by the tail; a rAF poll never resolves mid-synchronous-block) plus a state card (started/st/ix/frames) on every driver resolve so a future stall names itself. The same tail guard rode into every suite that starts practice or needs typed editor text to survive boot (practice_accepts_melody, practice_zen_return, practice_history, keyboard_widgets, render_pin); library_hardening already waited a stronger post-tail signal (the Scales OPTGROUP), playback-only suites are immune (practiceInvalidate stops practice, never play; the instrument-switch race suite was REMOVED 2026-09-28 — its `loadText` throttle went inert at the ESM migration because the app's loadings resolve the module-scoped binding, so it passed without reproducing its race; the app's instLoadGen guard carries the contract and a live re-test would need a route-doctored `loadText` seam). Full sweep 31/31 green after the cure. Session-28 addition: tests/song_txt_roundtrip (the .txt round-trip: Save File writes title/tempo/swing + the '# tick off' opt-out + the #track blocks, Load File / paste-into-#src restores them byte-identical, tick applies as a per-song session override that never writes the preference, legacy JSON 'tick' field leg — five legs) plus the parse_edges tick-header legs (tickFromText, titleFromText skipping, withPlayHeaders preserve/replace); and tests/media_session (the Media Session announce: metadata title 'Ocarina Practice — <song>' at boot and on song switch, playbackState none/playing/paused/none at each transport edge, hardware play/pause/stop handlers driving the real transport, next/prev pinned unwired).
@@ -749,3 +747,53 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   batched to Robin (retrieval timing, JSON-vs-.txt field placement,
   directory name); item boarded §5. Branch song-txt-files created as the
   placeholder; no app code yet.
+
+- **2026-10-07 (session — the song data split lands in three units: loader, data, serving)** —
+  Robin's ask (music → .txt files referenced from songs.json, one file
+  addressable by several entries, exported files drop in as-is, update
+  propagation required) worked through his answered batch (boot prefetch;
+  music attrs text-first in the .txt headers, JSON = name/group/intended
+  + pointers; directory songs/). Red-first tests/song_files.py (5 legs).
+  LOADER `1b2acaf`: library.js builtinFileBodies/materializeFileBodies
+  assign bodies from files, derive file-backed variants from the base
+  file's CONTENT (headerlessContent strips the leading block + blank +
+  trailing newline; variant bodies stay byte-equal to twin_derive's
+  frozen hand transcriptions), strip file/derives from the published
+  BUILTIN shape, and fall back to the last fetched bytes on a failed
+  fetch (an offline resume never blanks the library); parse.js gains
+  headerBlockPlayAttrs (leading-block-only attr read — a mid-body '#
+  tempo' marker is a playback event, never the base tempo); the load
+  flips text-first with byte-preserving editor text (only the title
+  line leaves; the trailing newline survives so a loaded file re-exports
+  byte-identical); the resume token spans songs.json + the fetched
+  bodies. DATA `498bbb3`: the migration wrote 17 songs/*.txt files and
+  slimmed songs.json (4 derives variants stay pointers); melody_transpose
+  gained the shared file loader + content strip and its octave fast path
+  now passes the track-stream gate (it was silently shifting contrabass
+  content an octave down on every -12 derivation — the frozen fixtures
+  stayed byte-valid); tools follow the bodies (track_harmonize reads and
+  writes the record's own .txt, midi_track_audit takes the pointer with
+  an inline doctoring fallback, audit_twins reads attrs off the leading
+  header block, transpose.cjs writes metadata + a file inheriting the
+  source header block with the title swapped, verify_song follows the
+  pointer); data_validator enforces the split shape (pointer required,
+  legacy-audio-field classes, unknown fields named, files checked to
+  exist non-empty UTF-8 with a tempo header) + sandbox legs; deploy-site
+  allowlist/trigger covers songs/; gen_pages staging assembles the files;
+  shipped_songs' metadata probe resolves tempo text-first through the
+  derive chain. SERVING e59dd53: sw.js DATA_NETWORK_FIRST covers
+  songs/*.txt, the install derive precaches every record's file,
+  offline_pwa's freshness legs rebase onto pointer sentinels + a new
+  .txt-only-edit resume leg. Suite sweep green: song_files,
+  data_validator, shipped_songs (23 songs, 11 aligned multi-track),
+  twin_derive, gen_pages (11 stubs), parse_edges, song_txt_roundtrip,
+  library_hardening, library_favorites, offline_pwa (4 freshness legs),
+  asset_versions, theme_prepaint, instruments_load, console_hygiene,
+  transpose_skill (proven locally with the node tarball), midi_track_audit
+  SKIP-from-absence (research/ gitignored); eslint + html-validate clean;
+  sw oco-pwa-v97. DONE: the octave-drift discovery above was a REAL
+  latent defect the split exposed (the JS engine had the gate, the python
+  twin did not). Robin's instruction closed the session: merge latest
+  main into song-txt-files and push. HOLD: the field check of the live
+  workflow (edit a song .txt, the update lands fresh on the phone) and
+  the deployed first-visit bodies after the next main deploy.
