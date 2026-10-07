@@ -281,7 +281,7 @@ class V:
         # the .txt now; a record carrying body/tempo/swing/tick/meter is a
         # legacy artifact that must migrate.
         KNOWN_FIELDS = {"name", "group", "intended", "hidden", "file",
-                        "derives"}
+                        "derives", "aka", "game"}
         LEGACY_MUSIC_FIELDS = ("body", "tempo", "swing", "tick", "meter")
         for key, item in s.items():
             if not isinstance(item, dict):
@@ -293,7 +293,7 @@ class V:
             for unk in sorted(set(item) - KNOWN_FIELDS):
                 self.err("songs.json", "unknown-field",
                          f"{key}: unknown field {unk!r} (known: name, group, "
-                         + "intended, hidden, file, derives)")
+                         + "intended, hidden, file, derives, aka, game)")
             for field in LEGACY_MUSIC_FIELDS:
                 if field in item:
                     self.err("songs.json", "legacy-audio-field",
@@ -332,6 +332,33 @@ class V:
                 elif known and intended not in known:
                     self.err("songs.json", "bad-intended",
                              f"{key}: intended {intended!r} is no manifest instrument id")
+            # SEO naming metadata (Robin, 2026-10-07): `game` names the
+            # source game, `aka` lists the names people search instead of
+            # the title — the landing generator turns both into titles,
+            # descriptions, the visible intro block and JSON-LD
+            # alternateNames. Typed scalars only; a derives record stays
+            # pure (the variant rides its base's entry).
+            if "game" in item:
+                if not isinstance(item["game"], str) or not item["game"].strip():
+                    self.err("songs.json", "bad-field",
+                             f"{key}: game must be a non-empty string")
+            if "aka" in item:
+                aka = item["aka"]
+                if not isinstance(aka, list) \
+                        or any(not isinstance(a, str) or not a.strip()
+                               for a in aka):
+                    self.err("songs.json", "bad-field",
+                             f"{key}: aka must be a list of non-empty strings")
+                else:
+                    seenaka = set()
+                    for a in aka:
+                        if a in seenaka:
+                            self.err("songs.json", "bad-field",
+                                     f"{key}: aka duplicate alias {a!r}")
+                        seenaka.add(a)
+                    if (item.get("name") or "") in seenaka:
+                        self.err("songs.json", "bad-field",
+                                 f"{key}: aka repeats the song's own name")
             # Derived twins (board §9 2026-09-25): a derives record declares
             # the AT-LOAD derivation {key: base, shift}. The variant owns NO
             # pointer of its own (its body materializes from the base's
@@ -380,6 +407,12 @@ class V:
                              f"{key}: a derives record carries no file of "
                              "its own — the variant materializes from the "
                              "base's")
+                for seo in ("aka", "game"):
+                    if seo in item:
+                        self.err("songs.json", "bad-derives",
+                                 f"{key}: a derives record carries no "
+                                 f"{seo} of its own — the variant rides "
+                                 "the base's entry")
 
     def _song_file(self, rel, shaded_by):
         p = self.root / rel
@@ -772,6 +805,43 @@ def v12():
         write(tmp, "songs.json", GOOD_SONGS.replace(
             '"group": "Other",', '"group": "Other", "intended": 3,', 1))
         expect_hits(validate(tmp), "intended", "bad-intended")
+
+
+@case("seo naming metadata: aka/game shapes on file records, refused on derives")
+def v13():
+    with tempfile.TemporaryDirectory() as td:
+        tmp = good_sandbox(td)
+        FILEPAT = '"file": "songs/some-song.txt"'
+        def inject(extra, key_extra=''):
+            return GOOD_SONGS.replace(
+                FILEPAT, FILEPAT + key_extra + extra, 1)
+        # the good shape: game string + aka list ride a file-backed record
+        write(tmp, "songs.json", inject(', "aka": ["Lon Lon Ranch"],'
+                                       ' "game": "Ocarina of Time"'))
+        errs = validate(tmp)
+        if errs:
+            raise AssertionError(f"good seo shape flagged: {errs}")
+        # game wrong type
+        write(tmp, "songs.json", inject(', "game": 3'))
+        expect_hits(validate(tmp), "game", "bad-field")
+        # aka not a list / empty item / duplicate / repeats own name
+        for bad in (', "aka": "Lon Lon Ranch"',
+                    ', "aka": ["Lon Lon Ranch", ""]',
+                    ', "aka": ["Lon Lon Ranch", "Lon Lon Ranch"]',
+                    ', "aka": ["Some Song"]'):
+            write(tmp, "songs.json", inject(bad))
+            expect_hits(validate(tmp), "aka", "bad-field")
+        # a derives record stays pure: no aliases, no game
+        write(tmp, "songs.json", song_json(
+            '"some-song-12": {"name": "Some Song 12", "group": "Other",'
+            ' "derives": {"key": "some-song", "shift": -12},'
+            ' "aka": ["Lon Lon Ranch"]}'))
+        expect_hits(validate(tmp), "some-song-12", "bad-derives")
+        write(tmp, "songs.json", song_json(
+            '"some-song-12": {"name": "Some Song 12", "group": "Other",'
+            ' "derives": {"key": "some-song", "shift": -12},'
+            ' "game": "Ocarina of Time"}'))
+        expect_hits(validate(tmp), "some-song-12", "bad-derives")
 
 
 def main():
