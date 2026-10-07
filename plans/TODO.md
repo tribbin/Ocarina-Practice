@@ -865,3 +865,20 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   paste an example affected URL from the Search Console report if any
   apex/https/slash-form source shows up — that would be a class I
   could not reproduce today.
+
+- **2026-10-07 (Search Console follow-up: the report is recrawl lag, Robin elects to keep the landing seed)** —
+  Robin's Search Console data closed the picture: the "Page with
+  redirect" set is the OLD stub URLs plus the www home (last crawl
+  Sep 26, 2026 — one day after the domain flip), while the pages
+  verified Oct 2-3 (stormsellites, sarias, eponas, OoT-opening, home,
+  outset) are indexed fine. The five apex song URLs in the report are
+  in the live sitemap and answer 200 with byte-identical mechanics to
+  the indexed five — nothing at the HTTP level to fix; the split is
+  recrawl timing, and his reindex requests should clear them. Ruling
+  recorded: the www entry STAYS a redirect-classification by design
+  (www 301s to apex forever, never indexable — correct); only apex
+  entries were worth requests. Second ruling: the landing stub's
+  replaceState seed (?song=<member>&inst=<intended>, the boot
+  mechanism — botw-theme seeds its intended bass triple and the bass
+  member) STAYS as is; the visible URL change is accepted. Held: he
+  re-checks Search Console later to confirm the five flipped.
