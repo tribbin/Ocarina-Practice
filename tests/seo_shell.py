@@ -7,11 +7,12 @@
 # offers price "0", description taken VERBATIM from the shell's own meta
 # description — one description policy).
 #
-# The stubs stay as they were: build_stub copies the whole shell head, so
-# the generator must STRIP both injected elements before adding the stub's
-# own song-path canonical — a stub page carries exactly ONE canonical and
-# ZERO JSON-LD (no per-stud application block, the confirmation's "no
-# per-stub JSON-LD").
+# The stubs (Robin's SEO pass 2026-10-07): build_stub copies the whole
+# shell head, so the generator must STRIP both injected shell elements
+# before adding the stub's own song-path canonical — a stub page carries
+# exactly ONE canonical, exactly ONE structured-data script of its own
+# (MusicComposition + BreadcrumbList in a single @graph), and never the
+# shell's WebApplication block.
 #
 #   python3 tests/seo_shell.py     # pure python: index.html + a generated
 #                                  # staging tree in a temp dir
@@ -114,20 +115,42 @@ def check_stubs(failures):
         for p in files:
             text = p.read_text(encoding="utf-8")
             rel = p.relative_to(tmp)
-            if "application/ld+json" in text:
-                failures.append(f"{rel}: stubs must carry NO JSON-LD "
-                                "(no per-stub application block)")
+            if rel.name != "index.html" and "application/ld+json" in text:
+                failures.append(f"{rel}: only HTML pages may carry JSON-LD")
             if "EducationalApplication" in text:
                 failures.append(f"{rel}: the shell's WebApplication block "
-                                "must be stripped from stubs")
-            n_canon = len(CANONICAL.findall(text))
+                                "must be stripped from every generated page")
             if rel.name == "index.html" and \
-                    "song/" in str(rel):
+                    len(rel.parts) == 4 and rel.parts[0] == "song":
+                # Depth 4 = song/<cat>/<key>/index.html — a STUB. The hub
+                # indexes (depth 2/3) carry a canonical but no JSON-LD by
+                # design; both are refused leaked shell blocks above.
+                n_canon = len(CANONICAL.findall(text))
                 if n_canon != 1:
                     failures.append(
                         f"{rel}: a stub carries {n_canon} canonical links "
                         "(the shell's '/' canonical must be stripped so the "
                         "page keeps exactly one, its own song path)")
+                blocks = LD_JSON.findall(text)
+                if len(blocks) != 1:
+                    failures.append(
+                        f"{rel}: a stub carries {len(blocks)} ld+json blocks "
+                        "(want exactly one MusicComposition + breadcrumb)"
+                        " of its own")
+                    continue
+                try:
+                    graph = json.loads(blocks[0])
+                except ValueError as e:
+                    failures.append(f"{rel}: stub ld+json does not parse: {e}")
+                    continue
+                n = graph.get("@graph")
+                types = {x.get("@type") for x in n} if isinstance(n, list) else set()
+                if graph.get("@context") != "https://schema.org" or \
+                        types != {"MusicComposition", "BreadcrumbList"}:
+                    failures.append(
+                        f"{rel}: stub JSON-LD graph is {types or 'not a graph'}"
+                        " — want one MusicComposition + BreadcrumbList of "
+                        "the stub's own (a leaked shell block fails here)")
 
 
 def main():
@@ -143,7 +166,8 @@ def main():
           "WebApplication JSON-LD (EducationalApplication, OS \"Any\", "
           "browserRequirements, free Offer, description verbatim from the "
           "meta); every generated stub keeps exactly one canonical (its own "
-          "song path) and zero JSON-LD.")
+          "song path) and exactly one structured-data script of its own "
+          "(MusicComposition + BreadcrumbList, never the shell's block).")
     return 0
 
 
