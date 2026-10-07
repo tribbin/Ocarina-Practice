@@ -108,7 +108,7 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
 
 - [ ] **Library search / pinning widening** — favorites pinning SHIPPED 2026-09-26 `390c431` (star + first persisted Favorites group); the widening (search box, reordering beyond the pin, grouping options) stays parked until Robin elects it. `🟢 ⚪ ⚙S`
 
-- [ ] **SEO discovery pass: searchable landing content + internal hub pages (deploy-side generator work, no repo app changes)** — Robin's ask 2026-10-07 first-priority after the Search Console lag showed crawlers find the pages via the sitemap only: full pass per his answered batch — (a) per-song `aka` + `game` fields on base records in songs.json (data_validator learns them, derives stay pure pointers; the game/aka table is Robin-approved before landing), OoT-weighted ("that game will release soon"); (b) the generator enriches each stub's title/description with AKA + game + "ocarina tabs"; (c) a visible intro block at each stub's bottom: what the tab is, AKA, game, the melody's letter notes, links up to the hubs; (d) per-stub MusicComposition JSON-LD with alternateName + BreadcrumbList (replaces the deliberate zero-JSON-LD pin); (e) /song/ + /song/<cat>/ hub pages Robin sketched as an instruments-vs-songs(variations) grid linking every landing URL; sitemap gains the hub locs. Deploy-only: index.html/sw.js untouched, no sw bump; gen_pages pins + data_validator battery update in the same commit. `🟨 🔴 ⚙M`
+- [ ] **SEO discovery pass: searchable landing content + internal hub pages (deploy-side generator work, no repo app changes)** — Robin's ask 2026-10-07 first-priority after the Search Console lag showed crawlers find the pages via the sitemap only: full pass per his answered batch — (a) per-song `aka` + `game` fields on base records in songs.json (data_validator learns them, derives stay pure pointers; the game/aka table is Robin-approved before landing), OoT-weighted ("that game will release soon"); (b) the generator enriches each stub's title/description with AKA + game + "ocarina tabs"; (c) a visible intro block at each stub's bottom: what the tab is, AKA, game, the melody's letter notes, links up to the hubs; (d) per-stub MusicComposition JSON-LD with alternateName + BreadcrumbList (replaces the deliberate zero-JSON-LD pin); (e) /song/ + /song/<cat>/ hub pages Robin sketched as an instruments-vs-songs(variations) grid linking every landing URL; sitemap gains the hub locs. Deploy-only: index.html/sw.js untouched, no sw bump; gen_pages pins + data_validator battery update in the same commit. The data + generator halves LANDED on seo-discovery (`8b3d113` games+aka data + data_validator battery, `0aec42e` generator: SEO titles/descriptions, per-stub MusicComposition JSON-LD over a breadcrumb, visible intro blocks with the melody's letter notes, /song/ + category hubs with the instruments-vs-variations grid whose cells deep-link the seeded pairing, sitemap home+hubs+stubs) - gen_pages, data_validator, shipped_songs, twin_derive, song_files, asset_versions, eslint + html-validate all green; no sw bump (index.html/sw.js untouched - deploy stays generated artifacts + songs.json); HELD FOR ROBIN: the intro block's look across themes, the hub grid's shape, the titles' wording - his pass on the live pages after merging `🟨 🔴 ⚙M`
 
 > **Idle idea pool: `plans/IDEAS.txt`.** A live document Robin edits over time and ROBIN'S ALONE — the AI never writes it (it may be read, and only lifted into TODO.md when Robin explicitly asks). TODO carries no copy or summary: when an idea from it is picked up, read the FILE fresh at that moment; never rely on a remembered or transcribed version.
 
@@ -884,3 +884,42 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
   mechanism — botw-theme seeds its intended bass triple and the bass
   member) STAYS as is; the visible URL change is accepted. Held: he
   re-checks Search Console later to confirm the five flipped.
+
+- **2026-10-07 (SEO discovery pass lands on seo-discovery — the pages become searchable on their own merits)** —
+  Robin's ask: "make finding our content easier — 'Lon Lon Ranch' and
+  'ocarina tabs' should find us, and Ocarina of Time releases soon so
+  that phrase must ride the OoT songs." His batch (rule-4 questions
+  answered): FULL pass; per-song `aka` + `game` in songs.json; the
+  /song/ and category hubs carry an instruments-vs-variations grid; the
+  drafted game/aka naming table approved (Epona's Song → Lon Lon Ranch;
+  Song of Storms → Windmill Song/Windmill Hut; Song of Time → Temple of
+  Time; Saria's Song → Lost Woods; Zelda's Lullaby → Royal Family
+  Lullaby; Minuet of Forest → Sacred Forest Meadow; Concerning Hobbits
+  alias; Outset → The Wind Waker; BotW theme → Breath of the Wild).
+  DATA `8b3d113`: 11 base records gain `aka`/`game`; data_validator
+  learns both (typed scalars, list-internal uniqueness, no own-name
+  repeats) and refuses them on pure-pointer derives, with the sandbox
+  battery extended (18 classes now). GENERATOR `0aec42e`: title/og-title
+  = "Epona's Song (Lon Lon Ranch) — Ocarina of Time Tabs | Ocarina
+  Practice" (games whose own name carries "Ocarina" skip the doubled
+  word), one ≤160-char description carrying the tabs words per stub,
+  exactly ONE structured-data script per stub (MusicComposition + 
+  BreadcrumbList in one @graph — the zero-JSON-LD-per-stub rule
+  deliberately replaced), and a VISIBLE intro block at each stub's
+  bottom: name, aliases ("also known as"), game, the melody as plain
+  letter notes, links up the directory. The /song/ root hub + per-
+  category hubs are static (zero scripts), grid cells deep-link
+  `?song=<member>&inst=<inst>` so a grid click BOOTS that pairing.
+  Sitemap: home + /song/ + category hubs + stubs (15 locs). No repo
+  index.html/sw.js change — no sw bump; the deploy trigger paths
+  already cover songs.json + tools/gen_song_pages.py (the workflow
+  regenerates every page on his merge; workflow_dispatch can preview
+  the branch's artifact). Suites: gen_pages (extended: the SEO pins,
+  the served hub stage, mount-relocatable hub canonicals), 
+  data_validator, shipped_songs (23 songs, 11 aligned), twin_derive,
+  song_files, asset_versions; eslint + html-validate clean. Held for
+  Robin: the intro block's look across themes, the hub grid's shape,
+  the titles' wording — his pass happens on the live pages after
+  merging; Search Console should then reach every stub through
+  internal links instead of the sitemap alone. Board moves landed on
+  the same seo-discovery branch.
