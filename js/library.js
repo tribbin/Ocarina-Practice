@@ -86,14 +86,21 @@ const DERIVED_FROM = {}; // variant id -> its derives.key (records strip both)
 const LAST_FILE_BODIES = {}; // the last successfully fetched file texts
 
 // The text after the leading '# ...' header block — the same split
-// withPlayHeaders applies at rewrite. A file's CONTENT for derivation
-// purposes is everything after it; the published variant body keeps that
-// shape (tests/twin_derive freezes the derived bodies byte-for-byte).
+// withPlayHeaders applies at rewrite — with the file's blank separators and
+// trailing newline folded away. A file's CONTENT for derivation purposes is
+// the bare notation: the published variant body keeps that shape byte-for-
+// byte (tests/twin_derive freezes the derived bodies as the retired hand
+// transcriptions), so a base-file edit changes exactly the notation a
+// variant inherits.
 function headerlessContent(text) {
   const lines = String(text || "").split("\n");
   let h = 0;
   while (h < lines.length && lines[h].trim().startsWith("#")) h++;
-  return lines.slice(h).join("\n");
+  let out = lines.slice(h).join("\n");
+  // A file's leading blank separator and trailing newline are file
+  // decoration, not notation.
+  out = out.replace(/^[ \t]*\n/, "").replace(/\n+$/, "");
+  return out;
 }
 
 // One fetch per unique `file`; failures pass null (falling back to the last
