@@ -138,6 +138,47 @@ def pick_landing(key, songs, manifest, charts):
     return members[0], default_id
 
 
+def page_title(song, key):
+    # The <title>/og:title shape (Robin's SEO pass 2026-10-07): the song's
+    # searched name first (with its first alias in parens), the source game
+    # when the data declares one — "Ocarina of Time" is the phrase most of
+    # this catalog rides — then the tabs phrase and the brand.
+    name = song.get("name") or key
+    aka = song.get("aka") or []
+    head = name + (f" ({aka[0]})" if aka else "")
+    game = song.get("game")
+    return head + (f" — {game} Ocarina Tabs" if game
+                   else " — Ocarina Tabs") + " | Ocarina Practice"
+
+
+def page_description(song, key):
+    # One description per page, <= ~160 chars: name + aliases + game +
+    # the tab words people search. Dropped aliases when the string runs
+    # long (the name and the first alias never drop).
+    aka = list(song.get("aka") or [])
+    game = song.get("game")
+
+    def build(keep):
+        lead = ", ".join([song.get("name") or key] + aka[:keep])
+        core = lead + " ocarina tabs"
+        if game:
+            core += f" from {game}"
+        return (core + ": letter notes, hole-by-hole fingerings, "
+                "playback and practice tuner.")
+
+    desc = build(len(aka))
+    while len(desc) > 160 and len(aka) > 1:
+        aka.pop()
+        desc = build(len(aka))
+    return desc
+
+
+def display_ids(ids):
+    # The letters people search: display sharps for humans ('F#4' — chart
+    # IDs stay s-spelled, the same gen lesson the membership test learned).
+    return [i.replace("s", "#", 1) if i[1:2] == "s" else i for i in ids]
+
+
 def category_of(group):
     g = (group or "").lower()
     if "zelda" in g:
@@ -149,7 +190,190 @@ def category_of(group):
     return re.sub(r"[^a-z0-9-]+", "-", g.split()[0]).strip("-") or "other"
 
 
-def build_stub(html, key, song, member, cat, inst, site_prefix, origin):
+def page_title(name, aka, game):
+    # The <title>/og:title shape (Robin's SEO pass 2026-10-07): the song's
+    # searched name first (with its first alias in parens), the source game
+    # when the data declares one — "Ocarina of Time" is the phrase most of
+    # this catalog rides — then the tabs phrase and the brand. A game whose
+    # own name carries "Ocarina" skips the doubled word ("Ocarina of Time
+    # Tabs", never "Ocarina of Time Ocarina Tabs").
+    head = name + (f" ({aka[0]})" if aka else "")
+    if game:
+        mid = f" — {game} Tabs" if "ocarina" in game.lower() \
+            else f" — {game} Ocarina Tabs"
+    else:
+        mid = " — Ocarina Tabs"
+    return head + mid + " | Ocarina Practice"
+
+
+def page_description(name, aka, game):
+    # One description per page, <= ~160 chars: name + aliases + game +
+    # the tab words people search. Aliases drop tail-first when the
+    # string runs long (name and first alias never drop).
+    aka = list(aka)
+    game = game if game else None
+
+    def build(keep):
+        lead = ", ".join([name] + aka[:keep])
+        core = lead + " ocarina tabs"
+        if game:
+            core += f" from {game}"
+        return (core + ": letter notes, hole-by-hole fingerings, "
+                "playback and practice tuner.")
+
+    desc = build(len(aka))
+    while len(desc) > 160 and len(aka) > 1:
+        aka.pop()
+        desc = build(len(aka))
+    return desc
+
+
+def member_label(member, key):
+    # The grid cell text for a family member: human words, not the raw
+    # registered suffix (the "-c" class is an octave C variant, "down3"
+    # a thirds-down derivation, "-midi" the content-marker arrangement).
+    if member == key:
+        return "main"
+    suf = member[len(key) + 1:]
+    named = {"bass": "bass", "midi": "arrangement", "c": "in C",
+             "alto": "alto", "contrabass": "contrabass", "12": "12-hole"}
+    if suf in named:
+        return named[suf]
+    m = re.match(r"^(up|down)(\d+)$", suf)
+    if m:
+        return f"{m.group(1)} {m.group(2)}"
+    return suf
+
+
+def _aka_clause(aka):
+    return f" (also known as {', '.join(aka)})" if aka else ""
+
+
+def _game_clause(game):
+    return f"from {game}: " if game else ""
+
+
+def intro_block(key, base, body, cat, site_prefix):
+    # The crawlable content Google can rank without rendered JS: what this
+    # tab is (name + aliases + game, the exact words people search), the
+    # melody as plain letter notes, and links UP the internal directory
+    # (stubs → category hub → root hub). Visible text, no hidden tricks.
+    name = base.get("name") or key
+    aka = base.get("aka") or []
+    game = base.get("game")
+    letters = display_ids(body_note_ids(body or ""))
+    return (
+        f'<section class="seo-about" style="max-width:860px;margin:24px '
+        f'auto 40px;padding:0 20px;line-height:1.55">\n'
+        f'  <h2 style="font-size:1.15em;margin:0 0 .4em">{name}'
+        + (f" ({aka[0]}) ocarina tab" if aka else " ocarina tab")
+        + '</h2>\n'
+        f'  <p style="margin:0 0 .8em">{name}{_aka_clause(aka)} ocarina tab'
+        f' — {_game_clause(game)}letter notes with the hole-by-hole '
+        f'fingerings, real playback and a tuner to play along.</p>\n'
+        f'  <p style="margin:0 0 .8em;font-size:.95em">'
+        f'<b>Melody letter notes:</b> '
+        f'<span class="seo-notes">{" ".join(letters)}</span></p>\n'
+        f'  <nav style="font-size:.9em">\n'
+        f'    <a href="{site_prefix}/song/{cat}/">{category_label(cat)}'
+        f' ocarina tabs</a> ·\n'
+        f'    <a href="{site_prefix}/song/">All songs</a> ·\n'
+        f'    <a href="{site_prefix}/">Ocarina Practice</a>\n'
+        f'  </nav>\n'
+        '</section>\n')
+
+
+def stub_jsonld(name, aka, game, desc, cat, key, site_prefix, origin):
+    node = {"@type": "MusicComposition", "name": name, "description": desc,
+            "url": f"{origin}{site_prefix}/song/{cat}/{key}/",
+            "image": f"{origin}{site_prefix}/icon-512.png",
+            "inLanguage": "en"}
+    if aka:
+        node["alternateName"] = list(aka)
+    if game:
+        node["genre"] = game
+    graph = [node,
+             {"@type": "BreadcrumbList", "itemListElement": [
+                 {"@type": "ListItem", "position": 1, "name": "Ocarina"
+                  " Practice", "item": f"{origin}{site_prefix}/"},
+                 {"@type": "ListItem", "position": 2, "name":
+                  category_label(cat), "item":
+                  f"{origin}{site_prefix}/song/{cat}/"},
+                 {"@type": "ListItem", "position": 3, "name": name, "item":
+                  f"{origin}{site_prefix}/song/{cat}/{key}/"}]}]
+    payload = json.dumps({"@context": "https://schema.org", "@graph": graph},
+                         ensure_ascii=False, separators=(",", ":"))
+    return (f'<script type="application/ld+json">{payload}</script>\n')
+
+
+def category_label(cat):
+    return {"zelda": "Zelda", "scales": "Scales"}.get(cat, "More songs")
+
+
+def hub_grid(entries, songs, manifest, charts, site_prefix):
+    # Robin's grid: instruments vs songs-with-their-variations — a cell
+    # lists every family member that fits that instrument's chart, each
+    # deep-linking the landing page seeded for exactly that pairing.
+    cols = manifest["instruments"]
+    out = ['<table class="hub-grid" style="border-collapse:collapse;'
+           'width:100%;margin:16px 0">',
+           '<thead><tr><th scope="col" style="text-align:left;border:1px'
+           ' solid #d8cfc0;padding:8px 10px;background:#f6efe6">Song'
+           '</th>']
+    for c in cols:
+        out.append(f'<th scope="col" style="text-align:left;border:1px'
+                   f' solid #d8cfc0;padding:8px 10px;background:#f6efe6">'
+                   f'{c.get("type") or c["id"]}</th>')
+    out.append('</tr></thead><tbody>')
+    for cat, key in entries:
+        base = songs[key]
+        name = base.get("name") or key
+        cells = []
+        for c in cols:
+            inst = c["id"]
+            links = []
+            for m in family_members(key, songs):
+                if fits_chart(m, songs[m].get("body"), inst, charts):
+                    links.append(
+                        f'<a href="{site_prefix}/song/{cat}/{key}/'
+                        f'?song={m}&amp;inst={inst}">'
+                        f'{member_label(m, key)}</a>')
+            cells.append(" · ".join(links) if links else "—")
+        out.append(
+            f'<tr><th scope="row" style="text-align:left;border:1px solid '
+            f'#d8cfc0;background:#f6efe6">{name}</th>'
+            + "".join(f'<td style="border:1px solid #d8cfc0;padding:8px '
+                      f'10px">{c}</td>' for c in cells)
+            + '</tr>')
+    out.append('</tbody></table>')
+    return "".join(out)
+
+
+def hub_page(title, desc, canonical, crumbs, h1, intro, grids, site_prefix):
+    crumb_links = " &gt; ".join(
+        f'<a href="{href}">{label}</a>' if href else label
+        for label, href in crumbs)
+    return (
+        '<!doctype html>\n<html lang="en">\n<head>\n'
+        '<meta charset="utf-8" />\n'
+        '<meta name="viewport" content="width=device-width, initial-scale=1" />\n'
+        f'<meta name="description" content="{desc}" />\n'
+        f'<link rel="canonical" href="{canonical}" />\n'
+        f'<title>{title}</title>\n'
+        '<style>body{font-family:system-ui,Segoe UI,Roboto,sans-serif;'
+        'margin:24px auto;padding:0 20px;max-width:1000px;color:#222;'
+        'background:#fffdf8}a{color:#0a5ba4}.crumbs{font-size:.85em}'
+        '</style>\n</head>\n<body>\n'
+        f'<p class="crumbs">{crumb_links}</p>\n'
+        f'<h1>{h1}</h1>\n'
+        f'<p>{intro}</p>\n{grids}\n'
+        f'<p style="font-size:.9em">Every linked song boots as a'
+        f' play-along ocarina tab on <a href="{site_prefix}/">Ocarina'
+        f' Practice</a>.</p>\n'
+        '</body>\n</html>\n')
+
+
+def build_stub(html, key, song, member, base, cat, inst, site_prefix, origin):
     # The shell's OWN SEO pair (canonical "/" + the WebApplication JSON-LD)
     # must not ride along: build_stub copies the whole head, and a stub
     # page keeps exactly ONE canonical (its song path) and ZERO JSON-LD
@@ -167,9 +391,13 @@ def build_stub(html, key, song, member, cat, inst, site_prefix, origin):
     # directories deep, boot dead). The value is the SERVING prefix — the
     # project-page mount pre-flip, root on the pinned domain after it.
     html = html.replace("<head>", f'<head>\n  <base href="{site_prefix}/">', 1)
+    # Naming: the member's display name (the arrangement the page boots)
+    # with the BASE record's searchable game/aka metadata (the aliases and
+    # the source game belong to the song, every arrangement of it).
     name = song.get("name") or key
-    desc = (f"Play {name} on the ocarina: hole-fingering tab, playback and "
-            f"practice with the built-in tuner.")
+    aka = base.get("aka") or []
+    game = base.get("game")
+    desc = page_description(name, aka, game)
     # ONE description per page: replace the shell's static one instead of
     # injecting a second (preview bots read the first they see).
     html = re.sub(r'<meta name="description" content="[^"]*" ?/>',
@@ -186,7 +414,8 @@ def build_stub(html, key, song, member, cat, inst, site_prefix, origin):
     # so the artifact keeps serving from any mount.
     stub_meta = (
         f'<link rel="canonical" href="{canonical}" />\n'
-        f'<meta property="og:title" content="{name} — Ocarina Practice" />\n'
+        f'<meta property="og:title" content="'
+        + page_title(name, aka, game) + '" />\n'
         f'<meta property="og:url" content="{canonical}" />\n'
         f'<meta property="og:type" content="website" />\n'
         f'<meta property="og:site_name" content="Ocarina Practice" />\n'
@@ -195,18 +424,24 @@ def build_stub(html, key, song, member, cat, inst, site_prefix, origin):
         f'<meta property="og:image:width" content="512" />\n'
         f'<meta property="og:image:height" content="512" />\n'
         f'<meta property="og:image:alt" content="Ocarina Practice icon" />\n'
-        f'<meta name="twitter:card" content="summary" />\n')
+        f'<meta name="twitter:card" content="summary" />\n'
+        + stub_jsonld(name, aka, game, desc, cat, key, site_prefix, origin))
     script = "<script type=\"module\" src="
     seed = ('<script>if (!location.search) history.replaceState(null, "", '
             f'location.pathname + "?song={member}&inst={inst}");</script>\n  ')
     # static <title> tells preview bots what the page is; the app may
     # retitle after boot (runtime JS wins where it runs).
     html = re.sub(r"<title>.*?</title>",
-                  f"<title>{name} — Ocarina Practice</title>", html, count=1)
+                  f"<title>{page_title(name, aka, game)}</title>", html, count=1)
     # og block sits at the END of <head>: the shell's charset/meta keep
     # their original head-start positions (charset stays in the first KB).
     html = html.replace("</head>", "  " + stub_meta + "</head>", 1)
     html = html.replace(script, seed + script, 1)
+    # The crawlable intro rides at the very bottom: real text (name,
+    # aliases, game, letter notes) with links up the internal directory.
+    html = html.replace("</body>",
+                        intro_block(key, base, song.get("body"), cat,
+                                    site_prefix) + "</body>", 1)
     return html
 
 
@@ -238,6 +473,7 @@ def main():
     out = REPO / args.out
     written = []
     urls = []
+    emitted = []          # (cat, key) pairs of the stub set, for the hubs
     for key, song in sorted(songs.items()):
         if SUFFIX.search(key):
             continue  # variants ride the base page, not their own URL
@@ -249,7 +485,7 @@ def main():
                       # their own page
         cat = category_of(song.get("group"))
         member, inst = pick_landing(key, songs, manifest, charts)
-        stub = build_stub(html, key, songs[member], member,
+        stub = build_stub(html, key, songs[member], member, song,
                           cat, inst, site_prefix, origin)
         p = out / "song" / cat / key / "index.html"
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -258,19 +494,67 @@ def main():
         # it), origin + serving prefix + stub path; home leads the set.
         urls.append(f"{origin}{site_prefix}/song/{cat}/{key}/")
         written.append(f"{p.relative_to(out)}  [{inst}]")
+        emitted.append((cat, key))
+
+    # Internal directory (Robin's SEO pass 2026-10-07): the /song/ root hub
+    # and one hub per category, each with the instruments-vs-variations
+    # grid linking every landing URL. Static pages — no app, no scripts;
+    # crawlers reach every stub through internal links, not the sitemap
+    # alone.
+    cats = sorted({c for c, _ in emitted})
+    grid_all = hub_grid(emitted, songs, manifest, charts, site_prefix)
+    root_desc = ("Every song below is a play-along ocarina tab: letter"
+                 " notes, hole-by-hole fingerings and a tuner - pick your"
+                 " ocarina on any song page.")
+    (out / "song" / "index.html").parent.mkdir(parents=True, exist_ok=True)
+    (out / "song" / "index.html").write_text(
+        hub_page("Song library — Ocarina Tabs | Ocarina Practice",
+                 root_desc, f"{site_prefix}/song/",
+                 [("Ocarina Practice", site_prefix + "/"), ("Song library",
+                                                           None)],
+                 "Song library", root_desc,
+                 "".join(
+                     f'<h2>{category_label(c)} ocarina tabs</h2>\n'
+                     f'<p><a href="{site_prefix}/song/{c}/">All'
+                     f' {category_label(c)} tabs</a></p>\n'
+                     + hub_grid([e for e in emitted if e[0] == c], songs,
+                                manifest, charts, site_prefix)
+                     for c in cats),
+                 site_prefix),
+        encoding="utf-8", newline="\n")
+    for c in cats:
+        d = out / "song" / c
+        d.mkdir(parents=True, exist_ok=True)
+        title = f"{category_label(c)} ocarina tabs — Ocarina Practice"
+        (d / "index.html").write_text(
+            hub_page(title, root_desc, f"{site_prefix}/song/{c}/",
+                     [("Ocarina Practice", site_prefix + "/"),
+                      ("Song library", site_prefix + "/song/"),
+                      (category_label(c), None)],
+                     title.split(" — ")[0], root_desc,
+                     hub_grid([e for e in emitted if e[0] == c], songs,
+                              manifest, charts, site_prefix),
+                     site_prefix),
+            encoding="utf-8", newline="\n")
+    hub_urls = ([(f"{origin}{site_prefix}/song/")]
+                + [f"{origin}{site_prefix}/song/{c}/" for c in cats])
+    written.append("song/index.html  [hub]")
+    for c in cats:
+        written.append(f"song/{c}/index.html  [hub]")
     (out / ".nojekyll").write_text("", encoding="utf-8", newline="\n")
     sitemap = ['<?xml version="1.0" encoding="UTF-8"?>',
                ('<urlset xmlns="http://www.sitemaps.org/schemas/'
                 'sitemap/0.9">')]
-    for loc in [f"{origin}{site_prefix}/"] + sorted(urls):
+    for loc in [f"{origin}{site_prefix}/"] + sorted(hub_urls + urls):
         sitemap.append("  <url>")
         sitemap.append(f"    <loc>{loc}</loc>")
         sitemap.append("  </url>")
     sitemap.append("</urlset>")
     (out / "sitemap.xml").write_text("\n".join(sitemap) + "\n",
                                      encoding="utf-8", newline="\n")
-    print(f"wrote {len(written)} stub pages (+ .nojekyll, sitemap.xml with "
-          f"{len(urls) + 1} entries) under {out}")
+    print(f"wrote {len(written)} pages incl. {1 + len(cats)} hub pages "
+          f"(+ .nojekyll, sitemap.xml with {len(hub_urls) + len(urls) + 1} "
+          f"entries) under {out}")
     for w in written:
         print("  " + w)
 
