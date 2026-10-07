@@ -13,7 +13,7 @@
 // instantly from cache while a background refetch keeps the cache current,
 // so a deployed update is live on the SECOND visit. skipWaiting/claim makes
 // the new worker take over right away.
-const VERSION = "oco-pwa-v96";
+const VERSION = "oco-pwa-v97"
 const CORE = [
   "index.html",
   "manifest.webmanifest",
@@ -53,8 +53,9 @@ async function fillFrom(paths) {
 // Released content rides NETWORK-FIRST with a cached fallback (Robin,
 // 2026-09-28: the new songs never came up by a phone refresh —
 // stale-while-revalidate serves app content one reload late, and a resumed
-// phone app never re-checked at all). Songs, the manifest, every
-// per-instrument data file (fingerings, tone/twin models, templates) and
+// phone app never re-checked at all). Songs (the shipped data and every
+// song .txt body), the manifest, every per-instrument data file
+// (fingerings, tone/twin models, templates) and
 // the engine modules are the content the player expects current the moment
 // a load lands (Robin, 2026-09-29: a deployed voice-module change served
 // the OLD synth one visit late beneath FRESH twin-model data — the
@@ -63,7 +64,7 @@ async function fillFrom(paths) {
 // (declared-but-absent tone.json) passes through uncached exactly as
 // today.
 const DATA_NETWORK_FIRST =
-  /(?:^|\/)(?:songs|instruments)\.json$|(?:^|\/)instruments\/[^/]+\/[^/]+\.(?:json|svg)$|(?:^|\/)js\/[^/]+\.js$/;
+  /(?:^|\/)(?:songs|instruments)\.json$|(?:^|\/)songs\/[^/]+\.txt$|(?:^|\/)instruments\/[^/]+\/[^/]+\.(?:json|svg)$|(?:^|\/)js\/[^/]+\.js$/;
 
 // Cache writes are scheme-gated: file: origins (VS Code browser preview,
 // opened-from-disk) reject Cache.put at the engine level; nothing here may
@@ -98,6 +99,17 @@ self.addEventListener("install", (e) => {
           if (typeof p === "string" && p) paths.add(p);
         }
       }
+      // The song .txt bodies ride the same room: every record's `file`
+      // precaches at install so an offline boot renders its melody and the
+      // DATA_NETWORK_FIRST branch serves deployed updates first (the song
+      // data split, Robin 2026-10-07: updated songs must reach players,
+      // never a stale cache).
+      try {
+        const songs = await (await fetch("songs.json", { cache: "no-cache" })).json();
+        for (const rec of Object.values(songs || {})) {
+          if (rec && typeof rec.file === "string" && rec.file) paths.add(rec.file);
+        }
+      } catch (err) {}
       await fillFrom([...paths]);
     } catch (err) {
       console.warn("[sw] instrument cache derive skipped:", err);
