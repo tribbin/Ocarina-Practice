@@ -37,6 +37,24 @@
       ]
     },
     {
+      "id": "ico-alto-c-12",
+      "type": "Alto C 12-hole",
+      "version": "Imperial City",
+      "range": "A4\u2013F6",
+      "fingerings": "instruments/ico-alto-c-12/fingerings.json",
+      "svg": "instruments/ico-alto-c-12/ocarina-template.svg",
+      "twin": "instruments/ico-alto-c-12/twin_model.json"
+    },
+    {
+      "id": "ico-bass-c-12",
+      "type": "Bass C 12-hole",
+      "version": "Imperial City",
+      "range": "A3\u2013F5",
+      "fingerings": "instruments/ico-bass-c-12/fingerings.json",
+      "svg": "instruments/ico-bass-c-12/ocarina-template.svg",
+      "twin": "instruments/ico-bass-c-12/twin_model.json"
+    },
+    {
       "id": "oot-alto-c-7",
       "type": "Alto C 7-hole",
       "version": "Ocarina of Time",
