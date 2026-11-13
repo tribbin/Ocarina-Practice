@@ -68,6 +68,7 @@ owed-code picks are the two §1 rows below, the standing holds unchanged):
 
 | Item | Section |
 |---|---|
+| **ICO alto and bass 12-hole twins are fitted from the C-to-F ladders (sharps filled, notes below C wear the C hold) — HELD FOR ROBIN's field check** | §9 |
 | **Zen-toggle swing re-derivation (Robin 2026-10-07) is code-landed (spanSec) and pinned — HELD FOR ROBIN's field check: toggle zen in/out repeatedly with swing on (his triple-bass Outset case)** | hold |
 | **Note HOLDS ignore swing and the tempo dial — notes ring 47–105 ms past the next onset at swing 100 and under-ring below the dial (§1; behavior change ⇒ red-first overhang-0-at-swing-100, full sweep, his field check)** | §1 |
 | Track-walker data edges: bad-chip start-offset one-liner (+ unequal-loop-totals warning stays a feature call held for Robin, not owed) | §1 |
@@ -114,6 +115,8 @@ Nothing open — completed housekeeping is archived in `plans/DONE.md` §8.
 - [ ] **Library search / pinning widening** — favorites pinning SHIPPED 2026-09-26 `390c431` (star + first persisted Favorites group); the widening (search box, reordering beyond the pin, grouping options) stays parked until Robin elects it. `🟢 ⚪ ⚙S`
 
 - [ ] **SEO discovery pass: searchable landing content + internal hub pages (deploy-side generator work, no repo app changes)** — Robin's ask 2026-10-07 first-priority after the Search Console lag showed crawlers find the pages via the sitemap only: full pass per his answered batch — (a) per-song `aka` + `game` fields on base records in songs.json (data_validator learns them, derives stay pure pointers; the game/aka table is Robin-approved before landing), OoT-weighted ("that game will release soon"); (b) the generator enriches each stub's title/description with AKA + game + "ocarina tabs"; (c) a visible intro block at each stub's bottom: what the tab is, AKA, game, the melody's letter notes, links up to the hubs; (d) per-stub MusicComposition JSON-LD with alternateName + BreadcrumbList (replaces the deliberate zero-JSON-LD pin); (e) /song/ + /song/<cat>/ hub pages Robin sketched as an instruments-vs-songs(variations) grid linking every landing URL; sitemap gains the hub locs. Deploy-only: index.html/sw.js untouched, no sw bump; gen_pages pins + data_validator battery update in the same commit. The data + generator halves LANDED on seo-discovery (`8b3d113` games+aka data + data_validator battery, `0aec42e` generator: SEO titles/descriptions, per-stub MusicComposition JSON-LD over a breadcrumb, visible intro blocks with the melody's letter notes, /song/ + category hubs with the instruments-vs-variations grid whose cells deep-link the seeded pairing, sitemap home+hubs+stubs) - gen_pages, data_validator, shipped_songs, twin_derive, song_files, asset_versions, eslint + html-validate all green; no sw bump (index.html/sw.js untouched - deploy stays generated artifacts + songs.json); HELD FOR ROBIN: the intro block's look across themes, the hub grid's shape, the titles' wording - his pass on the live pages after merging `🟨 🔴 ⚙M`
+
+- [ ] **ICO 12-hole twins await Robin's field check** — Alto `ico-alto-c-12` (A4–F6) and bass `ico-bass-c-12` (A3–F5) are in the picker on the Asian 12-hole chart, fitted at `96ded9a` from the diatonic C-to-F ladders. Sharps are log-f blends. The three notes below C wear the C hold at their own pitch. Listen on the alto with Song of Storms and on the bass with a low line; the notes below C are the borrowed tone. `🟨 🟠 ⚙S`
 
 > **Idle idea pool: `plans/IDEAS.txt`.** A live document Robin edits over time and ROBIN'S ALONE — the AI never writes it (it may be read, and only lifted into TODO.md when Robin explicitly asks). TODO carries no copy or summary: when an idea from it is picked up, read the FILE fresh at that moment; never rely on a remembered or transcribed version.
 
@@ -986,3 +989,18 @@ CI 37625577098 (push at a36dfd3 on PR #51) went red once at reduced_motion - .pe
   pattern never moves. Full sweep 51/51 (484 s), eslint + html-validate
   clean; sw oco-pwa-v98. The §1 item stays open ONLY on Robin's field
   check (toggle zen in/out with swing on his device).
+
+- **2026-11-13 (ICO 12-hole alto and bass twins land from the diatonic ladders)** —
+  Robin's take 2 of each is a C-to-F major scale (alto C5–F6, bass C4–F5),
+  holds about a second, names stable. fit_ladder.py wrote 21 rows per
+  chamber: sharps are log-f blends between those holds, and A/Bb/B below C
+  wear the C hold at their own pitch — the fitter's existing end clamp, not
+  a missing feature. New picker entries ico-alto-c-12 and ico-bass-c-12,
+  same Asian 12-hole hole map as the OoT alto (bass one octave down), the
+  existing 12-hole drawing copied into each folder. Default stays the OoT
+  alto. Pinned by tests/ico_12hole_twins.py (anchors, the low-end clamp,
+  chart identity) and registered in the practice workflow. data_validator,
+  tone_stages, asset_versions, instruments_load (both boot, twins install),
+  gen_pages, console_hygiene green. No sw bump: twin and manifest are
+  DATA_NETWORK_FIRST, same as the six-hole ladder landing. HELD FOR ROBIN's
+  field check. `96ded9a`
