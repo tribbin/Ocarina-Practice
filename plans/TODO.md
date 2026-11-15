@@ -68,7 +68,7 @@ owed-code picks are the two §1 rows below, the standing holds unchanged):
 
 | Item | Section |
 |---|---|
-| **Breath engine v4-breath is code-landed and pinned — HELD FOR ROBIN's field check: listen on the 12-hole/ICO twins, then flip `?breath=0` or the debug Breath switch** | §5 |
+| **Breath engine v4-breath is code-landed and pinned — HELD FOR ROBIN's field check on the OoT 12-hole first: air level restored + ladder re-fit above the skirt; then flip `?breath=0` or the debug Breath switch** | §5 |
 | **ICO alto and bass 12-hole twins are fitted from the C-to-F ladders (sharps filled, notes below C wear the C hold) — HELD FOR ROBIN's field check** | §9 |
 | **Zen-toggle swing re-derivation (Robin 2026-10-07) is code-landed (spanSec) and pinned — HELD FOR ROBIN's field check: toggle zen in/out repeatedly with swing on (his triple-bass Outset case)** | hold |
 | **Note HOLDS ignore swing and the tempo dial — notes ring 47–105 ms past the next onset at swing 100 and under-ring below the dial (§1; behavior change ⇒ red-first overhang-0-at-swing-100, full sweep, his field check)** | §1 |
@@ -97,7 +97,7 @@ Nothing open — the WAV-export backlog dropped by Robin's audit 2026-09-28 (the
 
 ## 5. Architecture / maintenance
 
-- [ ] **Breath engine v4-breath awaits Robin's field check** — Listen on the 12-hole and the ICO twins: sustained hiss tracks pitch (comb structure), the voicing bump is present where the defaults predict it, attacks decay from noisy to clean as the jet locks, releases carry the small puff, and staccato/after-rest notes get the tongue burst; then flip `?breath=0` (or the debug panel's Breath switch) and compare against the plain band-pass. The fitted tone spectrum and envelope timings are unchanged (same PeriodicWave, same body envGain). WAV refit is untouched: the OoT ladder WAV is only the reference for this synth pass, no twin_model.json changed. `🟨 🟠 ⚙S`
+- [ ] **Breath engine v4-breath awaits Robin's field check** — Listen on the 12-hole and the ICO twins: sustained hiss tracks pitch (comb structure), the voicing bump is present where the defaults predict it, attacks decay from noisy to clean as the jet locks, releases carry the small puff, and staccato/after-rest notes get the tongue burst; then flip `?breath=0` (or the debug panel's Breath switch) and compare against the plain band-pass. The fitted tone spectrum and envelope timings are unchanged (same PeriodicWave, same body envGain). The OoT 12-hole twin is now re-fit from its restored ladder WAV (9999d7a); other instruments stay as-is until Robin re-applies the fitter. Focus the OoT 12-hole first per Robin (2026-11-15): `9999d7a` restores the air level (band RMS normalization) and re-fits its ladder bands above the skirt; the six-hole/ICO/oak/stein recordings get the same fitter re-applied later. `🟨 🟠 ⚙S`
 
 ## 6. Tests & CI
 
@@ -1038,3 +1038,28 @@ CI 37625577098 (push at a36dfd3 on PR #51) went red once at reduced_motion - .pe
   expectations re-anchored. Full sweep 53/53, eslint@9 + html-validate@8 clean.
   HELD FOR ROBIN's field check (the open §5 item). The OoT ladder WAV Robin restored is
   only the reference for this pass; no twin_model.json changed.
+
+- **2026-11-15 (session 30 cont. — breath air level restored; OoT 12-hole re-fit from its ladder)** —
+  Robin's field report: the noise was practically inaudible on the 12-hole and the
+  six-hole's audible noise did not sound like a real ocarina. Diagnosis measured,
+  not guessed: the old `airBuffer()` normalized RMS AFTER its hp/lp pair, while the
+  native band-pass slice of the broadband-normalized shared buffer loses 15–25 dB by
+  itself (12-hole C5 band measured ~14 dB under the fitted `air_db`); vent gain
+  scaling multiplied the fitted per-note air level down another 2–8 dB. `9999d7a`
+  adds `bandNormGain` (colored spectrum + RBJ band-pass response, 1024-bin numeric
+  integration, no per-note sample loop) between the band-pass and the formant/comb
+  chain, so the plain A/B path now lands +0.1 dB and the engine +1.2 dB vs `air_db`
+  (formant/comb coloring is the deliberate difference). Vent scaling becomes
+  cutoff-only (`ratio^0.25`, gain exponent 0) because each fitted `air_db` row
+  already measures its own vent level. `fit_ladder.py` now searches the air peak
+  above 1.6·f0 (below it is the note's own skirt leakage — the shell class),
+  writes the measured `air_formant_hz`, and stamps new fits `v4-breath`.
+  The OoT 12-hole twin is re-fit from the restored `research/oot-12-hole-ladder.wav`
+  (11 held takes, 21 rows): A4–E5 bands 2027–3780, F5–F6 bands 977–3457, all air
+  centers above the skirt; its `air_formant_hz` now carries the measured peaks.
+  Scope per Robin: OoT 12-hole first; the six-hole/ICO/oak/stein recordings get
+  re-fit later under the same fitter. tests/breath_engine adds the offline
+  normalization leg and the cutoff-only vent expectations; tone_stages' main-thread
+  filter pin moved to `function airBuffer(` so the code comment cannot trip it.
+  Full sweep 53/53, eslint@9 + html-validate@8 clean; sw oco-pwa-v100, helmholtz
+  token ?v=13. HELD FOR ROBIN's field check on the OoT 12-hole (the open §5 item).
