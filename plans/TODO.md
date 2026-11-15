@@ -68,7 +68,7 @@ owed-code picks are the two §1 rows below, the standing holds unchanged):
 
 | Item | Section |
 |---|---|
-| **Jet-drive A/B is code-landed and pinned — HELD FOR ROBIN's field check: `?jet=1` (or the debug Jet switch) on OoT 12-hole, Stein double and oak triple vs the default v4-breath** | §5 |
+| **Jet-drive A/B is code-landed and pinned — HELD FOR ROBIN's field check: `?jet=1` (or the debug Jet switch) on OoT 12-hole, Stein double and oak triple vs the default v4-breath; the pre-note A4 leak is fixed (`06cbf68`)** | §5 |
 | **Breath engine v4-breath is code-landed and pinned — HELD FOR ROBIN's field check: air level restored and the OoT 12-hole, Stein double and oak triple ladders re-fit above the skirt; then flip `?breath=0` or the debug Breath switch** | §5 |
 | **ICO alto and bass 12-hole twins are fitted from the C-to-F ladders (sharps filled, notes below C wear the C hold) — HELD FOR ROBIN's field check** | §9 |
 | **Zen-toggle swing re-derivation (Robin 2026-10-07) is code-landed (spanSec) and pinned — HELD FOR ROBIN's field check: toggle zen in/out repeatedly with swing on (his triple-bass Outset case)** | hold |
@@ -1108,3 +1108,16 @@ CI 37625577098 (push at a36dfd3 on PR #51) went red once at reduced_motion - .pe
   sw oco-pwa-v101, helmholtz token ?v=14 (coloredBuffer export for the noise input).
   Full sweep 54/54, eslint@9 + html-validate@8 clean. HELD FOR ROBIN's field check
   (new open §5 item): compare jet vs breath on the three recorded instruments.
+
+- **2026-11-15 (session 30 cont. — jet A/B pre-note A4 leak fixed)** —
+  Robin's field report on `?jet=1` with the OoT 12-hole C chromatic: A4 was audible
+  between every note. Root cause measured in the worklet: nodes are created in the
+  scheduler's 0.3 s lookahead, and the jet sine drive (`jet_drive*sin(phase)`) ran
+  ungated by the breath envelope, so each node's default f0 (440 = A4) produced a
+  tone before its own f0/breath events. The turbulence base `(1 - gate)` leaked the
+  same way. `06cbf68` gates the whole jet argument and the turbulence by the breath
+  parameter (breath 0 = silent), and puts the note's f0 in the node's `parameterData`
+  so even the pre-event default is the right pitch. tests/jet_engine adds the
+  pre-note silence window against the audible plateau. Full sweep 54/54, lint clean;
+  sw oco-pwa-v102. Still HELD FOR ROBIN's field check on the full jet-vs-breath
+  comparison (the open §5 item).
