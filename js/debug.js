@@ -161,7 +161,7 @@ import { audioCtx, cutLive, freqOf, getReverbBus, playNote, reverbEnabled, setRe
         '<button class="dbg-btn" type="button" id="dbgLag" title="Fakes audio-clock starvation: triggers the perf fallback (red pulse + Lite proposal)">Induce lag</button>' +
         '<button class="dbg-btn" type="button" id="dbgBreath" title="A/B the breath engine (Steps 1-4) for newly played notes; ?breath=0 starts it off">Breath ON</button>' +
         '<button class="dbg-btn" type="button" id="dbgJet" title="A/B the whole-voice jet-drive AudioWorklet (?jet=1) on the three recorded instruments; falls back to breath where no jet fit/worklet">Jet OFF</button>' +
-        '<button class="dbg-btn" type="button" id="dbgAirSolo" title="Solo the air path for the WAV preview (mutes body and floor on newly played notes)">Air solo OFF</button>' +
+        '<button class="dbg-btn" type="button" id="dbgAirSolo" title="Solo the air path at its natural fitted level for the WAV preview (mutes the tone on newly played notes)">Air solo OFF</button>' +
       '</div>' +
       '<div id="dbgGroups"></div>' +
       '<div class="dbg-foot">' +

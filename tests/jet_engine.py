@@ -61,12 +61,33 @@ async () => {
       pre += v * v; preN++;
     }
   }
+  const offSolo = new OfflineAudioContext(1, 57600, 48000);
+  await mod.prepareJetWorklet(offSolo);
+  const hSolo = mod.scheduleJetNote(offSolo, offSolo.destination, {
+    jetModel: model, f0: 523.25, when: 0.2, holdSec: 0.55,
+    master: 1, nf: nf, soloAir: true,
+  });
+  const soloBuf = await offSolo.startRendering();
+  const sd = soloBuf.getChannelData(0);
+  let soloAcc = 0, soloN = 0;
+  for (let i = Math.floor(0.35 * 48000); i < Math.floor(0.7 * 48000); i++) {
+    soloAcc += sd[i] * sd[i]; soloN++;
+  }
+  const stop = h._jet.timeline.stopAt;
+  const stopIdx = Math.floor(stop * 48000);
+  let endJump = 0;
+  for (let i = stopIdx - Math.floor(0.04 * 48000); i < stopIdx && i < d.length; i++) {
+    const jump = Math.abs(d[i] - d[i - 1]);
+    if (jump > endJump) endJump = jump;
+  }
   const defaults = mod.interpJet(mod.loadJetModelFromObject({
     schema: 'ocarina-jet-v1', notes: [{ f0: 523.25 }],
   }), 523.25);
   return {
     ok, finite, n: b - a, rms: Math.sqrt(acc / (b - a)), max,
     preRms: Math.sqrt(pre / preN),
+    soloRms: Math.sqrt(soloAcc / soloN),
+    endJump,
     params: h._jet.params, tl: h._jet.timeline,
     defaults: {
       Q: defaults.Q, delay_ratio: defaults.delay_ratio,
@@ -149,6 +170,18 @@ def main():
                 failures.append(f"jet output is silent/too low (rms {work['rms']:.4f})")
             if work["max"] > 2:
                 failures.append(f"jet output is runaway (max {work['max']:.2f})")
+            if work["soloRms"] < 0.0005:
+                failures.append(
+                    f"Air solo must leave the turbulence bed audible "
+                    f"(rms {work['soloRms']:.5f})")
+            if work["soloRms"] > work["rms"] * 0.9:
+                failures.append(
+                    f"Air solo must mute the resonator tone "
+                    f"(solo {work['soloRms']:.4f} vs full {work['rms']:.4f})")
+            if work["endJump"] > 0.01:
+                failures.append(
+                    f"the jet stop must fade, not cut (end waveform jump "
+                    f"{work['endJump']:.4f})")
             params = work["params"]
             want = {"Q": 42, "delay_ratio": 0.5, "jet_k": 1, "jet_h2": 0.3,
                     "jet_h3": 0.2, "jet_drive": 0.5, "jet_feedback": 0.1,

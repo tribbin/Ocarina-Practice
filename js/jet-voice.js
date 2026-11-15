@@ -6,7 +6,7 @@
  * fitted slope buffer. When the worklet is unavailable the caller falls back
  * to the v4-breath voice.
  */
-import { coloredBuffer } from "./helmholtz-voice.js?v=14";
+import { coloredBuffer } from "./helmholtz-voice.js?v=16";
 
 export const JET_REV = "jet-drive-v1";
 export const JET_DEFAULTS = {
@@ -127,6 +127,7 @@ export function scheduleJetNote(ctx, dest, opts) {
       turbGate: jf.turb_gate,
       turbBypass: jf.turb_bypass,
       outGain: jf.out_gain,
+      soloAir: opts.soloAir ? 1 : 0,
     },
   });
   const out = ctx.createGain();
@@ -181,6 +182,13 @@ export function scheduleJetNote(ctx, dest, opts) {
   const stopAt = tOff + 0.06;
   try { node.port.postMessage({ stopAt }); } catch (e) {}
   if (!opts.intoSlide) {
+    // Tail fade: the processor's stop cuts its last sample; without this
+    // 60 ms output taper the resonator tail is a waveform jump (the click).
+    try {
+      out.gain.setValueAtTime(master, when);
+      out.gain.setValueAtTime(master, stopAt - 0.06);
+      out.gain.linearRampToValueAtTime(0.0001, stopAt);
+    } catch (e) {}
     try { noise.stop(stopAt); } catch (e) {}
     try { wander.stop(stopAt); } catch (e) {}
     if (vib) try { vib.stop(stopAt); } catch (e) {}
