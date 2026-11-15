@@ -69,7 +69,10 @@ class JetDriveProcessor extends AudioWorkletProcessor {
         Math.round(sampleRate * delayRatio / f0)));
       this.phase += 2 * Math.PI * f0 / sampleRate;
       if (this.phase > 2 * Math.PI) this.phase -= 2 * Math.PI;
-      const j = Math.tanh(jetK * (breath
+      // Breath gates the whole jet excitation: with breath 0 the node is
+      // silent even while it sits ahead of its note on the graph (the A4
+      // default before the first f0 event must never leak).
+      const j = Math.tanh(jetK * breath * (1
         + jetDrive * Math.sin(this.phase)
         + jetH2 * Math.sin(2 * this.phase)
         + jetH3 * Math.sin(3 * this.phase)
@@ -79,7 +82,7 @@ class JetDriveProcessor extends AudioWorkletProcessor {
       const idxPrev = (idx - 1 + ringLen) % ringLen;
       const edge = ring[idx] - ring[idxPrev];
       const nz = noise ? noise[i] : 0;
-      const turb = turbGain * nz * (1 - turbGate + turbGate * Math.abs(j));
+      const turb = turbGain * nz * breath * (1 - turbGate + turbGate * Math.abs(j));
       const y = b0 * (edge + turb) + a1 * this.y1 + a2 * this.y2;
       this.y2 = this.y1;
       this.y1 = y;

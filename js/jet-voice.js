@@ -115,6 +115,7 @@ export function scheduleJetNote(ctx, dest, opts) {
     channelCountMode: "explicit",
     channelInterpretation: "speakers",
     parameterData: {
+      f0: f0,
       q: jf.Q,
       delayRatio: jf.delay_ratio,
       jetK: jf.jet_k,

@@ -30,7 +30,7 @@ from suite_server import start_server
 WORKLET_DRIVER = """
 async () => {
   const mod = await import('/js/jet-voice.js');
-  const off = new OfflineAudioContext(1, 48000, 48000);
+  const off = new OfflineAudioContext(1, 57600, 48000);
   const ok = await mod.prepareJetWorklet(off);
   const row = {
     f0: 523.25, Q: 42, delay_ratio: 0.5, jet_k: 1, jet_h2: 0.3,
@@ -46,22 +46,27 @@ async () => {
     overshoot_db: 0.4, wobble_hz: 0.45, slope_db_oct: -8,
   };
   const h = mod.scheduleJetNote(off, off.destination, {
-    jetModel: model, f0: 523.25, when: 0.02, holdSec: 0.55,
+    jetModel: model, f0: 523.25, when: 0.2, holdSec: 0.55,
     master: 1, nf: nf,
   });
   const buf = await off.startRendering();
   const d = buf.getChannelData(0);
-  let finite = 0, acc = 0, max = 0;
-  const a = Math.floor(0.2 * 48000), b = Math.floor(0.6 * 48000);
-  for (let i = a; i < b; i++) {
+  let finite = 0, acc = 0, max = 0, pre = 0, preN = 0;
+  const a = Math.floor(0.35 * 48000), b = Math.floor(0.7 * 48000);
+  for (let i = 0; i < b; i++) {
     const v = d[i];
-    if (isFinite(v)) { finite++; acc += v * v; if (Math.abs(v) > max) max = Math.abs(v); }
+    if (i >= a) {
+      if (isFinite(v)) { finite++; acc += v * v; if (Math.abs(v) > max) max = Math.abs(v); }
+    } else if (i < Math.floor(0.15 * 48000)) {
+      pre += v * v; preN++;
+    }
   }
   const defaults = mod.interpJet(mod.loadJetModelFromObject({
     schema: 'ocarina-jet-v1', notes: [{ f0: 523.25 }],
   }), 523.25);
   return {
     ok, finite, n: b - a, rms: Math.sqrt(acc / (b - a)), max,
+    preRms: Math.sqrt(pre / preN),
     params: h._jet.params, tl: h._jet.timeline,
     defaults: {
       Q: defaults.Q, delay_ratio: defaults.delay_ratio,
@@ -136,6 +141,10 @@ def main():
                 failures.append("the worklet must register on an offline context too")
             if work["finite"] != work["n"]:
                 failures.append(f"jet output has non-finite samples ({work['finite']}/{work['n']})")
+            if work["preRms"] > 0.001:
+                failures.append(
+                    f"the jet node must stay silent before its note (pre-note "
+                    f"rms {work['preRms']:.4f} — the A4 default leak)")
             if work["rms"] < 0.01:
                 failures.append(f"jet output is silent/too low (rms {work['rms']:.4f})")
             if work["max"] > 2:
@@ -149,6 +158,8 @@ def main():
                 if abs(params[key] - val) > 1e-6:
                     failures.append(f"node parameter {key} is {params[key]}, expected {val}")
             tl = work["tl"]
+            if abs(tl["when"] - 0.2) > 1e-9:
+                failures.append(f"jet timeline when is {tl['when']}, expected 0.2")
             if abs(tl["tOff"] - (tl["tHoldEnd"] + 0.08)) > 1e-9:
                 failures.append(
                     f"jet release must land at tOff = tHoldEnd + rel, got "
