@@ -68,7 +68,7 @@ owed-code picks are the two §1 rows below, the standing holds unchanged):
 
 | Item | Section |
 |---|---|
-| **Jet-drive A/B is code-landed and pinned — HELD FOR ROBIN's field check: `?jet=1` (or the debug Jet switch) on OoT 12-hole, Stein double and oak triple vs the default v4-breath; the pre-note A4 leak is fixed (`06cbf68`)** | §5 |
+| **Jet-drive A/B is code-landed and pinned — HELD FOR ROBIN's field check: `?jet=1` (or the debug Jet switch) on OoT 12-hole, Stein double and oak triple vs the default v4-breath; the pre-note A4 leak is fixed (`06cbf68`) and the jet stop click is faded (`aa64bb5`)** | §5 |
 | **Breath engine v4-breath is code-landed and pinned — HELD FOR ROBIN's field check: air level restored and the OoT 12-hole, Stein double and oak triple ladders re-fit above the skirt; then flip `?breath=0` or the debug Breath switch** | §5 |
 | **ICO alto and bass 12-hole twins are fitted from the C-to-F ladders (sharps filled, notes below C wear the C hold) — HELD FOR ROBIN's field check** | §9 |
 | **Zen-toggle swing re-derivation (Robin 2026-10-07) is code-landed (spanSec) and pinned — HELD FOR ROBIN's field check: toggle zen in/out repeatedly with swing on (his triple-bass Outset case)** | hold |
@@ -1121,3 +1121,18 @@ CI 37625577098 (push at a36dfd3 on PR #51) went red once at reduced_motion - .pe
   pre-note silence window against the audible plateau. Full sweep 54/54, lint clean;
   sw oco-pwa-v102. Still HELD FOR ROBIN's field check on the full jet-vs-breath
   comparison (the open §5 item).
+
+- **2026-11-15 (session 30 cont. — Air-solo natural level restored; jet stop click faded)** —
+  Robin clarified two field points: the Air-solo preview should play the air path at its
+  natural fitted level (he wanted the diff itself, not a boosted preview), and the ticks
+  he hears are linked to `?jet=1`. `aa64bb5` removes the +30 dB solo lift from both
+  paths: the breath engine drops `soloBoostDb`/`soloGain` (airGain/excess return to
+  air_db), and the jet wrapper stops multiplying `outGain` by the solo boost. The jet
+  ticks were the processor's `stopFrame` return cutting the still-ringing resonator:
+  measured a 0.075 sample jump at stopAt 0.89 with the output at 0.46. The wrapper now
+  schedules a 60 ms output taper to 0.0001 ending exactly at stopAt before the processor
+  stop, so the tail reaches zero; tests/jet_engine adds the end-jump pin (<0.01) and
+  keeps the natural-level solo check. Natural solo is quiet by design (air_db −42..−52
+  relative H1); the WAV preview is the judging surface. Full sweep 54/54, lint clean;
+  sw oco-pwa-v105, helmholtz token ?v=16. Still HELD FOR ROBIN's field check on the
+  jet-vs-breath comparison (the open §5 item).
