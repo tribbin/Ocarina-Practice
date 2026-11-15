@@ -46,6 +46,25 @@ Envelope rows are the standing values (`atk_pre_s` 0.008, `atk_speak_s` 0.028, `
 - Listen to the chamber's ends and to any note where H3 was pulled. Anchors are listed in `recorded.anchors`.
 - Do not render a comparison through the page reverb. The model is the dry voice.
 
+## Jet-drive A/B fit
+
+The experimental whole-voice AudioWorklet (`?jet=1`) reads
+`instruments/<id>/jet_model.json`, a separate optional file; the v4-breath
+twin contract stays untouched. Fit it from the same ladder:
+
+```
+python3 skills/ocarina-twin/fit_jet.py   --ladder path/to/chamber-ladder.wav   --fingerings instruments/<id>/fingerings.json   --chamber 1 --gain 1.0   --out instruments/<id>/jet_model.json
+```
+
+The model is a 2-pole Helmholtz resonator driven by a delayed sigmoid jet
+plus turbulence gated by the jet oscillation. Per held take it measures:
+Q from the H1 linewidth, H2/H3 drive amplitudes from the harmonic ratios,
+turbulence gain from the residual level vs `air_db` (floor+4), and
+`out_gain` from the H1 amplitude. A combined ladder (the Stein double)
+selects only the holds inside the chamber's fingering pitch range, exactly
+like `fit_ladder.py`; an existing multi wrapper keeps each chamber's own
+gain. Missing jet data falls back to the breath voice.
+
 ## No recording
 
 - Same range as a fitted chamber: copy that chamber's model and retitle it. The double bass chambers 1 and 2 are the oak triple chambers 1 and 2.

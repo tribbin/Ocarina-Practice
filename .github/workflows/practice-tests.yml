@@ -147,3 +147,5 @@ jobs:
         run: python tests/tone_stages.py
       - name: Run breath-engine graph/envelope pin
         run: python tests/breath_engine.py
+      - name: Run jet-drive A/B AudioWorklet pin
+        run: python tests/jet_engine.py

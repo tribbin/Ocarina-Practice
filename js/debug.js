@@ -160,6 +160,7 @@ import { audioCtx, cutLive, freqOf, getReverbBus, playNote, reverbEnabled, setRe
         '<button class="dbg-btn" type="button" id="dbgWav" title="Capture what plays next for 3.5 s (single notes only; skips the output limiter) and download it as a WAV">\u2913 Export WAV</button>' +
         '<button class="dbg-btn" type="button" id="dbgLag" title="Fakes audio-clock starvation: triggers the perf fallback (red pulse + Lite proposal)">Induce lag</button>' +
         '<button class="dbg-btn" type="button" id="dbgBreath" title="A/B the breath engine (Steps 1-4) for newly played notes; ?breath=0 starts it off">Breath ON</button>' +
+        '<button class="dbg-btn" type="button" id="dbgJet" title="A/B the whole-voice jet-drive AudioWorklet (?jet=1) on the three recorded instruments; falls back to breath where no jet fit/worklet">Jet OFF</button>' +
         '<button class="dbg-btn" type="button" id="dbgAirSolo" title="Solo the air path for the WAV preview (mutes body and floor on newly played notes)">Air solo OFF</button>' +
       '</div>' +
       '<div id="dbgGroups"></div>' +
@@ -257,6 +258,7 @@ import { audioCtx, cutLive, freqOf, getReverbBus, playNote, reverbEnabled, setRe
     // ---- Breath A/B + air-only preview (session-only, like the dials) ----
     var breathBtn = panel.querySelector("#dbgBreath");
     var airSoloBtn = panel.querySelector("#dbgAirSolo");
+    var jetBtn = panel.querySelector("#dbgJet");
     function syncBreath() {
       var on = api.breathEnabled ? !!api.breathEnabled() : true;
       breathBtn.textContent = "Breath " + (on ? "ON" : "OFF");
@@ -264,6 +266,10 @@ import { audioCtx, cutLive, freqOf, getReverbBus, playNote, reverbEnabled, setRe
       var solo = api.soloAir ? !!api.soloAir() : false;
       airSoloBtn.textContent = "Air solo " + (solo ? "ON" : "OFF");
       airSoloBtn.setAttribute("aria-pressed", solo ? "true" : "false");
+      var jet = api.jetEnabled ? !!api.jetEnabled() : false;
+      var ready = api.jetReady ? !!api.jetReady() : false;
+      jetBtn.textContent = "Jet " + (jet ? "ON" : "OFF") + (jet && !ready ? " …" : "");
+      jetBtn.setAttribute("aria-pressed", jet ? "true" : "false");
     }
     breathBtn.addEventListener("click", function () {
       if (api.setBreathEnabled) api.setBreathEnabled(!api.breathEnabled());
@@ -272,6 +278,14 @@ import { audioCtx, cutLive, freqOf, getReverbBus, playNote, reverbEnabled, setRe
     airSoloBtn.addEventListener("click", function () {
       if (api.setSoloAir) api.setSoloAir(!api.soloAir());
       syncBreath();
+    });
+    jetBtn.addEventListener("click", function () {
+      if (api.setJetEnabled) api.setJetEnabled(!api.jetEnabled());
+      syncBreath();
+      if (api.jetEnabled && api.jetEnabled()) {
+        // The module load resolves asynchronously; refresh the label then.
+        setTimeout(syncBreath, 300);
+      }
     });
     syncBreath();
 

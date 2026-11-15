@@ -119,7 +119,7 @@ function fftRadix(re, im, inv) {
 }
 
 const _colored = new Map();
-function coloredBuffer(ctx, slope) {
+export function coloredBuffer(ctx, slope) {
   const key = slope.toFixed(2) + ":" + ctx.sampleRate;
   if (_colored.has(key)) return _colored.get(key);
   const n = 131072;

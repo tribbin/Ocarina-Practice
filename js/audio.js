@@ -7,7 +7,9 @@ import { bumpHoverQuiet, clearHighlight, cueFirstNote, freezeZenGlow,
 import { isPracticeActive } from "./practice.js";
 import { wakeHold, wakeDrop } from "./wakelock.js";
 import { BREATH_DEFAULTS, loadTwinModelFromObject, interpNote, scheduleHelmholtzNote,
-         scheduleTongueBurst, VOICE_REV } from "./helmholtz-voice.js?v=13";
+         scheduleTongueBurst, VOICE_REV } from "./helmholtz-voice.js?v=14";
+import { JET_REV, jetReady, loadJetModelFromObject, prepareJetWorklet,
+         scheduleJetNote } from "./jet-voice.js";
 let audioCtx = null;
 let liveVoices = [];
 let melodyBag = [];
@@ -74,6 +76,14 @@ let breathOn = true;
 try { breathOn = !/[?&]breath=0\b/.test(location.search); } catch (e) {}
 let soloAir = false;
 function breathEnabled() { return breathOn; }
+// Experimental jet-drive A/B: ?jet=1 or the debug panel's Jet switch. It
+// needs a fitted jet_model.json and a ready AudioWorklet; otherwise every
+// note falls back to the v4-breath voice.
+let jetOn = false;
+try { jetOn = /[?&]jet=1\b/.test(location.search); } catch (e) {}
+let JET_MODEL = null;
+let lastVoicePath = "";
+function jetEnabled() { return jetOn; }
 // Voice builders (playNoteAt/playTickAt) swallow any WebAudio failure so a
 // bad synth call can never break the page — but an ocarina that silently
 // plays nothing is the worst failure mode for a practice tool. Record
@@ -173,6 +183,22 @@ window.OCA_DEBUG = {
   setBreathEnabled(on) { breathOn = !!on; return breathOn; },
   soloAir() { return soloAir; },
   setSoloAir(on) { soloAir = !!on; return soloAir; },
+  // Jet-drive A/B (?jet=1): the whole-voice AudioWorklet. prepareJet
+  // creates/resumes the shared context and loads the worklet module.
+  jetEnabled() { return jetOn; },
+  setJetEnabled(on) {
+    jetOn = !!on;
+    if (jetOn) {
+      this.prepareJet();
+      loadCurrentJetModel();
+    }
+    return jetOn;
+  },
+  jetReady() { return !!(audioCtx && jetReady(audioCtx)); },
+  lastVoicePath() { return lastVoicePath; },
+  prepareJet() { return prepareJetWorklet(audioCtx || sharedAudioCtx()); },
+  jetModel() { return JET_MODEL; },
+  jetRev() { return JET_REV; },
   voiceCard() {
     const tm = TWIN_MODEL;
     let sw = "none";
@@ -189,6 +215,9 @@ window.OCA_DEBUG = {
       protocol: typeof location !== "undefined" ? location.protocol : "",
       twin: tm ? tm.instrumentId : null,
       chambers: tm ? Object.keys(tm.chambers || {}) : [],
+      jet: JET_MODEL ? JET_MODEL.instrumentId : null,
+      jetRev: JET_REV,
+      jetReady: !!(audioCtx && jetReady(audioCtx)),
       chart: inst ? inst.id : null,
       range: notes.length ? [notes[0], notes[notes.length - 1]] : [],
       f6: chMap && chMap.F6 != null ? chMap.F6 : null,
@@ -1001,6 +1030,52 @@ function installTwinModel(data, instId) {
   }
 }
 
+function loadCurrentJetModel() {
+  const inst = typeof window !== "undefined" ? window.CURRENT_INSTRUMENT : null;
+  if (!inst || !inst.jet) return;
+  if (JET_MODEL && JET_MODEL.instrumentId === inst.id) return;
+  try {
+    fetch(inst.jet).then(r => r.json())
+      .then(data => {
+        if (window.CURRENT_INSTRUMENT === inst) installJetModel(data, inst.id);
+      })
+      .catch(() => {
+        if (window.CURRENT_INSTRUMENT === inst) installJetModel(null, inst.id);
+      });
+  } catch (e) {}
+}
+
+function installJetModel(data, instId) {
+  if (!data || typeof data !== "object") {
+    JET_MODEL = null;
+    return;
+  }
+  try {
+    let chambers;
+    if (data.chambers && typeof data.chambers === "object" &&
+        !Array.isArray(data.chambers)) {
+      chambers = {};
+      for (const [ch, entry] of Object.entries(data.chambers)) {
+        const base = entry && typeof entry.model === "object" ? entry.model : entry;
+        chambers[String(ch)] = {
+          model: loadJetModelFromObject(base),
+          gain: entry && isFinite(entry.gain) ? +entry.gain : 1,
+        };
+      }
+      if (!Object.keys(chambers).length) throw new Error("jet: empty chambers");
+    } else {
+      chambers = { "1": { model: loadJetModelFromObject(data), gain: 1 } };
+    }
+    JET_MODEL = { instrumentId: instId || null, chambers };
+  } catch (e) {
+    JET_MODEL = null;
+    try {
+      console.warn("[voice] jet install failed:",
+                   e && e.message ? e.message : e);
+    } catch (e2) {}
+  }
+}
+
 function playNote(id, durSec) {
   cutLive();
   if (auditionSink) try { auditionSink(id, durSec); } catch (e) {}
@@ -1027,6 +1102,17 @@ function twinEntryForNote(id) {
   return TWIN_MODEL.chambers[chKey]
     || TWIN_MODEL.chambers["1"]
     || Object.values(TWIN_MODEL.chambers)[0]
+    || null;
+}
+
+// Chamber routing for the jet model (same missing-chamber fallback).
+function jetEntryForNote(id) {
+  if (!JET_MODEL) return null;
+  const chKey = typeof CHAMBER !== "undefined" && CHAMBER && CHAMBER[id] != null
+    ? String(CHAMBER[id]) : "1";
+  return JET_MODEL.chambers[chKey]
+    || JET_MODEL.chambers["1"]
+    || Object.values(JET_MODEL.chambers)[0]
     || null;
 }
 
@@ -1138,6 +1224,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
         // additive lite's osc→lowpass chain. Same envelope/level shape as the
         // legacy lite voice.
         if (liteMode()) {
+          lastVoicePath = "lite";
           const lvM = AUDIO_DEBUG.masterLevel * voiceGain * (nf.level || 1) * supportComp * instLevelGain();
           const g = ctx.createGain();
           g.gain.setValueAtTime(0.0001, t0);
@@ -1212,6 +1299,66 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
           baseOpts.slideFromHz = slideFrom;
           baseOpts.slideSec = glide;
         }
+        // Experimental whole-voice jet-drive (A/B): the AudioWorklet owns
+        // the tone and breath. Missing jet data or an unready worklet falls
+        // back to the breath engine below.
+        const jetEntry = jetEntryForNote(id);
+        if (jetOn && jetEntry && jetReady(ctx)) {
+          lastVoicePath = "jet";
+          const jetBase = Object.assign({}, baseOpts, {
+            jetModel: jetEntry.model,
+            nf,
+            master: AUDIO_DEBUG.masterLevel * voiceGain * jetEntry.gain * supportComp * instLevelGain(),
+          });
+          const jetVoices = [];
+          const mkJet = (vib, pan) => {
+            const o = Object.assign({}, jetBase);
+            o.vibrato = vib ? {
+              rate: AUDIO_DEBUG.vibRate,
+              depth: AUDIO_DEBUG.vibDepth * (1 - AUDIO_DEBUG.vibHighFade * hiF),
+              delay: VIB_DELAY,
+            } : null;
+            const h = scheduleJetNote(ctx, tmDest, o);
+            if (pan) {
+              const p = ctx.createStereoPanner();
+              p.pan.value = pan;
+              h.out.disconnect();
+              h.out.connect(p);
+              p.connect(tmDest);
+              h._pan = p;
+            }
+            return h;
+          };
+          if (twChorus) {
+            jetVoices.push(mkJet(false, -zenPan2), mkJet(true, zenPan2));
+          } else {
+            jetVoices.push(mkJet(false, 0));
+          }
+          markSystemSound(jetVoices[0].until);
+          if (bag) {
+            const jetKill = () => {
+              for (const h of jetVoices) {
+                try { if (h._pan) h._pan.disconnect(); } catch (e) {}
+                try { h.out.disconnect(); } catch (e) {}
+              }
+            };
+            bag.push({
+              until: jetVoices[0].until + 0.06,
+              stop() { jetVoices.forEach(h => { try { h.stop(); } catch (e) {} }); },
+              kill() { jetKill(); },
+              fade() {
+                if (isMelodyBag(bag)) {
+                  const stopAt = melodyStopAt(ctx);
+                  jetVoices.forEach(h => { try { h.fade(stopAt - 0.03); } catch (e) {} });
+                  return;
+                }
+                jetVoices.forEach(h => { try { h.fade(); } catch (e) {} });
+              }
+            });
+          }
+          return;
+        }
+        lastVoicePath = "breath";
         const twVoices = [];
         if (twChorus) {
           // Zen stereo chorus on the twin voice: the clean cavity core goes
@@ -1935,7 +2082,7 @@ function scheduleMelody(when) {
 }
 
 export { AUDIO_DEFAULTS, audioCtx, audioPerfReset, audioPerfSnapshot, cutLive, freqOf,
-         getReverbBus, installTwinModel, isMelodyPaused, isMelodyPlaying, liteMode,
+         getReverbBus, installJetModel, installTwinModel, isMelodyPaused, isMelodyPlaying, jetEnabled, liteMode,
          melodyDuckOn, pauseMelody, perf, playMelody, playNote, playNoteAt, quarterSecFor,
          resyncTrackTimes, resyncMelodyTempo, resumeMelody, reverbEnabled, setBassEnabled, setMelodyDuck,
          setPerfAlertListener, setReverbEnabled,

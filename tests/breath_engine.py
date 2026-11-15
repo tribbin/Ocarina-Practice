@@ -25,7 +25,7 @@ from suite_server import start_server
 
 GRAPH_DRIVER = """
 async () => {
-  const mod = await import('/js/helmholtz-voice.js?v=13');
+  const mod = await import('/js/helmholtz-voice.js?v=14');
   const ctx = sharedAudioCtx();
   const f0 = 523.25;
   const base = {
@@ -131,7 +131,7 @@ DELAY_COUNT = """
 
 NORM_DRIVER = """
 async () => {
-  const mod = await import('/js/helmholtz-voice.js?v=13');
+  const mod = await import('/js/helmholtz-voice.js?v=14');
   const row = {
     f0: 523.25, note: 'C5', h: [1, 0.01, 0.004], h_phase: [0, 0.2, 1.1],
     floor_db: -54, slope_db_oct: -8, air_db: -50,

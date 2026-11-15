@@ -1,6 +1,6 @@
 import { titleFromText } from "./parse.js";
 import { installOcarinaTemplate, invalidateSvgHtml } from "./ocarina.js";
-import { installTwinModel, isMelodyPlaying } from "./audio.js";
+import { installJetModel, installTwinModel, isMelodyPlaying, jetEnabled } from "./audio.js";
 import { BUILTIN, builtinFileBodies, fillLibrary, initBuiltin, loadedLibraryId,
          loadLibraryItem, materializeFileBodies,
          markUrlLanded, refreshGeneratedScales, rewriteLanderUrl,
@@ -163,6 +163,20 @@ async function loadInstrument(inst) {
     if (window.CURRENT_INSTRUMENT === inst) {
       installTwinModel(null, inst.id);
       twinText = "null";
+    }
+  }
+  if (typeof installJetModel === "function" && jetEnabled() && inst.jet) {
+    try {
+      const jet = await loadJson(inst.jet);
+      if (window.CURRENT_INSTRUMENT === inst) {
+        installJetModel(jet, inst.id);
+        jetText = jet ? JSON.stringify(jet) : "null";
+      }
+    } catch (e) {
+      if (window.CURRENT_INSTRUMENT === inst) {
+        installJetModel(null, inst.id);
+        jetText = "null";
+      }
     }
   }
 }
@@ -355,6 +369,10 @@ async function boot() {
       builtinFileBodies(songs), loadInstrument(chosen)]);
     materializeFileBodies(fileBodies);
     fillInstrumentSelect(chosen.id);
+    if (typeof jetEnabled === "function" && jetEnabled()
+        && window.OCA_DEBUG && OCA_DEBUG.prepareJet) {
+      OCA_DEBUG.prepareJet();
+    }
     wireInstrumentPicker();
     wireLibrary();
     wireUi();
@@ -460,6 +478,7 @@ document.addEventListener("visibilitychange", () => {
 // call). Manifest drift for OTHER instruments only feeds the next boot.
 let manifestText = null; // the boot's manifest bytes; the resume comparator
 let twinText = null; // the loaded instrument's model bytes; resume comparator
+let jetText = null; // the loaded instrument's jet-model bytes; resume comparator
 let instRefreshBusy = false;
 let instRefreshAt = 0;
 
@@ -492,6 +511,15 @@ async function refreshInstrumentOnResume() {
           typeof installTwinModel === "function") {
         installTwinModel(twin, inst.id);
         twinText = nextTwinText;
+      }
+    }
+    if (inst.jet && typeof jetEnabled === "function" && jetEnabled()) {
+      const jet = await loadJson(inst.jet);
+      const nextJetText = jet ? JSON.stringify(jet) : "null";
+      if (window.CURRENT_INSTRUMENT === inst && nextJetText !== jetText &&
+          typeof installJetModel === "function") {
+        installJetModel(jet, inst.id);
+        jetText = nextJetText;
       }
     }
   } catch (e) {} finally { // offline / transient hiccup: arise later silently

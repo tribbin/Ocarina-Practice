@@ -10,13 +10,15 @@ range and the file paths stay there). Folder contents:
       ocarina-template.svg   the SVG body template (theme variants live here too)
       tone.json              OPTIONAL: fitted per-chamber tone anchors
       twin_model.json        OPTIONAL: fitted Helmholtz twin model
+      jet_model.json         OPTIONAL: fitted jet-drive A/B parameters
 
 A note may list `half`: hole ids that are vented, not closed. The painter
 draws a left half-disc (the songbook glyph) and does not treat them as
 covered. A hole must not appear in both arrays. Older charts omit `half`.
 
-`instruments.json` entries may carry `"tone": "instruments/<id>/tone.json"`
-and `"twin": "instruments/<id>/twin_model.json"`.
+`instruments.json` entries may carry `"tone": "instruments/<id>/tone.json"`,
+`"twin": "instruments/<id>/twin_model.json"` and
+`"jet": "instruments/<id>/jet_model.json"`.
 A missing file is normal — that ocarina then keeps the baked-in generic model
 (the alto-derived extrapolation in `js/audio.js`), and nobody notices. A
 manifest entry may also declare the field ahead of its measurements (the
@@ -109,6 +111,48 @@ selects the holds inside each chamber's pitch range) and
 `ico-oak-leaf-bass-c-triple` (chambers 1/2/3 from their own WAVs): their air
 bands now sit above the skirt, and each row carries the measured
 `air_formant_hz`; no new recording was used.
+
+### The jet-drive A/B (optional)
+
+`jet_model.json` feeds the experimental whole-voice AudioWorklet
+(`js/jet-voice-processor.js`, `?jet=1` or the debug panel's Jet switch).
+The processor is a 2-pole Helmholtz resonator driven by a delayed sigmoid
+jet, with turbulence gated by the jet oscillation; it produces the tone and
+the breath together, so the fitted `PeriodicWave` path is bypassed in this
+mode. The lock to the cavity is the f0 sine drive; the sigmoid and the
+measured H2/H3 drive coefficients shape the harmonics; the delay and the
+resonator set the phase; the noise input is the chamber's slope-colored
+buffer. A missing fit or an unready worklet falls back to `v4-breath` per
+note. Only the three ladder-recorded instruments declare `jet` today.
+
+Schema ("ocarina-jet-v1"; multi-chamber uses the same
+`ocarina-jet-multi-v1` wrapper shape as the twin, with each chamber's own
+`gain` and `model`):
+
+    { "schema": "ocarina-jet-v1", "notes": [
+      { "note": "C5", "f0": 523.25,
+        "Q": 80.0,                 // resonator Q (fit from the H1 linewidth)
+        "delay_ratio": 0.5,        // jet delay tau = ratio / f0
+        "jet_k": 1.0,              // sigmoid steepness
+        "jet_h2": 0.3137,          // measured H2 drive into the sigmoid
+        "jet_h3": 0.2725,          // measured H3 drive into the sigmoid
+        "jet_drive": 0.5,          // f0 sine drive
+        "jet_feedback": 0.1,       // resonator pressure fed back into the jet
+        "turb_gain": 0.003192,     // turbulence level (fit to air_db)
+        "turb_gate": 0.5,          // turbulence chopped by |jet|
+        "turb_bypass": 0.2,        // direct broadband leak
+        "out_gain": 0.9209,        // H1 trim to unity
+        "noise_slope_db_oct": -12.0
+      }, ... ] }
+
+Field defaults (a row missing a key keeps the default): Q 30,
+delay_ratio 0.5, jet_k 1, jet_h2 0, jet_h3 0, jet_drive 0.5,
+jet_feedback 0.1, turb_gain 0, turb_gate 0.5, turb_bypass 0.2,
+out_gain 1, noise_slope_db_oct -8. The fitter is
+`skills/ocarina-twin/fit_jet.py`: it measures each held take's linewidth
+Q, H2/H3 ratios, residual air level and H1 amplitude, then interpolates
+every chamber row in log-f. It shares the combined-ladder chamber split
+with `fit_ladder.py`.
 
 ### The twin file shapes
 

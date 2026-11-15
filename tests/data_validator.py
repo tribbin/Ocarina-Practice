@@ -118,6 +118,36 @@ class V:
                      f"twin for {inst_id} needs notes[] rows or a chambers "
                      "{ch: {model}} wrapper (ocarina-twin-multi-v1)")
 
+    def _check_jet(self, rel, inst_id):
+        p = self.root / rel
+        if not p.is_file():
+            return  # same deliberate-absent contract as twin/tone
+        jet = load_json(p, self.errors, rel)
+        if jet is None:
+            return
+        if not isinstance(jet, dict):
+            self.err(rel, "bad-shape", f"jet for {inst_id} must be an object")
+            return
+        single = self._jet_model_ok(jet)
+        multi = (isinstance(jet.get("chambers"), dict)
+                 and bool(jet["chambers"])
+                 and all(self._jet_model_ok(
+                     c.get("model") if isinstance(c, dict) else c)
+                     for c in jet["chambers"].values()))
+        if not (single or multi):
+            self.err(rel, "bad-shape",
+                     f"jet for {inst_id} needs notes[] rows or a chambers "
+                     "{ch: {model}} wrapper (ocarina-jet-multi-v1)")
+
+    @staticmethod
+    def _jet_model_ok(m):
+        return (isinstance(m, dict)
+                and isinstance(m.get("notes"), list)
+                and bool(m["notes"])
+                and all(isinstance(n, dict) and isFiniteNum(n.get("f0"))
+                        and isFiniteNum(n.get("jet_k"))
+                        for n in m["notes"]))
+
     @staticmethod
     def _twin_model_ok(m):
         return (isinstance(m, dict)
@@ -174,6 +204,12 @@ class V:
                     self.err("instruments.json", "bad-shape", f"{iid}: bad twin path")
                 else:
                     self._check_twin(twin, iid)
+            jet = row.get("jet")
+            if jet is not None:
+                if not isinstance(jet, str) or not jet:
+                    self.err("instruments.json", "bad-shape", f"{iid}: bad jet path")
+                else:
+                    self._check_jet(jet, iid)
             when = row.get("svgWhen")
             if when is not None:
                 if not isinstance(when, list):
