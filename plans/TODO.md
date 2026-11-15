@@ -68,6 +68,7 @@ owed-code picks are the two §1 rows below, the standing holds unchanged):
 
 | Item | Section |
 |---|---|
+| **Breath engine v4-breath is code-landed and pinned — HELD FOR ROBIN's field check: listen on the 12-hole/ICO twins, then flip `?breath=0` or the debug Breath switch** | §5 |
 | **ICO alto and bass 12-hole twins are fitted from the C-to-F ladders (sharps filled, notes below C wear the C hold) — HELD FOR ROBIN's field check** | §9 |
 | **Zen-toggle swing re-derivation (Robin 2026-10-07) is code-landed (spanSec) and pinned — HELD FOR ROBIN's field check: toggle zen in/out repeatedly with swing on (his triple-bass Outset case)** | hold |
 | **Note HOLDS ignore swing and the tempo dial — notes ring 47–105 ms past the next onset at swing 100 and under-ring below the dial (§1; behavior change ⇒ red-first overhang-0-at-swing-100, full sweep, his field check)** | §1 |
@@ -95,6 +96,8 @@ owed-code picks are the two §1 rows below, the standing holds unchanged):
 Nothing open — the WAV-export backlog dropped by Robin's audit 2026-09-28 (the createScriptProcessor reframe; its AudioWorklet trigger doesn't exist anywhere and debug.js stays untouched by election).
 
 ## 5. Architecture / maintenance
+
+- [ ] **Breath engine v4-breath awaits Robin's field check** — Listen on the 12-hole and the ICO twins: sustained hiss tracks pitch (comb structure), the voicing bump is present where the defaults predict it, attacks decay from noisy to clean as the jet locks, releases carry the small puff, and staccato/after-rest notes get the tongue burst; then flip `?breath=0` (or the debug panel's Breath switch) and compare against the plain band-pass. The fitted tone spectrum and envelope timings are unchanged (same PeriodicWave, same body envGain). WAV refit is untouched: the OoT ladder WAV is only the reference for this synth pass, no twin_model.json changed. `🟨 🟠 ⚙S`
 
 ## 6. Tests & CI
 
@@ -1004,3 +1007,34 @@ CI 37625577098 (push at a36dfd3 on PR #51) went red once at reduced_motion - .pe
   gen_pages, console_hygiene green. No sw bump: twin and manifest are
   DATA_NETWORK_FIRST, same as the six-hole ladder landing. HELD FOR ROBIN's
   field check. `96ded9a`
+
+- **2026-11-15 (session 30 — breath engine v4-breath lands; air noise is pitch-locked and gesture-following)** —
+  Robin's task rebuilt the twin voice's noise bed on `b874f07` (branch breath-engine).
+  The old one static per-note JS-filtered bed became: native band-pass on the shared
+  slope-colored buffer (center clamp(1.25·f0, air_lo, air_hi_eff), Q 1.0), f0 comb
+  (delay 1/f0, feedback 0.35, wet 0.6/dry 0.4), f0 AM (±0.5 around 1), measured/default
+  voicing-formant peaker (`air_formant_hz`/`air_formant_q`, defaults clamp(2.2·f0,lo,hi)/1.0,
+  +6 dB), open-hole vent scaling (ratio^0.25 cutoff / ^0.5 gain, 0.15 floor; fingerings
+  holes may carry `area`, absent = count, half = 0.5), attack excess `atk_noise_db`
+  (default air_db+6) decaying to sustain over `atk_speak_s`, sustain wander drift ±1.5 dB,
+  release +3 dB over 15 ms before the hold end, scheduler-level tongued bursts for
+  staccato/after-rest notes (10 ms, 15 ms lead, same formant filter) — no inhale per
+  Robin's answer. `?breath=0` and the debug panel's session-only Breath/Air-solo switches
+  are the A/B; breath=0 keeps plain native band-pass + the old chiff burst. New keys are
+  optional: today's twin files schedule unchanged (tests pin the v2 fallback and missing
+  fingering data). Physics basis: jet locks to the cavity over the blowing window
+  (https://arxiv.org/abs/0911.3567), jet excitation/delay model
+  (https://www.damtp.cam.ac.uk/user/mem2/papers/MUS-ACOUST/mci-schu-woodh-jasa83.pdf),
+  jet-gated turbulence at the playing frequency
+  (https://www.lam.jussieu.fr/Publications/Theses/these-patricio-de-la-cuadra.pdf),
+  open-hole-area Helmholtz acoustics
+  (https://newt.phys.unsw.edu.au/jw/Helmholtz.html,
+  https://newt.phys.unsw.edu.au/jw/reprints/Wolfe_AT2018.pdf), and on-note comb-structured
+  breath peaks at f0/2f0/3f0 (NI community thread). Fit contract updated in
+  instruments/README.md with units, defaults and tone-fit-v1 (`noiseLoDb`/`noiseBumpQ`,
+  chiff peak/len) mappings; VOICE_REV v4-breath, helmholtz token ?v=12, sw oco-pwa-v99.
+  tests/breath_engine.py registered in practice-tests.yml (graph, decorrelation, timeline,
+  fallback, ?breath=0, panel switch); tone_stages/debug_panel/instruments_load/offline_pwa
+  expectations re-anchored. Full sweep 53/53, eslint@9 + html-validate@8 clean.
+  HELD FOR ROBIN's field check (the open §5 item). The OoT ladder WAV Robin restored is
+  only the reference for this pass; no twin_model.json changed.
