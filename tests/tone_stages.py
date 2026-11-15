@@ -2,7 +2,7 @@
 """Current-voice contract. The old render-vs-recording gate is gone.
 
 A change may not put the band-pass fitter back, and every shipped twin
-row must carry the v3k fields the voice reads.
+row must carry the v4 fields the voice reads.
 """
 import json
 import sys
@@ -11,10 +11,12 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 failures = []
 voice = (REPO / "js/helmholtz-voice.js").read_text()
-if 'VOICE_REV = "v3k-chamber"' not in voice:
-    failures.append("helmholtz-voice.js must stamp v3k-chamber")
+if 'VOICE_REV = "v4-breath"' not in voice:
+    failures.append("helmholtz-voice.js must stamp v4-breath")
 if "noise_mid_db" in voice or "effectiveNoiseQ" in voice:
     failures.append("the old mid-air graph is back in the voice")
+if "airBuffer" in voice or "runBiquad" in voice:
+    failures.append("per-note JS air filtering is back on the main thread")
 if (REPO / "skills/ocarina-twin/ocarina_twin").exists():
     failures.append("the pre-v3k fitter package is back")
 if (REPO / "skills/tone-analysis").exists():

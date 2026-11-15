@@ -6,7 +6,8 @@ import { bumpHoverQuiet, clearHighlight, cueFirstNote, freezeZenGlow,
          tokenSeconds, updateTransportUI } from "./ui.js";
 import { isPracticeActive } from "./practice.js";
 import { wakeHold, wakeDrop } from "./wakelock.js";
-import { loadTwinModelFromObject, interpNote, scheduleHelmholtzNote, VOICE_REV } from "./helmholtz-voice.js?v=11";
+import { BREATH_DEFAULTS, loadTwinModelFromObject, interpNote, scheduleHelmholtzNote,
+         scheduleTongueBurst, VOICE_REV } from "./helmholtz-voice.js?v=12";
 let audioCtx = null;
 let liveVoices = [];
 let melodyBag = [];
@@ -66,6 +67,13 @@ const AUDIO_DEFAULTS = {
   dipMs: 60, dipFrac: 0.5,
 };
 const AUDIO_DEBUG = Object.assign({}, AUDIO_DEFAULTS);
+// Breath-engine A/B (v4): ?breath=0 is the initial state; the debug panel's
+// session-only switch flips it live for newly played notes. The same flag
+// gates the scheduler-level tongued-onset layer.
+let breathOn = true;
+try { breathOn = !/[?&]breath=0\b/.test(location.search); } catch (e) {}
+let soloAir = false;
+function breathEnabled() { return breathOn; }
 // Voice builders (playNoteAt/playTickAt) swallow any WebAudio failure so a
 // bad synth call can never break the page — but an ocarina that silently
 // plays nothing is the worst failure mode for a practice tool. Record
@@ -160,6 +168,11 @@ window.OCA_DEBUG = {
   // + whether a service worker is controlling this page. Typed in the
   // console as OCA_DEBUG.voiceCard() when the preview and the site disagree.
   voiceRev() { return VOICE_REV; },
+  // Breath-engine A/B (Steps 1-4) and the debug panel's air-only preview.
+  breathEnabled() { return breathOn; },
+  setBreathEnabled(on) { breathOn = !!on; return breathOn; },
+  soloAir() { return soloAir; },
+  setSoloAir(on) { soloAir = !!on; return soloAir; },
   voiceCard() {
     const tm = TWIN_MODEL;
     let sw = "none";
@@ -994,6 +1007,63 @@ function playNote(id, durSec) {
   playNoteAt(id, null, durSec == null ? tokenSeconds(4) : durSec, liveVoices);
 }
 
+// Fingering row + chart hole map for the current instrument (the breath
+// engine's vent scaling reads them). Missing data is a normal no-op.
+function fingeringFor(id) {
+  const fing = typeof window !== "undefined" ? window.FING : null;
+  return {
+    fingering: fing && Array.isArray(fing.notes)
+      ? fing.notes.find(n => n && n.id === id) : null,
+    holes: fing && fing.holes && typeof fing.holes === "object" ? fing.holes : null,
+  };
+}
+
+// Chamber routing shared by the note voice and the tongued-onset layer:
+// missing chamber keys fall back to chamber 1.
+function twinEntryForNote(id) {
+  if (!TWIN_MODEL) return null;
+  const chKey = typeof CHAMBER !== "undefined" && CHAMBER && CHAMBER[id] != null
+    ? String(CHAMBER[id]) : "1";
+  return TWIN_MODEL.chambers[chKey]
+    || TWIN_MODEL.chambers["1"]
+    || Object.values(TWIN_MODEL.chambers)[0]
+    || null;
+}
+
+// Tongued-onset layer (Step 4): staccato tokens and re-attacks after a
+// rest get a tiny formant-filtered burst just before the body. Playback
+// only — practice's mic path never schedules these.
+function tokenAfterRest(tokens, idx) {
+  for (let i = idx - 1; i >= 0; i--) {
+    const t = tokens[i];
+    if (!t || t.type === "bar" || t.type === "tempo" || t.type === "bass") continue;
+    return t.type === "rest";
+  }
+  return false;
+}
+
+function scheduleTongueAt(id, noteWhen, tokens, idx, bag) {
+  if (!breathEnabled() || isPracticeActive()) return;
+  const tok = tokens && tokens[idx];
+  if (!tok || (tok.type !== "note" && tok.type !== "tie")) return;
+  if (!tok.staccato && !tokenAfterRest(tokens, idx)) return;
+  const ctx = audioCtx;
+  const entry = twinEntryForNote(id);
+  if (!ctx || !entry) return;
+  const fing = fingeringFor(id);
+  try {
+    const burst = scheduleTongueBurst(ctx, getMelodyCutBus(ctx, getReverbBus(ctx)), {
+      model: entry.model,
+      f0: freqOf(id),
+      when: noteWhen - BREATH_DEFAULTS.tongueLeadS,
+      fingering: fing.fingering,
+      holes: fing.holes,
+    });
+    if (bag && bag.push) bag.push(burst);
+    else melodyBag.push(burst);
+  } catch (e) { recordVoiceError("tongue " + id, e); }
+}
+
 function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
@@ -1044,12 +1114,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
     }
     // Chamber routing: missing chamber keys (a shared 12-hole twin on a
     // multi-chamber chart) fall back to chamber 1 — Helmholtz only.
-    const chKey = typeof CHAMBER !== "undefined" && CHAMBER && CHAMBER[id] != null
-      ? String(CHAMBER[id]) : "1";
-    const twEntry = TWIN_MODEL.chambers[chKey]
-      || TWIN_MODEL.chambers["1"]
-      || Object.values(TWIN_MODEL.chambers)[0]
-      || null;
+    const twEntry = twinEntryForNote(id);
     if (!twEntry) {
       recordVoiceError("playNoteAt " + id, new Error("no twin chamber"));
       return;
@@ -1130,6 +1195,7 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
         const hiF = Math.max(0, Math.min(1, (freq - AUDIO_DEBUG.hiFrom) /
           Math.max(60, AUDIO_DEBUG.hiTo - AUDIO_DEBUG.hiFrom)));
         const zenPan2 = Math.max(0, Math.min(1, AUDIO_DEBUG.zenPan));
+        const fing = fingeringFor(id);
         const baseOpts = {
           model: twEntry.model,
           f0: freq,
@@ -1137,6 +1203,10 @@ function playNoteAt(id, when, durSec, bag, slideFromId, intoSlide) {
           holdSec: twHold,
           dest: tmDest,
           master: AUDIO_DEBUG.masterLevel * voiceGain * twEntry.gain * supportComp * instLevelGain(),
+          breath: breathEnabled(),
+          soloAir,
+          fingering: fing.fingering,
+          holes: fing.holes,
         };
         if (slideFrom) {
           baseOpts.slideFromHz = slideFrom;
@@ -1630,9 +1700,11 @@ function fireSupportEvent(e, when) {
     const soundHold = tok.staccato
       ? Math.min(hold * 0.4, 0.16)
       : intoSlide ? hold : hold * 0.92;
+    const bag = trackBagFor(w.zone, w.vol);
     playNoteAt(tok.id, noteWhen, Math.max(0.09, soundHold),
-               trackBagFor(w.zone, w.vol),
+               bag,
                slideFrom, intoSlide);
+    scheduleTongueAt(tok.id, noteWhen, w.tokens, w.idx, bag);
   }
 
   // Pause keeps walker positions (like the melody's); resume rebases every
@@ -1846,6 +1918,7 @@ function scheduleMelody(when) {
         ? Math.min(hold * 0.4, 0.16)
         : intoSlide ? hold : hold * 0.92;
       playNoteAt(tok.id, noteWhen, Math.max(0.09, soundHold), melodyBag, slideFrom, intoSlide);
+      scheduleTongueAt(tok.id, noteWhen, melodyTokens, melodyIdx, melodyBag);
       melodyHoldUntil = lastHoldIndex(melodyTokens, melodyIdx);
       lastHoldSec = Math.max(0.09, soundHold);
       didSound = true;

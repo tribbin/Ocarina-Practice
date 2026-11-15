@@ -145,3 +145,5 @@ jobs:
         run: python tests/midi_track_audit.py
       - name: Run held-note stage verification (onset/hold/decay)
         run: python tests/tone_stages.py
+      - name: Run breath-engine graph/envelope pin
+        run: python tests/breath_engine.py

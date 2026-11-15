@@ -27,12 +27,34 @@ the loader also falls back — tone data must never break boot.
 ## Voice swap (twin vs additive)
 
 `twin_model.json` switches the instrument's VOICE to the Helmholtz twin
-(`js/helmholtz-voice.js`, python fitter + reference renderer in
-`skills/ocarina-twin/`): near-sine fundamental through the cavity bandpass,
-period-synchronous turbulence for the on-the-note breath, the air as a
-mid pedestal bandpassed [1.25 f0, 4 kHz] with a QUIETER high hiss above
-4 kHz (no highshelf, no 1.6 f0 cutoff — that path was the bug the mid-air
-handoff replaced), minute dry H2–H6 labium partials. The additive
+(`js/helmholtz-voice.js`, rev `v4-breath`, python fitter + reference renderer
+in `skills/ocarina-twin/`). The fitted tone path is unchanged: phase-locked
+partials (`h`, `h_phase`) through the cavity, minute dry H2–H6 labium
+partials, the slope-colored floor. The breath noise is now a layered engine,
+not one static bed:
+
+- the air band is a native band-pass on the shared slope-colored buffer
+  (center `clamp(1.25·f0, air_lo_hz, air_hi_eff)`, Q 1.0);
+- the band is comb-locked to f0 (delay 1/f0, feedback 0.35, wet 0.6 / dry
+  0.4) and amplitude-modulated at f0 (depth ±0.5 around 1), so on-note
+  breath peaks at f0, 2f0, 3f0…;
+- a voicing-formant peaking filter (center/Q from the optional
+  `air_formant_hz` / `air_formant_q` rows, +6 dB bump) colors the vent noise;
+- open-hole venting scales the upper cutoff (`ratio^0.25`) and the air level
+  (`ratio^0.5`), with a 0.15 floor so a fully closed note keeps its windway
+  hiss;
+- the blowing gesture rides the existing note timeline: an attack excess
+  starts at `atk_noise_db` (default `air_db + 6`) and decays to the sustain
+  `air_db` bed over `atk_speak_s`, the sustain gets a ±1.5 dB wander drift,
+  and a +3 dB / 15 ms release puff lands just before the hold end;
+- staccato (`!`) and re-attack-after-rest tokens get a scheduler-level
+  ~10 ms tongued burst through the same formant filter, 15 ms before the
+  body onset. There is no pre-phrase inhale. Practice's mic path never
+  schedules this layer.
+
+`?breath=0` (and the debug panel's session-only Breath switch) is the A/B:
+it keeps the plain native band-pass at the same center and the legacy chiff
+burst, with no comb/AM/formant/gesture/tongue layers. The additive
 timbre/wind machinery in `js/audio.js` (PeriodicWave + windPark/warm/rough
 shelves + edge whistle + chiff/ot bursts, `voiceProfileFor`, `V_ANCHORS`)
 is the LEGACY voice: dormant while a twin model drives the instrument —
@@ -45,6 +67,35 @@ placeholders until real recordings land); removal is a later cleanup on Robin's 
 tone.json stays on disk only while the
 additive voice still reads it: the 12-hole's was removed with its swap
 (the fit history lives in git).
+
+### Breath fields (optional, v4-breath)
+
+Every row may carry these keys; a file from before v4 keeps working per-field
+(defaults below). They live inside each chamber's `notes[]`, like every other
+twin row, and interpolate in log-f only inside that chamber.
+
+- `air_formant_hz` (Hz) — peaking-filter center for the measured vent-noise
+  bump. Default `clamp(2.2·f0, air_lo_hz, air_hi_eff)`. It is the frequency
+  center of the bump that tone-fit-v1's `noiseLoDb` band and `noiseBumpQ`
+  describe (the fit's air/vent peak); a future re-fit maps the measured
+  bump center here.
+- `air_formant_q` (dimensionless) — peaking-filter Q. Default 1.0. Maps 1:1
+  to tone-fit-v1 `noiseBumpQ` (the chamber bump sharpness).
+- `atk_noise_db` (dB re the note's own `air_db` bed, not dBFS) — attack
+  excess start level. Default `air_db + 6`. Maps to the tongued/blown onset
+  excess a tone-fit-v1 `chiff` block describes (`chiff.peak` / `chiff.len`),
+  while the decay length itself reuses `atk_speak_s`.
+
+Engine constants that are not per-note schema keys (a fitter does not write
+them): comb feedback 0.35, comb wet 0.6, AM depth 0.5, band Q 1.0, formant
+bump +6 dB, sustain drift ±1.5 dB, release +3 dB / 15 ms, tongue burst
+`air_db + 6` / 10 ms / 15 ms lead.
+
+Vent scaling reads `instruments/<id>/fingerings.json`: a hole entry may
+declare `area` (any consistent unit); absent areas fall back to counting
+each hole as one unit. Half-vented holes count half. `openArea/refArea`
+is clamped to a 0.15 floor (the windway's own vent), so `ratio = 1` is a
+fully open chart and closed notes keep a quiet base hiss.
 
 ### The twin file shapes
 
