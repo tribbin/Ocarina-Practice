@@ -217,6 +217,15 @@ def main():
     if not segs:
         raise SystemExit("no holds found")
     measured = [fit_hold(s, sr) for s in segs]
+    # A combined ladder (the Stein double carries both chambers in one WAV)
+    # selects only the holds inside this chamber's fingering pitch range.
+    lo_f = min(f0_of(n) for n in ids)
+    hi_f = max(f0_of(n) for n in ids)
+    in_chamber = [r for r in measured
+                  if lo_f * 0.97 <= r["f0"] <= hi_f * 1.03]
+    if not in_chamber:
+        raise SystemExit(f"no holds inside chamber {args.chamber}'s note range")
+    measured = in_chamber
     notes, anchors = fill(measured, ids)
     model = chamber_model(notes, args.instrument or finger.get("instrument", ""), args.chamber, anchors)
     out = Path(args.out)
@@ -225,14 +234,14 @@ def main():
         if existing.get("schema") == "ocarina-twin-multi-v1" or "chambers" in existing:
             existing.setdefault("chambers", {})
             existing["chambers"][str(args.chamber)] = {"gain": args.gain, "model": model}
-            existing["voice"] = "v3k-chamber"
+            existing["voice"] = "v4-breath"
             payload = existing
         else:
             payload = model
     else:
         payload = model
     out.write_text(json.dumps(payload, indent=2) + "\n")
-    print(f"chamber {args.chamber}: {len(anchors)} holds -> {len(notes)} notes")
+    print(f"chamber {args.chamber}: {len(measured)} holds -> {len(notes)} notes")
     print("anchors", [r["note"] for r in anchors])
     print("wrote", out)
 

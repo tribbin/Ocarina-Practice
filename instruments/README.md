@@ -103,9 +103,12 @@ the upper cutoff only (`ratio^0.25`); the gain exponent default is 0 because
 each fitted `air_db` row already measures its own note's vent level.
 
 The fitter's air-peak search ignores residual bins below `1.6·f0` (the
-note's own skirt leakage — the shell class). The `oot-alto-c-12` ladder was
-re-fit under that rule: its air bands now sit above the skirt, and each row
-carries the measured `air_formant_hz`; no new recording was used.
+note's own skirt leakage — the shell class). The restored ladders were re-fit
+under that rule — `oot-alto-c-12`, `stein-double-alto-c` (its combined WAV
+selects the holds inside each chamber's pitch range) and
+`ico-oak-leaf-bass-c-triple` (chambers 1/2/3 from their own WAVs): their air
+bands now sit above the skirt, and each row carries the measured
+`air_formant_hz`; no new recording was used.
 
 ### The twin file shapes
 

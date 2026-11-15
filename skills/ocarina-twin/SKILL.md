@@ -27,7 +27,7 @@ python3 skills/ocarina-twin/fit_ladder.py \
   --out instruments/<id>/twin_model.json
 ```
 
-Run it once per chamber. An existing multi-chamber file is updated in place; other chambers stay. The script cuts holds, measures each hold, and log-f interpolates onto that chamber's fingering notes only. Missing notes at either end clamp to the edge hold.
+Run it once per chamber. An existing multi-chamber file is updated in place; other chambers stay. The script cuts holds, measures each hold, and log-f interpolates onto that chamber's fingering notes only. Missing notes at either end clamp to the edge hold. A combined ladder (the Stein double carries both chambers in one WAV) selects only the holds inside the chamber's own fingering pitch range; pass the same `--out` and each chamber's own `--gain`.
 
 Measured per hold:
 
