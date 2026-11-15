@@ -68,7 +68,7 @@ owed-code picks are the two §1 rows below, the standing holds unchanged):
 
 | Item | Section |
 |---|---|
-| **Breath engine v4-breath is code-landed and pinned — HELD FOR ROBIN's field check on the OoT 12-hole first: air level restored + ladder re-fit above the skirt; then flip `?breath=0` or the debug Breath switch** | §5 |
+| **Breath engine v4-breath is code-landed and pinned — HELD FOR ROBIN's field check: air level restored and the OoT 12-hole, Stein double and oak triple ladders re-fit above the skirt; then flip `?breath=0` or the debug Breath switch** | §5 |
 | **ICO alto and bass 12-hole twins are fitted from the C-to-F ladders (sharps filled, notes below C wear the C hold) — HELD FOR ROBIN's field check** | §9 |
 | **Zen-toggle swing re-derivation (Robin 2026-10-07) is code-landed (spanSec) and pinned — HELD FOR ROBIN's field check: toggle zen in/out repeatedly with swing on (his triple-bass Outset case)** | hold |
 | **Note HOLDS ignore swing and the tempo dial — notes ring 47–105 ms past the next onset at swing 100 and under-ring below the dial (§1; behavior change ⇒ red-first overhang-0-at-swing-100, full sweep, his field check)** | §1 |
@@ -97,7 +97,7 @@ Nothing open — the WAV-export backlog dropped by Robin's audit 2026-09-28 (the
 
 ## 5. Architecture / maintenance
 
-- [ ] **Breath engine v4-breath awaits Robin's field check** — Listen on the 12-hole and the ICO twins: sustained hiss tracks pitch (comb structure), the voicing bump is present where the defaults predict it, attacks decay from noisy to clean as the jet locks, releases carry the small puff, and staccato/after-rest notes get the tongue burst; then flip `?breath=0` (or the debug panel's Breath switch) and compare against the plain band-pass. The fitted tone spectrum and envelope timings are unchanged (same PeriodicWave, same body envGain). The OoT 12-hole twin is now re-fit from its restored ladder WAV (9999d7a); other instruments stay as-is until Robin re-applies the fitter. Focus the OoT 12-hole first per Robin (2026-11-15): `9999d7a` restores the air level (band RMS normalization) and re-fits its ladder bands above the skirt; the six-hole/ICO/oak/stein recordings get the same fitter re-applied later. `🟨 🟠 ⚙S`
+- [ ] **Breath engine v4-breath awaits Robin's field check** — Listen on the 12-hole and the ICO twins: sustained hiss tracks pitch (comb structure), the voicing bump is present where the defaults predict it, attacks decay from noisy to clean as the jet locks, releases carry the small puff, and staccato/after-rest notes get the tongue burst; then flip `?breath=0` (or the debug panel's Breath switch) and compare against the plain band-pass. The fitted tone spectrum and envelope timings are unchanged (same PeriodicWave, same body envGain). The OoT 12-hole twin is now re-fit from its restored ladder WAV (9999d7a); other instruments stay as-is until Robin re-applies the fitter. Focus the OoT 12-hole first per Robin (2026-11-15): `9999d7a` restores the air level (band RMS normalization) and re-fits its ladder bands above the skirt; the Stein double and ICO oak triple are now re-fit too (`4fecda4`); the six-hole, ICO 12-holes, OoT 7-hole, dummy and contrabass still need recordings/fits. `🟨 🟠 ⚙S`
 
 ## 6. Tests & CI
 
@@ -1063,3 +1063,22 @@ CI 37625577098 (push at a36dfd3 on PR #51) went red once at reduced_motion - .pe
   filter pin moved to `function airBuffer(` so the code comment cannot trip it.
   Full sweep 53/53, eslint@9 + html-validate@8 clean; sw oco-pwa-v100, helmholtz
   token ?v=13. HELD FOR ROBIN's field check on the OoT 12-hole (the open §5 item).
+
+- **2026-11-15 (session 30 cont. — Stein double + oak triple re-fit from the restored ladders)** —
+  Robin placed the old ladder WAVs in research/ (`double-alto-c-ladder.wav`,
+  `triple_bass_c_chamber1/2/3_ladder.wav`) and said "Refit". Verified first: all are
+  44.1 kHz stereo, and the measured hold sequences match the old anchor lists exactly —
+  the double WAV carries Stein chamber 1 (As4–Ds6, 10 holds) then chamber 2
+  (E6–C7, 6 holds); the triple WAVs match oak chambers 1/2/3 (9/6/5 holds).
+  `4fecda4` adds the combined-ladder split to fit_ladder: measured holds are filtered
+  to the chamber's own fingering pitch range (±3%), so chamber 1 and 2 refit from one
+  Stein WAV without cross-chamber interpolation; `--gain` keeps chamber 2's 0.5714
+  chain-relative loudness, and the wrapper's top-level voice stamp moves to v4-breath.
+  Both multi-chamber files now carry measured `air_formant_hz` and skirt-above bands
+  (Stein ch1 A4 800–2260.6/form 1360.6, ch2 E6 2427.1–3927.1/form 3027.1; oak ch1
+  A3 2025.7–3525.7/form 2625.7, ch2 E5 1055.0–2555.0/form 1655.0, ch3 Cs6
+  2012.2–3512.2/form 2612.2). The dummy double and contrabass stay placeholders on
+  the old oak-derived rows until real recordings arrive. Data-only unit: twin JSON is
+  DATA_NETWORK_FIRST, no sw bump. Affected suites green: data_validator, tone_stages,
+  instruments_load; README/SKILL.md carry the combined-ladder rule. HELD FOR ROBIN's
+  field check (same open §5 item, now Stein/oak too).
