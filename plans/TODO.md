@@ -68,6 +68,7 @@ owed-code picks are the two §1 rows below, the standing holds unchanged):
 
 | Item | Section |
 |---|---|
+| **Jet-drive A/B is code-landed and pinned — HELD FOR ROBIN's field check: `?jet=1` (or the debug Jet switch) on OoT 12-hole, Stein double and oak triple vs the default v4-breath** | §5 |
 | **Breath engine v4-breath is code-landed and pinned — HELD FOR ROBIN's field check: air level restored and the OoT 12-hole, Stein double and oak triple ladders re-fit above the skirt; then flip `?breath=0` or the debug Breath switch** | §5 |
 | **ICO alto and bass 12-hole twins are fitted from the C-to-F ladders (sharps filled, notes below C wear the C hold) — HELD FOR ROBIN's field check** | §9 |
 | **Zen-toggle swing re-derivation (Robin 2026-10-07) is code-landed (spanSec) and pinned — HELD FOR ROBIN's field check: toggle zen in/out repeatedly with swing on (his triple-bass Outset case)** | hold |
@@ -98,6 +99,8 @@ Nothing open — the WAV-export backlog dropped by Robin's audit 2026-09-28 (the
 ## 5. Architecture / maintenance
 
 - [ ] **Breath engine v4-breath awaits Robin's field check** — Listen on the 12-hole and the ICO twins: sustained hiss tracks pitch (comb structure), the voicing bump is present where the defaults predict it, attacks decay from noisy to clean as the jet locks, releases carry the small puff, and staccato/after-rest notes get the tongue burst; then flip `?breath=0` (or the debug panel's Breath switch) and compare against the plain band-pass. The fitted tone spectrum and envelope timings are unchanged (same PeriodicWave, same body envGain). The OoT 12-hole twin is now re-fit from its restored ladder WAV (9999d7a); other instruments stay as-is until Robin re-applies the fitter. Focus the OoT 12-hole first per Robin (2026-11-15): `9999d7a` restores the air level (band RMS normalization) and re-fits its ladder bands above the skirt; the Stein double and ICO oak triple are now re-fit too (`4fecda4`); the six-hole, ICO 12-holes, OoT 7-hole, dummy and contrabass still need recordings/fits. `🟨 🟠 ⚙S`
+
+- [ ] **Jet-drive A/B awaits Robin's field check** — Boot `?inst=oot-alto-c-12&jet=1` (also the Stein double and oak triple) and compare against the default v4-breath voice, then flip the debug panel's Jet switch mid-session. The physical model is the first whole-voice jet attempt: tone+noise from a 2-pole resonator + delayed sigmoid jet, fitted per held take; missing fit/worklet falls back per note. Listen for pitch stability, breath texture, attack/release, and whether it beats the breath engine enough to become a default candidate. `🟨 🟠 ⚙S`
 
 ## 6. Tests & CI
 
@@ -1082,3 +1085,26 @@ CI 37625577098 (push at a36dfd3 on PR #51) went red once at reduced_motion - .pe
   DATA_NETWORK_FIRST, no sw bump. Affected suites green: data_validator, tone_stages,
   instruments_load; README/SKILL.md carry the combined-ladder rule. HELD FOR ROBIN's
   field check (same open §5 item, now Stein/oak too).
+
+- **2026-11-15 (session 30 cont. — jet-drive A/B lands for the three recorded instruments)** —
+  Robin asked to try the §5 AudioWorklet physical model using the three instruments with
+  reference ladders (OoT 12-hole, Stein double, oak triple). `2f7997e` lands it as an
+  experimental whole-voice A/B (`?jet=1`, debug panel Jet switch), leaving the breath
+  engine as the default. `skills/ocarina-twin/fit_jet.py` fits a 2-pole Helmholtz
+  resonator driven by a delayed sigmoid jet with turbulence gated by the jet oscillation,
+  per held take: Q from the H1 linewidth, H2/H3 drive coefficients from the measured
+  harmonic ratios (jet_k 1, jet_h2/h3 fitted), turbulence gain to the fitted air_db
+  (floor+4), H1 out_gain to unity; it shares the combined-WAV chamber split and the
+  per-chamber gain, and writes separate `jet_model.json` files (OoT single; Stein
+  ch1/2 with 0.5714; oak ch1/2/3). The AudioWorklet processor carries tone and breath
+  together, so the fitted PeriodicWave is bypassed in jet mode; per-note parameters
+  drive Q/delay/sigmoid/harmonic content/turbulence/output trim. The JS processor
+  matches the Python fit (verified by an offline worklet render in tests/jet_engine).
+  Missing jet fit or unready worklet falls back per note to v4-breath; `instruments.json`
+  declares the three optional jet paths, app.js loads them only when the A/B is on,
+  and the debug panel gains a session-only Jet switch (with a deferred fetch on toggle).
+  data_validator learns the jet shape, tests/jet_engine pins the worklet graph/params/
+  timeline/defaults/fallback/A-B, and the suite is registered in practice-tests.yml.
+  sw oco-pwa-v101, helmholtz token ?v=14 (coloredBuffer export for the noise input).
+  Full sweep 54/54, eslint@9 + html-validate@8 clean. HELD FOR ROBIN's field check
+  (new open §5 item): compare jet vs breath on the three recorded instruments.
