@@ -34,7 +34,7 @@ Measured per hold:
 - H2/H3/H4 level and phase against the fundamental
 - floor from the residual spectrum, shifted +28 dB into the voice's RMS range, clamped −62..−46
 - slope of the residual from 900 Hz to 5 kHz, clamped −12..−4
-- air center at the loudest residual peak, band from center−600 to center+900, and never below 1.4×f0
+- air center at the loudest residual peak ABOVE the skirt (search ignores bins below 1.6×f0; the skirt is the note's own leakage, the shell class), band from center−600 to center+900, and never below 1.4×f0; the measured center also writes `air_formant_hz`
 
 Honk rule: if H3 is louder than half of H2, pull H3 down to that and H4 to a quarter of H2. A locked H3 as loud as H2 is the clean pipe (oak E5/F5).
 
@@ -42,7 +42,7 @@ Envelope rows are the standing values (`atk_pre_s` 0.008, `atk_speak_s` 0.028, `
 
 ## After the write
 
-- Twin JSON is fetched fresh. A voice change still needs a `sw.js` cache bump and the `helmholtz-voice.js?v=` query in `js/audio.js`.
+- Twin JSON is fetched fresh. A voice change still needs a `sw.js` cache bump and the `helmholtz-voice.js?v=` query in `js/audio.js`. New fits stamp `globals.voice` `v4-breath` and carry `air_formant_hz`.
 - Listen to the chamber's ends and to any note where H3 was pulled. Anchors are listed in `recorded.anchors`.
 - Do not render a comparison through the page reverb. The model is the dry voice.
 

@@ -318,16 +318,16 @@ def main():
             # which serves a minutes-old clean copy and skips the SW).
             poison_marker = "window.__CB_POISON = true;"
             first = page.evaluate(poison_cache_js(
-                "js/helmholtz-voice.js?v=12", "text/javascript",
+                "js/helmholtz-voice.js?v=13", "text/javascript",
                 "\\n" + poison_marker + "\\n"))
             if first != "POISONED":
                 failures.append(
-                    f"the poison must land on the cached ?v=12 voice copy "
+                    f"the poison must land on the cached ?v=13 voice copy "
                     f"before the freshness assertion (got {first!r}; the "
                     "reloads above should have it installed)")
             else:
                 served_stale = page.evaluate("""async () =>
-                    (await (await fetch('js/helmholtz-voice.js?v=12'))
+                    (await (await fetch('js/helmholtz-voice.js?v=13'))
                         .text()).includes('__CB_POISON')""")
                 if served_stale:
                     failures.append(
@@ -337,7 +337,7 @@ def main():
                         "copy still answered)")
                 cache_healed = page.evaluate("""async () => {
                   const c = await caches.open((await caches.keys())[0]);
-                  const hit = await c.match('js/helmholtz-voice.js?v=12');
+                  const hit = await c.match('js/helmholtz-voice.js?v=13');
                   return hit ? (await hit.text())
                         .includes("__CB_POISON") : "NO-HIT";
                 }""")

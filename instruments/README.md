@@ -34,15 +34,18 @@ partials, the slope-colored floor. The breath noise is now a layered engine,
 not one static bed:
 
 - the air band is a native band-pass on the shared slope-colored buffer
-  (center `clamp(1.25·f0, air_lo_hz, air_hi_eff)`, Q 1.0);
+  (center `clamp(1.25·f0, air_lo_hz, air_hi_eff)`, Q 1.0), with a matching
+  RMS-normalization gain so it carries the fitted `air_db` level (the old
+  per-note JS filter normalized after its hp/lp; a native slice of the
+  broadband-normalized buffer otherwise loses 15–25 dB);
 - the band is comb-locked to f0 (delay 1/f0, feedback 0.35, wet 0.6 / dry
   0.4) and amplitude-modulated at f0 (depth ±0.5 around 1), so on-note
   breath peaks at f0, 2f0, 3f0…;
 - a voicing-formant peaking filter (center/Q from the optional
   `air_formant_hz` / `air_formant_q` rows, +6 dB bump) colors the vent noise;
-- open-hole venting scales the upper cutoff (`ratio^0.25`) and the air level
-  (`ratio^0.5`), with a 0.15 floor so a fully closed note keeps its windway
-  hiss;
+- open-hole venting scales the upper cutoff (`ratio^0.25`) only, with a 0.15
+  floor so a fully closed note keeps its windway hiss; the fitted `air_db`
+  already carries that note's own vent level (no double gain scaling);
 - the blowing gesture rides the existing note timeline: an attack excess
   starts at `atk_noise_db` (default `air_db + 6`) and decays to the sustain
   `air_db` bed over `atk_speak_s`, the sustain gets a ±1.5 dB wander drift,
@@ -95,7 +98,14 @@ Vent scaling reads `instruments/<id>/fingerings.json`: a hole entry may
 declare `area` (any consistent unit); absent areas fall back to counting
 each hole as one unit. Half-vented holes count half. `openArea/refArea`
 is clamped to a 0.15 floor (the windway's own vent), so `ratio = 1` is a
-fully open chart and closed notes keep a quiet base hiss.
+fully open chart and closed notes keep a quiet base hiss. The factor scales
+the upper cutoff only (`ratio^0.25`); the gain exponent default is 0 because
+each fitted `air_db` row already measures its own note's vent level.
+
+The fitter's air-peak search ignores residual bins below `1.6·f0` (the
+note's own skirt leakage — the shell class). The `oot-alto-c-12` ladder was
+re-fit under that rule: its air bands now sit above the skirt, and each row
+carries the measured `air_formant_hz`; no new recording was used.
 
 ### The twin file shapes
 

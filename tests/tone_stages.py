@@ -15,7 +15,7 @@ if 'VOICE_REV = "v4-breath"' not in voice:
     failures.append("helmholtz-voice.js must stamp v4-breath")
 if "noise_mid_db" in voice or "effectiveNoiseQ" in voice:
     failures.append("the old mid-air graph is back in the voice")
-if "airBuffer" in voice or "runBiquad" in voice:
+if "function airBuffer(" in voice or "runBiquad(" in voice:
     failures.append("per-note JS air filtering is back on the main thread")
 if (REPO / "skills/ocarina-twin/ocarina_twin").exists():
     failures.append("the pre-v3k fitter package is back")

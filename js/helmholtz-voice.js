@@ -20,7 +20,7 @@ export const BREATH_DEFAULTS = {
   formantQ: 1.0,
   formantGainDb: 6,
   ventK: 0.25,
-  ventGainExp: 0.5,
+  ventGainExp: 0, // cutoff-only: the fitted air_db is already per-note
   ventFloor: 0.15,
   atkOverAirDb: 6,
   driftDb: 1.5,
@@ -177,6 +177,28 @@ export function ventScale(fingering, holes) {
   };
 }
 
+// Amplitude gain that makes the native band-pass slice carry the same RMS
+// as the old post-filter normalization (colored spectrum + RBJ band-pass
+// response, 1024-bin numeric integration — a few math ops, no sample loop).
+function bandNormGain(ctx, slope, center, q) {
+  const sr = ctx.sampleRate || 48000;
+  const top = sr / 2;
+  const n = 1024;
+  const step = (top - 40) / n;
+  let total = 0, band = 0;
+  for (let i = 0; i < n; i++) {
+    const f = 40 + (i + 0.5) * step;
+    const s = Math.pow(f / 700, slope / 6);
+    const w = s * s;
+    total += w;
+    const r = f / center;
+    const rq = r / q;
+    const h = (rq * rq) / ((1 - r * r) * (1 - r * r) + rq * rq);
+    band += w * h;
+  }
+  return Math.sqrt(total / Math.max(1e-12, band));
+}
+
 function formantOf(nf, f0, lo, hi) {
   const hz = nf.air_formant_hz != null
     ? clamp(+nf.air_formant_hz, 60, 16000)
@@ -262,9 +284,18 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
   airBp.type = "bandpass";
   airBp.frequency.value = clamp(BREATH_DEFAULTS.bandMult * f0, airLo, airHi);
   airBp.Q.value = BREATH_DEFAULTS.bandQ;
+  // The old airBuffer() normalized RMS AFTER its hp/lp pair. A native
+  // band-pass on the broadband-normalized shared buffer loses 15-25 dB by
+  // itself (measured), so a matching normalization gain restores air_db
+  // semantics without any per-note JS filtering loop.
+  const bandNorm = bandNormGain(ctx, nf.slope_db_oct == null ? -6 : nf.slope_db_oct,
+                                airBp.frequency.value, airBp.Q.value);
+  const airNorm = ctx.createGain();
+  airNorm.gain.value = bandNorm;
+  air.connect(airBp);
+  airBp.connect(airNorm);
   const airGain = ctx.createGain();
   airGain.gain.value = 0;
-  air.connect(airBp);
   airGain.connect(out);
 
   let formant = null, combDelay = null, combFeedback = null, combDry = null,
@@ -277,7 +308,7 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
     formant.frequency.value = form.hz;
     formant.Q.value = form.q;
     formant.gain.value = BREATH_DEFAULTS.formantGainDb;
-    airBp.connect(formant);
+    airNorm.connect(formant);
 
     // f0 comb: dry + delayed/feedback path mixed back together.
     combDelay = ctx.createDelay(0.06);
@@ -320,7 +351,7 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
     wander.connect(driftGain);
     driftGain.connect(airGain.gain);
   } else {
-    airBp.connect(airGain);
+    airNorm.connect(airGain);
   }
 
   let chiffBp = null, chiffGain = null;
@@ -466,7 +497,7 @@ export function scheduleHelmholtzNote(ctx, dest, opts) {
       mode: breath ? "engine" : "plain",
       solo,
       vent,
-      airBp, formant, combDelay, combFeedback, combDry, combWet,
+      airBp, airNorm, bandNorm, formant, combDelay, combFeedback, combDry, combWet,
       amOsc, amGain, amDepth, airGain, excessGain, driftGain, chiffBp, chiffGain,
       airLo, airHi, airLin, atkLin,
       noiseOffset: noiseOff,

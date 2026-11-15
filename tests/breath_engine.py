@@ -25,7 +25,7 @@ from suite_server import start_server
 
 GRAPH_DRIVER = """
 async () => {
-  const mod = await import('/js/helmholtz-voice.js?v=12');
+  const mod = await import('/js/helmholtz-voice.js?v=13');
   const ctx = sharedAudioCtx();
   const f0 = 523.25;
   const base = {
@@ -84,6 +84,8 @@ async () => {
       combWet: b.combWet ? b.combWet.gain.value : null,
       combDry: b.combDry ? b.combDry.gain.value : null,
       airCenter: b.airBp.frequency.value,
+      airNorm: b.airNorm ? b.airNorm.gain.value : null,
+      bandNorm: b.bandNorm,
       airLo: b.airLo, airHi: b.airHi, airLin: b.airLin, atkLin: b.atkLin,
       vent: b.vent,
       chiff: !!b.chiffBp,
@@ -125,6 +127,37 @@ DELAY_COUNT = """
     resolve(n);
   }, 120);
 })
+"""
+
+NORM_DRIVER = """
+async () => {
+  const mod = await import('/js/helmholtz-voice.js?v=13');
+  const row = {
+    f0: 523.25, note: 'C5', h: [1, 0.01, 0.004], h_phase: [0, 0.2, 1.1],
+    floor_db: -54, slope_db_oct: -8, air_db: -50,
+    air_lo_hz: 800, air_hi_hz: 2400,
+    atk_pre_s: 0.008, atk_speak_s: 0.028, rel_s: 0.08,
+    wander_cents_std: 2.5, wobble_hz: 0.45,
+  };
+  const model = mod.loadTwinModelFromObject({
+    schema: 'ocarina-twin-v2', globals: { chiff_q: 2.2 }, notes: [row],
+  });
+  const render = async (breath) => {
+    const off = new OfflineAudioContext(1, 48000, 48000);
+    mod.scheduleHelmholtzNote(off, off.destination, {
+      model, f0: 523.25, when: 0.02, holdSec: 0.55, breath, soloAir: true,
+      master: 1, fingering: null, holes: null,
+    });
+    const buf = await off.startRendering();
+    const d = buf.getChannelData(0);
+    let acc = 0, n = 0;
+    for (let i = Math.floor(0.12 * 48000); i < Math.floor(0.42 * 48000); i++) {
+      acc += d[i] * d[i]; n++;
+    }
+    return 20 * Math.log10(Math.sqrt(acc / n) / Math.pow(10, -50 / 20));
+  };
+  return { plain: await render(false), engine: await render(true) };
+}
 """
 
 PANEL_DRIVER = """
@@ -210,7 +243,7 @@ def main():
             # --- vent scaling from the fingering chart ---
             want_ratio = 1 / 3
             want_cut = want_ratio ** 0.25
-            want_gain = want_ratio ** 0.5
+            want_gain = 1  # cutoff-only: fitted air_db is already per-note
             if not vent["vent"]["sourced"]:
                 failures.append("fingering data must mark the vent factor as sourced")
             if abs(vent["vent"]["ratio"] - want_ratio) > 1e-9:
@@ -225,9 +258,15 @@ def main():
             if abs(vent["airHi"] - 2400 * want_cut) > 1e-3:
                 failures.append(
                     f"air_hi_eff must scale by the vent cutoff, got {vent['airHi']}")
-            if abs(vent["airLin"] - 10 ** (-50 / 20) * want_gain) > 1e-6:
+            if abs(vent["airLin"] - 10 ** (-50 / 20)) > 1e-6:
                 failures.append(
-                    f"air path level must scale by the vent gain, got {vent['airLin']}")
+                    f"air path level must stay at the fitted air_db (vent is "
+                    f"cutoff-only), got {vent['airLin']}")
+            if not (vent["bandNorm"] > 1 and
+                    abs(vent["airNorm"] - vent["bandNorm"]) < 1e-6):
+                failures.append(
+                    f"the native band-pass needs its RMS-normalization gain "
+                    f"(bandNorm {vent['bandNorm']}, node {vent['airNorm']})")
             if abs(vent["airCenter"] - min(vent["airHi"], max(800, 1.25 * 523.25))) > 1e-3:
                 failures.append(
                     f"band-pass center must be clamp(1.25*f0, lo, hi_eff), got "
@@ -298,6 +337,17 @@ def main():
             if on_count < 1:
                 failures.append(
                     f"a default note must build the comb delay (count {on_count})")
+
+            # --- band-pass RMS normalization (air_db semantics) ---
+            norm = page.evaluate(NORM_DRIVER)
+            if abs(norm["plain"]) > 1.5:
+                failures.append(
+                    f"the plain band-pass must restore the fitted air_db level "
+                    f"(got {norm['plain']:+.1f} dB)")
+            if abs(norm["engine"]) > 6:
+                failures.append(
+                    f"the breath engine must stay within a sane trim of air_db "
+                    f"(got {norm['engine']:+.1f} dB)")
 
             # --- debug panel switch ---
             page.goto(f"{base}?inst=oot-alto-c-12&debug=1")

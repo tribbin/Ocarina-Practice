@@ -3,49 +3,18 @@
   "instrument": "Alto C 12-hole (Ocarina of Time)",
   "chamber": "1",
   "globals": {
-    "voice": "v3k-chamber",
+    "voice": "v4-breath",
     "chiff_q": 2.2
   },
   "notes": [
     {
-      "f0": 440.0,
-      "note": "A4",
-      "h": [
-        1.0,
-        0.006618,
-        0.003426,
-        0.000309
-      ],
-      "h_phase": [
-        0.0,
-        0.299,
-        1.354,
-        -0.419
-      ],
-      "floor_db": -54.2,
-      "slope_db_oct": -10.9,
-      "air_f": 1049.7,
-      "air_db": -50.2,
       "open_holes": 0,
-      "level": 0.8,
-      "atk_pre_s": 0.008,
-      "atk_speak_s": 0.028,
-      "overshoot_db": 0.4,
-      "chiff_peak": 1.4,
-      "chiff_len_s": 0.04,
-      "rel_s": 0.08,
-      "wander_cents_std": 2.5,
-      "wobble_hz": 0.45,
-      "air_lo_hz": 2280.0,
-      "air_hi_hz": 3780.0
-    },
-    {
-      "f0": 466.16,
-      "note": "As4",
+      "note": "A4",
+      "f0": 440.0,
       "h": [
         1.0,
         0.006618,
-        0.003426,
+        0.003309,
         0.000309
       ],
       "h_phase": [
@@ -54,30 +23,30 @@
         1.354,
         -0.419
       ],
-      "floor_db": -54.2,
-      "slope_db_oct": -10.9,
-      "air_f": 1049.7,
-      "air_db": -50.2,
+      "floor_db": -56.8,
+      "slope_db_oct": -12.0,
+      "air_db": -52.8,
+      "air_lo_hz": 2280.1,
+      "air_hi_hz": 3780.1,
+      "air_formant_hz": 2880.1,
+      "level": 0.8,
+      "atk_pre_s": 0.008,
+      "atk_speak_s": 0.028,
+      "overshoot_db": 0.4,
+      "chiff_peak": 1.4,
+      "chiff_len_s": 0.04,
+      "rel_s": 0.08,
+      "wander_cents_std": 2.5,
+      "wobble_hz": 0.45
+    },
+    {
       "open_holes": 1,
-      "level": 0.8,
-      "atk_pre_s": 0.008,
-      "atk_speak_s": 0.028,
-      "overshoot_db": 0.4,
-      "chiff_peak": 1.4,
-      "chiff_len_s": 0.04,
-      "rel_s": 0.08,
-      "wander_cents_std": 2.5,
-      "wobble_hz": 0.45,
-      "air_lo_hz": 2280.0,
-      "air_hi_hz": 3780.0
-    },
-    {
-      "f0": 493.88,
-      "note": "B4",
+      "note": "As4",
+      "f0": 466.16,
       "h": [
         1.0,
         0.006618,
-        0.003426,
+        0.003309,
         0.000309
       ],
       "h_phase": [
@@ -86,30 +55,30 @@
         1.354,
         -0.419
       ],
-      "floor_db": -54.2,
-      "slope_db_oct": -10.9,
-      "air_f": 1049.7,
-      "air_db": -50.2,
+      "floor_db": -56.8,
+      "slope_db_oct": -12.0,
+      "air_db": -52.8,
+      "air_lo_hz": 2280.1,
+      "air_hi_hz": 3780.1,
+      "air_formant_hz": 2880.1,
+      "level": 0.8,
+      "atk_pre_s": 0.008,
+      "atk_speak_s": 0.028,
+      "overshoot_db": 0.4,
+      "chiff_peak": 1.4,
+      "chiff_len_s": 0.04,
+      "rel_s": 0.08,
+      "wander_cents_std": 2.5,
+      "wobble_hz": 0.45
+    },
+    {
       "open_holes": 2,
-      "level": 0.8,
-      "atk_pre_s": 0.008,
-      "atk_speak_s": 0.028,
-      "overshoot_db": 0.4,
-      "chiff_peak": 1.4,
-      "chiff_len_s": 0.04,
-      "rel_s": 0.08,
-      "wander_cents_std": 2.5,
-      "wobble_hz": 0.45,
-      "air_lo_hz": 2280.0,
-      "air_hi_hz": 3780.0
-    },
-    {
-      "f0": 523.25,
-      "note": "C5",
+      "note": "B4",
+      "f0": 493.88,
       "h": [
         1.0,
         0.006618,
-        0.003426,
+        0.003309,
         0.000309
       ],
       "h_phase": [
@@ -118,11 +87,12 @@
         1.354,
         -0.419
       ],
-      "floor_db": -54.2,
-      "slope_db_oct": -10.9,
-      "air_f": 1049.7,
-      "air_db": -50.2,
-      "open_holes": 3,
+      "floor_db": -56.8,
+      "slope_db_oct": -12.0,
+      "air_db": -52.8,
+      "air_lo_hz": 2280.1,
+      "air_hi_hz": 3780.1,
+      "air_formant_hz": 2880.1,
       "level": 0.8,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
@@ -131,16 +101,48 @@
       "chiff_len_s": 0.04,
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
-      "wobble_hz": 0.45,
-      "air_lo_hz": 2280.0,
-      "air_hi_hz": 3780.0
+      "wobble_hz": 0.45
     },
     {
+      "open_holes": 3,
+      "note": "C5",
+      "f0": 523.25,
+      "h": [
+        1.0,
+        0.006618,
+        0.003309,
+        0.000309
+      ],
+      "h_phase": [
+        0.0,
+        0.299,
+        1.354,
+        -0.419
+      ],
+      "floor_db": -56.8,
+      "slope_db_oct": -12.0,
+      "air_db": -52.8,
+      "air_lo_hz": 2280.1,
+      "air_hi_hz": 3780.1,
+      "air_formant_hz": 2880.1,
+      "level": 0.8,
+      "atk_pre_s": 0.008,
+      "atk_speak_s": 0.028,
+      "overshoot_db": 0.4,
+      "chiff_peak": 1.4,
+      "chiff_len_s": 0.04,
+      "rel_s": 0.08,
+      "wander_cents_std": 2.5,
+      "wobble_hz": 0.45
+    },
+    {
+      "open_holes": 4,
+      "note": "Cs5",
       "f0": 554.37,
       "h": [
         1.0,
         0.004731,
-        0.003574,
+        0.002365,
         0.000391
       ],
       "h_phase": [
@@ -149,12 +151,12 @@
         0.567,
         -1.358
       ],
-      "floor_db": -54.39,
-      "slope_db_oct": -10.06,
-      "air_f": 1382.9,
-      "air_db": -50.39,
-      "note": "Cs5",
-      "open_holes": 4,
+      "floor_db": -57.1,
+      "slope_db_oct": -10.91,
+      "air_db": -53.1,
+      "air_lo_hz": 2280.1,
+      "air_hi_hz": 3780.1,
+      "air_formant_hz": 2880.1,
       "level": 0.8,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
@@ -163,30 +165,30 @@
       "chiff_len_s": 0.04,
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
-      "wobble_hz": 0.45,
-      "air_lo_hz": 2280.5,
-      "air_hi_hz": 3780.5
+      "wobble_hz": 0.45
     },
     {
+      "open_holes": 5,
+      "note": "D5",
       "f0": 587.33,
       "h": [
         1.0,
         0.002737,
-        0.00373,
+        0.001368,
         0.000478
       ],
       "h_phase": [
         0.0,
         -1.198,
-        -0.265,
+        -0.264,
         -2.35
       ],
-      "floor_db": -54.58,
-      "slope_db_oct": -9.18,
-      "air_f": 1735.0,
-      "air_db": -50.58,
-      "note": "D5",
-      "open_holes": 5,
+      "floor_db": -57.42,
+      "slope_db_oct": -9.76,
+      "air_db": -53.42,
+      "air_lo_hz": 2280.1,
+      "air_hi_hz": 3780.1,
+      "air_formant_hz": 2880.1,
       "level": 0.8,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
@@ -195,30 +197,30 @@
       "chiff_len_s": 0.04,
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
-      "wobble_hz": 0.45,
-      "air_lo_hz": 2281.0,
-      "air_hi_hz": 3781.0
+      "wobble_hz": 0.45
     },
     {
+      "open_holes": 6,
+      "note": "Ds5",
       "f0": 622.25,
       "h": [
         1.0,
         0.003127,
-        0.003281,
-        0.00042
+        0.001564,
+        0.000421
       ],
       "h_phase": [
         0.0,
         -1.418,
-        0.973,
+        0.974,
         -2.615
       ],
-      "floor_db": -52.18,
-      "slope_db_oct": -10.33,
-      "air_f": 1531.0,
-      "air_db": -48.18,
-      "note": "Ds5",
-      "open_holes": 6,
+      "floor_db": -54.83,
+      "slope_db_oct": -10.82,
+      "air_db": -50.83,
+      "air_lo_hz": 2278.0,
+      "air_hi_hz": 3778.0,
+      "air_formant_hz": 2878.0,
       "level": 0.8,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
@@ -227,30 +229,30 @@
       "chiff_len_s": 0.04,
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
-      "wobble_hz": 0.45,
-      "air_lo_hz": 2278.4,
-      "air_hi_hz": 3778.4
+      "wobble_hz": 0.45
     },
     {
+      "open_holes": 7,
+      "note": "E5",
       "f0": 659.26,
       "h": [
         1.0,
         0.003811,
-        0.003114,
-        0.000317
+        0.001906,
+        0.000318
       ],
       "h_phase": [
         0.0,
         -1.439,
-        1.434,
-        -2.455
+        1.433,
+        -2.454
       ],
-      "floor_db": -49.43,
-      "slope_db_oct": -11.39,
-      "air_f": 1431.0,
-      "air_db": -45.43,
-      "note": "E5",
-      "open_holes": 7,
+      "floor_db": -51.73,
+      "slope_db_oct": -11.8,
+      "air_db": -47.73,
+      "air_lo_hz": 2027.6,
+      "air_hi_hz": 3527.6,
+      "air_formant_hz": 2627.6,
       "level": 0.8,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
@@ -259,17 +261,17 @@
       "chiff_len_s": 0.04,
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
-      "wobble_hz": 0.45,
-      "air_lo_hz": 2058.1,
-      "air_hi_hz": 3558.1
+      "wobble_hz": 0.45
     },
     {
+      "open_holes": 8,
+      "note": "F5",
       "f0": 698.46,
       "h": [
         1.0,
         0.004707,
-        0.004483,
-        0.000126
+        0.0023,
+        0.000127
       ],
       "h_phase": [
         0.0,
@@ -277,12 +279,12 @@
         -2.681,
         -0.681
       ],
-      "floor_db": -46.43,
-      "slope_db_oct": -10.71,
-      "air_f": 2073.5,
-      "air_db": -42.43,
-      "note": "F5",
-      "open_holes": 8,
+      "floor_db": -47.97,
+      "slope_db_oct": -11.24,
+      "air_db": -43.97,
+      "air_lo_hz": 977.8,
+      "air_hi_hz": 2181.7,
+      "air_formant_hz": 1281.7,
       "level": 0.8,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
@@ -291,16 +293,16 @@
       "chiff_len_s": 0.04,
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
-      "wobble_hz": 0.45,
-      "air_lo_hz": 800,
-      "air_hi_hz": 2183.3
+      "wobble_hz": 0.45
     },
     {
+      "open_holes": 9,
+      "note": "Fs5",
       "f0": 739.99,
       "h": [
         1.0,
         0.007116,
-        0.003803,
+        0.002704,
         0.000645
       ],
       "h_phase": [
@@ -309,12 +311,12 @@
         -2.552,
         0.601
       ],
-      "floor_db": -46,
-      "slope_db_oct": -10.86,
-      "air_f": 1823.1,
-      "air_db": -42,
-      "note": "Fs5",
-      "open_holes": 9,
+      "floor_db": -46.99,
+      "slope_db_oct": -10.95,
+      "air_db": -42.99,
+      "air_lo_hz": 1036.0,
+      "air_hi_hz": 2189.5,
+      "air_formant_hz": 1289.5,
       "level": 0.8,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
@@ -323,30 +325,30 @@
       "chiff_len_s": 0.04,
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
-      "wobble_hz": 0.45,
-      "air_lo_hz": 800,
-      "air_hi_hz": 2073.6
+      "wobble_hz": 0.45
     },
     {
+      "open_holes": 10,
+      "note": "G5",
       "f0": 783.99,
       "h": [
         1.0,
-        0.009525,
-        0.003123,
+        0.009524,
+        0.003108,
         0.001163
       ],
       "h_phase": [
         0.0,
-        -1.041,
+        -1.04,
         -2.423,
         1.883
       ],
-      "floor_db": -46,
-      "slope_db_oct": -11.0,
-      "air_f": 1572.7,
-      "air_db": -42,
-      "note": "G5",
-      "open_holes": 10,
+      "floor_db": -46.01,
+      "slope_db_oct": -10.66,
+      "air_db": -42.01,
+      "air_lo_hz": 1097.6,
+      "air_hi_hz": 2197.3,
+      "air_formant_hz": 1297.3,
       "level": 0.8,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
@@ -355,30 +357,30 @@
       "chiff_len_s": 0.04,
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
-      "wobble_hz": 0.45,
-      "air_lo_hz": 800,
-      "air_hi_hz": 1964.0
+      "wobble_hz": 0.45
     },
     {
+      "open_holes": 11,
+      "note": "Gs5",
       "f0": 830.61,
       "h": [
         1.0,
-        0.007678,
+        0.007677,
         0.001787,
         0.000927
       ],
       "h_phase": [
         0.0,
         0.993,
-        -0.004,
-        -0.151
+        -0.003,
+        -0.152
       ],
-      "floor_db": -47.46,
-      "slope_db_oct": -10.85,
-      "air_f": 1243.3,
-      "air_db": -43.46,
-      "note": "Gs5",
-      "open_holes": 11,
+      "floor_db": -47.73,
+      "slope_db_oct": -10.87,
+      "air_db": -43.73,
+      "air_lo_hz": 1528.2,
+      "air_hi_hz": 3028.2,
+      "air_formant_hz": 2128.2,
       "level": 0.8,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
@@ -387,30 +389,30 @@
       "chiff_len_s": 0.04,
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
-      "wobble_hz": 0.45,
-      "air_lo_hz": 800,
-      "air_hi_hz": 1905.3
+      "wobble_hz": 0.45
     },
     {
+      "open_holes": 12,
+      "note": "A5",
       "f0": 880.0,
       "h": [
         1.0,
         0.005771,
         0.000441,
-        0.000681
+        0.000682
       ],
       "h_phase": [
         0.0,
-        3.056,
+        3.057,
         2.448,
         -2.233
       ],
-      "floor_db": -50.15,
-      "slope_db_oct": -10.7,
-      "air_f": 912.9,
-      "air_db": -46.15,
-      "note": "A5",
-      "open_holes": 12,
+      "floor_db": -49.49,
+      "slope_db_oct": -11.08,
+      "air_db": -45.49,
+      "air_lo_hz": 2370.7,
+      "air_hi_hz": 3870.7,
+      "air_formant_hz": 2970.7,
       "level": 0.8,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
@@ -419,30 +421,30 @@
       "chiff_len_s": 0.04,
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
-      "wobble_hz": 0.45,
-      "air_lo_hz": 800,
-      "air_hi_hz": 1847.0
+      "wobble_hz": 0.45
     },
     {
+      "open_holes": 13,
+      "note": "As5",
       "f0": 932.33,
       "h": [
         1.0,
         0.004292,
-        0.000336,
+        0.000337,
         0.000576
       ],
       "h_phase": [
         0.0,
-        0.102,
+        0.103,
         0.554,
         -1.89
       ],
-      "floor_db": -48.04,
-      "slope_db_oct": -10.39,
-      "air_f": 944.8,
-      "air_db": -44.04,
-      "note": "As5",
-      "open_holes": 13,
+      "floor_db": -47.77,
+      "slope_db_oct": -11.56,
+      "air_db": -43.77,
+      "air_lo_hz": 1728.6,
+      "air_hi_hz": 3228.6,
+      "air_formant_hz": 2328.6,
       "level": 0.8,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
@@ -451,30 +453,30 @@
       "chiff_len_s": 0.04,
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
-      "wobble_hz": 0.45,
-      "air_lo_hz": 800,
-      "air_hi_hz": 1908.3
+      "wobble_hz": 0.45
     },
     {
+      "open_holes": 14,
+      "note": "B5",
       "f0": 987.77,
       "h": [
         1.0,
         0.002899,
-        0.000631,
+        0.000357,
         0.000455
       ],
       "h_phase": [
         0.0,
-        -2.656,
-        -1.033,
-        -1.38
+        -2.655,
+        -1.034,
+        -1.381
       ],
       "floor_db": -46.14,
-      "slope_db_oct": -9.97,
-      "air_f": 989.3,
+      "slope_db_oct": -11.93,
       "air_db": -42.14,
-      "note": "B5",
-      "open_holes": 14,
+      "air_lo_hz": 1382.9,
+      "air_hi_hz": 2655.5,
+      "air_formant_hz": 1755.5,
       "level": 0.8,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
@@ -483,16 +485,16 @@
       "chiff_len_s": 0.04,
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
-      "wobble_hz": 0.45,
-      "air_lo_hz": 800,
-      "air_hi_hz": 1970.8
+      "wobble_hz": 0.45
     },
     {
+      "open_holes": 15,
+      "note": "C6",
       "f0": 1046.5,
       "h": [
         1.0,
         0.002843,
-        0.004004,
+        0.001242,
         0.000185
       ],
       "h_phase": [
@@ -501,12 +503,12 @@
         1.459,
         -0.257
       ],
-      "floor_db": -47.85,
-      "slope_db_oct": -8.34,
-      "air_f": 1048.1,
-      "air_db": -43.85,
-      "note": "C6",
-      "open_holes": 15,
+      "floor_db": -46.32,
+      "slope_db_oct": -11.18,
+      "air_db": -42.32,
+      "air_lo_hz": 1648.2,
+      "air_hi_hz": 3148.2,
+      "air_formant_hz": 2248.2,
       "level": 0.8,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
@@ -515,30 +517,30 @@
       "chiff_len_s": 0.04,
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
-      "wobble_hz": 0.45,
-      "air_lo_hz": 800,
-      "air_hi_hz": 2023.9
+      "wobble_hz": 0.45
     },
     {
+      "open_holes": 16,
+      "note": "Cs6",
       "f0": 1108.73,
       "h": [
         1.0,
         0.008373,
-        0.003621,
+        0.002251,
         0.000258
       ],
       "h_phase": [
         0.0,
         -0.368,
         2.256,
-        -1.55
+        -1.551
       ],
-      "floor_db": -48.33,
-      "slope_db_oct": -7.76,
-      "air_f": 1110.7,
-      "air_db": -44.33,
-      "note": "Cs6",
-      "open_holes": 16,
+      "floor_db": -46.16,
+      "slope_db_oct": -10.89,
+      "air_db": -42.16,
+      "air_lo_hz": 1734.0,
+      "air_hi_hz": 3234.0,
+      "air_formant_hz": 2334.0,
       "level": 0.8,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
@@ -547,16 +549,16 @@
       "chiff_len_s": 0.04,
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
-      "wobble_hz": 0.45,
-      "air_lo_hz": 800,
-      "air_hi_hz": 2095.5
+      "wobble_hz": 0.45
     },
     {
+      "open_holes": 17,
+      "note": "D6",
       "f0": 1174.66,
       "h": [
         1.0,
         0.013742,
-        0.00325,
+        0.003237,
         0.000328
       ],
       "h_phase": [
@@ -565,12 +567,12 @@
         3.008,
         -2.79
       ],
-      "floor_db": -48.74,
-      "slope_db_oct": -7.19,
-      "air_f": 1173.4,
-      "air_db": -44.74,
-      "note": "D6",
-      "open_holes": 17,
+      "floor_db": -46.0,
+      "slope_db_oct": -10.59,
+      "air_db": -42.0,
+      "air_lo_hz": 1819.6,
+      "air_hi_hz": 3319.6,
+      "air_formant_hz": 2419.6,
       "level": 0.8,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
@@ -579,30 +581,30 @@
       "chiff_len_s": 0.04,
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
-      "wobble_hz": 0.45,
-      "air_lo_hz": 800,
-      "air_hi_hz": 2168.0
+      "wobble_hz": 0.45
     },
     {
+      "open_holes": 18,
+      "note": "Ds6",
       "f0": 1244.51,
       "h": [
         1.0,
         0.009304,
-        0.003592,
+        0.00283,
         0.000213
       ],
       "h_phase": [
         0.0,
-        1.228,
+        1.227,
         0.975,
-        -0.742
+        -0.743
       ],
-      "floor_db": -46.72,
-      "slope_db_oct": -6.9,
-      "air_f": 1245.9,
-      "air_db": -42.72,
-      "note": "Ds6",
-      "open_holes": 18,
+      "floor_db": -46.0,
+      "slope_db_oct": -10.38,
+      "air_db": -42.0,
+      "air_lo_hz": 1888.1,
+      "air_hi_hz": 3388.1,
+      "air_formant_hz": 2488.1,
       "level": 0.8,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
@@ -611,30 +613,30 @@
       "chiff_len_s": 0.04,
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
-      "wobble_hz": 0.45,
-      "air_lo_hz": 800,
-      "air_hi_hz": 2271.3
+      "wobble_hz": 0.45
     },
     {
+      "open_holes": 19,
+      "note": "E6",
       "f0": 1318.51,
       "h": [
         1.0,
         0.004865,
-        0.003934,
+        0.002423,
         9.8e-05
       ],
       "h_phase": [
         0.0,
-        1.297,
+        1.296,
         -1.058,
         1.305
       ],
-      "floor_db": -46,
-      "slope_db_oct": -6.6,
-      "air_f": 1318.5,
-      "air_db": -42,
-      "note": "E6",
-      "open_holes": 19,
+      "floor_db": -46.0,
+      "slope_db_oct": -10.17,
+      "air_db": -42.0,
+      "air_lo_hz": 1956.7,
+      "air_hi_hz": 3456.7,
+      "air_formant_hz": 2556.7,
       "level": 0.8,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
@@ -643,13 +645,12 @@
       "chiff_len_s": 0.04,
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
-      "wobble_hz": 0.45,
-      "air_lo_hz": 874.6,
-      "air_hi_hz": 2374.6
+      "wobble_hz": 0.45
     },
     {
-      "f0": 1396.91,
+      "open_holes": 20,
       "note": "F6",
+      "f0": 1396.91,
       "h": [
         1.0,
         0.004493,
@@ -662,11 +663,12 @@
         -1.729,
         2.884
       ],
-      "floor_db": -46,
-      "slope_db_oct": -4.6,
-      "air_f": 1391.6,
-      "air_db": -42,
-      "open_holes": 20,
+      "floor_db": -46.0,
+      "slope_db_oct": -8.31,
+      "air_db": -42.0,
+      "air_lo_hz": 1955.7,
+      "air_hi_hz": 3362.9,
+      "air_formant_hz": 2462.9,
       "level": 0.8,
       "atk_pre_s": 0.008,
       "atk_speak_s": 0.028,
@@ -675,13 +677,11 @@
       "chiff_len_s": 0.04,
       "rel_s": 0.08,
       "wander_cents_std": 2.5,
-      "wobble_hz": 0.45,
-      "air_lo_hz": 878.0,
-      "air_hi_hz": 2378.0
+      "wobble_hz": 0.45
     }
   ],
   "recorded": {
-    "fit": "per-chamber from the ladder holds, log-f inside the chamber only",
+    "fit": "per-chamber ladder fit, log-f inside the chamber only",
     "anchors": [
       "C5",
       "D5",
@@ -695,6 +695,5 @@
       "E6",
       "F6"
     ]
-  },
-  "voice": "v3k-chamber"
+  }
 }

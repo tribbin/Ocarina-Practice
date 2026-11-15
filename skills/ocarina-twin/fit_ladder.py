@@ -105,7 +105,13 @@ def fit_hold(seg, sr):
         mask &= np.abs(freqs - f0 * harm) > 0.06 * f0
     floor_bins = mask & (freqs > 400) & (freqs < 2500)
     floor_db = float(np.median(rdb[floor_bins])) + 28 if floor_bins.any() else -54
-    air_idx = np.where(mask)[0]
+    # The loudest residual below 1.6*f0 is the note's own skirt leakage, not
+    # vent noise (the shell class). Search the air peak above the skirt band;
+    # fall back to the old mask only when a very low f0 leaves no bins.
+    air_mask = mask & (freqs > 1.6 * f0)
+    air_idx = np.where(air_mask)[0]
+    if not len(air_idx):
+        air_idx = np.where(mask)[0]
     air_f = float(freqs[air_idx[int(np.argmax(rspec[air_idx]))]]) if len(air_idx) else 2000
     h = [1.0] + [rows[k][0] / h1 for k in (2, 3, 4)]
     # A locked H3 as loud as H2 is the clean honk. Keep the measured H2.
@@ -174,6 +180,7 @@ def fill(measured, ids):
             "air_db": round(floor + 4, 2),
             "air_lo_hz": round(max(800, f * 1.4, air_f - 600), 1),
             "air_hi_hz": round(air_f + 900, 1),
+            "air_formant_hz": round(air_f, 1),
             **ENVELOPE,
         })
     return notes, rows
@@ -184,7 +191,7 @@ def chamber_model(notes, instrument, chamber, anchors):
         "schema": "ocarina-twin-v2",
         "instrument": instrument,
         "chamber": str(chamber),
-        "globals": {"voice": "v3k-chamber", "chiff_q": 2.2},
+        "globals": {"voice": "v4-breath", "chiff_q": 2.2},
         "notes": notes,
         "recorded": {
             "fit": "per-chamber ladder fit, log-f inside the chamber only",
