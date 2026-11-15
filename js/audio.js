@@ -7,7 +7,7 @@ import { bumpHoverQuiet, clearHighlight, cueFirstNote, freezeZenGlow,
 import { isPracticeActive } from "./practice.js";
 import { wakeHold, wakeDrop } from "./wakelock.js";
 import { BREATH_DEFAULTS, loadTwinModelFromObject, interpNote, scheduleHelmholtzNote,
-         scheduleTongueBurst, VOICE_REV } from "./helmholtz-voice.js?v=14";
+         scheduleTongueBurst, VOICE_REV } from "./helmholtz-voice.js?v=16";
 import { JET_REV, jetReady, loadJetModelFromObject, prepareJetWorklet,
          scheduleJetNote } from "./jet-voice.js";
 let audioCtx = null;

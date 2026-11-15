@@ -19,6 +19,7 @@ class JetDriveProcessor extends AudioWorkletProcessor {
       { name: "turbGate", defaultValue: 0.5, minValue: 0, maxValue: 1, automationRate: "k-rate" },
       { name: "turbBypass", defaultValue: 0.2, minValue: 0, maxValue: 1, automationRate: "k-rate" },
       { name: "outGain", defaultValue: 1, minValue: 0, maxValue: 1000, automationRate: "k-rate" },
+      { name: "soloAir", defaultValue: 0, minValue: 0, maxValue: 1, automationRate: "k-rate" },
     ];
   }
 
@@ -55,6 +56,7 @@ class JetDriveProcessor extends AudioWorkletProcessor {
     const turbGate = parameters.turbGate[0];
     const turbBypass = parameters.turbBypass[0];
     const outGain = parameters.outGain[0];
+    const soloAir = parameters.soloAir[0];
     const ring = this.ring;
     const ringLen = ring.length;
     for (let i = 0; i < out.length; i++) {
@@ -80,7 +82,7 @@ class JetDriveProcessor extends AudioWorkletProcessor {
       ring[this.ringPos] = j;
       const idx = (this.ringPos - delay + ringLen * 2) % ringLen;
       const idxPrev = (idx - 1 + ringLen) % ringLen;
-      const edge = ring[idx] - ring[idxPrev];
+      const edge = soloAir > 0.5 ? 0 : ring[idx] - ring[idxPrev];
       const nz = noise ? noise[i] : 0;
       const turb = turbGain * nz * breath * (1 - turbGate + turbGate * Math.abs(j));
       const y = b0 * (edge + turb) + a1 * this.y1 + a2 * this.y2;
